@@ -376,7 +376,7 @@ implements IMinecraft {
             Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
         }
         BlockHitResult blockHitResult = new BlockHitResult(vec3, direction, blockPos, false);
-        NetworkUtils.sendSequencedPacket(arg_0 -> PistonHelper.lambda$clickBlock$0(blockHitResult, arg_0));
+        NetworkUtils.sendSequencedPacket(arg_0 -> PistonHelper.createClickPacket(blockHitResult, arg_0));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
         placeList.add(blockPos);
     }
@@ -420,7 +420,7 @@ implements IMinecraft {
         return aABB2.maxX - 1.0E-7 > aABB.minX && aABB2.minX + 1.0E-7 < aABB.maxX && aABB2.maxY - 1.0E-7 > aABB.minY && aABB2.minY + 1.0E-7 < aABB.maxY && aABB2.maxZ - 1.0E-7 > aABB.minZ && aABB2.minZ + 1.0E-7 < aABB.maxZ;
     }
 
-    private static /* synthetic */ Packet lambda$clickBlock$0(BlockHitResult blockHitResult, int n) {
+    private static Packet createClickPacket(BlockHitResult blockHitResult, int n) {
         return new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND, blockHitResult, n);
     }
 }

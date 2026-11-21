@@ -207,7 +207,7 @@ extends Module {
         UUID uUID = endCrystal.getUUID();
         ClientLevel clientLevel = CrystalWingsModule.mc.level;
         LocalPlayer localPlayer = CrystalWingsModule.mc.player;
-        mc.execute(() -> this.lambda$onSpawn$0(clientLevel, localPlayer, uUID, pos));
+        mc.execute(() -> this.handleWingSpawn(clientLevel, localPlayer, uUID, pos));
     }
 
     @SubscribeEvent
@@ -305,7 +305,7 @@ extends Module {
         return this.state.count() + "/" + this.crystalCount.getValue().intValue();
     }
 
-    private /* synthetic */ void lambda$onSpawn$0(ClientLevel clientLevel, Object object, UUID uUID, Vec3 vec3) {
+    private void handleWingSpawn(ClientLevel clientLevel, Object object, UUID uUID, Vec3 vec3) {
         if (!this.isToggled() || CrystalWingsModule.mc.level != clientLevel || CrystalWingsModule.mc.player != object) {
             return;
         }

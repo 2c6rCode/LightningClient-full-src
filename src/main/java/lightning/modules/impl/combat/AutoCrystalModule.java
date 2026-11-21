@@ -1133,7 +1133,7 @@ extends Module {
                                             if (!bl && this.placedSequentially) {
                                                 this.placedSequentially = false;
                                             } else {
-                                                this.placeRunnable = () -> this.lambda$placeCrystals$3(hitVec, n2, n, blockPos);
+                                                this.placeRunnable = () -> this.executePlaceCrystals(hitVec, n2, n, blockPos);
                                                 if (bl) {
                                                     this.placeRunnable.run();
                                                     this.placeRunnable = null;
@@ -1748,7 +1748,7 @@ extends Module {
         return this.calculationDamage;
     }
 
-    private /* synthetic */ void lambda$placeCrystals$3(Vec3 vec3, int n, int n2, BlockPos blockPos) {
+    private void executePlaceCrystals(Vec3 vec3, int n, int n2, BlockPos blockPos) {
         boolean bl = false;
         if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
             Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(vec3));

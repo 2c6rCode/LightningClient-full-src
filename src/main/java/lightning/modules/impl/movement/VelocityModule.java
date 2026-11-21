@@ -213,7 +213,7 @@ extends Module {
                         }
                     }
                     if (packetReceiveEvent.isCancelled()) {
-                        mc.executeBlocking(() -> VelocityModule.lambda$onPacketReceive$0(clientboundExplodePacket));
+                        mc.executeBlocking(() -> VelocityModule.handleExplodePacket(clientboundExplodePacket));
                     }
                 }
             }
@@ -277,7 +277,7 @@ extends Module {
         return this.horizontal.getValue().intValue() + "%, " + this.vertical.getValue().intValue() + "%";
     }
 
-    private static /* synthetic */ void lambda$onPacketReceive$0(ClientboundExplodePacket clientboundExplodePacket) {
+    private static void handleExplodePacket(ClientboundExplodePacket clientboundExplodePacket) {
         Vec3 vec3 = clientboundExplodePacket.center();
         mc.getSoundManager().play((SoundInstance)new SimpleSoundInstance((SoundEvent)clientboundExplodePacket.explosionSound().value(), SoundSource.BLOCKS, 4.0f, (1.0f + (VelocityModule.mc.level.getRandom().nextFloat() - VelocityModule.mc.level.getRandom().nextFloat()) * 0.2f) * 0.7f, VelocityModule.mc.level.getRandom(), vec3.x, vec3.y, vec3.z));
         VelocityModule.mc.level.addParticle(clientboundExplodePacket.explosionParticle(), vec3.x, vec3.y, vec3.z, 1.0, 0.0, 0.0);

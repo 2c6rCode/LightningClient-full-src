@@ -565,7 +565,7 @@ extends Module {
                                                 }
                                             }
                                         }
-                                        List<BlockPos> list2 = HoleUtils.getFeetPositions(target2.player(), true, false, true).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).sorted(Comparator.comparingDouble(arg_0 -> this.lambda$onPlayerUpdate$11(shareAvoid, speedMineModule, finalTerrainPair, arg_0))).toList();
+                                        List<BlockPos> list2 = HoleUtils.getFeetPositions(target2.player(), true, false, true).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).sorted(Comparator.comparingDouble(arg_0 -> this.scoreFeetBlockPos(shareAvoid, speedMineModule, finalTerrainPair, arg_0))).toList();
                                         boolean bl5 = bl;
                                         for (BlockPos targetFeetPos : list2) {
                                             if (!bl5 && speedMineModule.slotsFull()) break;
@@ -819,7 +819,7 @@ extends Module {
         InventoryUtils.switchBack(string, n, n2);
     }
 
-    private /* synthetic */ double lambda$onPlayerUpdate$11(Set set, SpeedMineModule speedMineModule, TerrainPair terrainPair, BlockPos blockPos) {
+    private double scoreFeetBlockPos(Set set, SpeedMineModule speedMineModule, TerrainPair terrainPair, BlockPos blockPos) {
         double d;
         double d2 = d = this.avoidSharing.getValue() && set.contains(blockPos) ? 100000.0 : 0.0;
         if (this.isRaytrace() && !WorldUtils.canSeeBlock(blockPos)) {

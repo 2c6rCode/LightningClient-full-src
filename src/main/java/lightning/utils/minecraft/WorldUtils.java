@@ -278,7 +278,7 @@ implements IMinecraft {
             Night.RENDER_MANAGER.renderPositions.add(renderPosition);
         }
         BlockHitResult blockHitResult = new BlockHitResult(vec3, Direction.UP, blockPos, false);
-        NetworkUtils.sendSequencedPacket(arg_0 -> WorldUtils.lambda$airPlaceBlock$1(interactionHand, blockHitResult, arg_0));
+        NetworkUtils.sendSequencedPacket(arg_0 -> WorldUtils.createAirPlacePacket(interactionHand, blockHitResult, arg_0));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(interactionHand));
     }
 
@@ -333,7 +333,7 @@ implements IMinecraft {
             }
         }
         BlockHitResult blockHitResult = new BlockHitResult(vec3, direction.getOpposite(), blockPos2, false);
-        NetworkUtils.sendSequencedPacket(arg_0 -> WorldUtils.lambda$placeBlock$1(interactionHand, blockHitResult, arg_0));
+        NetworkUtils.sendSequencedPacket(arg_0 -> WorldUtils.createPlacePacket(interactionHand, blockHitResult, arg_0));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(interactionHand));
         if (bl5 && !Night.ROTATION_MANAGER.isBatchingRotations() && Night.MODULE_MANAGER.getModule(RotationsModule.class).snapBack.getValue()) {
             Night.ROTATION_MANAGER.packetRotate(f, f2);
@@ -844,11 +844,11 @@ implements IMinecraft {
         return arrayList;
     }
 
-    private static /* synthetic */ Packet lambda$placeBlock$1(InteractionHand interactionHand, BlockHitResult blockHitResult, int n) {
+    private static Packet createPlacePacket(InteractionHand interactionHand, BlockHitResult blockHitResult, int n) {
         return new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n);
     }
 
-    private static /* synthetic */ Packet lambda$airPlaceBlock$1(InteractionHand interactionHand, BlockHitResult blockHitResult, int n) {
+    private static Packet createAirPlacePacket(InteractionHand interactionHand, BlockHitResult blockHitResult, int n) {
         return new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n);
     }
 

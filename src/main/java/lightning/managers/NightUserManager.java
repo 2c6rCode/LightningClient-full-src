@@ -61,9 +61,5 @@ implements IMinecraft {
 
     private void poll() {
     }
-
-    private static void lambda$tryPoll$0(Set set, JsonElement jsonElement) {
-        set.add(jsonElement.getAsString().toLowerCase());
-    }
 }
 

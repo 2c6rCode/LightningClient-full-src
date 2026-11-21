@@ -260,7 +260,7 @@ extends Module {
         }
         BlockHitResult blockHitResult = new BlockHitResult(vec3, Direction.UP, blockPos, false);
         mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
-        NetworkUtils.sendSequencedPacket(arg_0 -> FeetTrapModule.lambda$placeAir$0(blockHitResult, arg_0));
+        NetworkUtils.sendSequencedPacket(arg_0 -> FeetTrapModule.createUseItemOnPacket(blockHitResult, arg_0));
         if (this.swing.getValue()) {
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.OFF_HAND));
         }
@@ -372,7 +372,7 @@ extends Module {
         return block == Blocks.OBSIDIAN || block == Blocks.ENDER_CHEST || block == Blocks.CRYING_OBSIDIAN || block == Blocks.NETHERITE_BLOCK || block == Blocks.RESPAWN_ANCHOR || block == Blocks.ANCIENT_DEBRIS || block == Blocks.ENCHANTING_TABLE || block == Blocks.ANVIL || block == Blocks.CHIPPED_ANVIL || block == Blocks.DAMAGED_ANVIL;
     }
 
-    private static /* synthetic */ Packet lambda$placeAir$0(BlockHitResult blockHitResult, int n) {
+    private static Packet createUseItemOnPacket(BlockHitResult blockHitResult, int n) {
         return new ServerboundUseItemOnPacket(InteractionHand.OFF_HAND, blockHitResult, n);
     }
 

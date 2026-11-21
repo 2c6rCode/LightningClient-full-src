@@ -120,7 +120,7 @@ extends AbstractPackResources {
             final String resourcePath = "assets/lightning/" + fallbackPath;
             Identifier fallbackId;
             if (NightPackResources.class.getClassLoader().getResource(resourcePath) == null || (fallbackId = Identifier.tryBuild(NAMESPACE, fallbackPath)) == null) continue;
-            resourceOutput.accept(fallbackId, () -> NightPackResources.lambda$listResources$1(resourcePath));
+            resourceOutput.accept(fallbackId, () -> NightPackResources.class.getClassLoader().getResourceAsStream(resourcePath));
         }
     }
 
@@ -129,10 +129,6 @@ extends AbstractPackResources {
     }
 
     public void close() {
-    }
-
-    private static /* synthetic */ InputStream lambda$listResources$1(String string) throws IOException {
-        return NightPackResources.class.getClassLoader().getResourceAsStream(string);
     }
 }
 

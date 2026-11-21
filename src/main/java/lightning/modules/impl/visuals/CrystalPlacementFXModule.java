@@ -142,7 +142,7 @@ extends Module {
         UUID uUID = endCrystal.getUUID();
         ClientLevel clientLevel = CrystalPlacementFXModule.mc.level;
         long l = System.nanoTime();
-        mc.execute(() -> this.lambda$onSpawn$0(clientLevel, l, pos, uUID));
+        mc.execute(() -> this.handleSpawnEffect(clientLevel, l, pos, uUID));
     }
 
     @SubscribeEvent
@@ -257,7 +257,7 @@ extends Module {
         list.add(new Renderer3D.VertexCollection(this.vertex(matrix4f, vec3, d, d5, d7), this.vertex(matrix4f, vec3, d2, d6, d7), this.vertex(matrix4f, vec3, d4, d6, d8), this.vertex(matrix4f, vec3, d3, d5, d8)));
     }
 
-    private /* synthetic */ void lambda$onSpawn$0(ClientLevel clientLevel, long l, Vec3 vec3, UUID uUID) {
+    private void handleSpawnEffect(ClientLevel clientLevel, long l, Vec3 vec3, UUID uUID) {
         if (!this.isToggled() || CrystalPlacementFXModule.mc.level != clientLevel || CrystalPlacementFXModule.mc.player == null) {
             return;
         }
