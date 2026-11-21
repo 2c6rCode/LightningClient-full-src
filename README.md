@@ -10,7 +10,7 @@ Buddy thought his client was slick
 
 ![Fucked by FPG](menu.jpg)
 
-## Credits & Slander
+## Credits
 
 - **Original source dump:** Doom33
 - **Reverse engineering & technical cleanup:** Fixed decompiled garbage variables, de-obfuscated CFR ternary messes, completely bypassed auth/heartbeat gates, resolved synthetic lambda format errors, and made this mess actually compile from clean source by 2c6r with da AI.
