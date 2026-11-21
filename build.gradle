@@ -55,10 +55,4 @@ jar {
     }
 }
 
-loom {
-    runs {
-        client {
-            vmArgs "-Xms2G", "-Xmx4G", "-XX:+UseG1GC"
-        }
-    }
-}
+
