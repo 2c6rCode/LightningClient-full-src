@@ -4,6 +4,12 @@ A shitty client with the code stolen from NightClient and Homovore, nice obf, se
 
 Imagine pasting code from other clients, slapping a garbage authentication gate on top, and praying nobody reverses your clown-tier security in five minutes.
 
+## "Uncrackable" Security in Action
+
+Buddy thought his client was slick
+
+![Fucked by FPG](menu.jpg)
+
 ## Credits & Slander
 
 - **Original source dump:** Doom33
