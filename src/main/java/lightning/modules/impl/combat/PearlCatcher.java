@@ -1,0 +1,125 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.core.BlockPos
+ *  net.minecraft.core.Vec3i
+ *  net.minecraft.util.Mth
+ *  net.minecraft.world.InteractionHand
+ *  net.minecraft.world.entity.Entity
+ *  net.minecraft.world.entity.player.Player
+ *  net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl
+ *  net.minecraft.world.item.BlockItem
+ *  net.minecraft.world.level.block.Blocks
+ *  net.minecraft.world.phys.BlockHitResult
+ *  net.minecraft.world.phys.HitResult
+ *  net.minecraft.world.phys.Vec3
+ */
+package lightning.modules.impl.combat;
+
+import lightning.Night;
+import lightning.events.SubscribeEvent;
+import lightning.events.impl.EntitySpawnEvent;
+import lightning.modules.Module;
+import lightning.modules.RegisterModule;
+import lightning.settings.impl.BooleanSetting;
+import lightning.settings.impl.ModeSetting;
+import lightning.settings.impl.NumberSetting;
+import lightning.utils.minecraft.EntityUtils;
+import lightning.utils.minecraft.HoleUtils;
+import lightning.utils.minecraft.InventoryUtils;
+import lightning.utils.minecraft.WorldUtils;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+
+@RegisterModule(name="PearlCatcher", description="Places obsidian in the air to stop players pearls from reaching their destination.", category=Module.Category.COMBAT)
+public class PearlCatcher
+extends Module {
+    public ModeSetting autoSwitch = new ModeSetting("Switch", "The mode that will be used for automatically switching to necessary items.", "Silent", InventoryUtils.SWITCH_MODES);
+    public BooleanSetting rotate = new BooleanSetting("Rotate", "Sends a packet rotation whenever placing a block.", true);
+    public NumberSetting range = new NumberSetting("Range", "The maximum range at which the blocks will be placed at.", 5.0, 0.0, 12.0);
+    public NumberSetting enemyRange = new NumberSetting("EnemyRange", "The maximum distance at which the target should be at.", Float.valueOf(8.0f), Float.valueOf(0.0f), Float.valueOf(16.0f));
+    public NumberSetting distance = new NumberSetting("Distance", "The distance at which the obisidan block will be placed from the player.", Float.valueOf(4.0f), Float.valueOf(3.0f), Float.valueOf(6.0f));
+    public BooleanSetting holeCheck = new BooleanSetting("HoleCheck", "Only self traps whenever you are in a hole.", false);
+    public BooleanSetting whileEating = new BooleanSetting("WhileEating", "Places blocks normally while eating.", true);
+    public BooleanSetting itemDisable = new BooleanSetting("ItemDisable", "Toggles off the module whenever you run out of items to place with.", true);
+    public BooleanSetting render = new BooleanSetting("Render", "Whether or not to render the place position.", true);
+
+    @SubscribeEvent
+    public void onEntitySpawn(EntitySpawnEvent entitySpawnEvent) {
+        Player player;
+        ThrownEnderpearl thrownEnderpearl;
+        Entity entity;
+        block5: {
+            block4: {
+                entity = entitySpawnEvent.getEntity();
+                if (!(entity instanceof ThrownEnderpearl)) break block4;
+                thrownEnderpearl = (ThrownEnderpearl)entity;
+                if (this.whileEating.getValue() || !EntityUtils.isEating()) break block5;
+            }
+            return;
+        }
+        entity = thrownEnderpearl.getOwner();
+        if (!(entity instanceof Player) || !this.validTarget(player = (Player)entity)) {
+            return;
+        }
+        this.catchPearl(player);
+    }
+
+    private void catchPearl(Player player) {
+        if (this.autoSwitch.getValue().equalsIgnoreCase("None") && !(PearlCatcher.mc.player.getMainHandItem().getItem() instanceof BlockItem)) {
+            if (this.itemDisable.getValue()) {
+                Night.CHAT_MANAGER.tagged("You are currently not holding any blocks.", this.getName());
+                this.setToggled(false);
+            }
+            return;
+        }
+        int n = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int n2 = PearlCatcher.mc.player.getInventory().getSelectedSlot();
+        if (n == -1) {
+            if (this.itemDisable.getValue()) {
+                Night.CHAT_MANAGER.tagged("No blocks could be found in your hotbar.", this.getName());
+                this.setToggled(false);
+            }
+            return;
+        }
+        HitResult hitResult = player.pick((double)this.distance.getValue().floatValue(), 0.0f, false);
+        if (!(hitResult instanceof BlockHitResult)) {
+            return;
+        }
+        BlockHitResult blockHitResult = (BlockHitResult)hitResult;
+        BlockPos blockPos = blockHitResult.getBlockPos();
+        if (PearlCatcher.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.range.getValue().doubleValue())) {
+            return;
+        }
+        if (PearlCatcher.mc.level.getBlockState(blockPos).getBlock().equals(Blocks.AIR)) {
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
+            WorldUtils.placeBlock(blockPos, WorldUtils.getDirection(blockPos, false), InteractionHand.MAIN_HAND, this.rotate.getValue(), false, this.render.getValue());
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+        }
+    }
+
+    private boolean validTarget(Player player) {
+        if (player == PearlCatcher.mc.player) {
+            return false;
+        }
+        if (PearlCatcher.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue())) {
+            return false;
+        }
+        if (Night.FRIEND_MANAGER.contains(player.getName().getString())) {
+            return false;
+        }
+        return !this.holeCheck.getValue() || HoleUtils.isPlayerInHole(player);
+    }
+}
+

@@ -1,0 +1,213 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+ *  net.minecraft.client.gui.screens.inventory.InventoryScreen
+ *  net.minecraft.tags.ItemTags
+ *  net.minecraft.util.Mth
+ *  net.minecraft.world.entity.Entity
+ *  net.minecraft.world.entity.EquipmentSlot
+ *  net.minecraft.world.item.AxeItem
+ *  net.minecraft.world.item.Item
+ *  net.minecraft.world.item.Items
+ */
+package lightning.pingbypass.modules.submodules.totem;
+
+import java.util.List;
+import lightning.Night;
+import lightning.events.SubscribeEvent;
+import lightning.events.impl.PlayerPopEvent;
+import lightning.modules.impl.combat.SuicideModule;
+import lightning.modules.impl.player.SpeedMineModule;
+import lightning.pingbypass.modules.PbModule;
+import lightning.settings.Setting;
+import lightning.settings.impl.BooleanSetting;
+import lightning.settings.impl.ModeSetting;
+import lightning.settings.impl.NumberSetting;
+import lightning.utils.IMinecraft;
+import lightning.utils.minecraft.InventoryUtils;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+
+public class ServerAutoTotem
+extends PbModule
+implements IMinecraft {
+    public ModeSetting item = new ModeSetting("Item", "The item that will be placed in your offhand slot when safety conditions are met.", "Totem", new String[]{"Totem", "Crystal", "Gapple"});
+    public NumberSetting health = new NumberSetting("Health", "The health at which a totem will be prioritized.", 16, 0, 36);
+    public BooleanSetting elytraCheck = new BooleanSetting("ElytraCheck", "Prioritizes a totem whenever you're wearing an elytra.", true);
+    public NumberSetting fallDistance = new NumberSetting("FallDistance", "The fall distance at which the module will prioritize a totem.", Float.valueOf(20.0f), Float.valueOf(0.0f), Float.valueOf(80.0f));
+    public BooleanSetting useGapple = new BooleanSetting("UseGapple", "Switches to a golden apple in your offhand based on main hand items when health is safe.", true);
+    public BooleanSetting gappleSword = new BooleanSetting("Sword", "Switches to a gapple when holding a sword or axe in main hand.", true);
+    public BooleanSetting gapplePickaxe = new BooleanSetting("Pickaxe", "Switches to a gapple when holding a pickaxe in main hand.", true);
+    public BooleanSetting gappleTotem = new BooleanSetting("Totem", "Switches to a gapple when holding a totem in main hand.", false);
+    public BooleanSetting lethalOverride = new BooleanSetting("LethalOverride", "Overrides any necessity for a totem when gappling.", false);
+    public BooleanSetting version117 = new BooleanSetting("1.17+", "1.17+ uses the SWAP inventory action, while having it off uses inventory clicks.", true);
+    public BooleanSetting smartMine = new BooleanSetting("SmartMine", "Switches to a crystal whenever you start mining and a totem when you aren't mining.", false);
+    public BooleanSetting antiMace = new BooleanSetting("AntiMace", "Switches to a totem if a player near you is trying to smash attack you with a mace.", false);
+    public NumberSetting maceRange = new NumberSetting("MaceRange", "The distance at which an enemy has to be in with a mace in order to swap to a totem.", Float.valueOf(12.0f), Float.valueOf(0.0f), Float.valueOf(24.0f));
+    private int totemCount = 0;
+    private int gappleStagedSlot = -1;
+
+    public ServerAutoTotem() {
+        super("AutoTotem");
+    }
+
+    @Override
+    public void onEnable() {
+        Night.EVENT_HANDLER.subscribe(this);
+    }
+
+    @Override
+    public void onDisable() {
+        Night.EVENT_HANDLER.unsubscribe(this);
+        this.gappleStagedSlot = -1;
+    }
+
+    @Override
+    public List<Setting> getSettings() {
+        return List.of(this.item, this.health, this.elytraCheck, this.fallDistance, this.useGapple, this.gappleSword, this.gapplePickaxe, this.gappleTotem, this.lethalOverride, this.version117, this.smartMine, this.antiMace, this.maceRange);
+    }
+
+    @SubscribeEvent(priority=0x7FFFFFFF)
+    public void onPlayerPop(PlayerPopEvent playerPopEvent) {
+        if (playerPopEvent.getPlayer() == ServerAutoTotem.mc.player && !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
+            this.tick();
+        }
+    }
+
+    @Override
+    public void tick() {
+        int n;
+        if (ServerAutoTotem.mc.player == null || ServerAutoTotem.mc.level == null) {
+            return;
+        }
+        this.totemCount = ServerAutoTotem.mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
+        if (!(ServerAutoTotem.mc.gui.screen() instanceof InventoryScreen) && ServerAutoTotem.mc.gui.screen() instanceof AbstractContainerScreen) {
+            return;
+        }
+        Item item = this.getItem();
+        if (item == null) {
+            return;
+        }
+        if (item == Items.TOTEM_OF_UNDYING && Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && Night.MODULE_MANAGER.getModule(SuicideModule.class).offhandOverride.getValue()) {
+            if (ServerAutoTotem.mc.player.getOffhandItem().isEmpty()) {
+                return;
+            }
+            n = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+        } else {
+            if (ServerAutoTotem.mc.player.getOffhandItem().getItem() == item) {
+                return;
+            }
+            if (this.gappleStagedSlot != -1 && item == Items.TOTEM_OF_UNDYING) {
+                if (ServerAutoTotem.mc.player.getInventory().getItem(this.gappleStagedSlot).getItem() == Items.TOTEM_OF_UNDYING) {
+                    n = this.gappleStagedSlot;
+                } else {
+                    n = InventoryUtils.findInventory(item);
+                    if (n == -1) {
+                        n = InventoryUtils.find(item);
+                    }
+                }
+                this.gappleStagedSlot = -1;
+            } else if (item == Items.ENCHANTED_GOLDEN_APPLE || item == Items.GOLDEN_APPLE) {
+                n = InventoryUtils.findHotbar(item);
+                if (n == -1) {
+                    n = InventoryUtils.findInventory(item);
+                }
+                if (n != -1) {
+                    this.gappleStagedSlot = n;
+                }
+            } else {
+                n = InventoryUtils.findInventory(item);
+                if (n == -1) {
+                    n = InventoryUtils.find(item);
+                }
+            }
+            if (n == -1) {
+                if (item == Items.TOTEM_OF_UNDYING) {
+                    n = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+                } else {
+                    return;
+                }
+            }
+        }
+        if (n == -1) {
+            return;
+        }
+        if (this.version117.getValue()) {
+            InventoryUtils.swap("Swap", n, 40);
+        } else {
+            InventoryUtils.swap("Pickup", n, 45);
+        }
+    }
+
+    private Item getItem() {
+        boolean bl = this.hasItem(Items.TOTEM_OF_UNDYING);
+        Item item = this.hasItem(Items.ENCHANTED_GOLDEN_APPLE) ? Items.ENCHANTED_GOLDEN_APPLE : (this.hasItem(Items.GOLDEN_APPLE) ? Items.GOLDEN_APPLE : null);
+        boolean bl2 = item != null;
+        boolean bl3 = ServerAutoTotem.mc.player.getMainHandItem().is(ItemTags.SWORDS) || ServerAutoTotem.mc.player.getMainHandItem().getItem() instanceof AxeItem;
+        boolean bl4 = ServerAutoTotem.mc.player.getMainHandItem().is(ItemTags.PICKAXES);
+        boolean bl5 = ServerAutoTotem.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING);
+        boolean bl6 = this.gappleSword.getValue() && bl3 || this.gapplePickaxe.getValue() && bl4 || this.gappleTotem.getValue() && bl5;
+        boolean bl7 = bl6;
+        if (this.useGapple.getValue() && ServerAutoTotem.mc.options.keyUse.isDown() && bl6 && bl2 && (this.lethalOverride.getValue() || !this.needsTotem() || !bl)) {
+            return item;
+        }
+        if (this.hasItem(Items.TOTEM_OF_UNDYING)) {
+            Object object;
+            if (this.needsTotem()) {
+                return Items.TOTEM_OF_UNDYING;
+            }
+            if (!(!this.item.getValue().equalsIgnoreCase("Crystal") || !this.smartMine.getValue() || ((SpeedMineModule)(object = Night.MODULE_MANAGER.getModule(SpeedMineModule.class))).getPrimary() != null && ((SpeedMineModule)object).getPrimary().isMining() || ((SpeedMineModule)object).getSecondary() != null && ((SpeedMineModule)object).getSecondary().isMining())) {
+                return Items.TOTEM_OF_UNDYING;
+            }
+        }
+        switch (this.item.getValue()) {
+            case "Crystal": {
+                if (!this.hasItem(Items.END_CRYSTAL)) {
+                    return Items.TOTEM_OF_UNDYING;
+                }
+                return Items.END_CRYSTAL;
+            }
+            case "Gapple": {
+                if (!bl2) {
+                    return Items.TOTEM_OF_UNDYING;
+                }
+                return item;
+            }
+        }
+        return Items.TOTEM_OF_UNDYING;
+    }
+
+    private boolean needsTotem() {
+        if (Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && Night.MODULE_MANAGER.getModule(SuicideModule.class).offhandOverride.getValue()) {
+            return false;
+        }
+        if (ServerAutoTotem.mc.player.getHealth() + ServerAutoTotem.mc.player.getAbsorptionAmount() <= this.health.getValue().floatValue()) {
+            return true;
+        }
+        if (ServerAutoTotem.mc.player.fallDistance > (double)this.fallDistance.getValue().floatValue()) {
+            return true;
+        }
+        if (this.elytraCheck.getValue() && ServerAutoTotem.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() == Items.ELYTRA) {
+            return true;
+        }
+        return this.antiMace.getValue() && ServerAutoTotem.mc.level.players().stream().anyMatch(abstractClientPlayer -> abstractClientPlayer != ServerAutoTotem.mc.player && !Night.FRIEND_MANAGER.contains(abstractClientPlayer.getName().getString()) && ServerAutoTotem.mc.player.distanceToSqr((Entity)abstractClientPlayer) <= (double)Mth.square((float)this.maceRange.getValue().floatValue()) && abstractClientPlayer.fallDistance >= 1.5 && abstractClientPlayer.getMainHandItem().getItem().equals(Items.MACE));
+    }
+
+    private boolean hasItem(Item item) {
+        return InventoryUtils.find(item) != -1 || ServerAutoTotem.mc.player.getOffhandItem().getItem() == item;
+    }
+
+    public String getMetaData() {
+        return String.valueOf(this.totemCount);
+    }
+}
+

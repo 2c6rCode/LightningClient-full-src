@@ -1,0 +1,57 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  com.mojang.blaze3d.vertex.PoseStack
+ *  lombok.Generated
+ */
+package lightning.events.impl;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import lightning.events.Event;
+import lombok.Generated;
+
+public class RenderWorldEvent
+extends Event {
+    private final PoseStack matrices;
+    private final float tickDelta;
+
+    @Generated
+    public PoseStack getMatrices() {
+        return this.matrices;
+    }
+
+    @Generated
+    public float getTickDelta() {
+        return this.tickDelta;
+    }
+
+    @Generated
+    public RenderWorldEvent(PoseStack poseStack, float f) {
+        this.matrices = poseStack;
+        this.tickDelta = f;
+    }
+
+    public static class Post
+    extends Event {
+        private final PoseStack matrices;
+        private final float tickDelta;
+
+        @Generated
+        public PoseStack getMatrices() {
+            return this.matrices;
+        }
+
+        @Generated
+        public float getTickDelta() {
+            return this.tickDelta;
+        }
+
+        @Generated
+        public Post(PoseStack poseStack, float f) {
+            this.matrices = poseStack;
+            this.tickDelta = f;
+        }
+    }
+}
+

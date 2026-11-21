@@ -1,0 +1,46 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  lombok.Generated
+ *  net.minecraft.world.phys.Vec3
+ */
+package lightning.events.impl;
+
+import lightning.events.Event;
+import lombok.Generated;
+import net.minecraft.world.phys.Vec3;
+
+public class UpdateVelocityEvent
+extends Event {
+    private final Vec3 movementInput;
+    private final float speed;
+    private Vec3 velocity;
+
+    @Generated
+    public Vec3 getMovementInput() {
+        return this.movementInput;
+    }
+
+    @Generated
+    public float getSpeed() {
+        return this.speed;
+    }
+
+    @Generated
+    public Vec3 getVelocity() {
+        return this.velocity;
+    }
+
+    @Generated
+    public void setVelocity(Vec3 vec3) {
+        this.velocity = vec3;
+    }
+
+    @Generated
+    public UpdateVelocityEvent(Vec3 vec3, float f) {
+        this.movementInput = vec3;
+        this.speed = f;
+    }
+}
+

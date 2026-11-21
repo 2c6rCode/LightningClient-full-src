@@ -1,0 +1,44 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.client.multiplayer.chat.GuiMessage
+ *  org.spongepowered.asm.mixin.Mixin
+ *  org.spongepowered.asm.mixin.Unique
+ */
+package lightning.mixins;
+
+import lightning.utils.mixins.IChatHudLine;
+import net.minecraft.client.multiplayer.chat.GuiMessage;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+
+@Mixin(value={GuiMessage.class})
+public class ChatHudLineMixin
+implements IChatHudLine {
+    @Unique
+    private boolean clientMessage = false;
+    @Unique
+    private String clientIdentifier = "";
+
+    @Override
+    public boolean night$isClientMessage() {
+        return this.clientMessage;
+    }
+
+    @Override
+    public void night$setClientMessage(boolean bl) {
+        this.clientMessage = bl;
+    }
+
+    @Override
+    public String night$getClientIdentifier() {
+        return this.clientIdentifier;
+    }
+
+    @Override
+    public void night$setClientIdentifier(String string) {
+        this.clientIdentifier = string;
+    }
+}
+

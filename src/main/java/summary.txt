@@ -1,0 +1,16 @@
+Summary for C:\Users\ttfg4\Downloads\LightningDumped.jar
+Decompiled with CFR 0.152
+
+
+lightning.modules.impl.combat.PistonCrystalModule
+----------------------------
+
+onTick(lightning.events.impl.TickEvent )
+  Unable to fully structure code
+
+
+lightning.modules.impl.combat.AutoCrystalModule
+----------------------------
+
+losDebug()
+  Unable to fully structure code

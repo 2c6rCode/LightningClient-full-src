@@ -1,0 +1,72 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.ChatFormatting
+ */
+package lightning.commands.impl;
+
+import java.util.List;
+import lightning.Night;
+import lightning.commands.Command;
+import lightning.commands.RegisterCommand;
+import lightning.modules.Module;
+import lightning.settings.Setting;
+import lightning.settings.impl.BooleanSetting;
+import lightning.utils.chat.ChatUtils;
+import net.minecraft.ChatFormatting;
+
+@RegisterCommand(name="toggle", tag="Toggle", description="Toggles a specified module or a setting on and off.", syntax="<[module]> | <[module]> <[setting]>", aliases={"t"})
+public class ToggleCommand
+extends Command {
+    @Override
+    public List<String> getSuggestions(String[] stringArray) {
+        if (stringArray.length == 0) {
+            return this.moduleNames();
+        }
+        if (stringArray.length == 1) {
+            Module module = Night.MODULE_MANAGER.getModule(stringArray[0]);
+            if (module == null) {
+                return List.of();
+            }
+            return module.getSettings().stream().filter(setting -> setting instanceof BooleanSetting).map(setting -> setting.getName().toLowerCase()).toList();
+        }
+        return List.of();
+    }
+
+    @Override
+    public void execute(String[] stringArray) {
+        if (stringArray.length == 1 || stringArray.length == 2) {
+            Module module = Night.MODULE_MANAGER.getModule(stringArray[0]);
+            if (module == null) {
+                Night.CHAT_MANAGER.tagged("Could not find the module specified.", this.getTag(), this.getName());
+                return;
+            }
+            if (stringArray.length == 1) {
+                if (module.isPersistent()) {
+                    Night.CHAT_MANAGER.tagged("Cannot toggle a persistent module.", this.getTag(), this.getName());
+                    return;
+                }
+                module.setToggled(!module.isToggled(), false);
+                Night.CHAT_MANAGER.tagged(String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + " has been toggled " + (module.isToggled() ? String.valueOf(ChatFormatting.GREEN) + "on" : String.valueOf(ChatFormatting.RED) + "off") + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName() + "-cmd-" + module.getName());
+            }
+            if (stringArray.length == 2) {
+                Setting setting = module.getSetting(stringArray[1]);
+                if (setting == null) {
+                    Night.CHAT_MANAGER.tagged("Could not find the setting specified.", this.getTag(), this.getName());
+                    return;
+                }
+                if (!(setting instanceof BooleanSetting)) {
+                    Night.CHAT_MANAGER.tagged("This command only works for " + String.valueOf(ChatUtils.getPrimary()) + "boolean" + String.valueOf(ChatUtils.getSecondary()) + " settings.", this.getTag(), this.getName());
+                    return;
+                }
+                BooleanSetting booleanSetting = (BooleanSetting)setting;
+                booleanSetting.setValue(!booleanSetting.getValue());
+                Night.CHAT_MANAGER.tagged(String.valueOf(ChatUtils.getPrimary()) + setting.getName() + String.valueOf(ChatUtils.getSecondary()) + " has been toggled " + (booleanSetting.getValue() ? String.valueOf(ChatFormatting.GREEN) + "on" : String.valueOf(ChatFormatting.RED) + "off") + String.valueOf(ChatUtils.getSecondary()) + " for " + String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName() + "-cmd-" + module.getName() + "-" + setting.getName());
+            }
+        } else {
+            this.messageSyntax();
+        }
+    }
+}
+
