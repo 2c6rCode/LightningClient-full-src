@@ -128,7 +128,7 @@ extends Screen {
         } else {
             Night.FONT_MANAGER.drawTextWithShadow(g, title, 14, ty, new Color(220, 212, 255, MainMenuScreen.clamp255(255.0f * f)));
         }
-        Night.FONT_MANAGER.drawTextWithShadow(g, "Recode By PhatNho", 14, ty + fh + 3, new Color(140, 130, 200, MainMenuScreen.clamp255(220.0f * f)));
+        Night.FONT_MANAGER.drawTextWithShadow(g, "Fucked by FPG gang", 14, ty + fh + 3, new Color(140, 130, 200, MainMenuScreen.clamp255(220.0f * f)));
     }
 
     private static void fillBolt(GuiGraphicsExtractor g, float ox, float oy, float scale, Color color) {

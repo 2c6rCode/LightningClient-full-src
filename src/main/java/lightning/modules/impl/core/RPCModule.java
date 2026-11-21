@@ -30,7 +30,7 @@ extends Module {
     private static final Logger LOGGER = LoggerFactory.getLogger((String)"Lightning/RPC");
     public BooleanSetting showUid = new BooleanSetting("UUID", "Whether or not to show your client UID on the Discord presence.", true);
     public ModeSetting detailsMode = new ModeSetting("Details", "The mode for the discord presence details.", "Random", new String[]{"Custom", "Random"});
-    public StringSetting customDetails = new StringSetting("CustomDetails", "Custom RPC text.", new ModeSetting.Visibility(this.detailsMode, "Custom"), "Recode by PhatNho");
+    public StringSetting customDetails = new StringSetting("CustomDetails", "Custom RPC text.", new ModeSetting.Visibility(this.detailsMode, "Custom"), "Fucked by FPG gang");
     public ModeSetting imageMode = new ModeSetting("Image", "Which large image to show on the Rich Presence card.", "Image", new String[]{"Logo", "Image", "Animated"});
     private static final String LOGO_ASSET_KEY = "logo";
     private static final String IMAGE_ASSET_KEY = "image";
@@ -40,7 +40,7 @@ extends Module {
     public NumberSetting animatedDelay = new NumberSetting("AnimatedDelay", "Milliseconds between each frame swap.", 1500, 0, 10000);
     private int frameIndex = 0;
     private final Timer frameTimer = new Timer();
-    private final String[] DETAILS = new String[]{"Recode by PhatNho"};
+    private final String[] DETAILS = new String[]{"Fucked by FPG gang"};
     private final RichPresence rpc = new RichPresence();
     private final Timer timer = new Timer();
 
