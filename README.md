@@ -22,6 +22,7 @@ Buddy thought his client was slick
 - Renamed decompiled variables across crystal placement, combat aura, mining modules, and rotation managers so the code is actually readable instead of pure single-letter garbage.
 - Fixed decompiled synthetic lambda method names that triggered JVM ClassFormatErrors on launch.
 - Repaired broken CFR bytecode artifacts and invalid exception handling across classloaders.
+- Isolated all dead packer, AES decryption, and loader artifacts into the `nice security/` folder so the compiled JAR is 100% clean of dropper heuristics.
 - Added working standalone Gradle wrapper and desktop launcher script.
 
 ## Clown-Tier Code Highlights
