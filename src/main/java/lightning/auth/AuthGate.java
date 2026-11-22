@@ -55,7 +55,7 @@ import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
 public final class AuthGate {
-    private static final String SERVER = "https://lightning-license-server-xaw3.onrender.com";
+    private static final String SERVER = "";
     private static final Path CRED_FILE = Paths.get(System.getProperty("user.home"), ".lightning", "credentials.properties");
     private static final Color BG = new Color(13, 18, 32);
     private static final Color PANEL = new Color(18, 26, 46);

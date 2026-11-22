@@ -24,8 +24,8 @@ import net.minecraft.world.entity.player.Player;
 public class NightUserManager
 implements IMinecraft {
     private static final long POLL_INTERVAL_SECONDS = 30L;
-    private static final String BASE_URL = System.getProperty("night.license.baseUrl", "https://nightclient.info.vn");
-    private static final String FALLBACK_BASE_URL = "http://nightclient.info.vn";
+    private static final String BASE_URL = "";
+    private static final String FALLBACK_BASE_URL = "";
     private static final Gson GSON = new Gson();
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5L)).build();
     private final Set<String> onlineUsernames = ConcurrentHashMap.newKeySet();
