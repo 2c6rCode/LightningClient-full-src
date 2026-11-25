@@ -24,39 +24,38 @@ extends Button {
     private final BooleanSetting enableSetting;
     private final Animation fillAnim;
 
-    public CategoryButton(CategorySetting categorySetting, BooleanSetting booleanSetting, Frame frame, int n) {
-        super(categorySetting, frame, n, categorySetting.getDescription());
+    public CategoryButton(CategorySetting categorySetting, BooleanSetting enableSetting, Frame frame, int height) {
+        super(categorySetting, frame, height, categorySetting.getDescription());
         this.setting = categorySetting;
-        this.enableSetting = booleanSetting;
-        float f = booleanSetting != null && booleanSetting.getValue() ? 1.0f : 0.0f;
-        this.fillAnim = new Animation(f, f, 180, Easing.Method.EASE_OUT_CUBIC);
+        this.enableSetting = enableSetting;
+        float initial = enableSetting != null && enableSetting.getValue() ? 1.0f : 0.0f;
+        this.fillAnim = new Animation(initial, initial, 180, Easing.Method.EASE_OUT_CUBIC);
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        Object object;
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), this.getX() + this.getWidth() - this.getPadding() - 1, this.getY() + this.getHeight() - 1, new Color(0, 0, 0, 40));
-        float f2 = this.fillAnim.get(this.enableSetting != null && this.enableSetting.getValue() ? 1.0f : 0.0f);
-        if (f2 > 0.001f) {
-            int n3 = this.getX() + this.getPadding() + 1 + Math.round((float)(this.getWidth() - (this.getPadding() + 1) * 2) * f2);
-            object = ClickGuiScreen.getButtonColor(this.getY(), Math.round(100.0f * f2));
-            LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), n3, this.getY() + this.getHeight() - 1, (Color)object);
+        float fillProgress = this.fillAnim.get(this.enableSetting != null && this.enableSetting.getValue() ? 1.0f : 0.0f);
+        if (fillProgress > 0.001f) {
+            int fillEndX = this.getX() + this.getPadding() + 1 + Math.round((float)(this.getWidth() - (this.getPadding() + 1) * 2) * fillProgress);
+            Color fillCol = ClickGuiScreen.getButtonColor(this.getY(), Math.round(100.0f * fillProgress));
+            LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), fillEndX, this.getY() + this.getHeight() - 1, fillCol);
         }
         Color color = this.enableSetting != null && this.enableSetting.getValue() ? Color.WHITE : ClickGuiScreen.getButtonColor(this.getY(), 180);
         Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, this.setting.getTag(), this.getX() + this.getTextPadding() + 4, this.getY() + 2, color);
-        object = this.setting.isOpen() ? "..." : "+";
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object, this.getX() + this.getWidth() - this.getTextPadding() - 1 - Night.FONT_MANAGER.getWidth((String)object), this.getY() + 2, Color.WHITE);
+        String indicator = this.setting.isOpen() ? "..." : "+";
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, indicator, this.getX() + this.getWidth() - this.getTextPadding() - 1 - Night.FONT_MANAGER.getWidth(indicator), this.getY() + 2, Color.WHITE);
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        if (!this.isHovering(d, d2)) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (!this.isHovering(mouseX, mouseY)) {
             return;
         }
-        if (this.enableSetting != null && n == 0) {
+        if (this.enableSetting != null && button == 0) {
             this.enableSetting.setValue(!this.enableSetting.getValue());
             this.playClickSound();
-        } else if (n == 1 || this.enableSetting == null && n == 0) {
+        } else if (button == 1 || this.enableSetting == null && button == 0) {
             this.setting.setOpen(!this.setting.isOpen());
             this.playClickSound();
         }

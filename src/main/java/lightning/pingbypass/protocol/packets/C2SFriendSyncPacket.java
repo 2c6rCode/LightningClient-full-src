@@ -21,9 +21,9 @@ extends PbPacket {
     }
 
     public C2SFriendSyncPacket(FriendlyByteBuf friendlyByteBuf) {
-        int n = friendlyByteBuf.readVarInt();
-        this.friends = new ArrayList<String>(n);
-        for (int i = 0; i < n; ++i) {
+        int count = friendlyByteBuf.readVarInt();
+        this.friends = new ArrayList<String>(count);
+        for (int i = 0; i < count; ++i) {
             this.friends.add(friendlyByteBuf.readUtf());
         }
     }
@@ -36,8 +36,8 @@ extends PbPacket {
     @Override
     public void write(FriendlyByteBuf friendlyByteBuf) {
         friendlyByteBuf.writeVarInt(this.friends.size());
-        for (String string : this.friends) {
-            friendlyByteBuf.writeUtf(string);
+        for (String friend : this.friends) {
+            friendlyByteBuf.writeUtf(friend);
         }
     }
 

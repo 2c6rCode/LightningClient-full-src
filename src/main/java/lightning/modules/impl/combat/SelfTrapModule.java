@@ -129,9 +129,9 @@ extends Module {
             if (this.holeCheck.getValue() && !HoleUtils.isPlayerInHole((Player)SelfTrapModule.mc.player) && (this.autoJump.getValue().equalsIgnoreCase("None") || SelfTrapModule.mc.player.onGround())) {
                 return;
             }
-            int n = this.findBlastProofBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            int n2 = SelfTrapModule.mc.player.getInventory().getSelectedSlot();
-            if (n == -1) {
+            int blockSlot = this.findBlastProofBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            int oldSlot = SelfTrapModule.mc.player.getInventory().getSelectedSlot();
+            if (blockSlot == -1) {
                 Night.CHAT_MANAGER.tagged("No blast-proof blocks could be found in your hotbar.", this.getName());
                 this.setToggled(false);
                 this.targetPositions = new ArrayList<BlockPos>();
@@ -148,13 +148,13 @@ extends Module {
                 return;
             }
             if (!this.autoJump.getValue().equalsIgnoreCase("None") && this.strictDirection.getValue() && SelfTrapModule.mc.player.onGround() && !this.airPlace.getValue()) {
-                boolean bl = false;
-                for (BlockPos blockPos2 : this.targetPositions) {
-                    if (blockPos2.getY() < SelfTrapModule.mc.player.getBlockY() + 2 || (direction = WorldUtils.getDirection(blockPos2, this.strictDirection.getValue())) != null) continue;
-                    bl = true;
+                boolean needsJump = false;
+                for (BlockPos pos : this.targetPositions) {
+                    if (pos.getY() < SelfTrapModule.mc.player.getBlockY() + 2 || (direction = WorldUtils.getDirection(pos, this.strictDirection.getValue())) != null) continue;
+                    needsJump = true;
                     break;
                 }
-                if (bl) {
+                if (needsJump) {
                     this.jumpingForTrap = true;
                     mc.execute(() -> {
                         if (SelfTrapModule.mc.player != null && SelfTrapModule.mc.player.onGround()) {
@@ -169,34 +169,34 @@ extends Module {
                 if (this.blocksPlaced >= this.bpt.getValue().intValue()) {
                     return;
                 }
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-                ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-                for (BlockPos blockPos2 : this.targetPositions) {
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
+                ArrayList<BlockPos> placedPositions = new ArrayList<BlockPos>();
+                for (BlockPos pos : this.targetPositions) {
                     if (this.blocksPlaced >= this.bpt.getValue().intValue()) break;
                     if (this.attack.getValue()) {
-                        for (EndCrystal crystal : SelfTrapModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(blockPos2).inflate(0.5))) {
+                        for (EndCrystal crystal : SelfTrapModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(pos).inflate(0.5))) {
                             if (!crystal.isAlive()) continue;
                             mc.getConnection().send((Packet)new ServerboundAttackPacket(crystal.getId()));
                             if (!this.attackSwing.getValue()) continue;
                             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                         }
                     }
-                    if ((direction = WorldUtils.getDirection(blockPos2, arrayList, this.strictDirection.getValue())) == null) {
+                    if ((direction = WorldUtils.getDirection(pos, placedPositions, this.strictDirection.getValue())) == null) {
                         if (this.airPlace.getValue()) {
-                            WorldUtils.airPlaceBlock(blockPos2, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.render.getValue());
-                            arrayList.add(blockPos2);
+                            WorldUtils.airPlaceBlock(pos, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.render.getValue());
+                            placedPositions.add(pos);
                             ++this.blocksPlaced;
                             continue;
                         }
-                        BlockPos supportBlock = WorldUtils.findSupportBlock(blockPos2, arrayList, this.strictDirection.getValue(), 2);
+                        BlockPos supportBlock = WorldUtils.findSupportBlock(pos, placedPositions, this.strictDirection.getValue(), 2);
                         Direction supportDir;
-                        if (supportBlock == null || (supportDir = WorldUtils.getDirection(supportBlock, arrayList, this.strictDirection.getValue())) == null || !WorldUtils.placeBlock(supportBlock, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
-                        arrayList.add(supportBlock);
+                        if (supportBlock == null || (supportDir = WorldUtils.getDirection(supportBlock, placedPositions, this.strictDirection.getValue())) == null || !WorldUtils.placeBlock(supportBlock, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
+                        placedPositions.add(supportBlock);
                         ++this.blocksPlaced;
                         continue;
                     }
-                    if (!WorldUtils.placeBlock(blockPos2, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
-                    arrayList.add(blockPos2);
+                    if (!WorldUtils.placeBlock(pos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
+                    placedPositions.add(pos);
                     ++this.blocksPlaced;
                 }
                 if (!SelfTrapModule.mc.player.onGround() && this.autoJump.getValue().equalsIgnoreCase("NCP")) {
@@ -206,7 +206,7 @@ extends Module {
                         }
                     });
                 }
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
                 if (this.selfDisable.getValue() && SelfTrapModule.mc.player.onGround() && !this.jumpingForTrap && this.isTrapComplete(this.lastGroundPos)) {
                     this.setToggled(false);
                 }
@@ -231,15 +231,15 @@ extends Module {
             return;
         }
         if (this.attack.getValue() && (packet = packetReceiveEvent.getPacket()) instanceof ClientboundAddEntityPacket && (clientboundAddEntityPacket = (ClientboundAddEntityPacket)packet).getType() == EntityTypes.END_CRYSTAL) {
-            Vec3 vec3 = new Vec3(clientboundAddEntityPacket.getX(), clientboundAddEntityPacket.getY(), clientboundAddEntityPacket.getZ());
-            AABB aABB = new AABB(vec3.x - 1.0, vec3.y, vec3.z - 1.0, vec3.x + 1.0, vec3.y + 2.0, vec3.z + 1.0);
-            boolean bl = false;
+            Vec3 crystalPos = new Vec3(clientboundAddEntityPacket.getX(), clientboundAddEntityPacket.getY(), clientboundAddEntityPacket.getZ());
+            AABB aABB = new AABB(crystalPos.x - 1.0, crystalPos.y, crystalPos.z - 1.0, crystalPos.x + 1.0, crystalPos.y + 2.0, crystalPos.z + 1.0);
+            boolean intersectsTrap = false;
             for (BlockPos blockPos : this.targetPositions) {
-                if (!aABB.intersects(new AABB(blockPos)) && !(vec3.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= 4.0)) continue;
-                bl = true;
+                if (!aABB.intersects(new AABB(blockPos)) && !(crystalPos.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= 4.0)) continue;
+                intersectsTrap = true;
                 break;
             }
-            if (bl && SelfTrapModule.mc.player.getEyePosition().distanceToSqr(vec3) <= Mth.square((double)this.attackRange.getValue().doubleValue()) && (this.attackMultiTask.getValue() || !SelfTrapModule.mc.player.isUsingItem())) {
+            if (intersectsTrap && SelfTrapModule.mc.player.getEyePosition().distanceToSqr(crystalPos) <= Mth.square((double)this.attackRange.getValue().doubleValue()) && (this.attackMultiTask.getValue() || !SelfTrapModule.mc.player.isUsingItem())) {
                 mc.getConnection().send((Packet)new ServerboundAttackPacket(clientboundAddEntityPacket.getId()));
                 if (this.attackSwing.getValue()) {
                     mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
@@ -253,18 +253,18 @@ extends Module {
         for (EndCrystal endCrystal : SelfTrapModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(SelfTrapModule.mc.player.blockPosition()).inflate(this.attackRange.getValue().doubleValue() + 3.0))) {
             if (!endCrystal.isAlive() || endCrystal.isRemoved() || endCrystal.tickCount < this.attackAge.getValue().intValue()) continue;
             AABB aABB = endCrystal.getBoundingBox();
-            boolean bl = false;
+            boolean intersectsTrap = false;
             for (BlockPos blockPos : this.targetPositions) {
                 if (!SelfTrapModule.mc.level.getBlockState(blockPos).canBeReplaced() || !new AABB(blockPos).intersects(aABB)) continue;
-                bl = true;
+                intersectsTrap = true;
                 break;
             }
-            if (!bl || aABB.distanceToSqr(SelfTrapModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && SelfTrapModule.mc.player.isUsingItem()) continue;
+            if (!intersectsTrap || aABB.distanceToSqr(SelfTrapModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && SelfTrapModule.mc.player.isUsingItem()) continue;
             if (this.attackRotate.getValue()) {
-                float[] object = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
-                Night.ROTATION_MANAGER.silentRotate((float)object[0], (float)object[1]);
-                boolean bl2 = aABB.contains(SelfTrapModule.mc.player.getEyePosition());
-                if (!bl2 && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
+                float[] rotations = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
+                Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
+                boolean insideEye = aABB.contains(SelfTrapModule.mc.player.getEyePosition());
+                if (!insideEye && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
             }
             mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
             if (!this.attackSwing.getValue()) continue;
@@ -296,12 +296,12 @@ extends Module {
             return false;
         }
         if (this.mode.getValue().equalsIgnoreCase("Partial")) {
-            BlockPos blockPos2 = blockPos.offset(0, 2, 0);
-            return !SelfTrapModule.mc.level.getBlockState(blockPos2).canBeReplaced();
+            BlockPos topPos = blockPos.offset(0, 2, 0);
+            return !SelfTrapModule.mc.level.getBlockState(topPos).canBeReplaced();
         }
-        List<BlockPos> list = HoleUtils.getTrapPositions((Player)SelfTrapModule.mc.player, blockPos, false, this.head.getValue(), this.antiStep.getValue(), this.antiBomb.getValue(), this.strictDirection.getValue(), this.airPlace.getValue());
-        for (BlockPos blockPos3 : list) {
-            if (!SelfTrapModule.mc.level.getBlockState(blockPos3).canBeReplaced()) continue;
+        List<BlockPos> trapPositions = HoleUtils.getTrapPositions((Player)SelfTrapModule.mc.player, blockPos, false, this.head.getValue(), this.antiStep.getValue(), this.antiBomb.getValue(), this.strictDirection.getValue(), this.airPlace.getValue());
+        for (BlockPos pos : trapPositions) {
+            if (!SelfTrapModule.mc.level.getBlockState(pos).canBeReplaced()) continue;
             return false;
         }
         return true;
@@ -311,23 +311,23 @@ extends Module {
         return block == Blocks.OBSIDIAN || block == Blocks.ENDER_CHEST || block == Blocks.CRYING_OBSIDIAN || block == Blocks.NETHERITE_BLOCK || block == Blocks.RESPAWN_ANCHOR || block == Blocks.ANCIENT_DEBRIS || block == Blocks.ENCHANTING_TABLE || block == Blocks.ANVIL || block == Blocks.CHIPPED_ANVIL || block == Blocks.DAMAGED_ANVIL;
     }
 
-    private int findBlastProofBlock(int n, int n2) {
-        float f = -1.0f;
-        int n3 = -1;
-        for (int i = n; i <= n2; ++i) {
+    private int findBlastProofBlock(int startSlot, int endSlot) {
+        float bestHardness = -1.0f;
+        int bestSlot = -1;
+        for (int i = startSlot; i <= endSlot; ++i) {
             BlockItem blockItem;
             Block block;
             Item item = SelfTrapModule.mc.player.getInventory().getItem(i).getItem();
             if (!(item instanceof BlockItem) || !this.isBlastProof(block = (blockItem = (BlockItem)item).getBlock())) continue;
-            float f2 = block.defaultDestroyTime();
-            if (f2 == -1.0f) {
+            float destroyTime = block.defaultDestroyTime();
+            if (destroyTime == -1.0f) {
                 return i;
             }
-            if (!(f2 > f)) continue;
-            f = f2;
-            n3 = i;
+            if (!(destroyTime > bestHardness)) continue;
+            bestHardness = destroyTime;
+            bestSlot = i;
         }
-        return n3;
+        return bestSlot;
     }
 
     @SubscribeEvent

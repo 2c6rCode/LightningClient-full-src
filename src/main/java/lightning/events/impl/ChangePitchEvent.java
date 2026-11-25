@@ -19,8 +19,8 @@ extends Event {
     }
 
     @Generated
-    public ChangePitchEvent(float f) {
-        this.pitch = f;
+    public ChangePitchEvent(float pitch) {
+        this.pitch = pitch;
     }
 }
 

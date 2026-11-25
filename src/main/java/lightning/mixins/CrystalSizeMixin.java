@@ -29,12 +29,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={Model.class})
 public class CrystalSizeMixin {
     @Inject(method={"renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"}, at={@At(value="HEAD")}, require=0)
-    private void night$crystalSizeIn(PoseStack poseStack, VertexConsumer vertexConsumer, int n, int n2, int n3, CallbackInfo callbackInfo) {
+    private void night$crystalSizeIn(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color, CallbackInfo callbackInfo) {
         try {
-            float f;
+            float crystalScale;
             ChamsModule chamsModule;
-            if ((Object)this instanceof EndCrystalModel && (chamsModule = (ChamsModule)Night.MODULE_MANAGER.getModule(ChamsModule.class)) != null && (f = chamsModule.crystalSize.getValue().floatValue()) != 1.0f && f > 0.0f) {
-                poseStack.scale(f, f, f);
+            if ((Object)this instanceof EndCrystalModel && (chamsModule = (ChamsModule)Night.MODULE_MANAGER.getModule(ChamsModule.class)) != null && (crystalScale = chamsModule.crystalSize.getValue().floatValue()) != 1.0f && crystalScale > 0.0f) {
+                poseStack.scale(crystalScale, crystalScale, crystalScale);
             }
             return;
         }
@@ -44,13 +44,13 @@ public class CrystalSizeMixin {
     }
 
     @Inject(method={"renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"}, at={@At(value="RETURN")}, require=0)
-    private void night$crystalSizeOut(PoseStack poseStack, VertexConsumer vertexConsumer, int n, int n2, int n3, CallbackInfo callbackInfo) {
+    private void night$crystalSizeOut(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color, CallbackInfo callbackInfo) {
         try {
-            float f;
+            float crystalScale;
             ChamsModule chamsModule;
-            if ((Object)this instanceof EndCrystalModel && (chamsModule = (ChamsModule)Night.MODULE_MANAGER.getModule(ChamsModule.class)) != null && (f = chamsModule.crystalSize.getValue().floatValue()) != 1.0f && f > 0.0f) {
-                f = 1.0f / f;
-                poseStack.scale(f, f, f);
+            if ((Object)this instanceof EndCrystalModel && (chamsModule = (ChamsModule)Night.MODULE_MANAGER.getModule(ChamsModule.class)) != null && (crystalScale = chamsModule.crystalSize.getValue().floatValue()) != 1.0f && crystalScale > 0.0f) {
+                crystalScale = 1.0f / crystalScale;
+                poseStack.scale(crystalScale, crystalScale, crystalScale);
             }
             return;
         }

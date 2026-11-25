@@ -58,7 +58,7 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerUpdate(PlayerUpdateEvent playerUpdateEvent) {
-        double d;
+        double motionY;
         if (this.getNull() || !this.fly.getValue()) {
             this.releaseVehicleGravity();
             return;
@@ -74,18 +74,17 @@ extends Module {
         this.controlledVehicle = entity;
         entity.setNoGravity(true);
         entity.setYRot(EntityControlModule.mc.player.getYRot());
-        Vector2d vector2d = MovementUtils.forward(this.speed.getValue().doubleValue());
-        double d2 = vector2d.x;
-        double d3 = vector2d.y;
+        Vector2d forward = MovementUtils.forward(this.speed.getValue().doubleValue());
+        double motionX = forward.x;
+        double motionZ = forward.y;
         if (EntityControlModule.mc.gui.screen() instanceof ChatScreen || EntityControlModule.mc.gui.screen() != null) {
-            d = -this.fallSpeed.getValue().doubleValue() / 20.0;
+            motionY = -this.fallSpeed.getValue().doubleValue() / 20.0;
         } else {
-            boolean bl = EntityControlModule.mc.options.keyJump.isDown();
-            boolean bl2 = EntityControlModule.mc.options.keySprint.isDown() || EntityControlModule.mc.options.keyShift.isDown();
-            boolean bl3 = bl2;
-            d = bl ? (bl2 ? -this.fallSpeed.getValue().doubleValue() / 20.0 : this.verticalSpeed.getValue().doubleValue() / 20.0) : (bl2 ? -this.verticalSpeed.getValue().doubleValue() / 20.0 : -this.fallSpeed.getValue().doubleValue() / 20.0);
+            boolean jumping = EntityControlModule.mc.options.keyJump.isDown();
+            boolean descending = EntityControlModule.mc.options.keySprint.isDown() || EntityControlModule.mc.options.keyShift.isDown();
+            motionY = jumping ? (descending ? -this.fallSpeed.getValue().doubleValue() / 20.0 : this.verticalSpeed.getValue().doubleValue() / 20.0) : (descending ? -this.verticalSpeed.getValue().doubleValue() / 20.0 : -this.fallSpeed.getValue().doubleValue() / 20.0);
         }
-        entity.setDeltaMovement(new Vec3(d2, d, d3));
+        entity.setDeltaMovement(new Vec3(motionX, motionY, motionZ));
     }
 
     @SubscribeEvent

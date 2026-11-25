@@ -18,18 +18,18 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface PlayerMoveC2SPacketAccessor {
     @Accessor(value="yRot")
     @Mutable
-    public void setYaw(float var1);
+    public void setYaw(float yaw);
 
     @Accessor(value="xRot")
     @Mutable
-    public void setPitch(float var1);
+    public void setPitch(float pitch);
 
     @Accessor(value="onGround")
     @Mutable
-    public void setOnGround(boolean var1);
+    public void setOnGround(boolean onGround);
 
     @Accessor(value="hasRot")
     @Mutable
-    public void setChangeLook(boolean var1);
+    public void setChangeLook(boolean changeLook);
 }
 

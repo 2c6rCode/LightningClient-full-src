@@ -77,13 +77,13 @@ extends Module {
             if (this.noCrystal.getValue() && entity instanceof EndCrystal) {
                 return;
             }
-            int n = this.getMaceSlot();
-            if (n == -1) {
+            int maceSlot = this.getMaceSlot();
+            if (maceSlot == -1) {
                 return;
             }
             try {
                 this.attacking = true;
-                this.doSpoof(entity, n);
+                this.doSpoof(entity, maceSlot);
             }
             finally {
                 this.attacking = false;
@@ -103,18 +103,18 @@ extends Module {
         }
     }
 
-    private void doSpoof(Entity entity, int n) {
-        int n2 = MaceSpoofModule.mc.player.getInventory().getSelectedSlot();
+    private void doSpoof(Entity entity, int maceSlot) {
+        int oldSlot = MaceSpoofModule.mc.player.getInventory().getSelectedSlot();
         if (this.inventorySwap.getValue()) {
-            InventoryUtils.click(n, n2, ContainerInput.SWAP);
+            InventoryUtils.click(maceSlot, oldSlot, ContainerInput.SWAP);
             MaceSpoofModule.mc.gameMode.attack((Player)MaceSpoofModule.mc.player, entity);
             MaceSpoofModule.mc.player.resetAttackStrengthTicker();
-            InventoryUtils.click(n, n2, ContainerInput.SWAP);
+            InventoryUtils.click(maceSlot, oldSlot, ContainerInput.SWAP);
         } else {
-            InventoryUtils.switchSlot("Silent", n, n2);
+            InventoryUtils.switchSlot("Silent", maceSlot, oldSlot);
             MaceSpoofModule.mc.gameMode.attack((Player)MaceSpoofModule.mc.player, entity);
             MaceSpoofModule.mc.player.resetAttackStrengthTicker();
-            InventoryUtils.switchBack("Silent", n, n2);
+            InventoryUtils.switchBack("Silent", maceSlot, oldSlot);
         }
     }
 
@@ -136,8 +136,8 @@ extends Module {
         return -1;
     }
 
-    private void sendFakeY(double d) {
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(MaceSpoofModule.mc.player.getX(), MaceSpoofModule.mc.player.getY() + d, MaceSpoofModule.mc.player.getZ(), false, MaceSpoofModule.mc.player.horizontalCollision));
+    private void sendFakeY(double yOffset) {
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(MaceSpoofModule.mc.player.getX(), MaceSpoofModule.mc.player.getY() + yOffset, MaceSpoofModule.mc.player.getZ(), false, MaceSpoofModule.mc.player.horizontalCollision));
     }
 
     @Override

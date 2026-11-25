@@ -17,23 +17,23 @@ import lombok.Generated;
 public class FriendManager {
     private final ArrayList<String> friends = new ArrayList();
 
-    public boolean contains(String string) {
+    public boolean contains(String name) {
         if (this.getFriendFire()) {
             return false;
         }
-        return this.friends.stream().anyMatch(string::equalsIgnoreCase);
+        return this.friends.stream().anyMatch(name::equalsIgnoreCase);
     }
 
-    public void add(String string) {
-        if (this.contains(string)) {
+    public void add(String name) {
+        if (this.contains(name)) {
             return;
         }
-        this.friends.add(string);
+        this.friends.add(name);
         this.syncToProxy();
     }
 
-    public void remove(String string) {
-        this.friends.removeIf(string::equalsIgnoreCase);
+    public void remove(String name) {
+        this.friends.removeIf(name::equalsIgnoreCase);
         this.syncToProxy();
     }
 
@@ -57,13 +57,13 @@ public class FriendManager {
         return friendModule != null && friendModule.friendlyFire != null && friendModule.friendlyFire.getValue();
     }
 
-    public void sendFriendMessage(String string) {
+    public void sendFriendMessage(String name) {
         if (Night.MODULE_MANAGER == null) {
             return;
         }
         FriendModule friendModule = Night.MODULE_MANAGER.getModule(FriendModule.class);
         if (friendModule != null) {
-            friendModule.sendFriendMessage(string);
+            friendModule.sendFriendMessage(name);
         }
     }
 
@@ -71,8 +71,8 @@ public class FriendManager {
         return this.getDefaultFriendColor(255);
     }
 
-    public Color getDefaultFriendColor(int n) {
-        return new Color(85, 255, 255, n);
+    public Color getDefaultFriendColor(int alpha) {
+        return new Color(85, 255, 255, alpha);
     }
 
     @Generated

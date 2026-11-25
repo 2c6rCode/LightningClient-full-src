@@ -22,9 +22,9 @@ public interface EntityFlagAccessor {
     }
 
     @Invoker(value="getSharedFlag")
-    public boolean invokeGetSharedFlag(int var1);
+    public boolean invokeGetSharedFlag(int flag);
 
     @Invoker(value="setSharedFlag")
-    public void invokeSetSharedFlag(int var1, boolean var2);
+    public void invokeSetSharedFlag(int flag, boolean value);
 }
 

@@ -36,16 +36,16 @@ extends Module {
             this.setToggled(false);
             return;
         }
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)HitboxDesyncModule.mc.player.blockPosition());
-        double d = this.minimal.getValue() ? 0.001 : 0.002;
-        double d2 = this.specific.getValue() ? 500.0 : 1500.0;
-        boolean bl = this.timer.hasTimeElapsed(d2) && this.alternating.getValue() && !HitboxDesyncModule.mc.player.isShiftKeyDown();
-        boolean bl2 = vec3.x - HitboxDesyncModule.mc.player.getX() > 0.0;
-        boolean bl3 = vec3.z - HitboxDesyncModule.mc.player.getZ() > 0.0;
-        double d3 = vec3.x + (bl ? d : 0.0) * (double)(bl2 ? 1 : -1) + 0.20000000009497754 * (double)(bl2 ? -1 : 1);
-        double d4 = vec3.z + (bl ? d : 0.0) * (double)(bl3 ? 1 : -1) + 0.2000000000949811 * (double)(bl3 ? -1 : 1);
-        HitboxDesyncModule.mc.player.setPos(d3, HitboxDesyncModule.mc.player.getY(), d4);
-        if (this.timer.hasTimeElapsed(d2)) {
+        Vec3 blockCenter = Vec3.atCenterOf((Vec3i)HitboxDesyncModule.mc.player.blockPosition());
+        double offsetAmount = this.minimal.getValue() ? 0.001 : 0.002;
+        double intervalMs = this.specific.getValue() ? 500.0 : 1500.0;
+        boolean shouldAlternate = this.timer.hasTimeElapsed(intervalMs) && this.alternating.getValue() && !HitboxDesyncModule.mc.player.isShiftKeyDown();
+        boolean centerEast = blockCenter.x - HitboxDesyncModule.mc.player.getX() > 0.0;
+        boolean centerSouth = blockCenter.z - HitboxDesyncModule.mc.player.getZ() > 0.0;
+        double targetX = blockCenter.x + (shouldAlternate ? offsetAmount : 0.0) * (double)(centerEast ? 1 : -1) + 0.20000000009497754 * (double)(centerEast ? -1 : 1);
+        double targetZ = blockCenter.z + (shouldAlternate ? offsetAmount : 0.0) * (double)(centerSouth ? 1 : -1) + 0.2000000000949811 * (double)(centerSouth ? -1 : 1);
+        HitboxDesyncModule.mc.player.setPos(targetX, HitboxDesyncModule.mc.player.getY(), targetZ);
+        if (this.timer.hasTimeElapsed(intervalMs)) {
             this.timer.reset();
         }
         if (this.selfDisable.getValue() && !this.alternating.getValue()) {

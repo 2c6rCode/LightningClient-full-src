@@ -11,6 +11,6 @@ import net.minecraft.network.FriendlyByteBuf;
 public abstract class PbPacket {
     public abstract int getPacketId();
 
-    public abstract void write(FriendlyByteBuf var1);
+    public abstract void write(FriendlyByteBuf buf);
 }
 

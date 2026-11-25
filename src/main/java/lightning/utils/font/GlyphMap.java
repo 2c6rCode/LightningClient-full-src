@@ -63,20 +63,18 @@ public class GlyphMap {
     private final Char2ObjectArrayMap<Glyph> glyphs = new Char2ObjectArrayMap();
     boolean generated = false;
 
-    public GlyphMap(Font[] fontArray, char c, char c2, int n) {
-        this.fonts = fontArray;
-        this.include = c;
-        this.exclude = c2;
-        this.padding = n;
+    public GlyphMap(Font[] fonts, char include, char exclude, int padding) {
+        this.fonts = fonts;
+        this.include = include;
+        this.exclude = exclude;
+        this.padding = padding;
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public void generate() {
-        GlyphMap glyphMap;
-        GlyphMap glyphMap2 = glyphMap = this;
-        synchronized (glyphMap2) {
+        synchronized (this) {
             this.privateGenerate();
         }
     }
@@ -84,81 +82,78 @@ public class GlyphMap {
     private void privateGenerate() {
         if (!this.generated) {
             DynamicTexture dynamicTexture;
-            int n;
-            Object object;
-            Object object2;
-            int n2 = this.exclude - this.include - 1;
-            int n3 = (int)(Math.ceil(Math.sqrt(n2)) * 1.5);
-            int n4 = 0;
-            int n5 = 0;
-            int n6 = 0;
-            int n7 = 0;
-            int n8 = 0;
-            int n9 = 0;
-            int n10 = 0;
+            int charRange = this.exclude - this.include - 1;
+            int maxRowChars = (int)(Math.ceil(Math.sqrt(charRange)) * 1.5);
+            int offset = 0;
+            int rowCount = 0;
+            int maxWidth = 0;
+            int maxHeight = 0;
+            int currentX = 0;
+            int currentY = 0;
+            int rowMaxHeight = 0;
             ArrayList<Glyph> arrayList = new ArrayList<Glyph>();
             AffineTransform affineTransform = new AffineTransform();
             FontRenderContext fontRenderContext = new FontRenderContext(affineTransform, true, true);
-            while (n4 <= n2) {
-                char c = (char)(this.include + n4);
-                object2 = this.getFontForGlyph(c);
-                object = ((Font)object2).getStringBounds(String.valueOf(c), fontRenderContext);
-                int n11 = (int)Math.ceil(((RectangularShape)object).getWidth());
-                int n12 = (int)Math.ceil(((RectangularShape)object).getHeight());
-                ++n4;
-                n6 = Math.max(n6, n8 + n11);
-                n7 = Math.max(n7, n9 + n12);
-                if (n5 >= n3) {
-                    n8 = 0;
-                    n9 += n10 + this.padding;
-                    n5 = 0;
-                    n10 = 0;
+            while (offset <= charRange) {
+                char ch = (char)(this.include + offset);
+                Font font = this.getFontForGlyph(ch);
+                RectangularShape bounds = font.getStringBounds(String.valueOf(ch), fontRenderContext);
+                int glyphWidth = (int)Math.ceil(bounds.getWidth());
+                int glyphHeight = (int)Math.ceil(bounds.getHeight());
+                ++offset;
+                maxWidth = Math.max(maxWidth, currentX + glyphWidth);
+                maxHeight = Math.max(maxHeight, currentY + glyphHeight);
+                if (rowCount >= maxRowChars) {
+                    currentX = 0;
+                    currentY += rowMaxHeight + this.padding;
+                    rowCount = 0;
+                    rowMaxHeight = 0;
                 }
-                n10 = Math.max(n10, n12);
-                arrayList.add(new Glyph(this, n8, n9, n11, n12, c));
-                n8 += n11 + this.padding;
-                ++n5;
+                rowMaxHeight = Math.max(rowMaxHeight, glyphHeight);
+                arrayList.add(new Glyph(this, currentX, currentY, glyphWidth, glyphHeight, ch));
+                currentX += glyphWidth + this.padding;
+                ++rowCount;
             }
-            BufferedImage bufferedImage = new BufferedImage(Math.max(n6 + this.padding, 1), Math.max(n7 + this.padding, 1), 2);
+            BufferedImage bufferedImage = new BufferedImage(Math.max(maxWidth + this.padding, 1), Math.max(maxHeight + this.padding, 1), 2);
             this.width = bufferedImage.getWidth();
             this.height = bufferedImage.getHeight();
-            object2 = bufferedImage.createGraphics();
-            ((Graphics)object2).setColor(new Color(255, 255, 255, 0));
-            ((Graphics)object2).fillRect(0, 0, this.width, this.height);
-            ((Graphics)object2).setColor(Color.WHITE);
-            ((Graphics2D)object2).setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-            ((Graphics2D)object2).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            ((Graphics2D)object2).setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            ((Graphics2D)object2).setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-            ((Graphics2D)object2).setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+            Graphics2D graphics = bufferedImage.createGraphics();
+            graphics.setColor(new Color(255, 255, 255, 0));
+            graphics.fillRect(0, 0, this.width, this.height);
+            graphics.setColor(Color.WHITE);
+            graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             for (Glyph glyph : arrayList) {
-                ((Graphics)object2).setFont(this.getFontForGlyph(glyph.value()));
-                FontMetrics fontMetrics = ((Graphics)object2).getFontMetrics();
-                ((Graphics2D)object2).drawString(String.valueOf(glyph.value()), glyph.u(), glyph.v() + fontMetrics.getAscent());
+                graphics.setFont(this.getFontForGlyph(glyph.value()));
+                FontMetrics fontMetrics = graphics.getFontMetrics();
+                graphics.drawString(String.valueOf(glyph.value()), glyph.u(), glyph.v() + fontMetrics.getAscent());
                 this.glyphs.put(glyph.value(), glyph);
             }
-            object = new NativeImage(NativeImage.Format.RGBA, bufferedImage.getWidth(), bufferedImage.getHeight(), false);
-            IntBuffer intBuffer = MemoryUtil.memIntBuffer((long)((NativeImageAccessor)(Object)object).getPointer(), (int)(((NativeImage)object).getWidth() * ((NativeImage)object).getHeight()));
+            NativeImage nativeImage = new NativeImage(NativeImage.Format.RGBA, bufferedImage.getWidth(), bufferedImage.getHeight(), false);
+            IntBuffer intBuffer = MemoryUtil.memIntBuffer((long)((NativeImageAccessor)(Object)nativeImage).getPointer(), (int)(nativeImage.getWidth() * nativeImage.getHeight()));
             WritableRaster writableRaster = bufferedImage.getRaster();
             ColorModel colorModel = bufferedImage.getColorModel();
-            int n13 = writableRaster.getNumBands();
-            int n14 = writableRaster.getDataBuffer().getDataType();
-            Object objectArray = switch (n14) {
-                case 0 -> new byte[n13];
-                case 1 -> new short[n13];
-                default -> throw new IllegalArgumentException("Unknown data buffer type: " + n14);
-                case 3 -> new int[n13];
-                case 4 -> new float[n13];
-                case 5 -> new double[n13];
+            int numBands = writableRaster.getNumBands();
+            int dataType = writableRaster.getDataBuffer().getDataType();
+            Object pixelData = switch (dataType) {
+                case 0 -> new byte[numBands];
+                case 1 -> new short[numBands];
+                default -> throw new IllegalArgumentException("Unknown data buffer type: " + dataType);
+                case 3 -> new int[numBands];
+                case 4 -> new float[numBands];
+                case 5 -> new double[numBands];
             };
-            for (n = 0; n < bufferedImage.getHeight(); ++n) {
+            for (int row = 0; row < bufferedImage.getHeight(); ++row) {
                 for (int i = 0; i < bufferedImage.getWidth(); ++i) {
-                    writableRaster.getDataElements(i, n, objectArray);
-                    intBuffer.put(colorModel.getAlpha(objectArray) << 24 | colorModel.getBlue(objectArray) << 16 | colorModel.getGreen(objectArray) << 8 | colorModel.getRed(objectArray));
+                    writableRaster.getDataElements(i, row, pixelData);
+                    intBuffer.put(colorModel.getAlpha(pixelData) << 24 | colorModel.getBlue(pixelData) << 16 | colorModel.getGreen(pixelData) << 8 | colorModel.getRed(pixelData));
                 }
             }
             int pageId = PAGE_SEQ.getAndIncrement();
-            this.texture = dynamicTexture = new DynamicTexture(() -> "lightning/glyph_page_" + pageId, (NativeImage)object);
+            this.texture = dynamicTexture = new DynamicTexture(() -> "lightning/glyph_page_" + pageId, nativeImage);
             this.textureId = Identifier.fromNamespaceAndPath((String)"lightning", (String)("glyph_page_" + pageId));
             Minecraft.getInstance().getTextureManager().register(this.textureId, (AbstractTexture)dynamicTexture);
             ((AbstractTextureAccessor)dynamicTexture).setSampler(RenderSystem.getDevice().createSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.LINEAR, 1, OptionalDouble.empty()));
@@ -169,14 +164,12 @@ public class GlyphMap {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public Glyph getGlyph(char c) {
-        GlyphMap glyphMap;
-        GlyphMap glyphMap2 = glyphMap = this;
-        synchronized (glyphMap2) {
+    public Glyph getGlyph(char ch) {
+        synchronized (this) {
             if (!this.generated) {
                 this.privateGenerate();
             }
-            return (Glyph)this.glyphs.get(c);
+            return (Glyph)this.glyphs.get(ch);
         }
     }
 
@@ -184,9 +177,7 @@ public class GlyphMap {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public void destroy() {
-        GlyphMap glyphMap;
-        GlyphMap glyphMap2 = glyphMap = this;
-        synchronized (glyphMap2) {
+        synchronized (this) {
             this.generated = false;
             if (this.textureId != null) {
                 Minecraft.getInstance().getTextureManager().release(this.textureId);
@@ -201,13 +192,13 @@ public class GlyphMap {
         }
     }
 
-    public boolean contains(char c) {
-        return c >= this.include && c < this.exclude;
+    public boolean contains(char ch) {
+        return ch >= this.include && ch < this.exclude;
     }
 
-    private Font getFontForGlyph(char c) {
+    private Font getFontForGlyph(char ch) {
         for (Font font : this.fonts) {
-            if (!font.canDisplay(c)) continue;
+            if (!font.canDisplay(ch)) continue;
             return font;
         }
         return this.fonts[0];

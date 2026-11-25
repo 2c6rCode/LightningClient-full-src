@@ -63,16 +63,16 @@ implements IMinecraft {
     }
 
     public static void popClientTextRendering() {
-        int n = CLIENT_TEXT_DEPTH.get() - 1;
-        CLIENT_TEXT_DEPTH.set(Math.max(0, n));
+        int depth = CLIENT_TEXT_DEPTH.get() - 1;
+        CLIENT_TEXT_DEPTH.set(Math.max(0, depth));
     }
 
     public static boolean isClientTextRendering() {
         return CLIENT_TEXT_DEPTH.get() > 0;
     }
 
-    public static void setHudRendering(boolean bl) {
-        HUD_RENDERING.set(bl);
+    public static void setHudRendering(boolean hudRendering) {
+        HUD_RENDERING.set(hudRendering);
     }
 
     public static boolean isHudRendering() {
@@ -81,10 +81,10 @@ implements IMinecraft {
 
     public boolean isHudGlowEnabled() {
         FontModule fontModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FontModule.class) : null;
-        HUDModule hUDModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(HUDModule.class) : null;
-        boolean bl = fontModule != null && fontModule.isToggled() && fontModule.glow.getValue();
-        boolean bl2 = hUDModule != null && hUDModule.isToggled() && hUDModule.textGlow.getValue();
-        return bl || bl2;
+        HUDModule hudModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(HUDModule.class) : null;
+        boolean fontGlow = fontModule != null && fontModule.isToggled() && fontModule.glow.getValue();
+        boolean hudGlow = hudModule != null && hudModule.isToggled() && hudModule.textGlow.getValue();
+        return fontGlow || hudGlow;
     }
 
     public boolean isCustomFontActive() {
@@ -95,18 +95,16 @@ implements IMinecraft {
         return this.useCustomFont(false);
     }
 
-    private boolean useCustomFont(boolean bl) {
+    private boolean useCustomFont(boolean forceGlow) {
         FontModule fontModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FontModule.class) : null;
-        FontModule fontModule2 = fontModule;
         if (fontModule == null || !fontModule.isToggled()) {
             return false;
         }
-        boolean bl2 = fontModule.customFont.getValue() || bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-        boolean bl3 = bl2;
-        if (this.fontRenderer == null && bl2) {
+        boolean enabled = fontModule.customFont.getValue() || forceGlow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+        if (this.fontRenderer == null && enabled) {
             fontModule.updateFontRenderer();
         }
-        return this.fontRenderer != null && bl2;
+        return this.fontRenderer != null && enabled;
     }
 
     private boolean shadowEnabled() {
@@ -114,25 +112,24 @@ implements IMinecraft {
         return fontModule != null && !fontModule.shadowMode.getValue().equalsIgnoreCase("None");
     }
 
-    public void drawText(GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color) {
-        this.drawText(guiGraphicsExtractor, string, n, n2, color, false);
+    public void drawText(GuiGraphicsExtractor context, String text, int x, int y, Color color) {
+        this.drawText(context, text, x, y, color, false);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void drawText(GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color, boolean bl) {
+    public void drawText(GuiGraphicsExtractor context, String text, int x, int y, Color color, boolean glow) {
         FontManager.pushClientTextRendering();
         try {
-            boolean bl2 = bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-            boolean bl3 = bl2;
-            if (this.useCustomFont(bl2)) {
-                if (bl2) {
-                    this.fontRenderer.drawString(guiGraphicsExtractor, string, (float)n, (float)n2, color.getRGB(), false, true, false);
+            boolean useGlow = glow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+            if (this.useCustomFont(useGlow)) {
+                if (useGlow) {
+                    this.fontRenderer.drawString(context, text, (float)x, (float)y, color.getRGB(), false, true, false);
                 }
-                this.fontRenderer.drawString(guiGraphicsExtractor, string, (float)n, (float)n2, color.getRGB(), false, false, true);
+                this.fontRenderer.drawString(context, text, (float)x, (float)y, color.getRGB(), false, false, true);
             } else {
-                guiGraphicsExtractor.text(FontManager.mc.font, string, n, n2, color.getRGB(), false);
+                context.text(FontManager.mc.font, text, x, y, color.getRGB(), false);
             }
         }
         finally {
@@ -140,28 +137,27 @@ implements IMinecraft {
         }
     }
 
-    public void drawTextWithShadow(GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color) {
-        this.drawTextWithShadow(guiGraphicsExtractor, string, n, n2, color, false);
+    public void drawTextWithShadow(GuiGraphicsExtractor context, String text, int x, int y, Color color) {
+        this.drawTextWithShadow(context, text, x, y, color, false);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void drawTextWithShadow(GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color, boolean bl) {
+    public void drawTextWithShadow(GuiGraphicsExtractor context, String text, int x, int y, Color color, boolean glow) {
         FontManager.pushClientTextRendering();
         try {
-            boolean bl2 = bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-            boolean bl3 = bl2;
-            if (this.useCustomFont(bl2)) {
-                if (bl2) {
-                    this.fontRenderer.drawString(guiGraphicsExtractor, string, (float)n, (float)n2, color.getRGB(), false, true, false);
+            boolean useGlow = glow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+            if (this.useCustomFont(useGlow)) {
+                if (useGlow) {
+                    this.fontRenderer.drawString(context, text, (float)x, (float)y, color.getRGB(), false, true, false);
                 }
                 if (this.shadowEnabled()) {
-                    this.fontRenderer.drawString(guiGraphicsExtractor, string, (float)n + this.getShadowOffset(), (float)n2 + this.getShadowOffset(), color.getRGB(), true, false, true);
+                    this.fontRenderer.drawString(context, text, (float)x + this.getShadowOffset(), (float)y + this.getShadowOffset(), color.getRGB(), true, false, true);
                 }
-                this.fontRenderer.drawString(guiGraphicsExtractor, string, (float)n, (float)n2, color.getRGB(), false, false, true);
+                this.fontRenderer.drawString(context, text, (float)x, (float)y, color.getRGB(), false, false, true);
             } else {
-                guiGraphicsExtractor.text(FontManager.mc.font, string, n, n2, color.getRGB(), this.shadowEnabled());
+                context.text(FontManager.mc.font, text, x, y, color.getRGB(), this.shadowEnabled());
             }
         }
         finally {
@@ -169,25 +165,24 @@ implements IMinecraft {
         }
     }
 
-    public void drawText(GuiGraphicsExtractor guiGraphicsExtractor, FormattedCharSequence formattedCharSequence, int n, int n2, Color color) {
-        this.drawText(guiGraphicsExtractor, formattedCharSequence, n, n2, color, false);
+    public void drawText(GuiGraphicsExtractor context, FormattedCharSequence text, int x, int y, Color color) {
+        this.drawText(context, text, x, y, color, false);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void drawText(GuiGraphicsExtractor guiGraphicsExtractor, FormattedCharSequence formattedCharSequence, int n, int n2, Color color, boolean bl) {
+    public void drawText(GuiGraphicsExtractor context, FormattedCharSequence text, int x, int y, Color color, boolean glow) {
         FontManager.pushClientTextRendering();
         try {
-            boolean bl2 = bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-            boolean bl3 = bl2;
-            if (this.useCustomFont(bl2)) {
-                if (bl2) {
-                    this.fontRenderer.drawText(guiGraphicsExtractor, formattedCharSequence, (float)n, (float)n2, color.getRGB(), false, true, false);
+            boolean useGlow = glow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+            if (this.useCustomFont(useGlow)) {
+                if (useGlow) {
+                    this.fontRenderer.drawText(context, text, (float)x, (float)y, color.getRGB(), false, true, false);
                 }
-                this.fontRenderer.drawText(guiGraphicsExtractor, formattedCharSequence, (float)n, (float)n2, color.getRGB(), false, false, true);
+                this.fontRenderer.drawText(context, text, (float)x, (float)y, color.getRGB(), false, false, true);
             } else {
-                guiGraphicsExtractor.text(FontManager.mc.font, formattedCharSequence, n, n2, color.getRGB(), false);
+                context.text(FontManager.mc.font, text, x, y, color.getRGB(), false);
             }
         }
         finally {
@@ -195,28 +190,27 @@ implements IMinecraft {
         }
     }
 
-    public void drawTextWithShadow(GuiGraphicsExtractor guiGraphicsExtractor, FormattedCharSequence formattedCharSequence, int n, int n2, Color color) {
-        this.drawTextWithShadow(guiGraphicsExtractor, formattedCharSequence, n, n2, color, false);
+    public void drawTextWithShadow(GuiGraphicsExtractor context, FormattedCharSequence text, int x, int y, Color color) {
+        this.drawTextWithShadow(context, text, x, y, color, false);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void drawTextWithShadow(GuiGraphicsExtractor guiGraphicsExtractor, FormattedCharSequence formattedCharSequence, int n, int n2, Color color, boolean bl) {
+    public void drawTextWithShadow(GuiGraphicsExtractor context, FormattedCharSequence text, int x, int y, Color color, boolean glow) {
         FontManager.pushClientTextRendering();
         try {
-            boolean bl2 = bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-            boolean bl3 = bl2;
-            if (this.useCustomFont(bl2)) {
-                if (bl2) {
-                    this.fontRenderer.drawText(guiGraphicsExtractor, formattedCharSequence, (float)n, (float)n2, color.getRGB(), false, true, false);
+            boolean useGlow = glow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+            if (this.useCustomFont(useGlow)) {
+                if (useGlow) {
+                    this.fontRenderer.drawText(context, text, (float)x, (float)y, color.getRGB(), false, true, false);
                 }
                 if (this.shadowEnabled()) {
-                    this.fontRenderer.drawText(guiGraphicsExtractor, formattedCharSequence, (float)n + this.getShadowOffset(), (float)n2 + this.getShadowOffset(), color.getRGB(), true, false, true);
+                    this.fontRenderer.drawText(context, text, (float)x + this.getShadowOffset(), (float)y + this.getShadowOffset(), color.getRGB(), true, false, true);
                 }
-                this.fontRenderer.drawText(guiGraphicsExtractor, formattedCharSequence, (float)n, (float)n2, color.getRGB(), false, false, true);
+                this.fontRenderer.drawText(context, text, (float)x, (float)y, color.getRGB(), false, false, true);
             } else {
-                guiGraphicsExtractor.text(FontManager.mc.font, formattedCharSequence, n, n2, color.getRGB(), this.shadowEnabled());
+                context.text(FontManager.mc.font, text, x, y, color.getRGB(), this.shadowEnabled());
             }
         }
         finally {
@@ -224,60 +218,59 @@ implements IMinecraft {
         }
     }
 
-    public void drawTextWithShadow(PoseStack poseStack, String string, int n, int n2, Color color) {
-        this.drawTextWithShadow(poseStack, string, (float)n, (float)n2, color, false);
+    public void drawTextWithShadow(PoseStack poseStack, String text, int x, int y, Color color) {
+        this.drawTextWithShadow(poseStack, text, (float)x, (float)y, color, false);
     }
 
-    public void drawTextWithShadow(PoseStack poseStack, String string, int n, int n2, Color color, boolean bl) {
-        this.drawTextWithShadow(poseStack, string, (float)n, (float)n2, color, bl);
+    public void drawTextWithShadow(PoseStack poseStack, String text, int x, int y, Color color, boolean glow) {
+        this.drawTextWithShadow(poseStack, text, (float)x, (float)y, color, glow);
     }
 
-    public void drawTextWithShadow(PoseStack poseStack, String string, float f, float f2, Color color) {
-        this.drawTextWithShadow(poseStack, string, f, f2, color, false);
+    public void drawTextWithShadow(PoseStack poseStack, String text, float x, float y, Color color) {
+        this.drawTextWithShadow(poseStack, text, x, y, color, false);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void drawTextWithShadow(final PoseStack poseStack, String string, float f, float f2, Color color, boolean bl) {
+    public void drawTextWithShadow(final PoseStack poseStack, String text, float x, float y, Color color, boolean glow) {
         block12: {
             FontManager.pushClientTextRendering();
             try {
-                boolean bl2 = bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-                boolean bl3 = bl2;
-                if (this.useCustomFont(bl2)) {
-                    if (bl2) {
-                        this.fontRenderer.drawString(poseStack, string, f, f2, color.getRGB(), false, true, false);
+                boolean useGlow = glow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+                if (this.useCustomFont(useGlow)) {
+                    if (useGlow) {
+                        this.fontRenderer.drawString(poseStack, text, x, y, color.getRGB(), false, true, false);
                     }
-                    if (this.shadowEnabled() && !bl) {
-                        this.fontRenderer.drawString(poseStack, string, f + this.getShadowOffset(), f2 + this.getShadowOffset(), color.getRGB(), true, false, true);
+                    if (this.shadowEnabled() && !glow) {
+                        this.fontRenderer.drawString(poseStack, text, x + this.getShadowOffset(), y + this.getShadowOffset(), color.getRGB(), true, false, true);
                     }
-                    this.fontRenderer.drawString(poseStack, string, f, f2, color.getRGB(), false, false, true);
+                    this.fontRenderer.drawString(poseStack, text, x, y, color.getRGB(), false, false, true);
                     break block12;
                 }
-                Font.PreparedText preparedText = FontManager.mc.font.prepareText(string, f, f2, color.getRGB(), this.shadowEnabled() && !bl, 0);
-                final HashMap<RenderType, ByteBufferBuilder> hashMap = new HashMap<>();
-                final HashMap<RenderType, BufferBuilder> hashMap2 = new HashMap<>();
+                Font.PreparedText preparedText = FontManager.mc.font.prepareText(text, x, y, color.getRGB(), this.shadowEnabled() && !glow, 0);
+                final HashMap<RenderType, ByteBufferBuilder> byteBuilders = new HashMap<>();
+                final HashMap<RenderType, BufferBuilder> bufferBuilders = new HashMap<>();
                 try {
                     preparedText.visit(new Font.GlyphVisitor() {
                         @Override
                         public void acceptRenderable(TextRenderable textRenderable) {
-                            RenderType renderType2 = textRenderable.renderType(Font.DisplayMode.SEE_THROUGH);
-                            BufferBuilder bufferBuilder = hashMap2.computeIfAbsent(renderType2, renderType -> {
+                            RenderType renderType = textRenderable.renderType(Font.DisplayMode.SEE_THROUGH);
+                            BufferBuilder bufferBuilder = bufferBuilders.computeIfAbsent(renderType, key -> {
                                 ByteBufferBuilder byteBufferBuilder = new ByteBufferBuilder(256);
-                                hashMap.put(renderType, byteBufferBuilder);
-                                return new BufferBuilder(byteBufferBuilder, renderType.primitiveTopology(), renderType.format());
+                                byteBuilders.put(key, byteBufferBuilder);
+                                return new BufferBuilder(byteBufferBuilder, key.primitiveTopology(), key.format());
                             });
                             textRenderable.render((Matrix4fc)poseStack.last().pose(), (VertexConsumer)bufferBuilder, 0xF000F0, false);
                         }
                     });
-                    for (Map.Entry<RenderType, BufferBuilder> entry : hashMap2.entrySet()) {
+                    for (Map.Entry<RenderType, BufferBuilder> entry : bufferBuilders.entrySet()) {
                         MeshData meshData = entry.getValue().build();
                         Renderer3D.draw(entry.getKey(), meshData);
                     }
                 }
                 finally {
-                    for (ByteBufferBuilder byteBufferBuilder : hashMap.values()) {
+                    for (ByteBufferBuilder byteBufferBuilder : byteBuilders.values()) {
                         byteBufferBuilder.close();
                     }
                 }
@@ -288,57 +281,56 @@ implements IMinecraft {
         }
     }
 
-    public void drawText(PoseStack poseStack, String string, int n, int n2, Color color) {
-        this.drawText(poseStack, string, (float)n, (float)n2, color, false);
+    public void drawText(PoseStack poseStack, String text, int x, int y, Color color) {
+        this.drawText(poseStack, text, (float)x, (float)y, color, false);
     }
 
-    public void drawText(PoseStack poseStack, String string, int n, int n2, Color color, boolean bl) {
-        this.drawText(poseStack, string, (float)n, (float)n2, color, bl);
+    public void drawText(PoseStack poseStack, String text, int x, int y, Color color, boolean glow) {
+        this.drawText(poseStack, text, (float)x, (float)y, color, glow);
     }
 
-    public void drawText(PoseStack poseStack, String string, float f, float f2, Color color) {
-        this.drawText(poseStack, string, f, f2, color, false);
+    public void drawText(PoseStack poseStack, String text, float x, float y, Color color) {
+        this.drawText(poseStack, text, x, y, color, false);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void drawText(final PoseStack poseStack, String string, float f, float f2, Color color, boolean bl) {
+    public void drawText(final PoseStack poseStack, String text, float x, float y, Color color, boolean glow) {
         block11: {
             FontManager.pushClientTextRendering();
             try {
-                boolean bl2 = bl || FontManager.isHudRendering() && this.isHudGlowEnabled();
-                boolean bl3 = bl2;
-                if (this.useCustomFont(bl2)) {
-                    if (bl2) {
-                        this.fontRenderer.drawString(poseStack, string, f, f2, color.getRGB(), false, true, false);
+                boolean useGlow = glow || FontManager.isHudRendering() && this.isHudGlowEnabled();
+                if (this.useCustomFont(useGlow)) {
+                    if (useGlow) {
+                        this.fontRenderer.drawString(poseStack, text, x, y, color.getRGB(), false, true, false);
                     }
-                    this.fontRenderer.drawString(poseStack, string, f, f2, color.getRGB(), false, false, true);
+                    this.fontRenderer.drawString(poseStack, text, x, y, color.getRGB(), false, false, true);
                     break block11;
                 }
-                Font.PreparedText preparedText = FontManager.mc.font.prepareText(string, f, f2, color.getRGB(), false, 0);
-                final HashMap<RenderType, ByteBufferBuilder> hashMap = new HashMap<>();
-                final HashMap<RenderType, BufferBuilder> hashMap2 = new HashMap<>();
+                Font.PreparedText preparedText = FontManager.mc.font.prepareText(text, x, y, color.getRGB(), false, 0);
+                final HashMap<RenderType, ByteBufferBuilder> byteBuilders = new HashMap<>();
+                final HashMap<RenderType, BufferBuilder> bufferBuilders = new HashMap<>();
                 try {
                     preparedText.visit(new Font.GlyphVisitor() {
                         @Override
                         public void acceptRenderable(TextRenderable textRenderable) {
-                            RenderType renderType2 = textRenderable.renderType(Font.DisplayMode.SEE_THROUGH);
-                            BufferBuilder bufferBuilder = hashMap2.computeIfAbsent(renderType2, renderType -> {
+                            RenderType renderType = textRenderable.renderType(Font.DisplayMode.SEE_THROUGH);
+                            BufferBuilder bufferBuilder = bufferBuilders.computeIfAbsent(renderType, key -> {
                                 ByteBufferBuilder byteBufferBuilder = new ByteBufferBuilder(256);
-                                hashMap.put(renderType, byteBufferBuilder);
-                                return new BufferBuilder(byteBufferBuilder, renderType.primitiveTopology(), renderType.format());
+                                byteBuilders.put(key, byteBufferBuilder);
+                                return new BufferBuilder(byteBufferBuilder, key.primitiveTopology(), key.format());
                             });
                             textRenderable.render((Matrix4fc)poseStack.last().pose(), (VertexConsumer)bufferBuilder, 0xF000F0, false);
                         }
                     });
-                    for (Map.Entry<RenderType, BufferBuilder> entry : hashMap2.entrySet()) {
+                    for (Map.Entry<RenderType, BufferBuilder> entry : bufferBuilders.entrySet()) {
                         MeshData meshData = entry.getValue().build();
                         Renderer3D.draw(entry.getKey(), meshData);
                     }
                 }
                 finally {
-                    for (ByteBufferBuilder byteBufferBuilder : hashMap.values()) {
+                    for (ByteBufferBuilder byteBufferBuilder : byteBuilders.values()) {
                         byteBufferBuilder.close();
                     }
                 }
@@ -349,55 +341,55 @@ implements IMinecraft {
         }
     }
 
-    public void drawTextWithOutline(GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color, Color color2) {
+    public void drawTextWithOutline(GuiGraphicsExtractor context, String text, int x, int y, Color color, Color outlineColor) {
         if (this.useCustomFont()) {
-            this.fontRenderer.drawString(guiGraphicsExtractor, FontRenderer.stripControlCodes(string), (float)n + 0.5f, (float)n2 - 0.5f, color2.getRGB(), false);
-            this.fontRenderer.drawString(guiGraphicsExtractor, FontRenderer.stripControlCodes(string), (float)n - 0.5f, (float)n2 + 0.5f, color2.getRGB(), false);
-            this.fontRenderer.drawString(guiGraphicsExtractor, FontRenderer.stripControlCodes(string), (float)n + 0.5f, (float)n2 + 0.5f, color2.getRGB(), false);
-            this.fontRenderer.drawString(guiGraphicsExtractor, FontRenderer.stripControlCodes(string), (float)n - 0.5f, (float)n2 - 0.5f, color2.getRGB(), false);
-            this.fontRenderer.drawString(guiGraphicsExtractor, string, (float)n, (float)n2, color.getRGB(), false);
+            this.fontRenderer.drawString(context, FontRenderer.stripControlCodes(text), (float)x + 0.5f, (float)y - 0.5f, outlineColor.getRGB(), false);
+            this.fontRenderer.drawString(context, FontRenderer.stripControlCodes(text), (float)x - 0.5f, (float)y + 0.5f, outlineColor.getRGB(), false);
+            this.fontRenderer.drawString(context, FontRenderer.stripControlCodes(text), (float)x + 0.5f, (float)y + 0.5f, outlineColor.getRGB(), false);
+            this.fontRenderer.drawString(context, FontRenderer.stripControlCodes(text), (float)x - 0.5f, (float)y - 0.5f, outlineColor.getRGB(), false);
+            this.fontRenderer.drawString(context, text, (float)x, (float)y, color.getRGB(), false);
         } else {
             for (int i = -1; i <= 1; ++i) {
                 for (int j = -1; j <= 1; ++j) {
                     if (i == 0 && j == 0) continue;
-                    guiGraphicsExtractor.text(FontManager.mc.font, string, n + i, n2 + j, color2.getRGB(), false);
+                    context.text(FontManager.mc.font, text, x + i, y + j, outlineColor.getRGB(), false);
                 }
             }
-            guiGraphicsExtractor.text(FontManager.mc.font, string, n, n2, color.getRGB(), false);
+            context.text(FontManager.mc.font, text, x, y, color.getRGB(), false);
         }
     }
 
-    public void drawRainbowString(GuiGraphicsExtractor guiGraphicsExtractor, String string, int n3, int n4, long l) {
+    public void drawRainbowString(GuiGraphicsExtractor context, String text, int x, int y, long offsetStep) {
         MutableComponent mutableComponent = Component.empty();
-        int[] nArray = new int[]{0};
-        Component.literal((String)string).getVisualOrderText().accept((n, style, n2) -> {
-            MutableComponent mutableComponent2 = Component.empty();
+        int[] charIndex = new int[]{0};
+        Component.literal((String)text).getVisualOrderText().accept((index, style, codePoint) -> {
+            MutableComponent charComponent = Component.empty();
             if (style.getColor() == null) {
-                long l2 = (long)nArray[0] * l;
-                Color color = ColorUtils.getOffsetRainbow(l2);
-                mutableComponent2.append((Component)Component.literal((String)String.valueOf(Character.toChars(n2))).setStyle(Style.EMPTY.withColor(TextColor.fromRgb((int)color.getRGB()))));
+                long offset = (long)charIndex[0] * offsetStep;
+                Color color = ColorUtils.getOffsetRainbow(offset);
+                charComponent.append((Component)Component.literal((String)String.valueOf(Character.toChars(codePoint))).setStyle(Style.EMPTY.withColor(TextColor.fromRgb((int)color.getRGB()))));
             } else {
-                mutableComponent2.append((Component)Component.literal((String)String.valueOf(Character.toChars(n2))).setStyle(style));
+                charComponent.append((Component)Component.literal((String)String.valueOf(Character.toChars(codePoint))).setStyle(style));
             }
-            mutableComponent.append((Component)mutableComponent2);
-            nArray[0] = nArray[0] + 1;
+            mutableComponent.append((Component)charComponent);
+            charIndex[0] = charIndex[0] + 1;
             return true;
         });
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, mutableComponent.getVisualOrderText(), n3, n4, Color.WHITE);
+        Night.FONT_MANAGER.drawTextWithShadow(context, mutableComponent.getVisualOrderText(), x, y, Color.WHITE);
     }
 
-    public int getWidth(String string) {
+    public int getWidth(String text) {
         if (this.useCustomFont()) {
-            return (int)this.fontRenderer.getTextWidth(string);
+            return (int)this.fontRenderer.getTextWidth(text);
         }
-        return FontManager.mc.font.width(string);
+        return FontManager.mc.font.width(text);
     }
 
     public int getHeight() {
         if (this.useCustomFont()) {
             FontModule fontModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FontModule.class) : null;
-            int n = fontModule != null ? fontModule.heightOffset.getValue().intValue() : 0;
-            return (int)this.fontRenderer.getHeight() + n;
+            int heightOffset = fontModule != null ? fontModule.heightOffset.getValue().intValue() : 0;
+            return (int)this.fontRenderer.getHeight() + heightOffset;
         }
         Objects.requireNonNull(FontManager.mc.font);
         return 9;
@@ -405,7 +397,6 @@ implements IMinecraft {
 
     public float getShadowOffset() {
         FontModule fontModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FontModule.class) : null;
-        FontModule fontModule2 = fontModule;
         if (fontModule == null || fontModule.shadowMode.getValue().equalsIgnoreCase("None")) {
             return 0.0f;
         }
@@ -415,9 +406,9 @@ implements IMinecraft {
         return 1.0f;
     }
 
-    public boolean hasFont(String string) {
-        for (String string2 : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
-            if (!string2.equalsIgnoreCase(string)) continue;
+    public boolean hasFont(String fontName) {
+        for (String availableFont : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
+            if (!availableFont.equalsIgnoreCase(fontName)) continue;
             return true;
         }
         return false;

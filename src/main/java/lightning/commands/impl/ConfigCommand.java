@@ -47,100 +47,100 @@ extends Command {
     private static final List<Class<? extends Module>> EXTRA_VISUAL_MODULES = List.of(ColorModule.class, ClickGuiModule.class, HUDModule.class, CapesModule.class);
 
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
             return List.of("load", "save", "reset", "reload", "current", "global", "bind", "visual", "modules");
         }
-        if (stringArray.length == 1) {
-            if (stringArray[0].equalsIgnoreCase("load") || stringArray[0].equalsIgnoreCase("save") || stringArray[0].equalsIgnoreCase("reset")) {
+        if (args.length == 1) {
+            if (args[0].equalsIgnoreCase("load") || args[0].equalsIgnoreCase("save") || args[0].equalsIgnoreCase("reset")) {
                 return this.savedConfigNames();
             }
-            if (stringArray[0].equalsIgnoreCase("global")) {
+            if (args[0].equalsIgnoreCase("global")) {
                 return Night.MODULE_MANAGER.getModules().stream().map(Module::getName).toList();
             }
-            if (stringArray[0].equalsIgnoreCase("bind") || stringArray[0].equalsIgnoreCase("visual") || stringArray[0].equalsIgnoreCase("modules")) {
+            if (args[0].equalsIgnoreCase("bind") || args[0].equalsIgnoreCase("visual") || args[0].equalsIgnoreCase("modules")) {
                 return List.of("load", "save", "reset");
             }
             return List.of("reset", "load", "save");
         }
-        if (stringArray.length == 2) {
-            if (stringArray[0].equalsIgnoreCase("global")) {
+        if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("global")) {
                 return List.of("load", "save", "reset");
             }
-            if (stringArray[0].equalsIgnoreCase("bind") && (stringArray[1].equalsIgnoreCase("load") || stringArray[1].equalsIgnoreCase("save") || stringArray[1].equalsIgnoreCase("reset"))) {
+            if (args[0].equalsIgnoreCase("bind") && (args[1].equalsIgnoreCase("load") || args[1].equalsIgnoreCase("save") || args[1].equalsIgnoreCase("reset"))) {
                 return this.bindProfileNames();
             }
-            if (stringArray[0].equalsIgnoreCase("visual") && (stringArray[1].equalsIgnoreCase("load") || stringArray[1].equalsIgnoreCase("save") || stringArray[1].equalsIgnoreCase("reset"))) {
+            if (args[0].equalsIgnoreCase("visual") && (args[1].equalsIgnoreCase("load") || args[1].equalsIgnoreCase("save") || args[1].equalsIgnoreCase("reset"))) {
                 return this.visualConfigNames();
             }
-            if (stringArray[0].equalsIgnoreCase("modules") && (stringArray[1].equalsIgnoreCase("load") || stringArray[1].equalsIgnoreCase("save") || stringArray[1].equalsIgnoreCase("reset"))) {
+            if (args[0].equalsIgnoreCase("modules") && (args[1].equalsIgnoreCase("load") || args[1].equalsIgnoreCase("save") || args[1].equalsIgnoreCase("reset"))) {
                 return this.moduleStateNames();
             }
         }
-        if (stringArray.length == 3 && stringArray[0].equalsIgnoreCase("global") && (stringArray[2].equalsIgnoreCase("load") || stringArray[2].equalsIgnoreCase("save") || stringArray[2].equalsIgnoreCase("reset"))) {
-            return this.globalConfigNames(stringArray[1]);
+        if (args.length == 3 && args[0].equalsIgnoreCase("global") && (args[2].equalsIgnoreCase("load") || args[2].equalsIgnoreCase("save") || args[2].equalsIgnoreCase("reset"))) {
+            return this.globalConfigNames(args[1]);
         }
         return List.of();
     }
 
     private List<String> savedConfigNames() {
-        File[] fileArray;
-        File file2 = new File("Lightning/Configs");
-        if (!file2.exists()) {
-            file2.mkdirs();
+        File dir = new File("Lightning/Configs");
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
-        if ((fileArray = file2.listFiles((file, string) -> string.endsWith(".json"))) == null) {
+        File[] files = dir.listFiles((parent, name) -> name.endsWith(".json"));
+        if (files == null) {
             return List.of();
         }
-        return Arrays.stream(fileArray).map(File::getName).map(string -> string.substring(0, string.length() - ".json".length())).sorted().toList();
+        return Arrays.stream(files).map(File::getName).map(fileName -> fileName.substring(0, fileName.length() - ".json".length())).sorted().toList();
     }
 
-    private List<String> globalConfigNames(String string2) {
-        File[] fileArray;
-        File file2 = new File("Lightning/GlobalConfigs/" + string2);
-        if (!file2.exists()) {
-            file2.mkdirs();
+    private List<String> globalConfigNames(String moduleName) {
+        File dir = new File("Lightning/GlobalConfigs/" + moduleName);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
-        if ((fileArray = file2.listFiles((file, string) -> string.endsWith(".json"))) == null) {
+        File[] files = dir.listFiles((parent, name) -> name.endsWith(".json"));
+        if (files == null) {
             return List.of();
         }
-        return Arrays.stream(fileArray).map(File::getName).map(string -> string.substring(0, string.length() - ".json".length())).sorted().toList();
+        return Arrays.stream(files).map(File::getName).map(fileName -> fileName.substring(0, fileName.length() - ".json".length())).sorted().toList();
     }
 
     private List<String> bindProfileNames() {
-        File[] fileArray;
-        File file2 = new File("Lightning/Binds");
-        if (!file2.exists()) {
-            file2.mkdirs();
+        File dir = new File("Lightning/Binds");
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
-        if ((fileArray = file2.listFiles((file, string) -> string.endsWith(".json"))) == null) {
+        File[] files = dir.listFiles((parent, name) -> name.endsWith(".json"));
+        if (files == null) {
             return List.of();
         }
-        return Arrays.stream(fileArray).map(File::getName).map(string -> string.substring(0, string.length() - ".json".length())).sorted().toList();
+        return Arrays.stream(files).map(File::getName).map(fileName -> fileName.substring(0, fileName.length() - ".json".length())).sorted().toList();
     }
 
     private List<String> visualConfigNames() {
-        File[] fileArray;
-        File file2 = new File("Lightning/Visuals");
-        if (!file2.exists()) {
-            file2.mkdirs();
+        File dir = new File("Lightning/Visuals");
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
-        if ((fileArray = file2.listFiles((file, string) -> string.endsWith(".json"))) == null) {
+        File[] files = dir.listFiles((parent, name) -> name.endsWith(".json"));
+        if (files == null) {
             return List.of();
         }
-        return Arrays.stream(fileArray).map(File::getName).map(string -> string.substring(0, string.length() - ".json".length())).sorted().toList();
+        return Arrays.stream(files).map(File::getName).map(fileName -> fileName.substring(0, fileName.length() - ".json".length())).sorted().toList();
     }
 
     private List<String> moduleStateNames() {
-        File[] fileArray;
-        File file2 = new File("Lightning/Modules");
-        if (!file2.exists()) {
-            file2.mkdirs();
+        File dir = new File("Lightning/Modules");
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
-        if ((fileArray = file2.listFiles((file, string) -> string.endsWith(".json"))) == null) {
+        File[] files = dir.listFiles((parent, name) -> name.endsWith(".json"));
+        if (files == null) {
             return List.of();
         }
-        return Arrays.stream(fileArray).map(File::getName).map(string -> string.substring(0, string.length() - ".json".length())).sorted().toList();
+        return Arrays.stream(files).map(File::getName).map(fileName -> fileName.substring(0, fileName.length() - ".json".length())).sorted().toList();
     }
 
     private List<Module> visualModules() {
@@ -154,22 +154,22 @@ extends Command {
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length > 0 && stringArray[0].equalsIgnoreCase("bind")) {
-            if (stringArray.length == 3) {
-                String string = stringArray[1].toLowerCase();
-                String string2 = stringArray[2];
-                switch (string) {
+    public void execute(String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("bind")) {
+            if (args.length == 3) {
+                String action = args[1].toLowerCase();
+                String profileName = args[2];
+                switch (action) {
                     case "save": {
-                        this.saveBindProfile(string2);
+                        this.saveBindProfile(profileName);
                         break;
                     }
                     case "load": {
-                        this.loadBindProfile(string2);
+                        this.loadBindProfile(profileName);
                         break;
                     }
                     case "reset": {
-                        this.resetBindProfile(string2);
+                        this.resetBindProfile(profileName);
                         break;
                     }
                     default: {
@@ -182,21 +182,21 @@ extends Command {
             }
             return;
         }
-        if (stringArray.length > 0 && stringArray[0].equalsIgnoreCase("visual")) {
-            if (stringArray.length == 3) {
-                String string = stringArray[1].toLowerCase();
-                String string3 = stringArray[2];
-                switch (string) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("visual")) {
+            if (args.length == 3) {
+                String action = args[1].toLowerCase();
+                String configName = args[2];
+                switch (action) {
                     case "save": {
-                        this.saveVisualConfig(string3);
+                        this.saveVisualConfig(configName);
                         break;
                     }
                     case "load": {
-                        this.loadVisualConfig(string3);
+                        this.loadVisualConfig(configName);
                         break;
                     }
                     case "reset": {
-                        this.resetVisualConfig(string3);
+                        this.resetVisualConfig(configName);
                         break;
                     }
                     default: {
@@ -209,21 +209,21 @@ extends Command {
             }
             return;
         }
-        if (stringArray.length > 0 && stringArray[0].equalsIgnoreCase("modules")) {
-            if (stringArray.length == 3) {
-                String string = stringArray[1].toLowerCase();
-                String string4 = stringArray[2];
-                switch (string) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("modules")) {
+            if (args.length == 3) {
+                String action = args[1].toLowerCase();
+                String profileName = args[2];
+                switch (action) {
                     case "save": {
-                        this.saveModulesState(string4);
+                        this.saveModulesState(profileName);
                         break;
                     }
                     case "load": {
-                        this.loadModulesState(string4);
+                        this.loadModulesState(profileName);
                         break;
                     }
                     case "reset": {
-                        this.resetModulesState(string4);
+                        this.resetModulesState(profileName);
                         break;
                     }
                     default: {
@@ -236,26 +236,26 @@ extends Command {
             }
             return;
         }
-        if (stringArray.length > 0 && stringArray[0].equalsIgnoreCase("global")) {
-            if (stringArray.length == 4) {
-                Module module = Night.MODULE_MANAGER.getModule(stringArray[1]);
+        if (args.length > 0 && args[0].equalsIgnoreCase("global")) {
+            if (args.length == 4) {
+                Module module = Night.MODULE_MANAGER.getModule(args[1]);
                 if (module == null) {
                     Night.CHAT_MANAGER.tagged("Could not find the module specified.", this.getTag(), this.getName());
                     return;
                 }
-                String string = stringArray[2].toLowerCase();
-                String string5 = stringArray[3];
-                switch (string) {
+                String action = args[2].toLowerCase();
+                String configName = args[3];
+                switch (action) {
                     case "save": {
-                        this.saveGlobalConfig(module, string5);
+                        this.saveGlobalConfig(module, configName);
                         break;
                     }
                     case "load": {
-                        this.loadGlobalConfig(module, string5);
+                        this.loadGlobalConfig(module, configName);
                         break;
                     }
                     case "reset": {
-                        this.resetGlobalConfig(module, string5);
+                        this.resetGlobalConfig(module, configName);
                         break;
                     }
                     default: {
@@ -268,38 +268,38 @@ extends Command {
             }
             return;
         }
-        if (stringArray.length == 2) {
-            if (stringArray[1].equalsIgnoreCase("reset")) {
-                this.resetConfig(stringArray[0]);
+        if (args.length == 2) {
+            if (args[1].equalsIgnoreCase("reset")) {
+                this.resetConfig(args[0]);
                 return;
             }
-            switch (stringArray[0].toLowerCase()) {
+            switch (args[0].toLowerCase()) {
                 case "load": {
-                    if (!FileUtils.fileExists("Lightning/Configs/" + stringArray[1] + ".json")) {
+                    if (!FileUtils.fileExists("Lightning/Configs/" + args[1] + ".json")) {
                         Night.CHAT_MANAGER.tagged("The specified configuration does not exist.", this.getTag(), this.getName());
                         return;
                     }
                     try {
-                        Night.CONFIG_MANAGER.loadModules(stringArray[1]);
-                        Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + stringArray[1] + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
+                        Night.CONFIG_MANAGER.loadModules(args[1]);
+                        Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + args[1] + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
                     }
                     catch (IOException iOException) {
-                        Night.CHAT_MANAGER.tagged("Failed to load the " + String.valueOf(ChatUtils.getPrimary()) + stringArray[1] + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
+                        Night.CHAT_MANAGER.tagged("Failed to load the " + String.valueOf(ChatUtils.getPrimary()) + args[1] + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
                     }
                     break;
                 }
                 case "save": {
                     try {
-                        Night.CONFIG_MANAGER.saveModules(stringArray[1]);
-                        Night.CHAT_MANAGER.tagged("Successfully saved the configuration to " + String.valueOf(ChatUtils.getPrimary()) + stringArray[1] + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
+                        Night.CONFIG_MANAGER.saveModules(args[1]);
+                        Night.CHAT_MANAGER.tagged("Successfully saved the configuration to " + String.valueOf(ChatUtils.getPrimary()) + args[1] + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
                     }
                     catch (IOException iOException) {
-                        Night.CHAT_MANAGER.tagged("Failed to save the " + String.valueOf(ChatUtils.getPrimary()) + stringArray[1] + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
+                        Night.CHAT_MANAGER.tagged("Failed to save the " + String.valueOf(ChatUtils.getPrimary()) + args[1] + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
                     }
                     break;
                 }
                 case "reset": {
-                    this.resetConfig(stringArray[1]);
+                    this.resetConfig(args[1]);
                     break;
                 }
                 default: {
@@ -307,8 +307,8 @@ extends Command {
                     break;
                 }
             }
-        } else if (stringArray.length == 1) {
-            switch (stringArray[0].toLowerCase()) {
+        } else if (args.length == 1) {
+            switch (args[0].toLowerCase()) {
                 case "reload": {
                     Night.CONFIG_MANAGER.loadConfig();
                     Night.CHAT_MANAGER.tagged("Successfully reloaded the current configuration.", this.getTag(), this.getName());
@@ -337,26 +337,26 @@ extends Command {
         }
     }
 
-    private void resetConfig(String string) {
+    private void resetConfig(String configName) {
         for (Module module : Night.MODULE_MANAGER.getModules()) {
             module.setToggled(false);
             module.resetValues();
         }
         try {
-            Night.CONFIG_MANAGER.saveModules(string);
-            Night.CHAT_MANAGER.tagged("Successfully reset the " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " configuration to default.", this.getTag(), this.getName());
+            Night.CONFIG_MANAGER.saveModules(configName);
+            Night.CHAT_MANAGER.tagged("Successfully reset the " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " configuration to default.", this.getTag(), this.getName());
         }
         catch (IOException iOException) {
-            Night.CHAT_MANAGER.tagged("Failed to reset the " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Failed to reset the " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " configuration.", this.getTag(), this.getName());
         }
     }
 
-    private void resetGlobalConfig(Module module, String string) {
+    private void resetGlobalConfig(Module module, String configName) {
         module.resetValues();
-        this.saveGlobalConfig(module, string);
+        this.saveGlobalConfig(module, configName);
     }
 
-    private void resetBindProfile(String string) {
+    private void resetBindProfile(String profileName) {
         for (Module module : Night.MODULE_MANAGER.getModules()) {
             module.bind.resetValue();
             for (Setting setting : module.getSettings()) {
@@ -365,36 +365,36 @@ extends Command {
                 bindSetting.resetValue();
             }
         }
-        this.saveBindProfile(string);
+        this.saveBindProfile(profileName);
     }
 
-    private void resetVisualConfig(String string) {
+    private void resetVisualConfig(String configName) {
         for (Module module : this.visualModules()) {
             module.resetValues();
         }
-        this.saveVisualConfig(string);
+        this.saveVisualConfig(configName);
     }
 
-    private void resetModulesState(String string) {
+    private void resetModulesState(String profileName) {
         for (Module module : Night.MODULE_MANAGER.getModules()) {
             module.setToggled(false);
             module.resetValues();
         }
-        this.saveModulesState(string);
+        this.saveModulesState(profileName);
     }
 
-    private void saveGlobalConfig(Module module, String string) {
+    private void saveGlobalConfig(Module module, String configName) {
         try {
             JsonObject jsonObject = Night.CONFIG_MANAGER.serializeModuleJson(module);
-            File file = new File("Lightning/GlobalConfigs/" + module.getName());
-            if (!file.exists()) {
-                file.mkdirs();
+            File dir = new File("Lightning/GlobalConfigs/" + module.getName());
+            if (!dir.exists()) {
+                dir.mkdirs();
             }
-            File file2 = new File(file, string + ".json");
-            try (FileWriter fileWriter = new FileWriter(file2);){
+            File outFile = new File(dir, configName + ".json");
+            try (FileWriter fileWriter = new FileWriter(outFile);){
                 new GsonBuilder().setPrettyPrinting().create().toJson((JsonElement)jsonObject, (Appendable)fileWriter);
             }
-            Night.CHAT_MANAGER.tagged("Successfully saved global config " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " for module " + String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully saved global config " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " for module " + String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to save global config: " + exception.getMessage(), this.getTag(), this.getName());
@@ -402,33 +402,33 @@ extends Command {
         }
     }
 
-    private void loadGlobalConfig(Module module, String string2) {
-        File file2 = new File("Lightning/GlobalConfigs/" + module.getName() + "/" + string2 + ".json");
-        if (!file2.exists()) {
-            Night.CHAT_MANAGER.tagged("Global config " + String.valueOf(ChatUtils.getPrimary()) + string2 + String.valueOf(ChatUtils.getSecondary()) + " does not exist for " + module.getName() + ".", this.getTag(), this.getName());
+    private void loadGlobalConfig(Module module, String configName) {
+        File configFile = new File("Lightning/GlobalConfigs/" + module.getName() + "/" + configName + ".json");
+        if (!configFile.exists()) {
+            Night.CHAT_MANAGER.tagged("Global config " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " does not exist for " + module.getName() + ".", this.getTag(), this.getName());
             return;
         }
-        try (FileReader fileReader = new FileReader(file2);){
-            JsonObject jsonObject = JsonParser.parseReader((Reader)fileReader).getAsJsonObject();
-            File file3 = new File("Lightning/Configs");
-            File[] fileArray = file3.listFiles((file, string) -> string.endsWith(".json"));
-            if (fileArray != null) {
+        try (FileReader fileReader = new FileReader(configFile);){
+            JsonObject moduleJson = JsonParser.parseReader((Reader)fileReader).getAsJsonObject();
+            File configsDir = new File("Lightning/Configs");
+            File[] profileFiles = configsDir.listFiles((parent, name) -> name.endsWith(".json"));
+            if (profileFiles != null) {
                 Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                for (File file4 : fileArray) {
-                    JsonObject jsonObject2;
-                    try (FileReader fileReader2 = new FileReader(file4)) {
-                        jsonObject2 = JsonParser.parseReader((Reader)fileReader2).getAsJsonObject();
+                for (File profileFile : profileFiles) {
+                    JsonObject profileJson;
+                    try (FileReader profileReader = new FileReader(profileFile)) {
+                        profileJson = JsonParser.parseReader((Reader)profileReader).getAsJsonObject();
                     }
-                    JsonObject modulesObj = jsonObject2.has("Modules") ? jsonObject2.getAsJsonObject("Modules") : new JsonObject();
-                    modulesObj.add(module.getName(), (JsonElement)jsonObject);
-                    jsonObject2.add("Modules", (JsonElement)modulesObj);
-                    try (FileWriter fileWriter = new FileWriter(file4)) {
-                        gson.toJson((JsonElement)jsonObject2, (Appendable)fileWriter);
+                    JsonObject modulesObj = profileJson.has("Modules") ? profileJson.getAsJsonObject("Modules") : new JsonObject();
+                    modulesObj.add(module.getName(), (JsonElement)moduleJson);
+                    profileJson.add("Modules", (JsonElement)modulesObj);
+                    try (FileWriter fileWriter = new FileWriter(profileFile)) {
+                        gson.toJson((JsonElement)profileJson, (Appendable)fileWriter);
                     }
                 }
             }
             Night.CONFIG_MANAGER.loadModules(Night.CONFIG_MANAGER.getCurrentConfig());
-            Night.CHAT_MANAGER.tagged("Successfully loaded global config " + String.valueOf(ChatUtils.getPrimary()) + string2 + String.valueOf(ChatUtils.getSecondary()) + " for module " + String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + " across all profiles.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully loaded global config " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " for module " + String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + " across all profiles.", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to load global config: " + exception.getMessage(), this.getTag(), this.getName());
@@ -436,7 +436,7 @@ extends Command {
         }
     }
 
-    private void saveBindProfile(String string) {
+    private void saveBindProfile(String profileName) {
         try {
             JsonObject jsonObject = new JsonObject();
             for (Module mod : Night.MODULE_MANAGER.getModules()) {
@@ -449,15 +449,15 @@ extends Command {
                 }
                 jsonObject.add(mod.getName(), (JsonElement)modJson);
             }
-            File file = new File("Lightning/Binds");
-            if (!file.exists()) {
-                file.mkdirs();
+            File dir = new File("Lightning/Binds");
+            if (!dir.exists()) {
+                dir.mkdirs();
             }
-            File file2 = new File(file, string + ".json");
-            try (FileWriter fileWriter = new FileWriter(file2)) {
+            File outFile = new File(dir, profileName + ".json");
+            try (FileWriter fileWriter = new FileWriter(outFile)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson((JsonElement)jsonObject, (Appendable)fileWriter);
             }
-            Night.CHAT_MANAGER.tagged("Successfully saved the current binds to " + String.valueOf(ChatUtils.getPrimary()) + string + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully saved the current binds to " + String.valueOf(ChatUtils.getPrimary()) + profileName + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to save bind profile: " + exception.getMessage(), this.getTag(), this.getName());
@@ -465,29 +465,28 @@ extends Command {
         }
     }
 
-    private void loadBindProfile(String string) {
-        File file = new File("Lightning/Binds/" + string + ".json");
+    private void loadBindProfile(String profileName) {
+        File file = new File("Lightning/Binds/" + profileName + ".json");
         if (!file.exists()) {
-            Night.CHAT_MANAGER.tagged("Bind profile " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " does not exist.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Bind profile " + String.valueOf(ChatUtils.getPrimary()) + profileName + String.valueOf(ChatUtils.getSecondary()) + " does not exist.", this.getTag(), this.getName());
             return;
         }
         try (FileReader fileReader = new FileReader(file);){
             JsonObject jsonObject = JsonParser.parseReader((Reader)fileReader).getAsJsonObject();
-            for (String string2 : jsonObject.keySet()) {
-                Module module = Night.MODULE_MANAGER.getModule(string2);
+            for (String moduleName : jsonObject.keySet()) {
+                Module module = Night.MODULE_MANAGER.getModule(moduleName);
                 if (module == null) continue;
-                JsonObject jsonObject2 = jsonObject.getAsJsonObject(string2);
-                for (String string3 : jsonObject2.keySet()) {
-                    BindSetting bindSetting = string3.equals(module.bind.getName()) ? module.bind : this.findBindSetting(module, string3);
-                    BindSetting bindSetting2 = bindSetting;
+                JsonObject modJson = jsonObject.getAsJsonObject(moduleName);
+                for (String settingName : modJson.keySet()) {
+                    BindSetting bindSetting = settingName.equals(module.bind.getName()) ? module.bind : this.findBindSetting(module, settingName);
                     if (bindSetting == null) continue;
-                    String[] stringArray = jsonObject2.get(string3).getAsString().split(",", 2);
-                    bindSetting.setValue(Integer.parseInt(stringArray[0]));
-                    if (stringArray.length <= 1) continue;
-                    bindSetting.setMode(stringArray[1]);
+                    String[] parts = modJson.get(settingName).getAsString().split(",", 2);
+                    bindSetting.setValue(Integer.parseInt(parts[0]));
+                    if (parts.length <= 1) continue;
+                    bindSetting.setMode(parts[1]);
                 }
             }
-            Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " bind profile.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + profileName + String.valueOf(ChatUtils.getSecondary()) + " bind profile.", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to load bind profile: " + exception.getMessage(), this.getTag(), this.getName());
@@ -495,30 +494,30 @@ extends Command {
         }
     }
 
-    private BindSetting findBindSetting(Module module, String string) {
+    private BindSetting findBindSetting(Module module, String settingName) {
         for (Setting setting : module.getSettings()) {
             BindSetting bindSetting;
-            if (!(setting instanceof BindSetting) || !(bindSetting = (BindSetting)setting).getName().equals(string)) continue;
+            if (!(setting instanceof BindSetting) || !(bindSetting = (BindSetting)setting).getName().equals(settingName)) continue;
             return bindSetting;
         }
         return null;
     }
 
-    private void saveVisualConfig(String string) {
+    private void saveVisualConfig(String configName) {
         try {
             JsonObject jsonObject = new JsonObject();
-            for (Module object2 : this.visualModules()) {
-                jsonObject.add(object2.getName(), (JsonElement)Night.CONFIG_MANAGER.serializeModuleJson(object2));
+            for (Module module : this.visualModules()) {
+                jsonObject.add(module.getName(), (JsonElement)Night.CONFIG_MANAGER.serializeModuleJson(module));
             }
-            File file = new File("Lightning/Visuals");
-            if (!file.exists()) {
-                file.mkdirs();
+            File dir = new File("Lightning/Visuals");
+            if (!dir.exists()) {
+                dir.mkdirs();
             }
-            File file2 = new File(file, string + ".json");
-            try (FileWriter fileWriter = new FileWriter(file2);){
+            File outFile = new File(dir, configName + ".json");
+            try (FileWriter fileWriter = new FileWriter(outFile);){
                 new GsonBuilder().setPrettyPrinting().create().toJson((JsonElement)jsonObject, (Appendable)fileWriter);
             }
-            Night.CHAT_MANAGER.tagged("Successfully saved the current visual settings to " + String.valueOf(ChatUtils.getPrimary()) + string + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully saved the current visual settings to " + String.valueOf(ChatUtils.getPrimary()) + configName + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to save visual config: " + exception.getMessage(), this.getTag(), this.getName());
@@ -526,21 +525,21 @@ extends Command {
         }
     }
 
-    private void loadVisualConfig(String string) {
-        File file = new File("Lightning/Visuals/" + string + ".json");
+    private void loadVisualConfig(String configName) {
+        File file = new File("Lightning/Visuals/" + configName + ".json");
         if (!file.exists()) {
-            Night.CHAT_MANAGER.tagged("Visual config " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " does not exist.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Visual config " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " does not exist.", this.getTag(), this.getName());
             return;
         }
-        Set set = this.visualModules().stream().map(Module::getName).collect(Collectors.toSet());
+        Set<String> visualModuleNames = this.visualModules().stream().map(Module::getName).collect(Collectors.toSet());
         try (FileReader fileReader = new FileReader(file);){
             JsonObject jsonObject = JsonParser.parseReader((Reader)fileReader).getAsJsonObject();
-            for (String string2 : jsonObject.keySet()) {
-                Module module = Night.MODULE_MANAGER.getModule(string2);
-                if (module == null || !set.contains(module.getName())) continue;
-                Night.CONFIG_MANAGER.applyModuleJson(module, jsonObject.getAsJsonObject(string2));
+            for (String moduleName : jsonObject.keySet()) {
+                Module module = Night.MODULE_MANAGER.getModule(moduleName);
+                if (module == null || !visualModuleNames.contains(module.getName())) continue;
+                Night.CONFIG_MANAGER.applyModuleJson(module, jsonObject.getAsJsonObject(moduleName));
             }
-            Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " visual config.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + configName + String.valueOf(ChatUtils.getSecondary()) + " visual config.", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to load visual config: " + exception.getMessage(), this.getTag(), this.getName());
@@ -548,21 +547,21 @@ extends Command {
         }
     }
 
-    private void saveModulesState(String string) {
+    private void saveModulesState(String profileName) {
         try {
             JsonObject jsonObject = new JsonObject();
-            for (Module object2 : Night.MODULE_MANAGER.getModules()) {
-                jsonObject.add(object2.getName(), (JsonElement)Night.CONFIG_MANAGER.serializeModuleJson(object2, false));
+            for (Module module : Night.MODULE_MANAGER.getModules()) {
+                jsonObject.add(module.getName(), (JsonElement)Night.CONFIG_MANAGER.serializeModuleJson(module, false));
             }
-            File file = new File("Lightning/Modules");
-            if (!file.exists()) {
-                file.mkdirs();
+            File dir = new File("Lightning/Modules");
+            if (!dir.exists()) {
+                dir.mkdirs();
             }
-            File file2 = new File(file, string + ".json");
-            try (FileWriter fileWriter = new FileWriter(file2);){
+            File outFile = new File(dir, profileName + ".json");
+            try (FileWriter fileWriter = new FileWriter(outFile);){
                 new GsonBuilder().setPrettyPrinting().create().toJson((JsonElement)jsonObject, (Appendable)fileWriter);
             }
-            Night.CHAT_MANAGER.tagged("Successfully saved the current module states to " + String.valueOf(ChatUtils.getPrimary()) + string + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully saved the current module states to " + String.valueOf(ChatUtils.getPrimary()) + profileName + ".json" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to save module states: " + exception.getMessage(), this.getTag(), this.getName());
@@ -570,18 +569,18 @@ extends Command {
         }
     }
 
-    private void loadModulesState(String string) {
-        File file = new File("Lightning/Modules/" + string + ".json");
+    private void loadModulesState(String profileName) {
+        File file = new File("Lightning/Modules/" + profileName + ".json");
         if (!file.exists()) {
-            Night.CHAT_MANAGER.tagged("Module state profile " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " does not exist.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Module state profile " + String.valueOf(ChatUtils.getPrimary()) + profileName + String.valueOf(ChatUtils.getSecondary()) + " does not exist.", this.getTag(), this.getName());
             return;
         }
         try (FileReader fileReader = new FileReader(file);){
             JsonObject jsonObject = JsonParser.parseReader((Reader)fileReader).getAsJsonObject();
-            for (String string2 : jsonObject.keySet()) {
-                Module module = Night.MODULE_MANAGER.getModule(string2);
+            for (String moduleName : jsonObject.keySet()) {
+                Module module = Night.MODULE_MANAGER.getModule(moduleName);
                 if (module == null) continue;
-                JsonElement jsonElement = jsonObject.get(string2);
+                JsonElement jsonElement = jsonObject.get(moduleName);
                 if (jsonElement.isJsonObject()) {
                     Night.CONFIG_MANAGER.applyModuleJson(module, jsonElement.getAsJsonObject(), false);
                     continue;
@@ -589,7 +588,7 @@ extends Command {
                 if (!jsonElement.isJsonPrimitive() || !jsonElement.getAsJsonPrimitive().isBoolean()) continue;
                 module.setToggled(jsonElement.getAsBoolean());
             }
-            Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " module states.", this.getTag(), this.getName());
+            Night.CHAT_MANAGER.tagged("Successfully loaded the " + String.valueOf(ChatUtils.getPrimary()) + profileName + String.valueOf(ChatUtils.getSecondary()) + " module states.", this.getTag(), this.getName());
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.tagged("Failed to load module states: " + exception.getMessage(), this.getTag(), this.getName());

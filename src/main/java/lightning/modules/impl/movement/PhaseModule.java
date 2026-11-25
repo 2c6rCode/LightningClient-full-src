@@ -125,21 +125,21 @@ extends Module {
         }
         for (BlockPos blockPos : new BlockPos[]{PhaseModule.mc.player.blockPosition(), PhaseModule.mc.player.blockPosition().below()}) {
             if (!PhaseModule.mc.level.getBlockState(blockPos).is(Blocks.SCAFFOLDING)) continue;
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, Direction.UP, n));
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, blockPos, Direction.UP, n));
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, Direction.UP, sequence));
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, blockPos, Direction.UP, sequence));
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             PhaseModule.mc.level.removeBlock(blockPos, false);
         }
-        boolean bl = true;
+        boolean pipMode = true;
         boolean isCrawling = this.isPlayerCrawling();
-        if (!this.crawl.getValue() && isCrawling && !bl) {
+        if (!this.crawl.getValue() && isCrawling && !pipMode) {
             this.setToggled(false);
             return;
         }
-        boolean bl2 = this.crawl.getValue() && isCrawling;
-        boolean bl3 = this.isInWeb((Entity)PhaseModule.mc.player);
-        boolean bl4 = this.isInLadder((Entity)PhaseModule.mc.player);
-        if (!(bl2 || bl3 || bl4 || PhaseModule.mc.level.getBlockState(PhaseModule.mc.player.blockPosition()).canBeReplaced())) {
+        boolean crawlPhase = this.crawl.getValue() && isCrawling;
+        boolean inWeb = this.isInWeb((Entity)PhaseModule.mc.player);
+        boolean inLadder = this.isInLadder((Entity)PhaseModule.mc.player);
+        if (!(crawlPhase || inWeb || inLadder || PhaseModule.mc.level.getBlockState(PhaseModule.mc.player.blockPosition()).canBeReplaced())) {
             this.setToggled(false);
             return;
         }
@@ -152,26 +152,23 @@ extends Module {
             return;
         }
         MultiTaskModule multiTaskModule = Night.MODULE_MANAGER.getModule(MultiTaskModule.class);
-        boolean bl5 = multiTaskModule != null && multiTaskModule.isToggled() && multiTaskModule.pearl.getValue() && PhaseModule.mc.player.isUsingItem();
-        String string = bl5 ? "AltSwap" : this.swap.getValue();
-        int n4 = InventoryUtils.find(Items.ENDER_PEARL, 0, string.equalsIgnoreCase("AltSwap") || string.equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n5 = PhaseModule.mc.player.getInventory().getSelectedSlot();
-        boolean bl6 = false;
-        if (n4 == -1) {
+        boolean usingMultiTask = multiTaskModule != null && multiTaskModule.isToggled() && multiTaskModule.pearl.getValue() && PhaseModule.mc.player.isUsingItem();
+        String swapMode = usingMultiTask ? "AltSwap" : this.swap.getValue();
+        int pearlSlot = InventoryUtils.find(Items.ENDER_PEARL, 0, swapMode.equalsIgnoreCase("AltSwap") || swapMode.equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int previousSlot = PhaseModule.mc.player.getInventory().getSelectedSlot();
+        boolean placedBypass = false;
+        if (pearlSlot == -1) {
             Night.CHAT_MANAGER.tagged("No pearls could be found in your hotbar.", this.getName());
             this.setToggled(false);
             return;
         }
-        float f = PhaseModule.mc.player.getYRot();
-        float f2 = PhaseModule.mc.player.getXRot();
         BlockPos blockPos = PhaseModule.mc.player.blockPosition().below();
-        float f3 = Mth.wrapDegrees((float)this.getPhaseYaw());
-        float f4 = (f3 % 90.0f + 90.0f) % 90.0f;
-        boolean bl7 = Math.min(f4, 90.0f - f4) < 22.5f;
-        boolean bl8 = this.isOnBedrock();
-        boolean bl9 = this.logic.getValue().equalsIgnoreCase("Grim");
-        Vec3 vec3 = this.pipTarget(f3, isCrawling, bl7, bl8);
-        if (this.antiVoid.getValue() && this.isVoidHazard(vec3, f3)) {
+        float phaseYaw = Mth.wrapDegrees((float)this.getPhaseYaw());
+        float sectorAngle = (phaseYaw % 90.0f + 90.0f) % 90.0f;
+        boolean isStraight = Math.min(sectorAngle, 90.0f - sectorAngle) < 22.5f;
+        boolean onBedrock = this.isOnBedrock();
+        Vec3 targetPos = this.pipTarget(phaseYaw, isCrawling, isStraight, onBedrock);
+        if (this.antiVoid.getValue() && this.isVoidHazard(targetPos, phaseYaw)) {
             Night.CHAT_MANAGER.tagged("Phase cancelled to prevent falling into the void.", this.getName());
             if (mc.getSoundManager() != null) {
                 mc.getSoundManager().play((SoundInstance)SimpleSoundInstance.forUI((Holder)SoundEvents.NOTE_BLOCK_PLING, (float)1.5f));
@@ -179,37 +176,37 @@ extends Module {
             this.setToggled(false);
             return;
         }
-        float f5 = this.calcYaw(vec3);
-        float f6 = this.solvePitch(vec3);
+        float targetYaw = this.calcYaw(targetPos);
+        float targetPitch = this.solvePitch(targetPos);
         if (this.debug.getValue()) {
             ++this.attempt;
-            Night.CHAT_MANAGER.tagged(String.format("#%d [%s%s] pos=(%.4f, %.4f, %.4f) yaw=%.2f pitch=%.2f target=(%.4f, %.4f, %.4f) sector=%s", this.attempt, this.logic.getValue(), bl && bl8 ? "/Bedrock" : (bl && isCrawling ? "/Crawl" : (bl ? "/Standing" : "")), PhaseModule.mc.player.getX(), PhaseModule.mc.player.getY(), PhaseModule.mc.player.getZ(), Float.valueOf(f5), Float.valueOf(f6), vec3.x, vec3.y, vec3.z, bl7 ? "straight" : "corner"), this.getName());
+            Night.CHAT_MANAGER.tagged(String.format("#%d [%s%s] pos=(%.4f, %.4f, %.4f) yaw=%.2f pitch=%.2f target=(%.4f, %.4f, %.4f) sector=%s", this.attempt, this.logic.getValue(), pipMode && onBedrock ? "/Bedrock" : (pipMode && isCrawling ? "/Crawl" : (pipMode ? "/Standing" : "")), PhaseModule.mc.player.getX(), PhaseModule.mc.player.getY(), PhaseModule.mc.player.getZ(), Float.valueOf(targetYaw), Float.valueOf(targetPitch), targetPos.x, targetPos.y, targetPos.z, isStraight ? "straight" : "corner"), this.getName());
         }
-        if ((PhaseModule.mc.level.getBlockState(PhaseModule.mc.player.blockPosition()).isAir() || bl3 || bl4) && !PhaseModule.mc.level.getBlockState(blockPos).canBeReplaced()) {
+        if ((PhaseModule.mc.level.getBlockState(PhaseModule.mc.player.blockPosition()).isAir() || inWeb || inLadder) && !PhaseModule.mc.level.getBlockState(blockPos).canBeReplaced()) {
             Item item = switch (this.ncpMode.getValue()) {
                 case "FlintAndSteel" -> Items.FLINT_AND_STEEL;
                 case "Cobweb" -> Items.COBWEB;
                 default -> Items.FIRE_CHARGE;
             };
-            int n6 = InventoryUtils.find(item, InventoryUtils.HOTBAR_START, this.bypassSwitch.getValue().equalsIgnoreCase("AltSwap") || this.bypassSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            if (n6 != -1) {
-                Night.ROTATION_MANAGER.packetRotate(f5, 90.0f, true);
-                InventoryUtils.switchSlot(this.bypassSwitch.getValue(), n6, n5);
-                NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 1.0, 0.0), Direction.UP, blockPos, false), n));
+            int bypassSlot = InventoryUtils.find(item, InventoryUtils.HOTBAR_START, this.bypassSwitch.getValue().equalsIgnoreCase("AltSwap") || this.bypassSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            if (bypassSlot != -1) {
+                Night.ROTATION_MANAGER.packetRotate(targetYaw, 90.0f, true);
+                InventoryUtils.switchSlot(this.bypassSwitch.getValue(), bypassSlot, previousSlot);
+                NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 1.0, 0.0), Direction.UP, blockPos, false), sequence));
                 mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-                InventoryUtils.switchBack(this.bypassSwitch.getValue(), n6, n5);
-                bl6 = true;
+                InventoryUtils.switchBack(this.bypassSwitch.getValue(), bypassSlot, previousSlot);
+                placedBypass = true;
             }
         }
-        Night.ROTATION_MANAGER.packetRotate(f5, f6, true);
-        if (InventoryUtils.switchSlot(string, n4, n5)) {
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, f5, f6));
+        Night.ROTATION_MANAGER.packetRotate(targetYaw, targetPitch, true);
+        if (InventoryUtils.switchSlot(swapMode, pearlSlot, previousSlot)) {
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, targetYaw, targetPitch));
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-            InventoryUtils.switchBack(string, n4, n5);
+            InventoryUtils.switchBack(swapMode, pearlSlot, previousSlot);
         }
-        if (bl6 && this.autoRemove.getValue()) {
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, PhaseModule.mc.player.blockPosition(), Direction.UP, n));
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, PhaseModule.mc.player.blockPosition(), Direction.UP, n));
+        if (placedBypass && this.autoRemove.getValue()) {
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, PhaseModule.mc.player.blockPosition(), Direction.UP, sequence));
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, PhaseModule.mc.player.blockPosition(), Direction.UP, sequence));
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
         }
         this.setToggled(false);
@@ -220,25 +217,25 @@ extends Module {
         if (PhaseModule.mc.player == null) {
             return 0.0f;
         }
-        float f = PhaseModule.mc.player.getYRot();
+        float baseYaw = PhaseModule.mc.player.getYRot();
         if (Night.MODULE_MANAGER != null && (iSprintModule = (ISprintModule)((Object)Night.MODULE_MANAGER.getModule("Sprint"))) != null && iSprintModule.isGrimCompensating()) {
             return iSprintModule.getGrimYaw();
         }
-        int n = (PhaseModule.mc.options.keyRight.isDown() ? 1 : 0) - (PhaseModule.mc.options.keyLeft.isDown() ? 1 : 0);
-        int n2 = (PhaseModule.mc.options.keyUp.isDown() ? 1 : 0) - (PhaseModule.mc.options.keyDown.isDown() ? 1 : 0);
-        if (n != 0 || n2 != 0) {
-            float f2 = (float)Math.toDegrees(Math.atan2(n, n2));
-            return Mth.wrapDegrees((float)(f + f2));
+        int strafeInput = (PhaseModule.mc.options.keyRight.isDown() ? 1 : 0) - (PhaseModule.mc.options.keyLeft.isDown() ? 1 : 0);
+        int forwardInput = (PhaseModule.mc.options.keyUp.isDown() ? 1 : 0) - (PhaseModule.mc.options.keyDown.isDown() ? 1 : 0);
+        if (strafeInput != 0 || forwardInput != 0) {
+            float moveAngle = (float)Math.toDegrees(Math.atan2(strafeInput, forwardInput));
+            return Mth.wrapDegrees((float)(baseYaw + moveAngle));
         }
-        return f;
+        return baseYaw;
     }
 
     private boolean isOnBedrock() {
         if (PhaseModule.mc.player == null || PhaseModule.mc.level == null) {
             return false;
         }
-        double d = PhaseModule.mc.player.getBoundingBox().minY;
-        BlockPos blockPos = BlockPos.containing((double)PhaseModule.mc.player.getX(), (double)(d - 0.1), (double)PhaseModule.mc.player.getZ());
+        double minY = PhaseModule.mc.player.getBoundingBox().minY;
+        BlockPos blockPos = BlockPos.containing((double)PhaseModule.mc.player.getX(), (double)(minY - 0.1), (double)PhaseModule.mc.player.getZ());
         if (PhaseModule.mc.level.getBlockState(blockPos).is(Blocks.BEDROCK)) {
             return true;
         }
@@ -248,222 +245,215 @@ extends Module {
         return PhaseModule.mc.level.getBlockState(PhaseModule.mc.player.blockPosition()).is(Blocks.BEDROCK);
     }
 
-    private Vec3 calculateKingMCStandingTarget(float f) {
-        double d = PhaseModule.mc.player.getX();
-        double d2 = PhaseModule.mc.player.getY();
-        double d3 = PhaseModule.mc.player.getZ();
-        double d4 = Math.toRadians(f);
-        Vec3 vec3 = new Vec3(-Math.sin(d4), 0.0, Math.cos(d4)).normalize();
-        float f2 = (f % 90.0f + 90.0f) % 90.0f;
-        boolean bl = Math.min(f2, 90.0f - f2) < 22.5f;
-        double d5 = 0.165;
-        if (bl) {
-            boolean bl2 = Math.abs(vec3.z) > Math.abs(vec3.x);
-            boolean bl3 = bl2;
-            if (bl2) {
-                double d6 = vec3.z > 0.0 ? Math.floor(d3) + 1.0 : Math.floor(d3);
-                double d7 = vec3.z > 0.0 ? d6 - 0.165 : d6 + 0.165;
-                return new Vec3(d, d2, d7);
+    private Vec3 calculateKingMCStandingTarget(float yaw) {
+        double px = PhaseModule.mc.player.getX();
+        double py = PhaseModule.mc.player.getY();
+        double pz = PhaseModule.mc.player.getZ();
+        double yawRad = Math.toRadians(yaw);
+        Vec3 dir = new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad)).normalize();
+        float sectorAngle = (yaw % 90.0f + 90.0f) % 90.0f;
+        boolean isStraight = Math.min(sectorAngle, 90.0f - sectorAngle) < 22.5f;
+        if (isStraight) {
+            boolean zDominant = Math.abs(dir.z) > Math.abs(dir.x);
+            if (zDominant) {
+                double edgeZ = dir.z > 0.0 ? Math.floor(pz) + 1.0 : Math.floor(pz);
+                double targetZ = dir.z > 0.0 ? edgeZ - 0.165 : edgeZ + 0.165;
+                return new Vec3(px, py, targetZ);
             }
-            double d8 = vec3.x > 0.0 ? Math.floor(d) + 1.0 : Math.floor(d);
-            double d9 = vec3.x > 0.0 ? d8 - 0.165 : d8 + 0.165;
-            return new Vec3(d9, d2, d3);
+            double edgeX = dir.x > 0.0 ? Math.floor(px) + 1.0 : Math.floor(px);
+            double targetX = dir.x > 0.0 ? edgeX - 0.165 : edgeX + 0.165;
+            return new Vec3(targetX, py, pz);
         }
-        double d10 = vec3.x > 0.0 ? Math.floor(d) + 1.0 : Math.floor(d);
-        double d11 = vec3.z > 0.0 ? Math.floor(d3) + 1.0 : Math.floor(d3);
-        double d12 = vec3.x > 0.0 ? d10 - 0.165 : d10 + 0.165;
-        double d13 = vec3.z > 0.0 ? d11 - 0.165 : d11 + 0.165;
-        return new Vec3(d12, d2, d13);
+        double edgeX = dir.x > 0.0 ? Math.floor(px) + 1.0 : Math.floor(px);
+        double edgeZ = dir.z > 0.0 ? Math.floor(pz) + 1.0 : Math.floor(pz);
+        double targetX = dir.x > 0.0 ? edgeX - 0.165 : edgeX + 0.165;
+        double targetZ = dir.z > 0.0 ? edgeZ - 0.165 : edgeZ + 0.165;
+        return new Vec3(targetX, py, targetZ);
     }
 
-    private Vec3 calculateKingMCCrawlTarget(float f) {
-        double d;
-        double d2;
-        Vec3 vec3;
-        float f2;
-        double d3;
-        Vec3 vec32;
-        Vec3 vec33 = this.getEffectiveEyePos();
-        BlockHitResult blockHitResult = PhaseModule.mc.level.clip(new ClipContext(vec33, vec33.add((vec32 = new Vec3(-Math.sin(d3 = Math.toRadians(f2 = PhaseModule.mc.player.getYRot())), 0.0, Math.cos(d3)).normalize()).scale(4.0)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PhaseModule.mc.player));
+    private Vec3 calculateKingMCCrawlTarget(float yaw) {
+        double targetZ;
+        double targetX;
+        Vec3 rayDir;
+        float playerYaw;
+        double playerYawRad;
+        Vec3 playerDir;
+        Vec3 eyePos = this.getEffectiveEyePos();
+        BlockHitResult blockHitResult = PhaseModule.mc.level.clip(new ClipContext(eyePos, eyePos.add((playerDir = new Vec3(-Math.sin(playerYawRad = Math.toRadians(playerYaw = PhaseModule.mc.player.getYRot())), 0.0, Math.cos(playerYawRad)).normalize()).scale(4.0)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PhaseModule.mc.player));
         if (blockHitResult != null && blockHitResult.getType() == HitResult.Type.BLOCK) {
-            f = f2;
-            vec3 = vec32;
+            yaw = playerYaw;
+            rayDir = playerDir;
         } else {
-            double d4 = Math.toRadians(f);
-            vec3 = new Vec3(-Math.sin(d4), 0.0, Math.cos(d4)).normalize();
-            blockHitResult = PhaseModule.mc.level.clip(new ClipContext(vec33, vec33.add(vec3.scale(4.0)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PhaseModule.mc.player));
+            double yawRad = Math.toRadians(yaw);
+            rayDir = new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad)).normalize();
+            blockHitResult = PhaseModule.mc.level.clip(new ClipContext(eyePos, eyePos.add(rayDir.scale(4.0)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PhaseModule.mc.player));
         }
-        BlockPos blockPos = null;
-        Direction direction = null;
-        Vec3 vec34 = null;
+        BlockPos hitPos = null;
+        Direction hitSide = null;
+        Vec3 hitLocation = null;
         if (blockHitResult != null && blockHitResult.getType() == HitResult.Type.BLOCK) {
-            blockPos = blockHitResult.getBlockPos();
-            direction = blockHitResult.getDirection();
-            vec34 = blockHitResult.getLocation();
+            hitPos = blockHitResult.getBlockPos();
+            hitSide = blockHitResult.getDirection();
+            hitLocation = blockHitResult.getLocation();
         } else {
-            Direction dir = Direction.fromYRot((double)f);
-            blockPos = PhaseModule.mc.player.blockPosition().relative(dir, 1);
-            direction = dir.getOpposite();
+            Direction dir = Direction.fromYRot((double)yaw);
+            hitPos = PhaseModule.mc.player.blockPosition().relative(dir, 1);
+            hitSide = dir.getOpposite();
         }
-        double d5 = (double)blockPos.getY() + 0.52;
-        float f3 = (f % 90.0f + 90.0f) % 90.0f;
-        boolean bl = Math.min(f3, 90.0f - f3) < 22.5f;
-        boolean bl2 = bl;
-        if (bl && direction != null && direction.getAxis().isHorizontal()) {
-            double d6;
-            double d7;
-            if (direction.getAxis() == Direction.Axis.Z) {
-                d7 = direction == Direction.NORTH ? (double)blockPos.getZ() : (double)blockPos.getZ() + 1.0;
-                double d8 = d7;
-                d6 = vec34 != null && Math.abs(vec34.x - (double)Math.round(vec34.x)) < 0.25 ? (double)Math.round(vec34.x) : (double)blockPos.getX() + 0.5;
+        double targetY = (double)hitPos.getY() + 0.52;
+        float sectorAngle = (yaw % 90.0f + 90.0f) % 90.0f;
+        boolean isStraight = Math.min(sectorAngle, 90.0f - sectorAngle) < 22.5f;
+        if (isStraight && hitSide != null && hitSide.getAxis().isHorizontal()) {
+            double straightX;
+            double straightZ;
+            if (hitSide.getAxis() == Direction.Axis.Z) {
+                straightZ = hitSide == Direction.NORTH ? (double)hitPos.getZ() : (double)hitPos.getZ() + 1.0;
+                straightX = hitLocation != null && Math.abs(hitLocation.x - (double)Math.round(hitLocation.x)) < 0.25 ? (double)Math.round(hitLocation.x) : (double)hitPos.getX() + 0.5;
             } else {
-                d6 = direction == Direction.WEST ? (double)blockPos.getX() : (double)blockPos.getX() + 1.0;
-                d7 = vec34 != null && Math.abs(vec34.z - (double)Math.round(vec34.z)) < 0.25 ? (double)Math.round(vec34.z) : (double)blockPos.getZ() + 0.5;
+                straightX = hitSide == Direction.WEST ? (double)hitPos.getX() : (double)hitPos.getX() + 1.0;
+                straightZ = hitLocation != null && Math.abs(hitLocation.z - (double)Math.round(hitLocation.z)) < 0.25 ? (double)Math.round(hitLocation.z) : (double)hitPos.getZ() + 0.5;
             }
-            return new Vec3(d6, d5, d7);
+            return new Vec3(straightX, targetY, straightZ);
         }
-        if (vec34 != null) {
-            d2 = Math.round(vec34.x);
-            d = Math.round(vec34.z);
+        if (hitLocation != null) {
+            targetX = Math.round(hitLocation.x);
+            targetZ = Math.round(hitLocation.z);
         } else {
-            d2 = Math.round(PhaseModule.mc.player.getX() + vec3.x);
-            d = Math.round(PhaseModule.mc.player.getZ() + vec3.z);
+            targetX = Math.round(PhaseModule.mc.player.getX() + rayDir.x);
+            targetZ = Math.round(PhaseModule.mc.player.getZ() + rayDir.z);
         }
-        return new Vec3(d2, d5, d);
+        return new Vec3(targetX, targetY, targetZ);
     }
 
     private Vec3 calculateTargetPos() {
-        double d = PhaseModule.mc.player.getX();
-        double d2 = PhaseModule.mc.player.getZ();
-        double d3 = this.crawl.getValue() && this.isPlayerCrawling() ? (double)PhaseModule.mc.player.blockPosition().below().getY() : PhaseModule.mc.player.getY() - 0.5;
-        double d4 = Math.round(d);
-        double d5 = Math.round(d2);
-        double d6 = d4 - d;
-        double d7 = d5 - d2;
-        if (Math.abs(d6) <= 0.5 && Math.abs(d7) <= 0.5) {
-            return new Vec3(d + Mth.clamp((double)d6, (double)-0.5, (double)0.5), d3, d2 + Mth.clamp((double)d7, (double)-0.5, (double)0.5));
+        double px = PhaseModule.mc.player.getX();
+        double pz = PhaseModule.mc.player.getZ();
+        double targetY = this.crawl.getValue() && this.isPlayerCrawling() ? (double)PhaseModule.mc.player.blockPosition().below().getY() : PhaseModule.mc.player.getY() - 0.5;
+        double roundedX = Math.round(px);
+        double roundedZ = Math.round(pz);
+        double offsetX = roundedX - px;
+        double offsetZ = roundedZ - pz;
+        if (Math.abs(offsetX) <= 0.5 && Math.abs(offsetZ) <= 0.5) {
+            return new Vec3(px + Mth.clamp((double)offsetX, (double)-0.5, (double)0.5), targetY, pz + Mth.clamp((double)offsetZ, (double)-0.5, (double)0.5));
         }
-        double d8 = 0.241660973353061;
-        double d9 = 0.7853981633974483;
-        double d10 = d + Mth.clamp((double)(this.toClosest(d, Math.floor(d) + 0.241660973353061, Math.floor(d) + 0.7853981633974483) - d), (double)-0.2, (double)0.2);
-        double d11 = d2 + Mth.clamp((double)(this.toClosest(d2, Math.floor(d2) + 0.241660973353061, Math.floor(d2) + 0.7853981633974483) - d2), (double)-0.2, (double)0.2);
-        return new Vec3(d10, d3, d11);
+        double targetX = px + Mth.clamp((double)(this.toClosest(px, Math.floor(px) + 0.241660973353061, Math.floor(px) + 0.7853981633974483) - px), (double)-0.2, (double)0.2);
+        double targetZ = pz + Mth.clamp((double)(this.toClosest(pz, Math.floor(pz) + 0.241660973353061, Math.floor(pz) + 0.7853981633974483) - pz), (double)-0.2, (double)0.2);
+        return new Vec3(targetX, targetY, targetZ);
     }
 
-    private double toClosest(double d, double d2, double d3) {
-        return d - d2 > d3 - d ? d3 : d2;
+    private double toClosest(double value, double low, double high) {
+        return value - low > high - value ? high : low;
     }
 
     private Vec3 calculateGrimSectorTarget() {
-        double d;
-        double d2 = PhaseModule.mc.player.getX();
-        double d3 = PhaseModule.mc.player.getZ();
-        double d4 = this.crawl.getValue() && this.isPlayerCrawling() ? (double)PhaseModule.mc.player.blockPosition().below().getY() : PhaseModule.mc.player.getY() - 0.5;
-        double d5 = Math.floor(d2);
-        double d6 = Math.floor(d3);
-        double d7 = d6 + 0.5;
-        double d8 = Math.toDegrees(Math.atan2(d3 - d7, d2 - (d = d5 + 0.5)));
-        if (d8 < 0.0) {
-            d8 += 360.0;
+        double centerX;
+        double px = PhaseModule.mc.player.getX();
+        double pz = PhaseModule.mc.player.getZ();
+        double targetY = this.crawl.getValue() && this.isPlayerCrawling() ? (double)PhaseModule.mc.player.blockPosition().below().getY() : PhaseModule.mc.player.getY() - 0.5;
+        double blockX = Math.floor(px);
+        double blockZ = Math.floor(pz);
+        double centerZ = blockZ + 0.5;
+        double angleDeg = Math.toDegrees(Math.atan2(pz - centerZ, px - (centerX = blockX + 0.5)));
+        if (angleDeg < 0.0) {
+            angleDeg += 360.0;
         }
-        int n = (int)Math.floor((d8 + 22.5) / 45.0) & 7;
-        double d9 = d5 + 1.0;
-        double d10 = d6 + 1.0;
-        return switch (n) {
-            case 0 -> new Vec3(d9, d4, d7);
-            case 1 -> new Vec3(d9, d4, d10);
-            case 2 -> new Vec3(d, d4, d10);
-            case 3 -> new Vec3(d5, d4, d10);
-            case 4 -> new Vec3(d5, d4, d7);
-            case 5 -> new Vec3(d5, d4, d6);
-            case 6 -> new Vec3(d, d4, d6);
-            default -> new Vec3(d9, d4, d6);
+        int sector = (int)Math.floor((angleDeg + 22.5) / 45.0) & 7;
+        double eastX = blockX + 1.0;
+        double southZ = blockZ + 1.0;
+        return switch (sector) {
+            case 0 -> new Vec3(eastX, targetY, centerZ);
+            case 1 -> new Vec3(eastX, targetY, southZ);
+            case 2 -> new Vec3(centerX, targetY, southZ);
+            case 3 -> new Vec3(blockX, targetY, southZ);
+            case 4 -> new Vec3(blockX, targetY, centerZ);
+            case 5 -> new Vec3(blockX, targetY, blockZ);
+            case 6 -> new Vec3(centerX, targetY, blockZ);
+            default -> new Vec3(eastX, targetY, blockZ);
         };
     }
 
-    private Vec3 boundaryTarget(float f) {
-        double d = PhaseModule.mc.player.getX();
-        double d2 = PhaseModule.mc.player.getZ();
-        double d3 = this.crawl.getValue() && this.isPlayerCrawling() ? (double)PhaseModule.mc.player.blockPosition().below().getY() : PhaseModule.mc.player.getY() - 0.5;
-        double d4 = Math.toRadians(f);
-        Vec3 vec3 = new Vec3(-Math.sin(d4), 0.0, Math.cos(d4)).normalize();
-        boolean bl = Math.abs(vec3.z) > Math.abs(vec3.x);
-        boolean bl2 = bl;
-        if (bl) {
-            double d5 = vec3.z > 0.0 ? Math.floor(d2) + 1.0 : Math.floor(d2);
-            return new Vec3(d, d3, d5);
+    private Vec3 boundaryTarget(float yaw) {
+        double px = PhaseModule.mc.player.getX();
+        double pz = PhaseModule.mc.player.getZ();
+        double targetY = this.crawl.getValue() && this.isPlayerCrawling() ? (double)PhaseModule.mc.player.blockPosition().below().getY() : PhaseModule.mc.player.getY() - 0.5;
+        double yawRad = Math.toRadians(yaw);
+        Vec3 dir = new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad)).normalize();
+        boolean zDominant = Math.abs(dir.z) > Math.abs(dir.x);
+        if (zDominant) {
+            double edgeZ = dir.z > 0.0 ? Math.floor(pz) + 1.0 : Math.floor(pz);
+            return new Vec3(px, targetY, edgeZ);
         }
-        double d6 = vec3.x > 0.0 ? Math.floor(d) + 1.0 : Math.floor(d);
-        return new Vec3(d6, d3, d2);
+        double edgeX = dir.x > 0.0 ? Math.floor(px) + 1.0 : Math.floor(px);
+        return new Vec3(edgeX, targetY, pz);
     }
 
     private Vec3 getEffectiveEyePos() {
         if (PhaseModule.mc.player == null) {
             return Vec3.ZERO;
         }
-        double d = PhaseModule.mc.player.getEyeY() - 0.1;
-        return new Vec3(PhaseModule.mc.player.getX(), d, PhaseModule.mc.player.getZ());
+        double eyeY = PhaseModule.mc.player.getEyeY() - 0.1;
+        return new Vec3(PhaseModule.mc.player.getX(), eyeY, PhaseModule.mc.player.getZ());
     }
 
-    private float calcYaw(Vec3 vec3) {
-        Vec3 vec32 = this.getEffectiveEyePos();
-        Vec3 vec33 = vec3.subtract(vec32);
-        return (float)Math.toDegrees(Math.atan2(-vec33.x, vec33.z));
+    private float calcYaw(Vec3 target) {
+        Vec3 eyePos = this.getEffectiveEyePos();
+        Vec3 delta = target.subtract(eyePos);
+        return (float)Math.toDegrees(Math.atan2(-delta.x, delta.z));
     }
 
-    private float solvePitch(Vec3 vec3) {
-        Vec3 vec32 = this.getEffectiveEyePos();
-        double d = Math.hypot(vec3.x - vec32.x, vec3.z - vec32.z);
-        double d2 = vec3.y - vec32.y;
-        if (d < 1.0E-4) {
-            return d2 < 0.0 ? 85.0f : -85.0f;
+    private float solvePitch(Vec3 target) {
+        Vec3 eyePos = this.getEffectiveEyePos();
+        double horizDist = Math.hypot(target.x - eyePos.x, target.z - eyePos.z);
+        double deltaY = target.y - eyePos.y;
+        if (horizDist < 1.0E-4) {
+            return deltaY < 0.0 ? 85.0f : -85.0f;
         }
-        double d3 = -85.0;
-        double d4 = 89.9;
+        double lowPitch = -85.0;
+        double highPitch = 89.9;
         for (int i = 0; i < 30; ++i) {
-            double d5 = (d3 + d4) * 0.5;
-            double d6 = PhaseModule.simulatePearlYAtDist(d5, d);
-            if (d6 < d2) {
-                d4 = d5;
+            double midPitch = (lowPitch + highPitch) * 0.5;
+            double simY = PhaseModule.simulatePearlYAtDist(midPitch, horizDist);
+            if (simY < deltaY) {
+                highPitch = midPitch;
                 continue;
             }
-            d3 = d5;
+            lowPitch = midPitch;
         }
-        return (float)((d3 + d4) * 0.5);
+        return (float)((lowPitch + highPitch) * 0.5);
     }
 
-    private static double simulatePearlYAtDist(double d, double d2) {
-        double d3 = Math.toRadians(d);
-        double d4 = 1.5 * Math.cos(d3);
-        double d5 = -1.5 * Math.sin(d3);
-        double d6 = 0.0;
-        double d7 = 0.0;
+    private static double simulatePearlYAtDist(double pitchDeg, double targetDist) {
+        double pitchRad = Math.toRadians(pitchDeg);
+        double vx = 1.5 * Math.cos(pitchRad);
+        double vy = -1.5 * Math.sin(pitchRad);
+        double dist = 0.0;
+        double posY = 0.0;
         for (int i = 0; i < 100; ++i) {
-            double d8 = d6;
-            double d9 = d7;
-            d6 += d4;
-            d7 += d5;
-            if (d6 >= d2) {
-                double d10 = (d2 - d8) / (d6 - d8);
-                return d9 + (d7 - d9) * d10;
+            double prevDist = dist;
+            double prevY = posY;
+            dist += vx;
+            posY += vy;
+            if (dist >= targetDist) {
+                double fraction = (targetDist - prevDist) / (dist - prevDist);
+                return prevY + (posY - prevY) * fraction;
             }
-            d4 *= 0.99;
-            d5 = d5 * 0.99 - 0.03;
+            vx *= 0.99;
+            vy = vy * 0.99 - 0.03;
         }
-        return d7;
+        return posY;
     }
 
-    private boolean isFloorVoid(double d, double d2, double d3) {
+    private boolean isFloorVoid(double x, double y, double z) {
         if (PhaseModule.mc.level == null) {
             return false;
         }
-        int n = PhaseModule.mc.level.getMinY();
-        int n2 = (int)Math.floor(d2);
-        if (n2 < n) {
+        int minY = PhaseModule.mc.level.getMinY();
+        int startY = (int)Math.floor(y);
+        if (startY < minY) {
             return true;
         }
-        for (int i = n2; i >= n; --i) {
-            BlockPos blockPos = BlockPos.containing((double)d, (double)i, (double)d3);
+        for (int i = startY; i >= minY; --i) {
+            BlockPos blockPos = BlockPos.containing((double)x, (double)i, (double)z);
             BlockState blockState = PhaseModule.mc.level.getBlockState(blockPos);
             if (blockState.isAir() || blockState.getCollisionShape((BlockGetter)PhaseModule.mc.level, blockPos).isEmpty()) continue;
             return false;
@@ -471,39 +461,39 @@ extends Module {
         return true;
     }
 
-    private boolean isVoidHazard(Vec3 vec3, float f) {
+    private boolean isVoidHazard(Vec3 targetPos, float yaw) {
         if (PhaseModule.mc.player == null || PhaseModule.mc.level == null) {
             return false;
         }
-        double d = PhaseModule.mc.player.getX();
-        double d2 = PhaseModule.mc.player.getY();
-        double d3 = PhaseModule.mc.player.getZ();
-        int n = PhaseModule.mc.level.getMinY();
-        if (d2 < (double)n) {
+        double px = PhaseModule.mc.player.getX();
+        double py = PhaseModule.mc.player.getY();
+        double pz = PhaseModule.mc.player.getZ();
+        int minY = PhaseModule.mc.level.getMinY();
+        if (py < (double)minY) {
             return true;
         }
-        double d4 = Math.toRadians(f);
-        Vec3 vec32 = new Vec3(-Math.sin(d4), 0.0, Math.cos(d4)).normalize();
-        BlockPos blockPos = BlockPos.containing((double)vec3.x, (double)vec3.y, (double)vec3.z);
-        BlockPos blockPos2 = BlockPos.containing((double)(d + vec32.x * 0.5), (double)d2, (double)(d3 + vec32.z * 0.5));
-        boolean bl = !this.isFloorVoid((double)blockPos.getX() + 0.5, vec3.y, (double)blockPos.getZ() + 0.5);
-        boolean bl2 = !this.isFloorVoid((double)blockPos2.getX() + 0.5, d2, (double)blockPos2.getZ() + 0.5);
-        return !bl && !bl2;
+        double yawRad = Math.toRadians(yaw);
+        Vec3 dir = new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad)).normalize();
+        BlockPos targetBlock = BlockPos.containing((double)targetPos.x, (double)targetPos.y, (double)targetPos.z);
+        BlockPos stepBlock = BlockPos.containing((double)(px + dir.x * 0.5), (double)py, (double)(pz + dir.z * 0.5));
+        boolean targetHasFloor = !this.isFloorVoid((double)targetBlock.getX() + 0.5, targetPos.y, (double)targetBlock.getZ() + 0.5);
+        boolean stepHasFloor = !this.isFloorVoid((double)stepBlock.getX() + 0.5, py, (double)stepBlock.getZ() + 0.5);
+        return !targetHasFloor && !stepHasFloor;
     }
 
-    private Vec3 pipTarget(float f, boolean bl, boolean bl2, boolean bl3) {
-        Vec3 vec3 = !bl3 ? (bl ? this.calculateKingMCCrawlTarget(f) : this.calculateKingMCStandingTarget(f)) : (bl2 ? this.boundaryTarget(f) : this.calculateTargetPos());
-        if (this.antiVoid.getValue() && this.isVoidHazard(vec3, f)) {
-            Vec3 vec32 = this.calculateGrimSectorTarget();
-            if (!this.isVoidHazard(vec32, f)) {
-                return vec32;
+    private Vec3 pipTarget(float yaw, boolean isCrawling, boolean isStraight, boolean onBedrock) {
+        Vec3 target = !onBedrock ? (isCrawling ? this.calculateKingMCCrawlTarget(yaw) : this.calculateKingMCStandingTarget(yaw)) : (isStraight ? this.boundaryTarget(yaw) : this.calculateTargetPos());
+        if (this.antiVoid.getValue() && this.isVoidHazard(target, yaw)) {
+            Vec3 grimTarget = this.calculateGrimSectorTarget();
+            if (!this.isVoidHazard(grimTarget, yaw)) {
+                return grimTarget;
             }
-            Vec3 vec33 = bl2 ? this.boundaryTarget(f) : this.calculateTargetPos();
-            if (!this.isVoidHazard(vec33, f)) {
-                return vec33;
+            Vec3 fallbackTarget = isStraight ? this.boundaryTarget(yaw) : this.calculateTargetPos();
+            if (!this.isVoidHazard(fallbackTarget, yaw)) {
+                return fallbackTarget;
             }
         }
-        return vec3;
+        return target;
     }
 }
 

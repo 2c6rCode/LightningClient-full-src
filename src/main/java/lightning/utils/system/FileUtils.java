@@ -18,29 +18,29 @@ import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineEvent;
 
 public class FileUtils {
-    public static void resetFile(String string) throws IOException {
-        if (Files.exists(Paths.get(string, new String[0]), new LinkOption[0])) {
-            new File(string).delete();
+    public static void resetFile(String path) throws IOException {
+        if (Files.exists(Paths.get(path, new String[0]), new LinkOption[0])) {
+            new File(path).delete();
         }
-        Files.createFile(Paths.get(string, new String[0]), new FileAttribute[0]);
+        Files.createFile(Paths.get(path, new String[0]), new FileAttribute[0]);
     }
 
-    public static void createDirectory(String string) throws IOException {
-        if (!Files.exists(Paths.get(string, new String[0]), new LinkOption[0])) {
-            Files.createDirectories(Paths.get(string, new String[0]), new FileAttribute[0]);
+    public static void createDirectory(String path) throws IOException {
+        if (!Files.exists(Paths.get(path, new String[0]), new LinkOption[0])) {
+            Files.createDirectories(Paths.get(path, new String[0]), new FileAttribute[0]);
         }
     }
 
-    public static boolean fileExists(String string) {
-        return Files.exists(Paths.get(string, new String[0]), new LinkOption[0]);
+    public static boolean fileExists(String path) {
+        return Files.exists(Paths.get(path, new String[0]), new LinkOption[0]);
     }
 
-    public static void playSound(File file, float f) {
+    public static void playSound(File file, float volume) {
         if (file.exists()) {
             try {
                 Clip clip = AudioSystem.getClip();
                 clip.open(AudioSystem.getAudioInputStream(file));
-                ((FloatControl)clip.getControl(FloatControl.Type.MASTER_GAIN)).setValue(20.0f * (float)Math.log10(f));
+                ((FloatControl)clip.getControl(FloatControl.Type.MASTER_GAIN)).setValue(20.0f * (float)Math.log10(volume));
                 clip.start();
                 clip.addLineListener(lineEvent -> {
                     if (lineEvent.getType() == LineEvent.Type.STOP) {
@@ -58,7 +58,7 @@ public class FileUtils {
         List<String> list = new ArrayList<String>();
         if (file.exists()) {
             try (Stream<String> stream = Files.lines(Paths.get(file.getPath(), new String[0]));){
-                list = stream.filter(string -> !string.isEmpty()).toList();
+                list = stream.filter(line -> !line.isEmpty()).toList();
             }
             catch (Exception exception) {
                 // empty catch block

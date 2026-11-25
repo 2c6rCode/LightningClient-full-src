@@ -63,13 +63,13 @@ public abstract class CommandSuggestionsMixin {
     private void night$updateCommandInfo(CallbackInfo callbackInfo) {
         try {
             ParseResults parseResults;
-            String string = this.input.getValue();
-            String string2 = Night.COMMAND_MANAGER.getPrefix();
-            if (!string.startsWith(string2)) {
+            String inputText = this.input.getValue();
+            String prefix = Night.COMMAND_MANAGER.getPrefix();
+            if (!inputText.startsWith(prefix)) {
                 return;
             }
-            StringReader stringReader = new StringReader(string);
-            stringReader.setCursor(string2.length());
+            StringReader stringReader = new StringReader(inputText);
+            stringReader.setCursor(prefix.length());
             CommandDispatcher commandDispatcher = Night.COMMAND_MANAGER.getDispatcher();
             this.currentParse = parseResults = commandDispatcher.parse(stringReader, (Object)Night.COMMAND_MANAGER);
             if (this.suggestions == null || !this.keepSuggestions) {

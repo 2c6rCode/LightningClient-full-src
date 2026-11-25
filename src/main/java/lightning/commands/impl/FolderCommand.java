@@ -16,10 +16,10 @@ import net.minecraft.util.Util;
 public class FolderCommand
 extends Command {
     @Override
-    public void execute(String[] stringArray) {
-        File file = new File("Lightning");
-        if (file.exists()) {
-            Util.getPlatform().openFile(file);
+    public void execute(String[] args) {
+        File folder = new File("Lightning");
+        if (folder.exists()) {
+            Util.getPlatform().openFile(folder);
         } else {
             Night.CHAT_MANAGER.info("Could not find the client's configuration folder.");
         }

@@ -94,45 +94,44 @@ implements ISpeedModule {
             Night.WORLD_MANAGER.setTimerMultiplier(this.isDrivingTimer() ? this.timerMultiplier.getValue().floatValue() : 1.0f);
         }
         if (this.mode.getValue().equalsIgnoreCase("Grim")) {
-            int n;
-            boolean bl = SpeedModule.mc.player.isVisuallyCrawling() || SpeedModule.mc.player.getPose() == Pose.SWIMMING || SpeedModule.mc.player.getEyeHeight() < 1.0f || this.hasCeiling(SpeedModule.mc.player.getX(), SpeedModule.mc.player.getY(), SpeedModule.mc.player.getZ());
-            boolean bl2 = true;
-            if (bl) {
+            int nearbyEntities;
+            boolean lowProfile = SpeedModule.mc.player.isVisuallyCrawling() || SpeedModule.mc.player.getPose() == Pose.SWIMMING || SpeedModule.mc.player.getEyeHeight() < 1.0f || this.hasCeiling(SpeedModule.mc.player.getX(), SpeedModule.mc.player.getY(), SpeedModule.mc.player.getZ());
+            boolean canJump = true;
+            if (lowProfile) {
                 boolean hasCeiling = this.hasCeiling(SpeedModule.mc.player.getX(), SpeedModule.mc.player.getY(), SpeedModule.mc.player.getZ());
-                boolean bl3 = this.hasCeilingAhead();
-                if (!hasCeiling || !bl3) {
-                    bl2 = false;
+                boolean ceilingAhead = this.hasCeilingAhead();
+                if (!hasCeiling || !ceilingAhead) {
+                    canJump = false;
                 }
             }
-            if (!(bl2 && this.autoJump.getValue() && MovementUtils.isMoving() || !this.pressed)) {
+            if (!(canJump && this.autoJump.getValue() && MovementUtils.isMoving() || !this.pressed)) {
                 SpeedModule.mc.options.keyJump.setDown(false);
                 this.pressed = false;
             }
-            if (this.autoJump.getValue() && MovementUtils.isMoving() && SpeedModule.mc.player.onGround() && bl2) {
+            if (this.autoJump.getValue() && MovementUtils.isMoving() && SpeedModule.mc.player.onGround() && canJump) {
                 SpeedModule.mc.options.keyJump.setDown(true);
                 this.pressed = true;
                 ISprintModule iSprintModule = (ISprintModule)((Object)Night.MODULE_MANAGER.getModule("Sprint"));
-                n = iSprintModule != null && iSprintModule.isGrimCompensating() ? 1 : 0;
-                int n2 = n;
-                if (SpeedModule.mc.player.isSprinting() && n == 0) {
-                    float f = SpeedModule.mc.player.getYRot() * ((float)Math.PI / 180);
-                    double d = -Math.sin(f) * 0.2;
-                    double d2 = Math.cos(f) * 0.2;
-                    Vector2d vector2d = MovementUtils.forward(0.2);
-                    SpeedModule.mc.player.setDeltaMovement(SpeedModule.mc.player.getDeltaMovement().x - d + vector2d.x, SpeedModule.mc.player.getDeltaMovement().y, SpeedModule.mc.player.getDeltaMovement().z - d2 + vector2d.y);
+                boolean grimCompensating = iSprintModule != null && iSprintModule.isGrimCompensating();
+                if (SpeedModule.mc.player.isSprinting() && !grimCompensating) {
+                    float yawRad = SpeedModule.mc.player.getYRot() * ((float)Math.PI / 180);
+                    double vanillaX = -Math.sin(yawRad) * 0.2;
+                    double vanillaZ = Math.cos(yawRad) * 0.2;
+                    Vector2d strafeVec = MovementUtils.forward(0.2);
+                    SpeedModule.mc.player.setDeltaMovement(SpeedModule.mc.player.getDeltaMovement().x - vanillaX + strafeVec.x, SpeedModule.mc.player.getDeltaMovement().y, SpeedModule.mc.player.getDeltaMovement().z - vanillaZ + strafeVec.y);
                 }
             } else if (this.pressed) {
                 SpeedModule.mc.options.keyJump.setDown(false);
                 this.pressed = false;
             }
-            n = 0;
+            nearbyEntities = 0;
             for (Entity entity : SpeedModule.mc.level.entitiesForRendering()) {
                 if (entity == null || entity == SpeedModule.mc.player || !(entity instanceof LivingEntity) || EntityUtils.isGhost(entity) || Night.MODULE_MANAGER.getModule(FakePlayerModule.class).isToggled() && Night.MODULE_MANAGER.getModule(FakePlayerModule.class).getPlayer() == entity || entity instanceof ArmorStand || !((double)Mth.sqrt((float)((float)SpeedModule.mc.player.distanceToSqr(entity))) <= 1.5)) continue;
-                ++n;
+                ++nearbyEntities;
             }
-            if (n > 0) {
-                Vector2d vector2d = MovementUtils.forward(0.08 * (double)n);
-                SpeedModule.mc.player.setDeltaMovement(SpeedModule.mc.player.getDeltaMovement().x + vector2d.x, SpeedModule.mc.player.getDeltaMovement().y, SpeedModule.mc.player.getDeltaMovement().z + vector2d.y);
+            if (nearbyEntities > 0) {
+                Vector2d boostVec = MovementUtils.forward(0.08 * (double)nearbyEntities);
+                SpeedModule.mc.player.setDeltaMovement(SpeedModule.mc.player.getDeltaMovement().x + boostVec.x, SpeedModule.mc.player.getDeltaMovement().y, SpeedModule.mc.player.getDeltaMovement().z + boostVec.y);
             }
         }
     }
@@ -172,16 +171,16 @@ implements ISpeedModule {
                 this.speed = this.distance - this.distance / 159.0;
             }
             this.speed = Math.max(this.speed, MovementUtils.getPotionSpeed(MovementUtils.DEFAULT_SPEED));
-            boolean bl = SpeedModule.mc.player.input.keyPresses.forward() && !SpeedModule.mc.player.input.keyPresses.backward() && !SpeedModule.mc.player.input.keyPresses.left() && !SpeedModule.mc.player.input.keyPresses.right();
-            double d = MovementUtils.getPotionSpeed(this.mode.getValue().equalsIgnoreCase("StrafeStrict") || !bl ? 0.465 : 0.576);
-            double d2 = MovementUtils.getPotionSpeed(this.mode.getValue().equalsIgnoreCase("StrafeStrict") || !bl ? 0.44 : 0.57);
-            this.speed = Math.min(this.speed, this.ticks > 25 ? d : d2);
+            boolean forwardOnly = SpeedModule.mc.player.input.keyPresses.forward() && !SpeedModule.mc.player.input.keyPresses.backward() && !SpeedModule.mc.player.input.keyPresses.left() && !SpeedModule.mc.player.input.keyPresses.right();
+            double highSpeedCap = MovementUtils.getPotionSpeed(this.mode.getValue().equalsIgnoreCase("StrafeStrict") || !forwardOnly ? 0.465 : 0.576);
+            double lowSpeedCap = MovementUtils.getPotionSpeed(this.mode.getValue().equalsIgnoreCase("StrafeStrict") || !forwardOnly ? 0.44 : 0.57);
+            this.speed = Math.min(this.speed, this.ticks > 25 ? highSpeedCap : lowSpeedCap);
             if (this.ticks++ > 50) {
                 this.ticks = 0;
             }
-            Vector2d vector2d = MovementUtils.forward(this.speed);
-            playerMoveEvent.setMovement(new Vec3(vector2d.x, playerMoveEvent.getMovement().y, playerMoveEvent.getMovement().z));
-            playerMoveEvent.setMovement(new Vec3(playerMoveEvent.getMovement().x, playerMoveEvent.getMovement().y, vector2d.y));
+            Vector2d moveVec = MovementUtils.forward(this.speed);
+            playerMoveEvent.setMovement(new Vec3(moveVec.x, playerMoveEvent.getMovement().y, playerMoveEvent.getMovement().z));
+            playerMoveEvent.setMovement(new Vec3(playerMoveEvent.getMovement().x, playerMoveEvent.getMovement().y, moveVec.y));
             this.forward = SpeedModule.mc.player.input.getMoveVector().y;
             playerMoveEvent.setCancelled(true);
         }
@@ -191,12 +190,12 @@ implements ISpeedModule {
         if (BoostManager.INSTANCE == null) {
             return 0.0;
         }
-        double d = BoostManager.INSTANCE.getBoostSpeed(false);
-        if (d == 0.0) {
+        double boostSpeed = BoostManager.INSTANCE.getBoostSpeed(false);
+        if (boostSpeed == 0.0) {
             return 0.0;
         }
-        double d2 = d * this.boostMultiplier.getValue().doubleValue();
-        return Math.min(d2, this.boostCap.getValue().doubleValue());
+        double scaledBoost = boostSpeed * this.boostMultiplier.getValue().doubleValue();
+        return Math.min(scaledBoost, this.boostCap.getValue().doubleValue());
     }
 
     @Override
@@ -224,23 +223,23 @@ implements ISpeedModule {
         if (!this.useTimer.getValue()) {
             return false;
         }
-        boolean bl = MovementUtils.isMoving() && !SpeedModule.mc.player.isShiftKeyDown() && !SpeedModule.mc.player.isInWater() && SpeedModule.mc.player.fallDistance < 5.0;
-        return bl && (this.ticks > this.bypassThreshold.getValue().intValue() || !this.timerBypass.getValue());
+        boolean canDrive = MovementUtils.isMoving() && !SpeedModule.mc.player.isShiftKeyDown() && !SpeedModule.mc.player.isInWater() && SpeedModule.mc.player.fallDistance < 5.0;
+        return canDrive && (this.ticks > this.bypassThreshold.getValue().intValue() || !this.timerBypass.getValue());
     }
 
-    private boolean hasCeiling(double d, double d2, double d3) {
+    private boolean hasCeiling(double x, double y, double z) {
         if (SpeedModule.mc.level == null) {
             return false;
         }
-        BlockPos blockPos = BlockPos.containing((double)d, (double)(d2 + 1.0), (double)d3);
-        BlockState blockState = SpeedModule.mc.level.getBlockState(blockPos);
-        if (!blockState.isAir() && (blockState.isSolid() || blockState.blocksMotion() || !blockState.canBeReplaced())) {
+        BlockPos lowerPos = BlockPos.containing((double)x, (double)(y + 1.0), (double)z);
+        BlockState lowerState = SpeedModule.mc.level.getBlockState(lowerPos);
+        if (!lowerState.isAir() && (lowerState.isSolid() || lowerState.blocksMotion() || !lowerState.canBeReplaced())) {
             return true;
         }
-        BlockPos blockPos2 = BlockPos.containing((double)d, (double)(d2 + 1.2), (double)d3);
-        if (!blockPos2.equals((Object)blockPos)) {
-            BlockState blockState2 = SpeedModule.mc.level.getBlockState(blockPos2);
-            return !blockState2.isAir() && (blockState2.isSolid() || blockState2.blocksMotion() || !blockState2.canBeReplaced());
+        BlockPos upperPos = BlockPos.containing((double)x, (double)(y + 1.2), (double)z);
+        if (!upperPos.equals((Object)lowerPos)) {
+            BlockState upperState = SpeedModule.mc.level.getBlockState(upperPos);
+            return !upperState.isAir() && (upperState.isSolid() || upperState.blocksMotion() || !upperState.canBeReplaced());
         }
         return false;
     }
@@ -249,22 +248,22 @@ implements ISpeedModule {
         if (SpeedModule.mc.player == null || SpeedModule.mc.level == null) {
             return false;
         }
-        double d = SpeedModule.mc.player.getDeltaMovement().x;
-        double d2 = SpeedModule.mc.player.getDeltaMovement().z;
-        double d3 = Math.hypot(d, d2);
-        if (d3 > 0.01) {
-            double d4 = Math.min(d3, 0.35);
-            double d5 = SpeedModule.mc.player.getX() + d / d3 * d4;
-            double d6 = SpeedModule.mc.player.getZ() + d2 / d3 * d4;
-            if (!this.hasCeiling(d5, SpeedModule.mc.player.getY(), d6)) {
+        double motionX = SpeedModule.mc.player.getDeltaMovement().x;
+        double motionZ = SpeedModule.mc.player.getDeltaMovement().z;
+        double speedMag = Math.hypot(motionX, motionZ);
+        if (speedMag > 0.01) {
+            double lookAhead = Math.min(speedMag, 0.35);
+            double checkX = SpeedModule.mc.player.getX() + motionX / speedMag * lookAhead;
+            double checkZ = SpeedModule.mc.player.getZ() + motionZ / speedMag * lookAhead;
+            if (!this.hasCeiling(checkX, SpeedModule.mc.player.getY(), checkZ)) {
                 return false;
             }
         }
         if (MovementUtils.isMoving()) {
-            Vector2d vector2d = MovementUtils.forward(0.3);
-            double d7 = SpeedModule.mc.player.getX() + vector2d.x;
-            double d8 = SpeedModule.mc.player.getZ() + vector2d.y;
-            if (!this.hasCeiling(d7, SpeedModule.mc.player.getY(), d8)) {
+            Vector2d forwardVec = MovementUtils.forward(0.3);
+            double checkX = SpeedModule.mc.player.getX() + forwardVec.x;
+            double checkZ = SpeedModule.mc.player.getZ() + forwardVec.y;
+            if (!this.hasCeiling(checkX, SpeedModule.mc.player.getY(), checkZ)) {
                 return false;
             }
         }

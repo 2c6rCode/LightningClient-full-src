@@ -13,14 +13,14 @@ import lightning.utils.chat.ChatUtils;
 public class GrabCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        return stringArray.length == 0 ? List.of("ip", "coords", "name") : List.of();
+    public List<String> getSuggestions(String[] args) {
+        return args.length == 0 ? List.of("ip", "coords", "name") : List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 1) {
-            switch (stringArray[0]) {
+    public void execute(String[] args) {
+        if (args.length == 1) {
+            switch (args[0]) {
                 case "ip": {
                     this.copy(Night.SERVER_MANAGER.getServer());
                     break;
@@ -43,9 +43,9 @@ extends Command {
         }
     }
 
-    private void copy(String string) {
-        GrabCommand.mc.keyboardHandler.setClipboard(string);
-        Night.CHAT_MANAGER.tagged("Successfully copied " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " to your clipboard.", this.getTag(), this.getName());
+    private void copy(String text) {
+        GrabCommand.mc.keyboardHandler.setClipboard(text);
+        Night.CHAT_MANAGER.tagged("Successfully copied " + String.valueOf(ChatUtils.getPrimary()) + text + String.valueOf(ChatUtils.getSecondary()) + " to your clipboard.", this.getTag(), this.getName());
     }
 }
 

@@ -57,12 +57,10 @@ extends Module {
      */
     @SubscribeEvent
     public void onPacketReceive(PacketReceiveEvent packetReceiveEvent) {
-        ArrayList<Chorus> arrayList;
         if (this.getNull()) {
             return;
         }
-        ArrayList<Chorus> arrayList2 = arrayList = this.chorusList;
-        synchronized (arrayList2) {
+        synchronized (this.chorusList) {
             ClientboundSoundPacket clientboundSoundPacket;
             SoundEvent soundEvent;
             Packet<?> packet = packetReceiveEvent.getPacket();
@@ -85,8 +83,8 @@ extends Module {
             if (entity instanceof ItemEntity itemEntity) {
                 if (this.items.getValue() && this.itemAllowed(itemEntity.getItem().getItem())) {
                     Vec3 renderPos = EntityUtils.getRenderPos(itemEntity, renderWorldEvent.getTickDelta());
-                    String string = itemEntity.getName().getString() + (itemEntity.getItem().getCount() > 1 ? " x" + itemEntity.getItem().getCount() : "");
-                    Renderer3D.renderScaledText(renderWorldEvent.getMatrices(), string, renderPos.x, renderPos.y, renderPos.z, this.scale.getValue().intValue(), false, this.color.getColor(), this.glow.getValue());
+                    String itemText = itemEntity.getName().getString() + (itemEntity.getItem().getCount() > 1 ? " x" + itemEntity.getItem().getCount() : "");
+                    Renderer3D.renderScaledText(renderWorldEvent.getMatrices(), itemText, renderPos.x, renderPos.y, renderPos.z, this.scale.getValue().intValue(), false, this.color.getColor(), this.glow.getValue());
                     continue;
                 }
             }
@@ -95,22 +93,21 @@ extends Module {
             Renderer3D.renderScaledText(renderWorldEvent.getMatrices(), pearl.getOwner().getName().getString(), renderPos.x, renderPos.y, renderPos.z, this.scale.getValue().intValue(), false, this.color.getColor(), this.glow.getValue());
         }
         if (this.chorus.getValue()) {
-            ArrayList<Chorus> arrayList = this.chorusList;
-            synchronized (arrayList) {
+            synchronized (this.chorusList) {
                 this.chorusList.removeIf(chorus -> System.currentTimeMillis() - chorus.time >= 1500L);
-                for (Chorus chorus2 : this.chorusList) {
-                    Renderer3D.renderScaledText(renderWorldEvent.getMatrices(), chorus2.subtitle, chorus2.pos.x, chorus2.pos.y, chorus2.pos.z, this.scale.getValue().intValue(), false, this.color.getColor(), this.glow.getValue());
+                for (Chorus entry : this.chorusList) {
+                    Renderer3D.renderScaledText(renderWorldEvent.getMatrices(), entry.subtitle, entry.pos.x, entry.pos.y, entry.pos.z, this.scale.getValue().intValue(), false, this.color.getColor(), this.glow.getValue());
                 }
             }
         }
     }
 
     private boolean itemAllowed(Item item) {
-        boolean bl = this.itemWhitelist.isWhitelistContains(item);
+        boolean inWhitelist = this.itemWhitelist.isWhitelistContains(item);
         return switch (this.itemListMode.getValue()) {
-            case "WhiteList" -> bl;
+            case "WhiteList" -> inWhitelist;
             case "BlackList" -> {
-                if (!bl) {
+                if (!inWhitelist) {
                     yield true;
                 }
                 yield false;
@@ -124,11 +121,11 @@ extends Module {
         private final Vec3 pos;
         private final long time;
 
-        public Chorus(TextESPModule textESPModule, TextESPModule textESPModule2, String string, Vec3 vec3) {
+        public Chorus(TextESPModule textESPModule, TextESPModule owner, String subtitle, Vec3 pos) {
             Objects.requireNonNull(textESPModule);
-            Objects.requireNonNull(textESPModule2);
-            this.subtitle = string;
-            this.pos = vec3;
+            Objects.requireNonNull(owner);
+            this.subtitle = subtitle;
+            this.pos = pos;
             this.time = System.currentTimeMillis();
         }
     }

@@ -102,7 +102,7 @@ public abstract class ChatHudMixin {
     }
 
     @Inject(method={"extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/gui/Font;IIILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;Z)V"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$preventChatOverGui(GuiGraphicsExtractor guiGraphicsExtractor, Font font, int n, int n2, int n3, ChatComponent.DisplayMode displayMode, boolean bl, CallbackInfo callbackInfo) {
+    private void night$preventChatOverGui(GuiGraphicsExtractor guiGraphicsExtractor, Font font, int currentTick, int mouseX, int mouseY, ChatComponent.DisplayMode displayMode, boolean isChatFocused, CallbackInfo callbackInfo) {
         try {
             Minecraft minecraft = Minecraft.getInstance();
             if (minecraft.gui != null && minecraft.gui.screen() != null && !(minecraft.gui.screen() instanceof ChatScreen) && !ChatManager.isInsideHudExtractChat) {
@@ -132,11 +132,11 @@ public abstract class ChatHudMixin {
     @Redirect(method={"extractRenderState(Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;IILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;)V"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;updatePose(Ljava/util/function/Consumer;)V")})
     private void night$applyOffset(ChatComponent.ChatGraphicsAccess chatGraphicsAccess, Consumer<Matrix3x2f> consumer) {
         BetterChatModule betterChatModule = (BetterChatModule)Night.MODULE_MANAGER.getModule(BetterChatModule.class);
-        int n = betterChatModule.isToggled() ? betterChatModule.offset.getValue().intValue() : 0;
+        int xOffset = betterChatModule.isToggled() ? betterChatModule.offset.getValue().intValue() : 0;
         chatGraphicsAccess.updatePose(matrix3x2f -> {
             consumer.accept((Matrix3x2f)matrix3x2f);
-            if (n != 0) {
-                matrix3x2f.translate((float)n, 0.0f);
+            if (xOffset != 0) {
+                matrix3x2f.translate((float)xOffset, 0.0f);
             }
         });
     }
@@ -164,36 +164,36 @@ public abstract class ChatHudMixin {
     }
 
     @Redirect(method={"lambda$extractRenderState$1(IILnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;IFLnet/minecraft/client/multiplayer/chat/GuiMessage$Line;IF)V"}, at={@At(value="INVOKE", target="Lnet/minecraft/util/ARGB;black(F)I")})
-    private static int night$backgroundColor(float f) {
+    private static int night$backgroundColor(float alpha) {
         BetterChatModule betterChatModule = (BetterChatModule)Night.MODULE_MANAGER.getModule(BetterChatModule.class);
         if (betterChatModule.isToggled() && betterChatModule.background.getValue().equalsIgnoreCase("Custom")) {
-            return ARGB.color((int)Math.round(f * 255.0f), (int)(betterChatModule.color.getColor().getRGB() & 0xFFFFFF));
+            return ARGB.color((int)Math.round(alpha * 255.0f), (int)(betterChatModule.color.getColor().getRGB() & 0xFFFFFF));
         }
-        return ARGB.black((float)f);
+        return ARGB.black((float)alpha);
     }
 
     @ModifyArgs(method={"addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/multiplayer/chat/GuiMessageSource;Lnet/minecraft/client/multiplayer/chat/GuiMessageTag;)V"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/multiplayer/chat/GuiMessage;<init>(ILnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/multiplayer/chat/GuiMessageSource;Lnet/minecraft/client/multiplayer/chat/GuiMessageTag;)V")})
     private void addMessage(Args args, Component component, MessageSignature messageSignature, GuiMessageSource guiMessageSource, GuiMessageTag guiMessageTag) {
         try {
-            String string;
-            boolean bl;
-            String string2;
+            String messageText;
+            boolean isSender;
+            String playerName;
             BetterChatModule betterChatModule = (BetterChatModule)Night.MODULE_MANAGER.getModule(BetterChatModule.class);
             if (!betterChatModule.isToggled()) {
                 return;
             }
-            Component component2 = component;
+            Component modifiedComponent = component;
             Minecraft minecraft = Minecraft.getInstance();
-            if (betterChatModule.highlight.getValue() && minecraft.player != null && (string2 = minecraft.player.getGameProfile().name()) != null && !string2.isEmpty() && !(bl = ChatHudMixin.night$isSender(string = component.getString(), string2)) && ChatHudMixin.night$containsWord(string.toLowerCase(), string2.toLowerCase())) {
+            if (betterChatModule.highlight.getValue() && minecraft.player != null && (playerName = minecraft.player.getGameProfile().name()) != null && !playerName.isEmpty() && !(isSender = ChatHudMixin.night$isSender(messageText = component.getString(), playerName)) && ChatHudMixin.night$containsWord(messageText.toLowerCase(), playerName.toLowerCase())) {
                 if (betterChatModule.highlightSound.getValue()) {
                     minecraft.player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                 }
-                component2 = ChatHudMixin.night$highlightMessage(component2, string2, betterChatModule.highlightColor.getColor());
+                modifiedComponent = ChatHudMixin.night$highlightMessage(modifiedComponent, playerName, betterChatModule.highlightColor.getColor());
             }
             if (betterChatModule.timestamps.getValue()) {
-                component2 = Component.literal((String)"").append((Component)Component.literal((String)(String.valueOf(FormattingUtils.getFormatting((String)((CommandsModule)Night.MODULE_MANAGER.getModule(CommandsModule.class)).secondaryWatermarkColor.getValue())) + betterChatModule.opening.getValue() + String.valueOf(FormattingUtils.getFormatting((String)((CommandsModule)Night.MODULE_MANAGER.getModule(CommandsModule.class)).primaryWatermarkColor.getValue())) + new SimpleDateFormat("HH:mm").format(new Date()) + String.valueOf(FormattingUtils.getFormatting((String)((CommandsModule)Night.MODULE_MANAGER.getModule(CommandsModule.class)).secondaryWatermarkColor.getValue())) + betterChatModule.closing.getValue() + String.valueOf(ChatFormatting.RESET) + " "))).append(component2);
+                modifiedComponent = Component.literal((String)"").append((Component)Component.literal((String)(String.valueOf(FormattingUtils.getFormatting((String)((CommandsModule)Night.MODULE_MANAGER.getModule(CommandsModule.class)).secondaryWatermarkColor.getValue())) + betterChatModule.opening.getValue() + String.valueOf(FormattingUtils.getFormatting((String)((CommandsModule)Night.MODULE_MANAGER.getModule(CommandsModule.class)).primaryWatermarkColor.getValue())) + new SimpleDateFormat("HH:mm").format(new Date()) + String.valueOf(FormattingUtils.getFormatting((String)((CommandsModule)Night.MODULE_MANAGER.getModule(CommandsModule.class)).secondaryWatermarkColor.getValue())) + betterChatModule.closing.getValue() + String.valueOf(ChatFormatting.RESET) + " "))).append(modifiedComponent);
             }
-            args.set(1, (Object)component2);
+            args.set(1, (Object)modifiedComponent);
             return;
         }
         catch (NullPointerException nullPointerException) {
@@ -201,83 +201,83 @@ public abstract class ChatHudMixin {
         }
     }
 
-    private static boolean night$isSender(String string, String string2) {
-        String string3;
-        int n;
-        if (string == null || string2 == null || string2.isEmpty()) {
+    private static boolean night$isSender(String message, String playerName) {
+        String prefixSubstring;
+        int closeBracketIdx;
+        if (message == null || playerName == null || playerName.isEmpty()) {
             return false;
         }
-        String string4 = string.toLowerCase();
-        String string5 = string2.toLowerCase();
-        if (string4.startsWith("you whisper to") || string4.startsWith("to ")) {
+        String lowerMessage = message.toLowerCase();
+        String lowerPlayerName = playerName.toLowerCase();
+        if (lowerMessage.startsWith("you whisper to") || lowerMessage.startsWith("to ")) {
             return true;
         }
-        int n2 = -1;
-        if (string.startsWith("<") && (n = string.indexOf(62)) != -1) {
-            n2 = n;
+        int separatorIdx = -1;
+        if (message.startsWith("<") && (closeBracketIdx = message.indexOf(62)) != -1) {
+            separatorIdx = closeBracketIdx;
         }
-        if (n2 == -1) {
-            String[] stringArray = new String[]{": ", " \u00bb ", " > ", " -> ", ":"};
-            for (String string6 : stringArray) {
-                int n3 = string.indexOf(string6);
-                if (n3 == -1 || n2 != -1 && n3 >= n2) continue;
-                n2 = n3;
+        if (separatorIdx == -1) {
+            String[] separators = new String[]{": ", " \u00bb ", " > ", " -> ", ":"};
+            for (String separator : separators) {
+                int idx = message.indexOf(separator);
+                if (idx == -1 || separatorIdx != -1 && idx >= separatorIdx) continue;
+                separatorIdx = idx;
             }
         }
-        return n2 != -1 && ChatHudMixin.night$containsWord((string3 = string.substring(0, n2)).toLowerCase(), string5);
+        return separatorIdx != -1 && ChatHudMixin.night$containsWord((prefixSubstring = message.substring(0, separatorIdx)).toLowerCase(), lowerPlayerName);
     }
 
-    private static boolean night$containsWord(String string, String string2) {
-        if (string == null || string2 == null) {
+    private static boolean night$containsWord(String text, String word) {
+        if (text == null || word == null) {
             return false;
         }
-        int n = 0;
-        while ((n = string.indexOf(string2, n)) != -1) {
-            boolean bl = n == 0 || !ChatHudMixin.night$isWordChar(string.charAt(n - 1));
-            boolean bl2 = n + string2.length() == string.length() || !ChatHudMixin.night$isWordChar(string.charAt(n + string2.length()));
-            boolean bl3 = bl2;
-            if (bl && bl2) {
+        int idx = 0;
+        while ((idx = text.indexOf(word, idx)) != -1) {
+            boolean startBoundary = idx == 0 || !ChatHudMixin.night$isWordChar(text.charAt(idx - 1));
+            boolean endBoundary = idx + word.length() == text.length() || !ChatHudMixin.night$isWordChar(text.charAt(idx + word.length()));
+            boolean unusedEndBoundary = endBoundary;
+            if (startBoundary && endBoundary) {
                 return true;
             }
-            n += string2.length();
+            idx += word.length();
         }
         return false;
     }
 
-    private static boolean night$isWordChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
+    private static boolean night$isWordChar(char ch) {
+        return Character.isLetterOrDigit(ch) || ch == '_';
     }
 
-    private static Component night$highlightMessage(Component component, String string, Color color) {
+    private static Component night$highlightMessage(Component component, String targetWord, Color color) {
         TextColor textColor = TextColor.fromRgb((int)(color.getRGB() & 0xFFFFFF));
-        Style style = Style.EMPTY.withColor(textColor);
+        Style highlightStyle = Style.EMPTY.withColor(textColor);
         MutableComponent mutableComponent = Component.empty();
-        component.visit((style2, string2) -> {
-            if (string2 == null || string2.isEmpty()) {
+        component.visit((partStyle, partText) -> {
+            if (partText == null || partText.isEmpty()) {
                 return Optional.empty();
             }
-            String string3 = string2.toLowerCase();
-            String string4 = string.toLowerCase();
-            int n = 0;
-            while (n < string2.length()) {
-                int n2 = string3.indexOf(string4, n);
-                if (n2 == -1) {
-                    mutableComponent.append((Component)Component.literal((String)string2.substring(n)).withStyle(style2));
+            String lowerPart = partText.toLowerCase();
+            String lowerTarget = targetWord.toLowerCase();
+            int pos = 0;
+            while (pos < partText.length()) {
+                int matchIdx = lowerPart.indexOf(lowerTarget, pos);
+                if (matchIdx == -1) {
+                    mutableComponent.append((Component)Component.literal((String)partText.substring(pos)).withStyle(partStyle));
                     break;
                 }
-                boolean bl = n2 == 0 || !ChatHudMixin.night$isWordChar(string2.charAt(n2 - 1));
-                boolean bl2 = n2 + string4.length() == string2.length() || !ChatHudMixin.night$isWordChar(string2.charAt(n2 + string4.length()));
-                boolean bl3 = bl2;
-                if (bl && bl2) {
-                    if (n2 > n) {
-                        mutableComponent.append((Component)Component.literal((String)string2.substring(n, n2)).withStyle(style2));
+                boolean startBoundary = matchIdx == 0 || !ChatHudMixin.night$isWordChar(partText.charAt(matchIdx - 1));
+                boolean endBoundary = matchIdx + lowerTarget.length() == partText.length() || !ChatHudMixin.night$isWordChar(partText.charAt(matchIdx + lowerTarget.length()));
+                boolean unusedEndBoundary = endBoundary;
+                if (startBoundary && endBoundary) {
+                    if (matchIdx > pos) {
+                        mutableComponent.append((Component)Component.literal((String)partText.substring(pos, matchIdx)).withStyle(partStyle));
                     }
-                    mutableComponent.append((Component)Component.literal((String)string2.substring(n2, n2 + string4.length())).withStyle(style));
-                    n = n2 + string4.length();
+                    mutableComponent.append((Component)Component.literal((String)partText.substring(matchIdx, matchIdx + lowerTarget.length())).withStyle(highlightStyle));
+                    pos = matchIdx + lowerTarget.length();
                     continue;
                 }
-                mutableComponent.append((Component)Component.literal((String)string2.substring(n, n2 + 1)).withStyle(style2));
-                n = n2 + 1;
+                mutableComponent.append((Component)Component.literal((String)partText.substring(pos, matchIdx + 1)).withStyle(partStyle));
+                pos = matchIdx + 1;
             }
             return Optional.empty();
         }, Style.EMPTY);

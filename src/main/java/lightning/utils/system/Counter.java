@@ -13,7 +13,7 @@ public class Counter {
     }
 
     public int getCount() {
-        this.count.removeIf(l -> l < System.currentTimeMillis());
+        this.count.removeIf(expiry -> expiry < System.currentTimeMillis());
         return this.count.size();
     }
 

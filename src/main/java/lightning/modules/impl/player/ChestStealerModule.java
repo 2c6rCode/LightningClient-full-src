@@ -77,9 +77,9 @@ extends Module {
 
     @SubscribeEvent
     public void onTick(TickEvent tickEvent) {
-        int n;
-        int n2;
-        long l;
+        int processed;
+        int containerSlots;
+        long now;
         if (ChestStealerModule.mc.player == null || ChestStealerModule.mc.level == null || ChestStealerModule.mc.gameMode == null) {
             return;
         }
@@ -92,16 +92,16 @@ extends Module {
         if (!ChestStealerModule.mc.player.containerMenu.getCarried().isEmpty()) {
             return;
         }
-        int n3 = ChestStealerModule.mc.player.containerMenu.containerId;
-        if (n3 != this.lastContainerId) {
-            this.lastContainerId = n3;
+        int containerId = ChestStealerModule.mc.player.containerMenu.containerId;
+        if (containerId != this.lastContainerId) {
+            this.lastContainerId = containerId;
             this.taskStep = 0;
             this.autoStealStep = 0;
             this.autoDumpStep = 0;
             this.autoDropStep = 0;
             this.activeTask = Task.NONE;
         }
-        if ((l = System.currentTimeMillis()) - RekitModule.lastContainerActionMs < 200L || l - InventorySorterModule.lastContainerActionMs < 200L) {
+        if ((now = System.currentTimeMillis()) - RekitModule.lastContainerActionMs < 200L || now - InventorySorterModule.lastContainerActionMs < 200L) {
             return;
         }
         if (this.ticks < this.delay.getValue().intValue()) {
@@ -109,21 +109,21 @@ extends Module {
             return;
         }
         this.ticks = 0;
-        int n4 = this.actionsPerTick.getValue().intValue();
+        int maxActions = this.actionsPerTick.getValue().intValue();
         if (this.activeTask != Task.NONE) {
-            boolean bl = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
-            boolean bl2 = ChestStealerModule.mc.gui.screen() instanceof InventoryScreen;
-            if (!bl && !bl2) {
+            boolean inContainer = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
+            boolean inInventory = ChestStealerModule.mc.gui.screen() instanceof InventoryScreen;
+            if (!inContainer && !inInventory) {
                 this.activeTask = Task.NONE;
                 this.taskStep = 0;
                 return;
             }
             switch (this.activeTask.ordinal()) {
                 case 1: {
-                    if (bl) {
-                        int n5 = ChestStealerModule.mc.player.containerMenu.slots.size() - 36;
-                        this.taskStep += this.processStealStep(this.stealMode.getValue(), this.stealWhitelist, n4, this.taskStep);
-                        if (this.taskStep < n5) break;
+                    if (inContainer) {
+                        int totalContainerSlots = ChestStealerModule.mc.player.containerMenu.slots.size() - 36;
+                        this.taskStep += this.processStealStep(this.stealMode.getValue(), this.stealWhitelist, maxActions, this.taskStep);
+                        if (this.taskStep < totalContainerSlots) break;
                         this.activeTask = Task.NONE;
                         this.taskStep = 0;
                         break;
@@ -133,8 +133,8 @@ extends Module {
                     break;
                 }
                 case 2: {
-                    if (bl) {
-                        this.taskStep += this.processDumpStep(this.dumpMode.getValue(), this.dumpWhitelist, n4, this.taskStep);
+                    if (inContainer) {
+                        this.taskStep += this.processDumpStep(this.dumpMode.getValue(), this.dumpWhitelist, maxActions, this.taskStep);
                         if (this.taskStep < 36) break;
                         this.activeTask = Task.NONE;
                         this.taskStep = 0;
@@ -145,11 +145,10 @@ extends Module {
                     break;
                 }
                 case 3: {
-                    boolean bl3 = bl;
-                    int n6 = bl3 ? ChestStealerModule.mc.player.containerMenu.slots.size() - 36 : 0;
-                    int n7 = n6 + 36;
-                    this.taskStep += this.processDropStep(this.dropMode.getValue(), this.dropWhitelist, n4, this.taskStep);
-                    if (this.taskStep < n7) break;
+                    int containerOffset = inContainer ? ChestStealerModule.mc.player.containerMenu.slots.size() - 36 : 0;
+                    int totalDropSlots = containerOffset + 36;
+                    this.taskStep += this.processDropStep(this.dropMode.getValue(), this.dropWhitelist, maxActions, this.taskStep);
+                    if (this.taskStep < totalDropSlots) break;
                     this.activeTask = Task.NONE;
                     this.taskStep = 0;
                 }
@@ -159,32 +158,31 @@ extends Module {
         if (this.buttonMode.getValue()) {
             return;
         }
-        boolean bl = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
-        boolean bl4 = bl;
-        if (bl && this.ignoreCustomName.getValue() && this.hasCustomContainerTitle() && !(ChestStealerModule.mc.player.containerMenu instanceof ShulkerBoxMenu)) {
+        boolean inContainer = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
+        if (inContainer && this.ignoreCustomName.getValue() && this.hasCustomContainerTitle() && !(ChestStealerModule.mc.player.containerMenu instanceof ShulkerBoxMenu)) {
             return;
         }
-        if (this.steal.getValue() && bl && n4 > 0) {
-            n2 = ChestStealerModule.mc.player.containerMenu.slots.size() - 36;
-            n = this.processStealStep(this.stealMode.getValue(), this.stealWhitelist, n4, this.autoStealStep);
-            this.autoStealStep += n;
-            if (this.autoStealStep >= n2) {
+        if (this.steal.getValue() && inContainer && maxActions > 0) {
+            containerSlots = ChestStealerModule.mc.player.containerMenu.slots.size() - 36;
+            processed = this.processStealStep(this.stealMode.getValue(), this.stealWhitelist, maxActions, this.autoStealStep);
+            this.autoStealStep += processed;
+            if (this.autoStealStep >= containerSlots) {
                 this.autoStealStep = 0;
             }
         }
-        if (this.dump.getValue() && bl && n4 > 0) {
-            n = this.processDumpStep(this.dumpMode.getValue(), this.dumpWhitelist, n4, this.autoDumpStep);
-            this.autoDumpStep += n;
+        if (this.dump.getValue() && inContainer && maxActions > 0) {
+            processed = this.processDumpStep(this.dumpMode.getValue(), this.dumpWhitelist, maxActions, this.autoDumpStep);
+            this.autoDumpStep += processed;
             if (this.autoDumpStep >= 36) {
                 this.autoDumpStep = 0;
             }
         }
-        if (this.drop.getValue() && n4 > 0) {
-            n2 = bl ? ChestStealerModule.mc.player.containerMenu.slots.size() - 36 : 0;
-            n = n2 + 36;
-            int n8 = this.processDropStep(this.dropMode.getValue(), this.dropWhitelist, n4, this.autoDropStep);
-            this.autoDropStep += n8;
-            if (this.autoDropStep >= n) {
+        if (this.drop.getValue() && maxActions > 0) {
+            containerSlots = inContainer ? ChestStealerModule.mc.player.containerMenu.slots.size() - 36 : 0;
+            int totalSlots = containerSlots + 36;
+            int dropped = this.processDropStep(this.dropMode.getValue(), this.dropWhitelist, maxActions, this.autoDropStep);
+            this.autoDropStep += dropped;
+            if (this.autoDropStep >= totalSlots) {
                 this.autoDropStep = 0;
             }
         }
@@ -227,7 +225,7 @@ extends Module {
         return !(component.getContents() instanceof TranslatableContents);
     }
 
-    private boolean canAct(boolean bl) {
+    private boolean canAct(boolean requireScreen) {
         if (ChestStealerModule.mc.player == null || ChestStealerModule.mc.level == null || ChestStealerModule.mc.gameMode == null) {
             return false;
         }
@@ -240,112 +238,112 @@ extends Module {
         if (!ChestStealerModule.mc.player.containerMenu.getCarried().isEmpty()) {
             return false;
         }
-        if (bl) {
-            boolean bl2 = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
-            boolean bl3 = ChestStealerModule.mc.gui.screen() instanceof InventoryScreen;
-            if (!bl2 && !bl3) {
+        if (requireScreen) {
+            boolean inContainer = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
+            boolean inInventory = ChestStealerModule.mc.gui.screen() instanceof InventoryScreen;
+            if (!inContainer && !inInventory) {
                 return false;
             }
         }
         return true;
     }
 
-    private int processStealStep(String string, WhitelistSetting whitelistSetting, int n, int n2) {
-        int n3;
+    private int processStealStep(String filterMode, WhitelistSetting whitelistSetting, int maxActions, int startSlot) {
+        int slot;
         if (ChestStealerModule.mc.gui.screen() instanceof InventoryScreen) {
             return 0;
         }
-        int n4 = ChestStealerModule.mc.player.containerMenu.containerId;
-        int n5 = ChestStealerModule.mc.player.containerMenu.slots.size() - 36;
-        int n6 = 0;
-        for (n3 = n2; n3 < n5 && n6 < n; ++n3) {
-            ItemStack itemStack = ((Slot)ChestStealerModule.mc.player.containerMenu.slots.get(n3)).getItem();
-            if (itemStack.isEmpty() || !this.matches(itemStack, string, whitelistSetting)) continue;
-            this.quickMove(n4, n3);
-            ++n6;
+        int containerId = ChestStealerModule.mc.player.containerMenu.containerId;
+        int containerSlots = ChestStealerModule.mc.player.containerMenu.slots.size() - 36;
+        int moved = 0;
+        for (slot = startSlot; slot < containerSlots && moved < maxActions; ++slot) {
+            ItemStack itemStack = ((Slot)ChestStealerModule.mc.player.containerMenu.slots.get(slot)).getItem();
+            if (itemStack.isEmpty() || !this.matches(itemStack, filterMode, whitelistSetting)) continue;
+            this.quickMove(containerId, slot);
+            ++moved;
         }
-        return Math.max(1, n3 - n2);
+        return Math.max(1, slot - startSlot);
     }
 
-    private int processDumpStep(String string, WhitelistSetting whitelistSetting, int n, int n2) {
-        int n3;
+    private int processDumpStep(String filterMode, WhitelistSetting whitelistSetting, int maxActions, int startSlot) {
+        int invSlot;
         if (ChestStealerModule.mc.gui.screen() instanceof InventoryScreen) {
             return 0;
         }
-        int n4 = ChestStealerModule.mc.player.containerMenu.containerId;
-        int n5 = 0;
-        for (n3 = n2; n3 < 36 && n5 < n; ++n3) {
-            int n6;
+        int containerId = ChestStealerModule.mc.player.containerMenu.containerId;
+        int moved = 0;
+        for (invSlot = startSlot; invSlot < 36 && moved < maxActions; ++invSlot) {
+            int handlerSlot;
             ItemStack itemStack;
-            if (!this.inInteractRange(n3) || (itemStack = ChestStealerModule.mc.player.getInventory().getItem(n3)).isEmpty() || !this.matches(itemStack, string, whitelistSetting) || (n6 = this.invToHandlerSlot(n3)) < 0) continue;
-            this.quickMove(n4, n6);
-            ++n5;
+            if (!this.inInteractRange(invSlot) || (itemStack = ChestStealerModule.mc.player.getInventory().getItem(invSlot)).isEmpty() || !this.matches(itemStack, filterMode, whitelistSetting) || (handlerSlot = this.invToHandlerSlot(invSlot)) < 0) continue;
+            this.quickMove(containerId, handlerSlot);
+            ++moved;
         }
-        return Math.max(1, n3 - n2);
+        return Math.max(1, invSlot - startSlot);
     }
 
-    private int processDropStep(String string, WhitelistSetting whitelistSetting, int n, int n2) {
-        int n3;
-        int n4 = ChestStealerModule.mc.player.containerMenu.containerId;
-        boolean bl = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
-        int n5 = bl ? ChestStealerModule.mc.player.containerMenu.slots.size() - 36 : 0;
-        int n6 = n5 + 36;
-        int n7 = 0;
-        for (n3 = n2; n3 < n6 && n7 < n; ++n3) {
-            int n8;
+    private int processDropStep(String filterMode, WhitelistSetting whitelistSetting, int maxActions, int startSlot) {
+        int step;
+        int containerId = ChestStealerModule.mc.player.containerMenu.containerId;
+        boolean inContainer = ChestStealerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ChestStealerModule.mc.gui.screen() instanceof InventoryScreen);
+        int containerSlots = inContainer ? ChestStealerModule.mc.player.containerMenu.slots.size() - 36 : 0;
+        int totalSlots = containerSlots + 36;
+        int dropped = 0;
+        for (step = startSlot; step < totalSlots && dropped < maxActions; ++step) {
+            int handlerSlot;
             ItemStack itemStack;
-            if (n3 < n5) {
-                ItemStack itemStack2 = ((Slot)ChestStealerModule.mc.player.containerMenu.slots.get(n3)).getItem();
-                if (itemStack2.isEmpty() || !this.matches(itemStack2, string, whitelistSetting)) continue;
-                this.throwSlot(n4, n3);
-                ++n7;
+            if (step < containerSlots) {
+                ItemStack containerStack = ((Slot)ChestStealerModule.mc.player.containerMenu.slots.get(step)).getItem();
+                if (containerStack.isEmpty() || !this.matches(containerStack, filterMode, whitelistSetting)) continue;
+                this.throwSlot(containerId, step);
+                ++dropped;
                 continue;
             }
-            int n9 = n3 - n5;
-            if (!this.inInteractRange(n9) || (itemStack = ChestStealerModule.mc.player.getInventory().getItem(n9)).isEmpty() || !this.matches(itemStack, string, whitelistSetting) || (n8 = this.invToHandlerSlot(n9)) < 0) continue;
-            this.throwSlot(n4, n8);
-            ++n7;
+            int invSlot = step - containerSlots;
+            if (!this.inInteractRange(invSlot) || (itemStack = ChestStealerModule.mc.player.getInventory().getItem(invSlot)).isEmpty() || !this.matches(itemStack, filterMode, whitelistSetting) || (handlerSlot = this.invToHandlerSlot(invSlot)) < 0) continue;
+            this.throwSlot(containerId, handlerSlot);
+            ++dropped;
         }
-        return Math.max(1, n3 - n2);
+        return Math.max(1, step - startSlot);
     }
 
-    private void quickMove(int n, int n2) {
-        ChestStealerModule.mc.gameMode.handleContainerInput(n, n2, 0, ContainerInput.QUICK_MOVE, (Player)ChestStealerModule.mc.player);
+    private void quickMove(int containerId, int slotIndex) {
+        ChestStealerModule.mc.gameMode.handleContainerInput(containerId, slotIndex, 0, ContainerInput.QUICK_MOVE, (Player)ChestStealerModule.mc.player);
         lastContainerActionMs = System.currentTimeMillis();
     }
 
-    private void throwSlot(int n, int n2) {
-        ChestStealerModule.mc.gameMode.handleContainerInput(n, n2, 1, ContainerInput.THROW, (Player)ChestStealerModule.mc.player);
+    private void throwSlot(int containerId, int slotIndex) {
+        ChestStealerModule.mc.gameMode.handleContainerInput(containerId, slotIndex, 1, ContainerInput.THROW, (Player)ChestStealerModule.mc.player);
         lastContainerActionMs = System.currentTimeMillis();
     }
 
-    private boolean matches(ItemStack itemStack, String string, WhitelistSetting whitelistSetting) {
+    private boolean matches(ItemStack itemStack, String filterMode, WhitelistSetting whitelistSetting) {
         if (itemStack == null || itemStack.isEmpty()) {
             return false;
         }
-        boolean bl = whitelistSetting != null && whitelistSetting.isWhitelistContains(itemStack.getItem());
-        return switch (string) {
+        boolean inWhitelist = whitelistSetting != null && whitelistSetting.isWhitelistContains(itemStack.getItem());
+        return switch (filterMode) {
             case "All" -> true;
             case "BlackList" -> {
-                if (!bl) {
+                if (!inWhitelist) {
                     yield true;
                 }
                 yield false;
             }
-            default -> bl;
+            default -> inWhitelist;
         };
     }
 
-    private boolean inInteractRange(int n) {
+    private boolean inInteractRange(int invSlot) {
         return switch (this.interact.getValue()) {
             case "Hotbar" -> {
-                if (n <= 8) {
+                if (invSlot <= 8) {
                     yield true;
                 }
                 yield false;
             }
             case "Inventory" -> {
-                if (n >= 9) {
+                if (invSlot >= 9) {
                     yield true;
                 }
                 yield false;
@@ -354,10 +352,10 @@ extends Module {
         };
     }
 
-    private int invToHandlerSlot(int n) {
+    private int invToHandlerSlot(int invSlot) {
         Inventory inventory = ChestStealerModule.mc.player.getInventory();
         for (Slot slot : ChestStealerModule.mc.player.containerMenu.slots) {
-            if (slot.container != inventory || slot.getContainerSlot() != n) continue;
+            if (slot.container != inventory || slot.getContainerSlot() != invSlot) continue;
             return slot.index;
         }
         return -1;

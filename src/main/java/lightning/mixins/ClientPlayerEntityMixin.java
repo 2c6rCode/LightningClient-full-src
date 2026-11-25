@@ -110,7 +110,7 @@ extends AbstractClientPlayer {
     }
 
     @Shadow
-    protected abstract void updateAutoJump(float var1, float var2);
+    protected abstract void updateAutoJump(float dx, float dz);
 
     @Inject(method={"<init>"}, at={@At(value="HEAD")})
     private static void night$clearTrackedBlockEntities(CallbackInfo callbackInfo) {
@@ -172,16 +172,16 @@ extends AbstractClientPlayer {
     }
 
     @ModifyExpressionValue(method={"sendPosition"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/player/LocalPlayer;getXRot()F")})
-    private float modifySendPositionPitch(float f) {
+    private float modifySendPositionPitch(float pitch) {
         try {
             ElytraFlyModule elytraFlyModule;
             if (Night.MODULE_MANAGER != null && (elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class)) != null && elytraFlyModule.isBounceAutoPitch()) {
                 return elytraFlyModule.getBouncePitch();
             }
-            return f;
+            return pitch;
         }
         catch (NullPointerException nullPointerException) {
-            return f;
+            return pitch;
         }
     }
 
@@ -202,27 +202,27 @@ extends AbstractClientPlayer {
     }
 
     @ModifyExpressionValue(method={"modifyInput"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/player/LocalPlayer;isUsingItem()Z")})
-    private boolean tickMovement$isUsingItem(boolean bl) {
+    private boolean tickMovement$isUsingItem(boolean usingItem) {
         try {
             if (((NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class)).isToggled() && ((NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class)).items.getValue() && !((NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class)).shouldSlow()) {
                 return false;
             }
-            return bl;
+            return usingItem;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return usingItem;
         }
     }
 
     @ModifyExpressionValue(method={"modifyInput"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/player/LocalPlayer;isMovingSlowly()Z")})
-    private boolean tickMovement$isMovingSlowly(boolean bl) {
+    private boolean tickMovement$isMovingSlowly(boolean movingSlowly) {
         try {
-            if (!bl) {
-                return bl;
+            if (!movingSlowly) {
+                return movingSlowly;
             }
             NoSlowModule noSlowModule = (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class);
             if (noSlowModule == null || !noSlowModule.isToggled()) {
-                return bl;
+                return movingSlowly;
             }
             if (this.isVisuallyCrawling() && noSlowModule.crawl.getValue()) {
                 return false;
@@ -230,10 +230,10 @@ extends AbstractClientPlayer {
             if (this.isCrouching() && noSlowModule.sneak.getValue()) {
                 return false;
             }
-            return bl;
+            return movingSlowly;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return movingSlowly;
         }
     }
 
@@ -248,10 +248,10 @@ extends AbstractClientPlayer {
             Night.EVENT_HANDLER.post((Event)playerMoveEvent);
             if (playerMoveEvent.isCancelled()) {
                 callbackInfo.cancel();
-                double d = this.getX();
-                double d2 = this.getZ();
+                double prevX = this.getX();
+                double prevZ = this.getZ();
                 super.move(moverType, playerMoveEvent.getMovement());
-                this.updateAutoJump((float)(this.getX() - d), (float)(this.getZ() - d2));
+                this.updateAutoJump((float)(this.getX() - prevX), (float)(this.getZ() - prevZ));
             }
             return;
         }
@@ -294,7 +294,7 @@ extends AbstractClientPlayer {
     private void onItemUseSpeedMultiplier(CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             NoSlowModule noSlowModule = Night.MODULE_MANAGER != null ? (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class) : null;
-            NoSlowModule noSlowModule2 = noSlowModule;
+            NoSlowModule unusedNoSlowModule = noSlowModule;
             if (noSlowModule != null && noSlowModule.isToggled() && noSlowModule.items.getValue() && !noSlowModule.shouldSlow()) {
                 callbackInfoReturnable.setReturnValue(Float.valueOf(1.0f));
             }
@@ -309,23 +309,22 @@ extends AbstractClientPlayer {
     private void shouldStopRunSprinting$HEAD(CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         try {
             NoSlowModule noSlowModule = Night.MODULE_MANAGER != null ? (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class) : null;
-            NoSlowModule noSlowModule2 = noSlowModule;
+            NoSlowModule unusedNoSlowModule = noSlowModule;
             if (noSlowModule != null && noSlowModule.isToggled() && noSlowModule.items.getValue() && !noSlowModule.shouldSlow() && this.isUsingItem() && !this.isFallFlying() && !this.isMobilityRestricted() && !this.isPassenger()) {
-                boolean bl;
                 if (this.horizontalCollision && !this.minorHorizontalCollision) {
                     callbackInfoReturnable.setReturnValue(true);
                     return;
                 }
-                boolean bl2 = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
-                boolean bl3 = bl2;
-                if (!bl2) {
+                boolean hasEnoughFood = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
+                boolean unusedHasEnoughFood = hasEnoughFood;
+                if (!hasEnoughFood) {
                     callbackInfoReturnable.setReturnValue(true);
                     return;
                 }
                 ISprintModule iSprintModule = Night.MODULE_MANAGER == null ? null : (ISprintModule)Night.MODULE_MANAGER.getModule("Sprint");
-                ISprintModule iSprintModule2 = iSprintModule;
-                boolean bl4 = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
-                if (!bl4) {
+                ISprintModule unusedSprintModule = iSprintModule;
+                boolean wantsToSprint = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
+                if (!wantsToSprint) {
                     callbackInfoReturnable.setReturnValue(true);
                     return;
                 }
@@ -347,14 +346,13 @@ extends AbstractClientPlayer {
         try {
             if (((Boolean)callbackInfoReturnable.getReturnValue()).booleanValue()) {
                 NoSlowModule noSlowModule = Night.MODULE_MANAGER != null ? (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class) : null;
-                NoSlowModule noSlowModule2 = noSlowModule;
+                NoSlowModule unusedNoSlowModule = noSlowModule;
                 if (!(noSlowModule == null || !noSlowModule.isToggled() || !noSlowModule.items.getValue() || noSlowModule.shouldSlow() || !this.isUsingItem() || this.isFallFlying() || this.isMobilityRestricted() || this.isPassenger() || this.horizontalCollision && !this.minorHorizontalCollision)) {
-                    boolean bl;
-                    boolean bl2 = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
+                    boolean hasEnoughFood = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
                     ISprintModule iSprintModule = Night.MODULE_MANAGER == null ? null : (ISprintModule)Night.MODULE_MANAGER.getModule("Sprint");
-                    ISprintModule iSprintModule2 = iSprintModule;
-                    boolean bl3 = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
-                    if (bl2 && bl3 && (!this.isInWater() || this.isUnderWater())) {
+                    ISprintModule unusedSprintModule = iSprintModule;
+                    boolean wantsToSprint = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
+                    if (hasEnoughFood && wantsToSprint && (!this.isInWater() || this.isUnderWater())) {
                         callbackInfoReturnable.setReturnValue(false);
                     }
                 }
@@ -370,15 +368,15 @@ extends AbstractClientPlayer {
     private void canStartSprinting$HEAD(CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         try {
             NoSlowModule noSlowModule = Night.MODULE_MANAGER != null ? (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class) : null;
-            NoSlowModule noSlowModule2 = noSlowModule;
+            NoSlowModule unusedNoSlowModule = noSlowModule;
             if (noSlowModule != null && noSlowModule.isToggled() && noSlowModule.items.getValue() && !noSlowModule.shouldSlow() && this.isUsingItem() && !this.isSprinting() && !this.isFallFlying() && !this.isMobilityRestricted() && !this.isPassenger()) {
-                boolean bl = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
-                boolean bl2 = bl;
-                if (bl) {
+                boolean hasEnoughFood = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
+                boolean unusedHasEnoughFood = hasEnoughFood;
+                if (hasEnoughFood) {
                     ISprintModule iSprintModule = Night.MODULE_MANAGER == null ? null : (ISprintModule)Night.MODULE_MANAGER.getModule("Sprint");
-                    ISprintModule iSprintModule2 = iSprintModule;
-                    boolean bl4 = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
-                    if (bl4 && (!this.isInWater() || this.isUnderWater())) {
+                    ISprintModule unusedSprintModule = iSprintModule;
+                    boolean wantsToSprint = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
+                    if (wantsToSprint && (!this.isInWater() || this.isUnderWater())) {
                         callbackInfoReturnable.setReturnValue(true);
                     }
                 }
@@ -391,17 +389,17 @@ extends AbstractClientPlayer {
     }
 
     @ModifyExpressionValue(method={"canStartSprinting"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/player/LocalPlayer;isSlowDueToUsingItem()Z")})
-    private boolean canStartSprinting$isUsingItem(boolean bl) {
+    private boolean canStartSprinting$isUsingItem(boolean slowDueToUsingItem) {
         try {
             NoSlowModule noSlowModule = Night.MODULE_MANAGER != null ? (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class) : null;
-            NoSlowModule noSlowModule2 = noSlowModule;
+            NoSlowModule unusedNoSlowModule = noSlowModule;
             if (noSlowModule != null && noSlowModule.isToggled() && noSlowModule.items.getValue() && !noSlowModule.shouldSlow()) {
                 return false;
             }
-            return bl;
+            return slowDueToUsingItem;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return slowDueToUsingItem;
         }
     }
 
@@ -410,15 +408,15 @@ extends AbstractClientPlayer {
         try {
             if (!((Boolean)callbackInfoReturnable.getReturnValue()).booleanValue()) {
                 NoSlowModule noSlowModule = Night.MODULE_MANAGER != null ? (NoSlowModule)Night.MODULE_MANAGER.getModule(NoSlowModule.class) : null;
-                NoSlowModule noSlowModule2 = noSlowModule;
+                NoSlowModule unusedNoSlowModule = noSlowModule;
                 if (noSlowModule != null && noSlowModule.isToggled() && noSlowModule.items.getValue() && !noSlowModule.shouldSlow() && this.isUsingItem() && !this.isSprinting() && !this.isFallFlying() && !this.isMobilityRestricted() && !this.isPassenger()) {
-                    boolean bl = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
-                    boolean bl2 = bl;
-                    if (bl) {
+                    boolean hasEnoughFood = (float)this.getFoodData().getFoodLevel() > 6.0f || this.getAbilities().mayfly;
+                    boolean unusedHasEnoughFood = hasEnoughFood;
+                    if (hasEnoughFood) {
                         ISprintModule iSprintModule = Night.MODULE_MANAGER == null ? null : (ISprintModule)Night.MODULE_MANAGER.getModule("Sprint");
-                        ISprintModule iSprintModule2 = iSprintModule;
-                        boolean bl4 = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
-                        if (bl4 && (!this.isInWater() || this.isUnderWater())) {
+                        ISprintModule unusedSprintModule = iSprintModule;
+                        boolean wantsToSprint = iSprintModule != null && iSprintModule.isToggled() ? iSprintModule.shouldSprint() : (this.input != null && this.input.hasForwardImpulse());
+                        if (wantsToSprint && (!this.isInWater() || this.isUnderWater())) {
                             callbackInfoReturnable.setReturnValue(true);
                         }
                     }
@@ -432,7 +430,7 @@ extends AbstractClientPlayer {
     }
 
     @Inject(method={"moveTowardsClosestSpace"}, at={@At(value="HEAD")}, cancellable=true)
-    private void pushOutOfBlocks(double d, double d2, CallbackInfo callbackInfo) {
+    private void pushOutOfBlocks(double x, double z, CallbackInfo callbackInfo) {
         try {
             if (((VelocityModule)Night.MODULE_MANAGER.getModule(VelocityModule.class)).isToggled() && ((VelocityModule)Night.MODULE_MANAGER.getModule(VelocityModule.class)).antiBlockPush.getValue()) {
                 callbackInfo.cancel();
@@ -481,7 +479,7 @@ extends AbstractClientPlayer {
     }
 
     @Inject(method={"handlePortalTransitionEffect"}, at={@At(value="HEAD")}, cancellable=true)
-    private void tickNausea(boolean bl, CallbackInfo callbackInfo) {
+    private void tickNausea(boolean inPortal, CallbackInfo callbackInfo) {
         try {
             if (((InventoryControlModule)Night.MODULE_MANAGER.getModule(InventoryControlModule.class)).isToggled() && ((InventoryControlModule)Night.MODULE_MANAGER.getModule(InventoryControlModule.class)).portals.getValue()) {
                 callbackInfo.cancel();

@@ -75,72 +75,71 @@ extends Module {
     }
 
     private boolean sortTick(RekitModule rekitModule) {
-        int n;
-        Object object;
-        int n2;
         AbstractContainerMenu abstractContainerMenu = InventorySorterModule.mc.player.containerMenu;
         if (!abstractContainerMenu.getCarried().isEmpty()) {
             ++this.cursorWaitTicks;
             if (this.cursorWaitTicks >= 20) {
                 this.cursorWaitTicks = 0;
-                int n3 = this.findEmptySlot(abstractContainerMenu);
-                if (n3 != -1) {
-                    this.click(n3, 0, ContainerInput.PICKUP);
+                int emptySlot = this.findEmptySlot(abstractContainerMenu);
+                if (emptySlot != -1) {
+                    this.click(emptySlot, 0, ContainerInput.PICKUP);
                 }
             }
             return false;
         }
         this.cursorWaitTicks = 0;
-        HashMap<String, List<Integer>> hashMap = new HashMap<>();
+        HashMap<String, List<Integer>> partialStacksByItem = new HashMap<>();
         for (int i = 0; i < 36; ++i) {
+            int handlerSlot;
             ItemStack itemStack;
-            if (this.ignoreHotbar.getValue() && i <= 8 || (itemStack = abstractContainerMenu.getSlot(n2 = this.getHandlerSlot(i)).getItem()).isEmpty() || this.isShulkerBox(itemStack) || itemStack.getCount() >= itemStack.getItem().getDefaultMaxStackSize() || this.isCorrectItem(itemStack, rekitModule.getActiveKit().get(i))) continue;
+            if (this.ignoreHotbar.getValue() && i <= 8 || (itemStack = abstractContainerMenu.getSlot(handlerSlot = this.getHandlerSlot(i)).getItem()).isEmpty() || this.isShulkerBox(itemStack) || itemStack.getCount() >= itemStack.getItem().getDefaultMaxStackSize() || this.isCorrectItem(itemStack, rekitModule.getActiveKit().get(i))) continue;
             String key = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
-            hashMap.computeIfAbsent(key, string -> new ArrayList<>()).add(n2);
+            partialStacksByItem.computeIfAbsent(key, ignoredKey -> new ArrayList<>()).add(handlerSlot);
         }
-        for (List<Integer> slotList : hashMap.values()) {
+        for (List<Integer> slotList : partialStacksByItem.values()) {
             if (slotList.size() <= 1) continue;
-            for (n2 = 0; n2 < slotList.size(); ++n2) {
-                int n4 = slotList.get(n2);
-                ItemStack stackA = abstractContainerMenu.getSlot(n4).getItem();
-                for (n = n2 + 1; n < slotList.size(); ++n) {
-                    int n5 = slotList.get(n);
-                    ItemStack itemStack = abstractContainerMenu.getSlot(n5).getItem();
-                    if (!ItemStack.isSameItemSameComponents(stackA, itemStack)) continue;
-                    this.atomicSwap(n5, n4);
+            for (int idxA = 0; idxA < slotList.size(); ++idxA) {
+                int slotA = slotList.get(idxA);
+                ItemStack stackA = abstractContainerMenu.getSlot(slotA).getItem();
+                for (int idxB = idxA + 1; idxB < slotList.size(); ++idxB) {
+                    int slotB = slotList.get(idxB);
+                    ItemStack stackB = abstractContainerMenu.getSlot(slotB).getItem();
+                    if (!ItemStack.isSameItemSameComponents(stackA, stackB)) continue;
+                    this.atomicSwap(slotB, slotA);
                     return true;
                 }
             }
         }
         for (int i = 0; i < 36; ++i) {
-            int n6;
+            int sourceInvSlot;
             RekitModule.KitItem kitItem;
-            int n7;
-            if (this.ignoreHotbar.getValue() && i <= 8 || this.isShulkerBox((ItemStack)(object = abstractContainerMenu.getSlot(n7 = this.getHandlerSlot(i)).getItem())) || this.isCorrectItem((ItemStack)object, kitItem = rekitModule.getActiveKit().get(i)) || (n6 = this.findItemForKit(abstractContainerMenu, rekitModule, kitItem)) == -1) continue;
-            n = this.getHandlerSlot(n6);
-            if (i <= 8 && n6 >= 9) {
-                this.click(n, i, ContainerInput.SWAP);
+            int targetHandlerSlot;
+            ItemStack currentStack;
+            if (this.ignoreHotbar.getValue() && i <= 8 || this.isShulkerBox(currentStack = abstractContainerMenu.getSlot(targetHandlerSlot = this.getHandlerSlot(i)).getItem()) || this.isCorrectItem(currentStack, kitItem = rekitModule.getActiveKit().get(i)) || (sourceInvSlot = this.findItemForKit(abstractContainerMenu, rekitModule, kitItem)) == -1) continue;
+            int sourceHandlerSlot = this.getHandlerSlot(sourceInvSlot);
+            if (i <= 8 && sourceInvSlot >= 9) {
+                this.click(sourceHandlerSlot, i, ContainerInput.SWAP);
                 return true;
             }
-            if (n6 <= 8 && i >= 9) {
-                this.click(n7, n6, ContainerInput.SWAP);
+            if (sourceInvSlot <= 8 && i >= 9) {
+                this.click(targetHandlerSlot, sourceInvSlot, ContainerInput.SWAP);
                 return true;
             }
-            this.atomicSwap(n, n7);
+            this.atomicSwap(sourceHandlerSlot, targetHandlerSlot);
             return true;
         }
         return false;
     }
 
-    private void atomicSwap(int n, int n2) {
-        this.click(n, 0, ContainerInput.PICKUP);
-        this.click(n2, 0, ContainerInput.PICKUP);
-        this.click(n, 0, ContainerInput.PICKUP);
+    private void atomicSwap(int slotA, int slotB) {
+        this.click(slotA, 0, ContainerInput.PICKUP);
+        this.click(slotB, 0, ContainerInput.PICKUP);
+        this.click(slotA, 0, ContainerInput.PICKUP);
     }
 
-    private void click(int n, int n2, ContainerInput containerInput) {
+    private void click(int slotIndex, int button, ContainerInput containerInput) {
         lastContainerActionMs = System.currentTimeMillis();
-        InventorySorterModule.mc.gameMode.handleContainerInput(InventorySorterModule.mc.player.containerMenu.containerId, n, n2, containerInput, (Player)InventorySorterModule.mc.player);
+        InventorySorterModule.mc.gameMode.handleContainerInput(InventorySorterModule.mc.player.containerMenu.containerId, slotIndex, button, containerInput, (Player)InventorySorterModule.mc.player);
     }
 
     private boolean isCorrectItem(ItemStack itemStack, RekitModule.KitItem kitItem) {
@@ -174,36 +173,36 @@ extends Module {
             return -1;
         }
         for (int i = 0; i < 36; ++i) {
-            RekitModule.KitItem kitItem2;
-            int n;
+            RekitModule.KitItem slotKitItem;
+            int handlerSlot;
             ItemStack itemStack;
-            if (this.ignoreHotbar.getValue() && i <= 8 || (itemStack = abstractContainerMenu.getSlot(n = this.getHandlerSlot(i)).getItem()).isEmpty() || this.isShulkerBox(itemStack) || itemStack.getItem() != item || this.isCorrectItem(itemStack, kitItem2 = rekitModule.getActiveKit().get(i))) continue;
+            if (this.ignoreHotbar.getValue() && i <= 8 || (itemStack = abstractContainerMenu.getSlot(handlerSlot = this.getHandlerSlot(i)).getItem()).isEmpty() || this.isShulkerBox(itemStack) || itemStack.getItem() != item || this.isCorrectItem(itemStack, slotKitItem = rekitModule.getActiveKit().get(i))) continue;
             return i;
         }
         return -1;
     }
 
     private int findEmptySlot(AbstractContainerMenu abstractContainerMenu) {
-        int n;
-        int n2;
+        int handlerSlot;
+        int invSlot;
         RekitModule rekitModule = Night.MODULE_MANAGER.getModule(RekitModule.class);
-        for (n2 = 0; n2 < 36; ++n2) {
-            if (this.ignoreHotbar.getValue() && n2 <= 8 || !abstractContainerMenu.getSlot(n = this.getHandlerSlot(n2)).getItem().isEmpty() || rekitModule.getActiveKit().get(n2) != null) continue;
-            return n;
+        for (invSlot = 0; invSlot < 36; ++invSlot) {
+            if (this.ignoreHotbar.getValue() && invSlot <= 8 || !abstractContainerMenu.getSlot(handlerSlot = this.getHandlerSlot(invSlot)).getItem().isEmpty() || rekitModule.getActiveKit().get(invSlot) != null) continue;
+            return handlerSlot;
         }
-        for (n2 = 0; n2 < 36; ++n2) {
-            if (this.ignoreHotbar.getValue() && n2 <= 8 || !abstractContainerMenu.getSlot(n = this.getHandlerSlot(n2)).getItem().isEmpty()) continue;
-            return n;
+        for (invSlot = 0; invSlot < 36; ++invSlot) {
+            if (this.ignoreHotbar.getValue() && invSlot <= 8 || !abstractContainerMenu.getSlot(handlerSlot = this.getHandlerSlot(invSlot)).getItem().isEmpty()) continue;
+            return handlerSlot;
         }
         return -1;
     }
 
-    private int getHandlerSlot(int n) {
-        if (n >= 0 && n <= 8) {
-            return 36 + n;
+    private int getHandlerSlot(int invSlot) {
+        if (invSlot >= 0 && invSlot <= 8) {
+            return 36 + invSlot;
         }
-        if (n >= 9 && n <= 35) {
-            return n;
+        if (invSlot >= 9 && invSlot <= 35) {
+            return invSlot;
         }
         return -1;
     }

@@ -14,20 +14,20 @@ final class ModuleOutline {
     private ModuleOutline() {
     }
 
-    static void draw(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, int n, boolean bl, boolean bl2, float f5) {
-        if (!bl || f5 <= 0.01f || f3 - f < 6.0f || f4 - f2 < 6.0f) {
+    static void draw(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, int rgb, boolean enabled, boolean hovered, float progress) {
+        if (!enabled || progress <= 0.01f || x2 - x1 < 6.0f || y2 - y1 < 6.0f) {
             return;
         }
-        int n2 = bl2 ? 210 : 150;
-        int n3 = Math.round((float)n2 * Math.min(1.0f, f5));
-        if (n3 > 255) {
-            n3 = 255;
+        int baseAlpha = hovered ? 210 : 150;
+        int alpha = Math.round((float)baseAlpha * Math.min(1.0f, progress));
+        if (alpha > 255) {
+            alpha = 255;
         }
-        if (n3 < 0) {
-            n3 = 0;
+        if (alpha < 0) {
+            alpha = 0;
         }
-        Color color = new Color(n >> 16 & 0xFF, n >> 8 & 0xFF, n & 0xFF, n3);
-        LightningSkin.ring(guiGraphicsExtractor, f, f2, f3, f4, 4.0f, 1.7f, color);
+        Color color = new Color(rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, alpha);
+        LightningSkin.ring(guiGraphicsExtractor, x1, y1, x2, y2, 4.0f, 1.7f, color);
     }
 }
 

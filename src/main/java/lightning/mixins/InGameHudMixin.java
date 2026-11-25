@@ -77,7 +77,7 @@ public class InGameHudMixin {
     private Minecraft minecraft;
 
     @Inject(method={"extractRenderState"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/gui/Hud;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V", shift=At.Shift.AFTER)})
-    private void render(DeltaTracker deltaTracker, boolean bl, boolean bl2, CallbackInfo callbackInfo, @Local(ordinal=0) GuiGraphicsExtractor guiGraphicsExtractor) {
+    private void render(DeltaTracker deltaTracker, boolean isPaused, boolean isGameHudHidden, CallbackInfo callbackInfo, @Local(ordinal=0) GuiGraphicsExtractor guiGraphicsExtractor) {
         try {
             if (this.minecraft.gui.hud.isHidden()) {
                 return;

@@ -75,70 +75,69 @@ implements IMinecraft {
     private static MethodHandle SCISSOR_PEEK;
     private static boolean scissorHandleInitialized;
 
-    public static void renderQuad(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        int n = color.getRGB();
-        Renderer2D.submit(guiGraphicsExtractor, new float[]{f, f, f3, f3}, new float[]{f2, f4, f4, f2}, new int[]{n, n, n, n});
+    public static void renderQuad(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        int argb = color.getRGB();
+        Renderer2D.submit(guiGraphicsExtractor, new float[]{x1, x1, x2, x2}, new float[]{y1, y2, y2, y1}, new int[]{argb, argb, argb, argb});
     }
 
-    public static void renderGradient(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color, Color color2) {
-        int n = color.getRGB();
-        int n2 = color2.getRGB();
-        Renderer2D.submit(guiGraphicsExtractor, new float[]{f, f, f3, f3}, new float[]{f2, f4, f4, f2}, new int[]{n, n2, n2, n});
+    public static void renderGradient(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color topColor, Color bottomColor) {
+        int topArgb = topColor.getRGB();
+        int bottomArgb = bottomColor.getRGB();
+        Renderer2D.submit(guiGraphicsExtractor, new float[]{x1, x1, x2, x2}, new float[]{y1, y2, y2, y1}, new int[]{topArgb, bottomArgb, bottomArgb, topArgb});
     }
 
-    public static void renderSidewaysGradient(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color, Color color2) {
-        int n = color.getRGB();
-        int n2 = color2.getRGB();
-        Renderer2D.submit(guiGraphicsExtractor, new float[]{f, f, f3, f3}, new float[]{f2, f4, f4, f2}, new int[]{n, n, n2, n2});
+    public static void renderSidewaysGradient(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color leftColor, Color rightColor) {
+        int leftArgb = leftColor.getRGB();
+        int rightArgb = rightColor.getRGB();
+        Renderer2D.submit(guiGraphicsExtractor, new float[]{x1, x1, x2, x2}, new float[]{y1, y2, y2, y1}, new int[]{leftArgb, leftArgb, rightArgb, rightArgb});
     }
 
-    public static void renderCheckerboard(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, float f5, Color color, Color color2) {
-        int n;
-        int n2 = color.getRGB();
-        int n3 = color2.getRGB();
-        int n4 = (int)Math.ceil((f3 - f) / f5);
-        int n5 = n4 * (n = (int)Math.ceil((f4 - f2) / f5));
-        if (n5 <= 0) {
+    public static void renderCheckerboard(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, float cellSize, Color colorA, Color colorB) {
+        int rows;
+        int argbA = colorA.getRGB();
+        int argbB = colorB.getRGB();
+        int cols = (int)Math.ceil((x2 - x1) / cellSize);
+        int cellCount = cols * (rows = (int)Math.ceil((y2 - y1) / cellSize));
+        if (cellCount <= 0) {
             return;
         }
-        float[] fArray = new float[n5 * 4];
-        float[] fArray2 = new float[n5 * 4];
-        int[] nArray = new int[n5 * 4];
-        int n6 = 0;
-        for (int i = 0; i < n; ++i) {
-            float f6 = f2 + (float)i * f5;
-            float f7 = Math.min(f2 + (float)(i + 1) * f5, f4);
-            for (int j = 0; j < n4; ++j) {
-                float f8 = f + (float)j * f5;
-                float f9 = Math.min(f + (float)(j + 1) * f5, f3);
-                int n7 = (i + j) % 2 == 0 ? n2 : n3;
-                Renderer2D.quad(fArray, fArray2, nArray, n6++, f8, f6, f9, f7, n7);
+        float[] xs = new float[cellCount * 4];
+        float[] ys = new float[cellCount * 4];
+        int[] colors = new int[cellCount * 4];
+        int quadIndex = 0;
+        for (int i = 0; i < rows; ++i) {
+            float cellY1 = y1 + (float)i * cellSize;
+            float cellY2 = Math.min(y1 + (float)(i + 1) * cellSize, y2);
+            for (int j = 0; j < cols; ++j) {
+                float cellX1 = x1 + (float)j * cellSize;
+                float cellX2 = Math.min(x1 + (float)(j + 1) * cellSize, x2);
+                int cellColor = (i + j) % 2 == 0 ? argbA : argbB;
+                Renderer2D.quad(xs, ys, colors, quadIndex++, cellX1, cellY1, cellX2, cellY2, cellColor);
             }
         }
-        Renderer2D.submit(guiGraphicsExtractor, fArray, fArray2, nArray);
+        Renderer2D.submit(guiGraphicsExtractor, xs, ys, colors);
     }
 
-    public static void renderOutline(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        int n = color.getRGB();
-        float[] fArray = new float[16];
-        float[] fArray2 = new float[16];
-        int[] nArray = new int[16];
-        Renderer2D.quad(fArray, fArray2, nArray, 0, f, f2, f + 0.5f, f4, n);
-        Renderer2D.quad(fArray, fArray2, nArray, 1, f3 - 0.5f, f2, f3, f4, n);
-        Renderer2D.quad(fArray, fArray2, nArray, 2, f, f4 - 0.5f, f3, f4, n);
-        Renderer2D.quad(fArray, fArray2, nArray, 3, f, f2, f3, f2 + 0.5f, n);
-        Renderer2D.submit(guiGraphicsExtractor, fArray, fArray2, nArray);
+    public static void renderOutline(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        int argb = color.getRGB();
+        float[] xs = new float[16];
+        float[] ys = new float[16];
+        int[] colors = new int[16];
+        Renderer2D.quad(xs, ys, colors, 0, x1, y1, x1 + 0.5f, y2, argb);
+        Renderer2D.quad(xs, ys, colors, 1, x2 - 0.5f, y1, x2, y2, argb);
+        Renderer2D.quad(xs, ys, colors, 2, x1, y2 - 0.5f, x2, y2, argb);
+        Renderer2D.quad(xs, ys, colors, 3, x1, y1, x2, y1 + 0.5f, argb);
+        Renderer2D.submit(guiGraphicsExtractor, xs, ys, colors);
     }
 
     public static ScreenRectangle peekScissor(GuiGraphicsExtractor guiGraphicsExtractor) {
-        Object object;
         if (!scissorHandleInitialized) {
             scissorHandleInitialized = true;
             try {
-                object = GuiGraphicsExtractor.class.getDeclaredField("scissorStack");
-                ((Field)object).setAccessible(true);
-                SCISSOR_GET = MethodHandles.lookup().unreflectGetter((Field)object);
-                Method method = ((Field)object).getType().getDeclaredMethod("peek", new Class[0]);
+                Field scissorField = GuiGraphicsExtractor.class.getDeclaredField("scissorStack");
+                scissorField.setAccessible(true);
+                SCISSOR_GET = MethodHandles.lookup().unreflectGetter(scissorField);
+                Method method = scissorField.getType().getDeclaredMethod("peek", new Class[0]);
                 method.setAccessible(true);
                 SCISSOR_PEEK = MethodHandles.lookup().unreflect(method);
             }
@@ -148,9 +147,9 @@ implements IMinecraft {
         }
         if (SCISSOR_GET != null && SCISSOR_PEEK != null) {
             try {
-                object = SCISSOR_GET.invoke(guiGraphicsExtractor);
-                if (object != null) {
-                    return (ScreenRectangle)SCISSOR_PEEK.invoke(object);
+                Object scissorStack = SCISSOR_GET.invoke(guiGraphicsExtractor);
+                if (scissorStack != null) {
+                    return (ScreenRectangle)SCISSOR_PEEK.invoke(scissorStack);
                 }
             }
             catch (Throwable throwable) {
@@ -160,173 +159,171 @@ implements IMinecraft {
         return null;
     }
 
-    private static void submit(GuiGraphicsExtractor guiGraphicsExtractor, float[] fArray, float[] fArray2, int[] nArray) {
+    private static void submit(GuiGraphicsExtractor guiGraphicsExtractor, float[] xs, float[] ys, int[] colors) {
         GuiRenderState guiRenderState = ((GuiGraphicsExtractorAccessor)guiGraphicsExtractor).night$getGuiRenderState();
-        guiRenderState.addGuiElement((GuiElementRenderState)new GuiQuadRenderState((Matrix3x2fc)new Matrix3x2f((Matrix3x2fc)guiGraphicsExtractor.pose()), fArray, fArray2, nArray, Renderer2D.peekScissor(guiGraphicsExtractor)));
+        guiRenderState.addGuiElement((GuiElementRenderState)new GuiQuadRenderState((Matrix3x2fc)new Matrix3x2f((Matrix3x2fc)guiGraphicsExtractor.pose()), xs, ys, colors, Renderer2D.peekScissor(guiGraphicsExtractor)));
     }
 
-    private static void quad(float[] fArray, float[] fArray2, int[] nArray, int n, float f, float f2, float f3, float f4, int n2) {
-        int n3;
-        int n4 = n * 4;
-        fArray[n4] = f;
-        fArray2[n4] = f2;
-        fArray[n4 + 1] = f;
-        fArray2[n4 + 1] = f4;
-        fArray[n4 + 2] = f3;
-        fArray2[n4 + 2] = f4;
-        fArray[n4 + 3] = f3;
-        fArray2[n4 + 3] = f2;
-        nArray[n4 + 3] = n3 = n2;
-        nArray[n4 + 2] = n3;
-        nArray[n4 + 1] = n3;
-        nArray[n4] = n3;
+    private static void quad(float[] xs, float[] ys, int[] colors, int quadIndex, float x1, float y1, float x2, float y2, int color) {
+        int base = quadIndex * 4;
+        xs[base] = x1;
+        ys[base] = y1;
+        xs[base + 1] = x1;
+        ys[base + 1] = y2;
+        xs[base + 2] = x2;
+        ys[base + 2] = y2;
+        xs[base + 3] = x2;
+        ys[base + 3] = y1;
+        colors[base + 3] = color;
+        colors[base + 2] = color;
+        colors[base + 1] = color;
+        colors[base] = color;
     }
 
-    public static void renderImmediateQuad(PoseStack poseStack, float f, float f2, float f3, float f4, Color color) {
+    public static void renderImmediateQuad(PoseStack poseStack, float x1, float y1, float x2, float y2, Color color) {
         Matrix4f matrix4f = poseStack.last().pose();
-        int n = color.getRGB();
+        int argb = color.getRGB();
         try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(4 * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));){
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f2, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f4, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f3, f4, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f3, f2, 0.0f).setColor(n);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x1, y1, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x1, y2, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x2, y2, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x2, y1, 0.0f).setColor(argb);
             MeshData meshData = bufferBuilder.build();
             Renderer3D.draw(RenderTypes.debugQuads(), meshData);
         }
     }
 
-    public static void renderCircle(PoseStack poseStack, float f, float f2, float f3, Color color) {
+    public static void renderCircle(PoseStack poseStack, float centerX, float centerY, float radius, Color color) {
         Matrix4f matrix4f = poseStack.last().pose();
-        int n = color.getRGB();
+        int argb = color.getRGB();
         try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(361 * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));){
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
             for (int i = 0; i <= 360; ++i) {
-                bufferBuilder.addVertex((Matrix4fc)matrix4f, (float)((double)f + Math.sin((double)i * Math.PI / 180.0) * (double)f3), (float)((double)f2 + Math.cos((double)i * Math.PI / 180.0) * (double)f3), 0.0f).setColor(n);
+                bufferBuilder.addVertex((Matrix4fc)matrix4f, (float)((double)centerX + Math.sin((double)i * Math.PI / 180.0) * (double)radius), (float)((double)centerY + Math.cos((double)i * Math.PI / 180.0) * (double)radius), 0.0f).setColor(argb);
             }
             MeshData meshData = bufferBuilder.build();
             Renderer3D.draw(RenderTypes.debugTriangleFan(), meshData);
         }
     }
 
-    public static void renderTexture(PoseStack poseStack, float f, float f2, float f3, float f4, Identifier identifier, Color color) {
+    public static void renderTexture(PoseStack poseStack, float x1, float y1, float x2, float y2, Identifier identifier, Color color) {
         Matrix4f matrix4f = poseStack.last().pose();
-        int n = color.getRGB();
+        int argb = color.getRGB();
         try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(4 * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize()));){
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f2, 0.0f).setUv(0.0f, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f4, 0.0f).setUv(0.0f, 1.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f3, f4, 0.0f).setUv(1.0f, 1.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f3, f2, 0.0f).setUv(1.0f, 0.0f).setColor(n);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x1, y1, 0.0f).setUv(0.0f, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x1, y2, 0.0f).setUv(0.0f, 1.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x2, y2, 0.0f).setUv(1.0f, 1.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x2, y1, 0.0f).setUv(1.0f, 0.0f).setColor(argb);
             MeshData meshData = bufferBuilder.build();
             Renderer3D.draw(Renderer2D.texturedType(identifier), meshData);
         }
     }
 
-    public static void renderArrow(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        int n = color.getRGB();
-        float f5 = f2 + f4 * 0.75f;
-        float[] fArray = new float[]{f, f - f3, f, f, f, f, f + f3, f};
-        float[] fArray2 = new float[]{f2, f2 + f4, f5, f2, f2, f5, f2 + f4, f2};
-        int[] nArray = new int[]{n, n, n, n, n, n, n, n};
-        Renderer2D.submit(guiGraphicsExtractor, fArray, fArray2, nArray);
+    public static void renderArrow(GuiGraphicsExtractor guiGraphicsExtractor, float tipX, float tipY, float halfWidth, float height, Color color) {
+        int argb = color.getRGB();
+        float notchY = tipY + height * 0.75f;
+        float[] xs = new float[]{tipX, tipX - halfWidth, tipX, tipX, tipX, tipX, tipX + halfWidth, tipX};
+        float[] ys = new float[]{tipY, tipY + height, notchY, tipY, tipY, notchY, tipY + height, tipY};
+        int[] colors = new int[]{argb, argb, argb, argb, argb, argb, argb, argb};
+        Renderer2D.submit(guiGraphicsExtractor, xs, ys, colors);
     }
 
-    public static void renderArrowOutline(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        int n = color.getRGB();
-        float f5 = f2 + f4 * 0.75f;
-        float[] fArray = new float[16];
-        float[] fArray2 = new float[16];
-        int[] nArray = new int[16];
-        Renderer2D.quadLine(fArray, fArray2, nArray, 0, f, f2, f - f3, f2 + f4, 0.5f, n);
-        Renderer2D.quadLine(fArray, fArray2, nArray, 1, f - f3, f2 + f4, f, f5, 0.5f, n);
-        Renderer2D.quadLine(fArray, fArray2, nArray, 2, f, f5, f + f3, f2 + f4, 0.5f, n);
-        Renderer2D.quadLine(fArray, fArray2, nArray, 3, f + f3, f2 + f4, f, f2, 0.5f, n);
-        Renderer2D.submit(guiGraphicsExtractor, fArray, fArray2, nArray);
+    public static void renderArrowOutline(GuiGraphicsExtractor guiGraphicsExtractor, float tipX, float tipY, float halfWidth, float height, Color color) {
+        int argb = color.getRGB();
+        float notchY = tipY + height * 0.75f;
+        float[] xs = new float[16];
+        float[] ys = new float[16];
+        int[] colors = new int[16];
+        Renderer2D.quadLine(xs, ys, colors, 0, tipX, tipY, tipX - halfWidth, tipY + height, 0.5f, argb);
+        Renderer2D.quadLine(xs, ys, colors, 1, tipX - halfWidth, tipY + height, tipX, notchY, 0.5f, argb);
+        Renderer2D.quadLine(xs, ys, colors, 2, tipX, notchY, tipX + halfWidth, tipY + height, 0.5f, argb);
+        Renderer2D.quadLine(xs, ys, colors, 3, tipX + halfWidth, tipY + height, tipX, tipY, 0.5f, argb);
+        Renderer2D.submit(guiGraphicsExtractor, xs, ys, colors);
     }
 
-    private static void quadLine(float[] fArray, float[] fArray2, int[] nArray, int n, float f, float f2, float f3, float f4, float f5, int n2) {
-        int n3;
-        float f6 = f3 - f;
-        float f7 = f4 - f2;
-        float f8 = (float)Math.sqrt(f6 * f6 + f7 * f7);
-        if (f8 < 1.0E-4f) {
+    private static void quadLine(float[] xs, float[] ys, int[] colors, int quadIndex, float x1, float y1, float x2, float y2, float halfThickness, int color) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float length = (float)Math.sqrt(dx * dx + dy * dy);
+        if (length < 1.0E-4f) {
             return;
         }
-        float f9 = -f7 / f8 * f5;
-        float f10 = f6 / f8 * f5;
-        int n4 = n * 4;
-        fArray[n4] = f + f9;
-        fArray2[n4] = f2 + f10;
-        fArray[n4 + 1] = f - f9;
-        fArray2[n4 + 1] = f2 - f10;
-        fArray[n4 + 2] = f3 - f9;
-        fArray2[n4 + 2] = f4 - f10;
-        fArray[n4 + 3] = f3 + f9;
-        fArray2[n4 + 3] = f4 + f10;
-        nArray[n4 + 3] = n3 = n2;
-        nArray[n4 + 2] = n3;
-        nArray[n4 + 1] = n3;
-        nArray[n4] = n3;
+        float nx = -dy / length * halfThickness;
+        float ny = dx / length * halfThickness;
+        int base = quadIndex * 4;
+        xs[base] = x1 + nx;
+        ys[base] = y1 + ny;
+        xs[base + 1] = x1 - nx;
+        ys[base + 1] = y1 - ny;
+        xs[base + 2] = x2 - nx;
+        ys[base + 2] = y2 - ny;
+        xs[base + 3] = x2 + nx;
+        ys[base + 3] = y2 + ny;
+        colors[base + 3] = color;
+        colors[base + 2] = color;
+        colors[base + 1] = color;
+        colors[base] = color;
     }
 
-    public static void renderArrow(PoseStack poseStack, float f, float f2, float f3, float f4, Color color) {
+    public static void renderArrow(PoseStack poseStack, float tipX, float tipY, float halfWidth, float height, Color color) {
         Matrix4f matrix4f = poseStack.last().pose();
-        int n = color.getRGB();
+        int argb = color.getRGB();
         try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(5 * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));){
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f2, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f - f3, f2 + f4, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f2 + f4, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f + f3, f2 + f4, 0.0f).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f, f2, 0.0f).setColor(n);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, tipX, tipY, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, tipX - halfWidth, tipY + height, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, tipX, tipY + height, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, tipX + halfWidth, tipY + height, 0.0f).setColor(argb);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, tipX, tipY, 0.0f).setColor(argb);
             MeshData meshData = bufferBuilder.build();
             Renderer3D.draw(RenderTypes.debugTriangleFan(), meshData);
         }
     }
 
-    public static void renderArrowOutline(PoseStack poseStack, float f, float f2, float f3, float f4, Color color) {
+    public static void renderArrowOutline(PoseStack poseStack, float tipX, float tipY, float halfWidth, float height, Color color) {
         Matrix4f matrix4f = poseStack.last().pose();
-        int n = color.getRGB();
-        float[] fArray = new float[]{f, f - f3, f, f + f3, f};
-        float[] fArray2 = new float[]{f2, f2 + f4, f2 + f4, f2 + f4, f2};
-        try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)((fArray.length - 1) * 4 * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));){
+        int argb = color.getRGB();
+        float[] xs = new float[]{tipX, tipX - halfWidth, tipX, tipX + halfWidth, tipX};
+        float[] ys = new float[]{tipY, tipY + height, tipY + height, tipY + height, tipY};
+        try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)((xs.length - 1) * 4 * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));){
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);
-            for (int i = 0; i < fArray.length - 1; ++i) {
-                Renderer2D.segment(bufferBuilder, matrix4f, fArray[i], fArray2[i], fArray[i + 1], fArray2[i + 1], 0.5f, n);
+            for (int i = 0; i < xs.length - 1; ++i) {
+                Renderer2D.segment(bufferBuilder, matrix4f, xs[i], ys[i], xs[i + 1], ys[i + 1], 0.5f, argb);
             }
             MeshData meshData = bufferBuilder.build();
             Renderer3D.draw(RenderTypes.debugQuads(), meshData);
         }
     }
 
-    private static void segment(BufferBuilder bufferBuilder, Matrix4f matrix4f, float f, float f2, float f3, float f4, float f5, int n) {
-        float f6 = f3 - f;
-        float f7 = f4 - f2;
-        float f8 = (float)Math.sqrt(f6 * f6 + f7 * f7);
-        if (f8 == 0.0f) {
+    private static void segment(BufferBuilder bufferBuilder, Matrix4f matrix4f, float x1, float y1, float x2, float y2, float halfThickness, int color) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float length = (float)Math.sqrt(dx * dx + dy * dy);
+        if (length == 0.0f) {
             return;
         }
-        float f9 = -f7 / f8 * f5;
-        float f10 = f6 / f8 * f5;
-        bufferBuilder.addVertex((Matrix4fc)matrix4f, f + f9, f2 + f10, 0.0f).setColor(n);
-        bufferBuilder.addVertex((Matrix4fc)matrix4f, f - f9, f2 - f10, 0.0f).setColor(n);
-        bufferBuilder.addVertex((Matrix4fc)matrix4f, f3 - f9, f4 - f10, 0.0f).setColor(n);
-        bufferBuilder.addVertex((Matrix4fc)matrix4f, f3 + f9, f4 + f10, 0.0f).setColor(n);
+        float nx = -dy / length * halfThickness;
+        float ny = dx / length * halfThickness;
+        bufferBuilder.addVertex((Matrix4fc)matrix4f, x1 + nx, y1 + ny, 0.0f).setColor(color);
+        bufferBuilder.addVertex((Matrix4fc)matrix4f, x1 - nx, y1 - ny, 0.0f).setColor(color);
+        bufferBuilder.addVertex((Matrix4fc)matrix4f, x2 - nx, y2 - ny, 0.0f).setColor(color);
+        bufferBuilder.addVertex((Matrix4fc)matrix4f, x2 + nx, y2 + ny, 0.0f).setColor(color);
     }
 
-    private static RenderType texturedType(Identifier identifier2) {
-        return TEXTURE_TYPES.computeIfAbsent(identifier2, identifier -> RenderType.create((String)("night_textured_" + String.valueOf(identifier)), (RenderSetup)RenderSetup.builder((RenderPipeline)RenderPipelines.GUI_TEXTURED).withTexture("Sampler0", identifier).createRenderSetup()));
+    private static RenderType texturedType(Identifier textureId) {
+        return TEXTURE_TYPES.computeIfAbsent(textureId, identifier -> RenderType.create((String)("night_textured_" + String.valueOf(identifier)), (RenderSetup)RenderSetup.builder((RenderPipeline)RenderPipelines.GUI_TEXTURED).withTexture("Sampler0", identifier).createRenderSetup()));
     }
 
-    public static Vec3 project(Vec3 vec3) {
-        Vec3 vec32 = Renderer2D.mc.gameRenderer.mainCamera().position();
-        int[] nArray = new int[]{0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()};
+    public static Vec3 project(Vec3 worldPos) {
+        Vec3 camPos = Renderer2D.mc.gameRenderer.mainCamera().position();
+        int[] viewport = new int[]{0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()};
         Vector3f vector3f = new Vector3f();
-        Vector4f vector4f = new Vector4f((float)(vec3.x - vec32.x), (float)(vec3.y - vec32.y), (float)(vec3.z - vec32.z), 1.0f).mul((Matrix4fc)LAST_WORLD_MATRIX);
-        Matrix4f matrix4f = new Matrix4f((Matrix4fc)LAST_PROJECTION_MATRIX);
-        Matrix4f matrix4f2 = new Matrix4f((Matrix4fc)LAST_MODEL_MATRIX);
-        matrix4f.mul((Matrix4fc)matrix4f2).project(vector4f.x(), vector4f.y(), vector4f.z(), nArray, vector3f);
+        Vector4f vector4f = new Vector4f((float)(worldPos.x - camPos.x), (float)(worldPos.y - camPos.y), (float)(worldPos.z - camPos.z), 1.0f).mul((Matrix4fc)LAST_WORLD_MATRIX);
+        Matrix4f projectionMatrix = new Matrix4f((Matrix4fc)LAST_PROJECTION_MATRIX);
+        Matrix4f modelMatrix = new Matrix4f((Matrix4fc)LAST_MODEL_MATRIX);
+        projectionMatrix.mul((Matrix4fc)modelMatrix).project(vector4f.x(), vector4f.y(), vector4f.z(), viewport, vector3f);
         return new Vec3((double)(vector3f.x / (float)mc.getWindow().getGuiScale()), (double)(((float)mc.getWindow().getHeight() - vector3f.y) / (float)mc.getWindow().getGuiScale()), (double)vector3f.z);
     }
 

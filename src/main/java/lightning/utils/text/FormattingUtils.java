@@ -40,8 +40,8 @@ public class FormattingUtils {
         return StyleAccessor.create((TextColor)textColor, null, (Boolean)false, (Boolean)false, (Boolean)false, (Boolean)false, (Boolean)false, (ClickEvent)style.getClickEvent(), (HoverEvent)style.getHoverEvent(), (String)style.getInsertion(), (FontDescription)style.getFont());
     }
 
-    public static Object getFormatting(String string) {
-        return switch (string.toLowerCase()) {
+    public static Object getFormatting(String name) {
+        return switch (name.toLowerCase()) {
             case "black" -> ChatFormatting.BLACK;
             case "blue" -> ChatFormatting.BLUE;
             case "dark blue" -> ChatFormatting.DARK_BLUE;
@@ -63,29 +63,29 @@ public class FormattingUtils {
         };
     }
 
-    public static List<String> wrapText(String string, int n) {
+    public static List<String> wrapText(String text, int maxWidth) {
         ArrayList<String> arrayList = new ArrayList<String>();
-        String[] stringArray = string.split(" ");
-        Object object = "";
-        for (String string2 : stringArray) {
-            if (Night.FONT_MANAGER.getWidth((String)object) + Night.FONT_MANAGER.getWidth(string2) <= n) {
-                object = (String)object + string2 + " ";
+        String[] words = text.split(" ");
+        String currentLine = "";
+        for (String word : words) {
+            if (Night.FONT_MANAGER.getWidth(currentLine) + Night.FONT_MANAGER.getWidth(word) <= maxWidth) {
+                currentLine = currentLine + word + " ";
                 continue;
             }
-            arrayList.add((String)object);
-            object = string2 + " ";
+            arrayList.add(currentLine);
+            currentLine = word + " ";
         }
-        if (Night.FONT_MANAGER.getWidth((String)object) > 0) {
-            arrayList.add((String)object);
+        if (Night.FONT_MANAGER.getWidth(currentLine) > 0) {
+            arrayList.add(currentLine);
         }
         return arrayList;
     }
 
-    public static String[] formatSeconds(long l) {
-        String string = String.format("%02d", l / 3600L);
-        String string2 = String.format("%02d", l % 3600L / 60L);
-        String string3 = String.format("%02d", l % 60L);
-        return new String[]{string, string2, string3};
+    public static String[] formatSeconds(long totalSeconds) {
+        String hours = String.format("%02d", totalSeconds / 3600L);
+        String minutes = String.format("%02d", totalSeconds % 3600L / 60L);
+        String seconds = String.format("%02d", totalSeconds % 60L);
+        return new String[]{hours, minutes, seconds};
     }
 }
 

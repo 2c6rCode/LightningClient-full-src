@@ -14,13 +14,13 @@ extends Setting {
     private float x = 0.0f;
     private float y = 0.0f;
 
-    public PositionSetting(String string, String string2) {
-        super(string, string, string2, new Setting.Visibility());
+    public PositionSetting(String name, String description) {
+        super(name, name, description, new Setting.Visibility());
     }
 
-    public void set(float f, float f2) {
-        this.x = f;
-        this.y = f2;
+    public void set(float x, float y) {
+        this.x = x;
+        this.y = y;
     }
 
     public void resetValue() {
@@ -39,13 +39,13 @@ extends Setting {
     }
 
     @Generated
-    public void setX(float f) {
-        this.x = f;
+    public void setX(float x) {
+        this.x = x;
     }
 
     @Generated
-    public void setY(float f) {
-        this.y = f;
+    public void setY(float y) {
+        this.y = y;
     }
 }
 

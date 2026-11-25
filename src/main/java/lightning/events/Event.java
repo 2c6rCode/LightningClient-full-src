@@ -25,19 +25,19 @@ public class Event {
     }
 
     @Generated
-    public void setCancelled(boolean bl) {
-        this.cancelled = bl;
+    public void setCancelled(boolean cancelled) {
+        this.cancelled = cancelled;
     }
 
     @Generated
-    public boolean equals(Object object) {
-        if (object == this) {
+    public boolean equals(Object other) {
+        if (other == this) {
             return true;
         }
-        if (!(object instanceof Event)) {
+        if (!(other instanceof Event)) {
             return false;
         }
-        Event event = (Event)object;
+        Event event = (Event)other;
         if (!event.canEqual(this)) {
             return false;
         }
@@ -45,16 +45,16 @@ public class Event {
     }
 
     @Generated
-    protected boolean canEqual(Object object) {
-        return object instanceof Event;
+    protected boolean canEqual(Object other) {
+        return other instanceof Event;
     }
 
     @Generated
     public int hashCode() {
-        int n = 59;
-        int n2 = 1;
-        n2 = n2 * 59 + (this.isCancelled() ? 79 : 97);
-        return n2;
+        int prime = 59;
+        int result = 1;
+        result = result * 59 + (this.isCancelled() ? 79 : 97);
+        return result;
     }
 
     @Generated

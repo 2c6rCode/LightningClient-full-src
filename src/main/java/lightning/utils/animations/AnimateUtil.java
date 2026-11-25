@@ -4,36 +4,36 @@
 package lightning.utils.animations;
 
 public class AnimateUtil {
-    public static double animate(double d, double d2, double d3) {
-        if (d3 >= 1.0) {
-            return d2;
+    public static double animate(double current, double target, double speed) {
+        if (speed >= 1.0) {
+            return target;
         }
-        if (d3 <= 0.0) {
-            return d;
+        if (speed <= 0.0) {
+            return current;
         }
-        boolean bl = d2 > d;
-        double d4 = Math.abs(d2 - d);
-        if (d4 <= 0.001) {
-            return d2;
+        boolean increasing = target > current;
+        double diff = Math.abs(target - current);
+        if (diff <= 0.001) {
+            return target;
         }
-        double d5 = d4 * d3;
-        return d + (bl ? d5 : -d5);
+        double step = diff * speed;
+        return current + (increasing ? step : -step);
     }
 
-    public static float animate(float f, float f2, float f3) {
-        if (f3 >= 1.0f) {
-            return f2;
+    public static float animate(float current, float target, float speed) {
+        if (speed >= 1.0f) {
+            return target;
         }
-        if (f3 <= 0.0f) {
-            return f;
+        if (speed <= 0.0f) {
+            return current;
         }
-        boolean bl = f2 > f;
-        float f4 = Math.abs(f2 - f);
-        if (f4 <= 0.001f) {
-            return f2;
+        boolean increasing = target > current;
+        float diff = Math.abs(target - current);
+        if (diff <= 0.001f) {
+            return target;
         }
-        float f5 = f4 * f3;
-        return f + (bl ? f5 : -f5);
+        float step = diff * speed;
+        return current + (increasing ? step : -step);
     }
 }
 

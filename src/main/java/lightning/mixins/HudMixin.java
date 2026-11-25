@@ -64,7 +64,7 @@ public class HudMixin {
     }
 
     @Inject(method={"extractPortalOverlay"}, at={@At(value="HEAD")}, cancellable=true)
-    private void renderPortalOverlay(GuiGraphicsExtractor guiGraphicsExtractor, float f, CallbackInfo callbackInfo) {
+    private void renderPortalOverlay(GuiGraphicsExtractor guiGraphicsExtractor, float nauseaIntensity, CallbackInfo callbackInfo) {
         try {
             if (((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() && ((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).portalOverlay.getValue()) {
                 callbackInfo.cancel();
@@ -116,7 +116,7 @@ public class HudMixin {
     }
 
     @WrapWithCondition(method={"extractCameraOverlays"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/gui/Hud;extractTextureOverlay(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;F)V")})
-    private boolean renderTextureOverlay(Hud hud, GuiGraphicsExtractor guiGraphicsExtractor, Identifier identifier, float f) {
+    private boolean renderTextureOverlay(Hud hud, GuiGraphicsExtractor guiGraphicsExtractor, Identifier identifier, float alpha) {
         if (identifier.equals((Object)POWDER_SNOW_OUTLINE_LOCATION)) {
             return !((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() || !((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).snowOverlay.getValue();
         }
@@ -149,21 +149,21 @@ public class HudMixin {
     }
 
     @Redirect(method={"extractItemHotbar"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/player/Inventory;getItem(I)Lnet/minecraft/world/item/ItemStack;")})
-    private ItemStack night$grimHotbarVisual(Inventory inventory, int n) {
-        ItemStack itemStack = inventory.getItem(n);
+    private ItemStack night$grimHotbarVisual(Inventory inventory, int slot) {
+        ItemStack itemStack = inventory.getItem(slot);
         if (Night.MODULE_MANAGER == null) {
             return itemStack;
         }
         ElytraFlyModule elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class);
-        if (elytraFlyModule.getGrimParkedSlot() == n) {
+        if (elytraFlyModule.getGrimParkedSlot() == slot) {
             return elytraFlyModule.getGrimParkedDisplaced();
         }
         return itemStack;
     }
 
     @Redirect(method={"extractSlot"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/gui/GuiGraphicsExtractor;item(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;III)V")})
-    private void night$extractSlotCached(GuiGraphicsExtractor guiGraphicsExtractor, LivingEntity livingEntity, ItemStack itemStack, int n, int n2, int n3) {
-        HotbarCache.extractItem((GuiGraphicsExtractor)guiGraphicsExtractor, (LivingEntity)livingEntity, (ItemStack)itemStack, (int)n, (int)n2, (int)n3);
+    private void night$extractSlotCached(GuiGraphicsExtractor guiGraphicsExtractor, LivingEntity livingEntity, ItemStack itemStack, int x, int y, int seed) {
+        HotbarCache.extractItem((GuiGraphicsExtractor)guiGraphicsExtractor, (LivingEntity)livingEntity, (ItemStack)itemStack, (int)x, (int)y, (int)seed);
     }
 
     @Inject(method={"clearCache"}, at={@At(value="HEAD")})

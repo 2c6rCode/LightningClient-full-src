@@ -111,7 +111,7 @@ implements IMinecraft {
 
     @Shadow
     @Nullable
-    public abstract AttributeInstance getAttribute(Holder<Attribute> var1);
+    public abstract AttributeInstance getAttribute(Holder<Attribute> attribute);
 
     public LivingEntityMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -120,7 +120,7 @@ implements IMinecraft {
     @WrapMethod(method={"maxUpStep"})
     private float getStepHeight(Operation<Float> operation) {
         IHoleSnapModule iHoleSnapModule = Night.MODULE_MANAGER != null ? (IHoleSnapModule)Night.MODULE_MANAGER.getModule("HoleSnap") : null;
-        IHoleSnapModule iHoleSnapModule2 = iHoleSnapModule;
+        IHoleSnapModule unusedHoleSnapModule = iHoleSnapModule;
         if ((Object)this == LivingEntityMixin.mc.player && Night.MODULE_MANAGER != null && (((StepModule)Night.MODULE_MANAGER.getModule(StepModule.class)).isToggled() && LivingEntityMixin.mc.player.onGround() || iHoleSnapModule != null && iHoleSnapModule.isToggled() && iHoleSnapModule.isStepEnabled())) {
             return ((StepModule)Night.MODULE_MANAGER.getModule(StepModule.class)).height.getValue().floatValue();
         }
@@ -131,7 +131,7 @@ implements IMinecraft {
     private void doItemUse(CallbackInfo callbackInfo) {
         try {
             INoJumpDelayModule iNoJumpDelayModule = Night.MODULE_MANAGER != null ? (INoJumpDelayModule)Night.MODULE_MANAGER.getModule("NoJumpDelay") : null;
-            INoJumpDelayModule iNoJumpDelayModule2 = iNoJumpDelayModule;
+            INoJumpDelayModule unusedNoJumpDelayModule = iNoJumpDelayModule;
             if (iNoJumpDelayModule != null && iNoJumpDelayModule.isToggled() && this.noJumpDelay == 10) {
                 this.noJumpDelay = iNoJumpDelayModule.getTicksValue();
             }
@@ -161,11 +161,11 @@ implements IMinecraft {
 
     @WrapOperation(method={"getCurrentSwingDuration"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/item/component/SwingAnimation;duration()I")})
     private int getHandSwingDuration(SwingAnimation swingAnimation, Operation<Integer> operation) {
-        int n = (Integer)operation.call(new Object[]{swingAnimation});
+        int duration = (Integer)operation.call(new Object[]{swingAnimation});
         if ((Object)this != LivingEntityMixin.mc.player) {
-            return n;
+            return duration;
         }
-        return ((SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class)).isToggled() && ((SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class)).modifySpeed.getValue() && LivingEntityMixin.mc.options.getCameraType().isFirstPerson() ? 21 - ((SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class)).speed.getValue().intValue() : n;
+        return ((SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class)).isToggled() && ((SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class)).modifySpeed.getValue() && LivingEntityMixin.mc.options.getCameraType().isFirstPerson() ? 21 - ((SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class)).speed.getValue().intValue() : duration;
     }
 
     @Inject(method={"completeUsingItem"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/item/ItemStack;finishUsingItem(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/item/ItemStack;", shift=At.Shift.AFTER)})
@@ -182,16 +182,16 @@ implements IMinecraft {
     }
 
     @Inject(method={"setSprinting"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/Entity;setSprinting(Z)V", shift=At.Shift.AFTER)}, cancellable=true)
-    private void setSprinting$setSprinting(boolean bl, CallbackInfo callbackInfo) {
+    private void setSprinting$setSprinting(boolean sprinting, CallbackInfo callbackInfo) {
         try {
             if ((Object)this == LivingEntityMixin.mc.player) {
                 ElytraFlyModule elytraFlyModule = Night.MODULE_MANAGER != null ? (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class) : null;
-                ElytraFlyModule elytraFlyModule2 = elytraFlyModule;
+                ElytraFlyModule unusedElytraFlyModule = elytraFlyModule;
                 if (elytraFlyModule != null && elytraFlyModule.isToggled() && elytraFlyModule.mode.getValue().equalsIgnoreCase("Bounce")) {
                     return;
                 }
                 ISprintModule iSprintModule = Night.MODULE_MANAGER == null ? null : (ISprintModule)Night.MODULE_MANAGER.getModule("Sprint");
-                ISprintModule iSprintModule2 = iSprintModule;
+                ISprintModule unusedSprintModule = iSprintModule;
                 if (iSprintModule != null && iSprintModule.isToggled()) {
                     AttributeInstance attributeInstance = this.getAttribute((Holder<Attribute>)Attributes.MOVEMENT_SPEED);
                     if (attributeInstance != null) {
@@ -259,24 +259,24 @@ implements IMinecraft {
     }
 
     @ModifyConstant(method={"handleOnClimbable"}, constant={@Constant(floatValue=0.15f)}, require=0)
-    private float night$fastClimbScale(float f) {
-        return this.night$fastClimbFactor(f);
+    private float night$fastClimbScale(float climbSpeed) {
+        return this.night$fastClimbFactor(climbSpeed);
     }
 
     @Unique
-    private float night$fastClimbFactor(float f) {
+    private float night$fastClimbFactor(float baseClimbSpeed) {
         if ((Object)this != LivingEntityMixin.mc.player) {
-            return f;
+            return baseClimbSpeed;
         }
         IFastClimbModule iFastClimbModule = (IFastClimbModule)Night.MODULE_MANAGER.getModule("FastClimb");
         if (!iFastClimbModule.isToggled()) {
-            return f;
+            return baseClimbSpeed;
         }
-        float f2 = iFastClimbModule.getSpeedValue();
-        if (f2 <= 0.0f || f2 >= 1.0f) {
-            return f;
+        float speedMultiplier = iFastClimbModule.getSpeedValue();
+        if (speedMultiplier <= 0.0f || speedMultiplier >= 1.0f) {
+            return baseClimbSpeed;
         }
-        return f * f2;
+        return baseClimbSpeed * speedMultiplier;
     }
 
     @Inject(method={"getItemBySlot"}, at={@At(value="HEAD")}, cancellable=true)
@@ -376,8 +376,8 @@ implements IMinecraft {
     }
 
     @ModifyExpressionValue(method={"jumpFromGround"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/LivingEntity;getYRot()F")})
-    private float jumpFromGround$grimYaw(float f) {
-        return (Object)this == LivingEntityMixin.mc.player && this.night$shouldSpoofRotation() ? this.night$spoofYaw() : f;
+    private float jumpFromGround$grimYaw(float yaw) {
+        return (Object)this == LivingEntityMixin.mc.player && this.night$shouldSpoofRotation() ? this.night$spoofYaw() : yaw;
     }
 
     @Unique

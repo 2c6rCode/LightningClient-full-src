@@ -47,21 +47,21 @@ extends Module {
         if (file == null || !file.exists()) {
             return;
         }
-        File file2 = file;
+        File screenshotFile = file;
         CompletableFuture.runAsync(() -> {
             try {
                 BufferedImage bufferedImage;
-                boolean bl = false;
-                if (this.clipboard.getValue() && (bufferedImage = ImageIO.read(file2)) != null) {
-                    ImageTransferable imageTransferable = new ImageTransferable(bufferedImage, file2, this.copyFile.getValue());
+                boolean copiedToClipboard = false;
+                if (this.clipboard.getValue() && (bufferedImage = ImageIO.read(screenshotFile)) != null) {
+                    ImageTransferable imageTransferable = new ImageTransferable(bufferedImage, screenshotFile, this.copyFile.getValue());
                     Toolkit.getDefaultToolkit().getSystemClipboard().setContents(imageTransferable, null);
-                    bl = true;
+                    copiedToClipboard = true;
                 }
-                if (!bl && this.openFolder.getValue()) {
-                    Util.getPlatform().openFile(file2.getParentFile());
+                if (!copiedToClipboard && this.openFolder.getValue()) {
+                    Util.getPlatform().openFile(screenshotFile.getParentFile());
                 }
                 if (this.notify.getValue()) {
-                    Night.CHAT_MANAGER.message("Screenshot copied to clipboard: " + String.valueOf(ChatUtils.getPrimary()) + file2.getName(), "screenshot-copied");
+                    Night.CHAT_MANAGER.message("Screenshot copied to clipboard: " + String.valueOf(ChatUtils.getPrimary()) + screenshotFile.getName(), "screenshot-copied");
                 }
             }
             catch (Throwable throwable) {
@@ -90,15 +90,15 @@ extends Module {
 
     private File findLatestScreenshotFile() {
         try {
-            File file2 = new File(ScreenshotModule.mc.gameDirectory, "screenshots");
-            if (!file2.exists() || !file2.isDirectory()) {
+            File screenshotsDir = new File(ScreenshotModule.mc.gameDirectory, "screenshots");
+            if (!screenshotsDir.exists() || !screenshotsDir.isDirectory()) {
                 return null;
             }
-            File[] fileArray = file2.listFiles((file, string) -> string.toLowerCase().endsWith(".png"));
-            if (fileArray == null || fileArray.length == 0) {
+            File[] pngFiles = screenshotsDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png"));
+            if (pngFiles == null || pngFiles.length == 0) {
                 return null;
             }
-            return Arrays.stream(fileArray).max(Comparator.comparingLong(File::lastModified)).orElse(null);
+            return Arrays.stream(pngFiles).max(Comparator.comparingLong(File::lastModified)).orElse(null);
         }
         catch (Throwable throwable) {
             return null;

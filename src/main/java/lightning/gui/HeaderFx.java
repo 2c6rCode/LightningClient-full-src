@@ -56,15 +56,15 @@ public final class HeaderFx {
     private HeaderFx() {
     }
 
-    private static String pickFamily(String ... stringArray) {
+    private static String pickFamily(String ... families) {
         try {
-            HashSet<String> hashSet = new HashSet<String>();
-            for (String string : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
-                hashSet.add(string);
+            HashSet<String> available = new HashSet<String>();
+            for (String family : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
+                available.add(family);
             }
-            for (String string : stringArray) {
-                if (!hashSet.contains(string)) continue;
-                return string;
+            for (String family : families) {
+                if (!available.contains(family)) continue;
+                return family;
             }
         }
         catch (Throwable throwable) {
@@ -73,8 +73,8 @@ public final class HeaderFx {
         return "SansSerif";
     }
 
-    private static Font[] chain(String string, int n) {
-        return new Font[]{new Font(string, n, 1), new Font("Segoe UI Symbol", n, 1), new Font("Segoe UI Emoji", n, 1), new Font("Arial Unicode MS", n, 1), new Font("SansSerif", n, 1), new Font("Dialog", n, 1)};
+    private static Font[] chain(String family, int style) {
+        return new Font[]{new Font(family, style, 1), new Font("Segoe UI Symbol", style, 1), new Font("Segoe UI Emoji", style, 1), new Font("Arial Unicode MS", style, 1), new Font("SansSerif", style, 1), new Font("Dialog", style, 1)};
     }
 
     private static void init() {
@@ -82,99 +82,99 @@ public final class HeaderFx {
             return;
         }
         try {
-            String string = HeaderFx.pickFamily("Bahnschrift", "Segoe UI Black", "Segoe UI Semibold", "Segoe UI", "Verdana");
-            headerFont = new FontRenderer(HeaderFx.chain(string, 1), 10.5f);
-            titleFont = new FontRenderer(HeaderFx.chain(string, 1), 24.0f);
-            headerSmall = new FontRenderer(HeaderFx.chain(string, 1), 8.3f);
+            String family = HeaderFx.pickFamily("Bahnschrift", "Segoe UI Black", "Segoe UI Semibold", "Segoe UI", "Verdana");
+            headerFont = new FontRenderer(HeaderFx.chain(family, 1), 10.5f);
+            titleFont = new FontRenderer(HeaderFx.chain(family, 1), 24.0f);
+            headerSmall = new FontRenderer(HeaderFx.chain(family, 1), 8.3f);
         }
         catch (Throwable throwable) {
             failed = true;
         }
     }
 
-    private static Color c(int n, int n2, int n3, int n4) {
-        return new Color(n, n2, n3, n4);
+    private static Color c(int r, int g, int b, int a) {
+        return new Color(r, g, b, a);
     }
 
-    public static void roundRect(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, float f5, Color color, Color color2) {
-        LightningSkin.rr(guiGraphicsExtractor, f, f2, f3, f4, f5, true, true, true, true, color, color2);
+    public static void roundRect(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, float radius, Color topColor, Color bottomColor) {
+        LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, radius, true, true, true, true, topColor, bottomColor);
     }
 
-    public static void fitWidths(List<Frame> list, float f, int n) {
-        int n2;
-        int n3 = list.size();
-        if (n3 == 0) {
+    public static void fitWidths(List<Frame> frames, float viewWidth, int gap) {
+        int availableWidth;
+        int count = frames.size();
+        if (count == 0) {
             return;
         }
-        int[] nArray = new int[n3];
-        int n4 = 0;
-        for (n2 = 0; n2 < n3; ++n2) {
-            nArray[n2] = Math.max(96, list.get(n2).getRequiredWidth());
-            n4 += nArray[n2];
+        int[] widths = new int[count];
+        int totalWidth = 0;
+        for (int i = 0; i < count; ++i) {
+            widths[i] = Math.max(96, frames.get(i).getRequiredWidth());
+            totalWidth += widths[i];
         }
-        n2 = Math.round(f) - 16 - (n3 - 1) * n;
-        if (n4 > n2 && n4 > 0) {
-            float f2 = (float)n2 / (float)n4;
-            for (int i = 0; i < n3; ++i) {
-                nArray[i] = Math.max(60, Math.round((float)nArray[i] * f2));
+        availableWidth = Math.round(viewWidth) - 16 - (count - 1) * gap;
+        if (totalWidth > availableWidth && totalWidth > 0) {
+            float scale = (float)availableWidth / (float)totalWidth;
+            for (int i = 0; i < count; ++i) {
+                widths[i] = Math.max(60, Math.round((float)widths[i] * scale));
             }
         }
-        for (int i = 0; i < n3; ++i) {
-            list.get(i).setWidth(nArray[i]);
+        for (int i = 0; i < count; ++i) {
+            frames.get(i).setWidth(widths[i]);
         }
     }
 
-    public static void headerBg(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        ColorGui.headerBg(guiGraphicsExtractor, f, f2, f3, f4, color);
+    public static void headerBg(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        ColorGui.headerBg(guiGraphicsExtractor, x1, y1, x2, y2, color);
     }
 
-    public static void bodyBg(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        ColorGui.bodyBg(guiGraphicsExtractor, f, f2, f3, f4, color);
+    public static void bodyBg(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        ColorGui.bodyBg(guiGraphicsExtractor, x1, y1, x2, y2, color);
     }
 
-    public static void idleRow(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        float f5 = f2 + 0.75f;
-        float f6 = f4 - 0.75f;
-        float f7 = Math.min(4.0f, (f6 - f5) / 2.0f);
-        LightningSkin.rr(guiGraphicsExtractor, f, f5, f3, f6, f7, true, true, true, true, HeaderFx.c(24, 22, 52, 140), HeaderFx.c(17, 15, 40, 140));
+    public static void idleRow(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        float yTop = y1 + 0.75f;
+        float yBot = y2 - 0.75f;
+        float radius = Math.min(4.0f, (yBot - yTop) / 2.0f);
+        LightningSkin.rr(guiGraphicsExtractor, x1, yTop, x2, yBot, radius, true, true, true, true, HeaderFx.c(24, 22, 52, 140), HeaderFx.c(17, 15, 40, 140));
     }
 
-    public static void chargeFill(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        float f5 = f3 - f;
-        if (f5 <= 0.0f) {
+    public static void chargeFill(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        float fillWidth = x2 - x1;
+        if (fillWidth <= 0.0f) {
             return;
         }
-        float f6 = f2 + 0.75f;
-        float f7 = f4 - 0.75f;
-        float f8 = Math.min(4.0f, Math.min((f7 - f6) / 2.0f, f5 / 2.0f));
-        LightningSkin.rr(guiGraphicsExtractor, f, f6, f3, f7, f8, true, true, true, true, HeaderFx.c(112, 92, 235, 175), HeaderFx.c(62, 52, 150, 160));
+        float yTop = y1 + 0.75f;
+        float yBot = y2 - 0.75f;
+        float radius = Math.min(4.0f, Math.min((yBot - yTop) / 2.0f, fillWidth / 2.0f));
+        LightningSkin.rr(guiGraphicsExtractor, x1, yTop, x2, yBot, radius, true, true, true, true, HeaderFx.c(112, 92, 235, 175), HeaderFx.c(62, 52, 150, 160));
     }
 
-    public static void hover(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
+    public static void hover(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
         if (color.getAlpha() == 0) {
             return;
         }
-        float f5 = f2 + 0.75f;
-        float f6 = f4 - 0.75f;
-        float f7 = Math.min(4.0f, (f6 - f5) / 2.0f);
-        LightningSkin.rr(guiGraphicsExtractor, f, f5, f3, f6, f7, true, true, true, true, color, color);
+        float yTop = y1 + 0.75f;
+        float yBot = y2 - 0.75f;
+        float radius = Math.min(4.0f, (yBot - yTop) / 2.0f);
+        LightningSkin.rr(guiGraphicsExtractor, x1, yTop, x2, yBot, radius, true, true, true, true, color, color);
     }
 
-    public static void nop(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
+    public static void nop(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
     }
 
-    private static int[] counts(String string) {
+    private static int[] counts(String categoryName) {
         try {
             for (Module.Category category : Module.Category.values()) {
-                if (!category.getName().equalsIgnoreCase(string) && !category.name().equalsIgnoreCase(string)) continue;
-                int n = 0;
-                int n2 = 0;
+                if (!category.getName().equalsIgnoreCase(categoryName) && !category.name().equalsIgnoreCase(categoryName)) continue;
+                int toggled = 0;
+                int total = 0;
                 for (Module module : Night.MODULE_MANAGER.getModules(category)) {
-                    ++n2;
+                    ++total;
                     if (!module.isToggled()) continue;
-                    ++n;
+                    ++toggled;
                 }
-                return new int[]{n, n2};
+                return new int[]{toggled, total};
             }
         }
         catch (Throwable throwable) {
@@ -183,8 +183,8 @@ public final class HeaderFx {
         return null;
     }
 
-    public static void header(FontManager fontManager, GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color) {
-        ColorGui.header(fontManager, guiGraphicsExtractor, string, n, n2, color);
+    public static void header(FontManager fontManager, GuiGraphicsExtractor guiGraphicsExtractor, String text, int x, int y, Color color) {
+        ColorGui.header(fontManager, guiGraphicsExtractor, text, x, y, color);
     }
 
     public static DescriptionFrame desc(ClickGuiScreen clickGuiScreen) {
@@ -192,24 +192,24 @@ public final class HeaderFx {
         return clickGuiScreen.getDescriptionFrame();
     }
 
-    public static void descRender(DescriptionFrame descriptionFrame, GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        descriptionFrame.render(guiGraphicsExtractor, n, n2, f);
+    public static void descRender(DescriptionFrame descriptionFrame, GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        descriptionFrame.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
     }
 
     public static Matrix3x2fStack poseHook(GuiGraphicsExtractor guiGraphicsExtractor) {
         try {
             ClickGuiScreen clickGuiScreen = current;
             if (clickGuiScreen != null && haveBg && !clickGuiScreen.isClosing()) {
-                float f = clickGuiScreen.getAppliedScale();
-                if (f <= 0.0f) {
-                    f = 1.0f;
+                float scale = clickGuiScreen.getAppliedScale();
+                if (scale <= 0.0f) {
+                    scale = 1.0f;
                 }
-                float f2 = bgX1 * f;
-                float f3 = bgY1 * f;
-                float f4 = bgX2 * f;
-                float f5 = bgY2 * f;
-                float f6 = 9.0f * f;
-                LightningSkin.rr(guiGraphicsExtractor, f2, f3, f4, f5, f6, true, true, true, true, new Color(16, 16, 16, 0), new Color(8, 8, 8, 0));
+                float x1 = bgX1 * scale;
+                float y1 = bgY1 * scale;
+                float x2 = bgX2 * scale;
+                float y2 = bgY2 * scale;
+                float radius = 9.0f * scale;
+                LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, radius, true, true, true, true, new Color(16, 16, 16, 0), new Color(8, 8, 8, 0));
             }
         }
         catch (Throwable throwable) {
@@ -218,70 +218,70 @@ public final class HeaderFx {
         return guiGraphicsExtractor.pose();
     }
 
-    public static void applyScale(ClickGuiScreen clickGuiScreen, float f) {
-        clickGuiScreen.setAppliedScale(f);
+    public static void applyScale(ClickGuiScreen clickGuiScreen, float requestedScale) {
+        clickGuiScreen.setAppliedScale(requestedScale);
         try {
             DescriptionFrame descriptionFrame;
-            int n;
-            float f2 = f <= 0.0f ? 1.0f : f;
+            int cursorX;
+            float scale = requestedScale <= 0.0f ? 1.0f : requestedScale;
             Window window = Minecraft.getInstance().getWindow();
-            float f3 = (float)window.getGuiScaledWidth() / f2;
-            float f4 = (float)window.getGuiScaledHeight() / f2;
-            ArrayList<Frame> arrayList = clickGuiScreen.getFrames();
-            int n2 = arrayList.size();
-            if (n2 == 0) {
+            float viewWidth = (float)window.getGuiScaledWidth() / scale;
+            float viewHeight = (float)window.getGuiScaledHeight() / scale;
+            ArrayList<Frame> frames = clickGuiScreen.getFrames();
+            int count = frames.size();
+            if (count == 0) {
                 return;
             }
-            float f5 = f4 - 22.0f - 46.0f;
-            for (Frame frame : arrayList) {
-                frame.setMaxViewHeight(Math.max(40, Math.round(f5 - (float)frame.getHeight() - 4.0f)));
+            float availableHeight = viewHeight - 22.0f - 46.0f;
+            for (Frame frame : frames) {
+                frame.setMaxViewHeight(Math.max(40, Math.round(availableHeight - (float)frame.getHeight() - 4.0f)));
             }
-            HeaderFx.fitWidths(arrayList, f3, 10);
-            int n3 = (n2 - 1) * 10;
-            for (Frame n5 : arrayList) {
-                n3 += n5.getWidth();
+            HeaderFx.fitWidths(frames, viewWidth, 10);
+            int totalWidth = (count - 1) * 10;
+            for (Frame frame : frames) {
+                totalWidth += frame.getWidth();
             }
-            int n4 = Math.round((f3 - (float)n3) / 2.0f);
-            int n5 = 0;
-            for (Frame throwable : arrayList) {
-                n = Math.min(throwable.getButtons().size() * 14, throwable.getMaxViewHeight());
-                n5 = Math.max(n5, throwable.getHeight() + n + 4);
+            int startX = Math.round((viewWidth - (float)totalWidth) / 2.0f);
+            int maxFrameHeight = 0;
+            for (Frame frame : frames) {
+                int bodyHeight = Math.min(frame.getButtons().size() * 14, frame.getMaxViewHeight());
+                maxFrameHeight = Math.max(maxFrameHeight, frame.getHeight() + bodyHeight + 4);
             }
             HeaderFx.init();
-            float f6 = 24.0f;
+            float titleHeight = 24.0f;
             try {
                 if (titleFont != null) {
-                    f6 = titleFont.getHeight();
+                    titleHeight = titleFont.getHeight();
                 }
             }
             catch (Throwable throwable) {
                 // empty catch block
             }
-            int n6 = 22 + Math.round(Math.max(0.0f, (f5 - (float)n5) / 2.0f));
-            n6 = Math.max(n6, Math.round(f6 + 22.0f));
-            n = n4;
-            for (Frame fr : arrayList) {
-                fr.setX(n);
-                fr.setY(n6);
-                n += fr.getWidth() + 10;
+            int startY = 22 + Math.round(Math.max(0.0f, (availableHeight - (float)maxFrameHeight) / 2.0f));
+            startY = Math.max(startY, Math.round(titleHeight + 22.0f));
+            cursorX = startX;
+            for (Frame frame : frames) {
+                frame.setX(cursorX);
+                frame.setY(startY);
+                cursorX += frame.getWidth() + 10;
             }
-            float f7 = n - 10;
+            float endX = cursorX - 10;
             current = clickGuiScreen;
-            titleCx = ((float)n4 + f7) / 2.0f;
-            titleY = (float)n6 - f6 - 9.0f;
-            bgX1 = (float)n4 - 12.0f;
-            bgX2 = f7 + 12.0f;
+            titleCx = ((float)startX + endX) / 2.0f;
+            titleY = (float)startY - titleHeight - 9.0f;
+            bgX1 = (float)startX - 12.0f;
+            bgX2 = endX + 12.0f;
             bgY1 = titleY - 7.0f;
-            bgY2 = (float)(n6 + n5) + 9.0f;
+            bgY2 = (float)(startY + maxFrameHeight) + 9.0f;
             haveBg = true;
             PingBypassFrame frame2 = clickGuiScreen.getPingBypassFrame();
             if (frame2 != null) {
-                frame2.setX(n);
-                frame2.setY(n6);
+                frame2.setX(cursorX);
+                frame2.setY(startY);
             }
             if ((descriptionFrame = clickGuiScreen.getDescriptionFrame()) != null) {
-                descriptionFrame.setX(Math.round((f3 - (float)descriptionFrame.getWidth()) / 2.0f));
-                descriptionFrame.setY(Math.round(f4 - 34.0f));
+                descriptionFrame.setX(Math.round((viewWidth - (float)descriptionFrame.getWidth()) / 2.0f));
+                descriptionFrame.setY(Math.round(viewHeight - 34.0f));
             }
         }
         catch (Throwable throwable) {

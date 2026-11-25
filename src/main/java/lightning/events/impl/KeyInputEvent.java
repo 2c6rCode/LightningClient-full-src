@@ -16,18 +16,18 @@ extends Event {
 
     @Override
     @Generated
-    public boolean equals(Object object) {
-        if (object == this) {
+    public boolean equals(Object other) {
+        if (other == this) {
             return true;
         }
-        if (!(object instanceof KeyInputEvent)) {
+        if (!(other instanceof KeyInputEvent)) {
             return false;
         }
-        KeyInputEvent keyInputEvent = (KeyInputEvent)object;
+        KeyInputEvent keyInputEvent = (KeyInputEvent)other;
         if (!keyInputEvent.canEqual(this)) {
             return false;
         }
-        if (!super.equals(object)) {
+        if (!super.equals(other)) {
             return false;
         }
         if (this.getKey() != keyInputEvent.getKey()) {
@@ -38,24 +38,24 @@ extends Event {
 
     @Override
     @Generated
-    protected boolean canEqual(Object object) {
-        return object instanceof KeyInputEvent;
+    protected boolean canEqual(Object other) {
+        return other instanceof KeyInputEvent;
     }
 
     @Override
     @Generated
     public int hashCode() {
-        int n = 59;
-        int n2 = super.hashCode();
-        n2 = n2 * 59 + this.getKey();
-        n2 = n2 * 59 + this.getModifiers();
-        return n2;
+        int prime = 59;
+        int result = super.hashCode();
+        result = result * 59 + this.getKey();
+        result = result * 59 + this.getModifiers();
+        return result;
     }
 
     @Generated
-    public KeyInputEvent(int n, int n2) {
-        this.key = n;
-        this.modifiers = n2;
+    public KeyInputEvent(int key, int modifiers) {
+        this.key = key;
+        this.modifiers = modifiers;
     }
 
     @Generated

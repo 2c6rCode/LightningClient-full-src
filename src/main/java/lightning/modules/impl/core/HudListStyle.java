@@ -37,76 +37,76 @@ public final class HudListStyle {
     }
 
     private static String bindOf(Module module) {
-        int n = module.getBind();
-        if (n == 0) {
+        int bind = module.getBind();
+        if (bind == 0) {
             return "";
         }
-        String string = KeyboardUtils.getKeyName(n);
-        return string == null ? "" : string;
+        String keyName = KeyboardUtils.getKeyName(bind);
+        return keyName == null ? "" : keyName;
     }
 
-    private static String metaOf(HUDModule hUDModule, Module module) {
-        String string = module.getMetaData();
-        return string == null || string.isEmpty() || !hUDModule.metaData.getValue() ? "" : string;
+    private static String metaOf(HUDModule hudModule, Module module) {
+        String metaData = module.getMetaData();
+        return metaData == null || metaData.isEmpty() || !hudModule.metaData.getValue() ? "" : metaData;
     }
 
-    public static String moduleText(HUDModule hUDModule, Module module) {
-        if (!HudListStyle.newbie(hUDModule)) {
+    public static String moduleText(HUDModule hudModule, Module module) {
+        if (!HudListStyle.newbie(hudModule)) {
             try {
                 if (original == null) {
                     original = HUDModule.class.getDeclaredMethod("getModuleText", Module.class);
                     original.setAccessible(true);
                 }
-                return (String)original.invoke((Object)hUDModule, module);
+                return (String)original.invoke((Object)hudModule, module);
             }
             catch (Throwable throwable) {
                 return module.getName();
             }
         }
-        String string = HudListStyle.bindOf(module);
-        String string2 = HudListStyle.metaOf(hUDModule, module);
+        String bindText = HudListStyle.bindOf(module);
+        String metaText = HudListStyle.metaOf(hudModule, module);
         StringBuilder stringBuilder = new StringBuilder();
-        if (!string.isEmpty()) {
-            stringBuilder.append(string).append(' ');
+        if (!bindText.isEmpty()) {
+            stringBuilder.append(bindText).append(' ');
         }
         stringBuilder.append(module.getName());
-        if (!string2.isEmpty()) {
-            stringBuilder.append(' ').append(string2);
+        if (!metaText.isEmpty()) {
+            stringBuilder.append(' ').append(metaText);
         }
         return stringBuilder.toString();
     }
 
-    private static Color lerp(Color color, Color color2, float f, int n) {
-        f = Math.max(0.0f, Math.min(1.0f, f));
-        return new Color((int)((float)color.getRed() + (float)(color2.getRed() - color.getRed()) * f), (int)((float)color.getGreen() + (float)(color2.getGreen() - color.getGreen()) * f), (int)((float)color.getBlue() + (float)(color2.getBlue() - color.getBlue()) * f), n);
+    private static Color lerp(Color fromColor, Color toColor, float progress, int alpha) {
+        progress = Math.max(0.0f, Math.min(1.0f, progress));
+        return new Color((int)((float)fromColor.getRed() + (float)(toColor.getRed() - fromColor.getRed()) * progress), (int)((float)fromColor.getGreen() + (float)(toColor.getGreen() - fromColor.getGreen()) * progress), (int)((float)fromColor.getBlue() + (float)(toColor.getBlue() - fromColor.getBlue()) * progress), alpha);
     }
 
-    public static void drawNewbie(HUDModule hUDModule, Module module, GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, Color color, boolean bl) {
-        String string = HudListStyle.bindOf(module);
-        String string2 = HudListStyle.metaOf(hUDModule, module);
-        String string3 = module.getName();
-        if (string3 == null || string3.isEmpty()) {
+    public static void drawNewbie(HUDModule hudModule, Module module, GuiGraphicsExtractor graphics, float x, float y, float progress, Color color, boolean unused) {
+        String bindText = HudListStyle.bindOf(module);
+        String metaText = HudListStyle.metaOf(hudModule, module);
+        String moduleName = module.getName();
+        if (moduleName == null || moduleName.isEmpty()) {
             return;
         }
         FontManager fontManager = Night.FONT_MANAGER;
-        int n = fontManager.getHeight();
-        String string4 = HudListStyle.moduleText(hUDModule, module);
-        float f4 = fontManager.getWidth(string4);
-        float f5 = Math.max(0.0f, Math.min(1.0f, f3));
-        Color color2 = color == null ? Color.WHITE : color;
-        Matrix3x2fStack matrix3x2fStack = guiGraphicsExtractor.pose();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(f, f2);
-        int n2 = 0;
-        if (!string.isEmpty()) {
-            fontManager.drawTextWithShadow(guiGraphicsExtractor, string, n2, 0, HudListStyle.lerp(BIND_OFF, BIND_ON, f5, 255));
-            n2 += fontManager.getWidth(string + " ");
+        int fontHeight = fontManager.getHeight();
+        String fullText = HudListStyle.moduleText(hudModule, module);
+        float totalWidth = fontManager.getWidth(fullText);
+        float clampedProgress = Math.max(0.0f, Math.min(1.0f, progress));
+        Color resolvedColor = color == null ? Color.WHITE : color;
+        Matrix3x2fStack matrixStack = graphics.pose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(x, y);
+        int drawX = 0;
+        if (!bindText.isEmpty()) {
+            fontManager.drawTextWithShadow(graphics, bindText, drawX, 0, HudListStyle.lerp(BIND_OFF, BIND_ON, clampedProgress, 255));
+            drawX += fontManager.getWidth(bindText + " ");
         }
-        fontManager.drawTextWithShadow(guiGraphicsExtractor, string3, n2, 0, HudListStyle.lerp(NAME_OFF, color2, f5, 255));
-        if (!string2.isEmpty()) {
-            fontManager.drawTextWithShadow(guiGraphicsExtractor, string2, n2 += fontManager.getWidth(string3 + " "), 0, META);
+        fontManager.drawTextWithShadow(graphics, moduleName, drawX, 0, HudListStyle.lerp(NAME_OFF, resolvedColor, clampedProgress, 255));
+        if (!metaText.isEmpty()) {
+            fontManager.drawTextWithShadow(graphics, metaText, drawX += fontManager.getWidth(moduleName + " "), 0, META);
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     static {

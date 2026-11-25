@@ -231,8 +231,8 @@ extends Module {
     }
 
     @Generated
-    public void setTarget(String string) {
-        this.target = string;
+    public void setTarget(String target) {
+        this.target = target;
     }
 
     public static class Client {
@@ -243,12 +243,12 @@ extends Module {
         private Socket tertiarySocket;
         private PrintWriter tertiaryOut;
 
-        public void startConnection(String string, int n) throws IOException {
-            this.primarySocket = new Socket(string, n);
+        public void startConnection(String host, int basePort) throws IOException {
+            this.primarySocket = new Socket(host, basePort);
             this.primaryOut = new PrintWriter(this.primarySocket.getOutputStream(), true);
-            this.secondarySocket = new Socket(string, n + 1);
+            this.secondarySocket = new Socket(host, basePort + 1);
             this.secondaryOut = new PrintWriter(this.secondarySocket.getOutputStream(), true);
-            this.tertiarySocket = new Socket(string, n + 2);
+            this.tertiarySocket = new Socket(host, basePort + 2);
             this.tertiaryOut = new PrintWriter(this.tertiarySocket.getOutputStream(), true);
         }
 
@@ -257,10 +257,10 @@ extends Module {
             this.primarySocket.close();
         }
 
-        public void sendMessage(String string) throws IOException {
-            this.primaryOut.println(string);
-            this.secondaryOut.println(string);
-            this.tertiaryOut.println(string);
+        public void sendMessage(String message) throws IOException {
+            this.primaryOut.println(message);
+            this.secondaryOut.println(message);
+            this.tertiaryOut.println(message);
         }
 
         @Generated
@@ -299,41 +299,38 @@ extends Module {
         private Socket clientSocket;
         private BufferedReader in;
 
-        public void startConnection(int n) throws IOException {
-            String string;
-            this.serverSocket = new ServerSocket(n);
+        public void startConnection(int port) throws IOException {
+            String line;
+            this.serverSocket = new ServerSocket(port);
             this.clientSocket = this.serverSocket.accept();
             this.in = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
-            while ((string = this.in.readLine()) != null) {
-                int n2;
-                int n3;
-                int n4;
+            while ((line = this.in.readLine()) != null) {
                 Module module;
-                String[] stringArray = string.split(";");
-                if (stringArray[0].equalsIgnoreCase("module") && stringArray.length == 3 && (module = Night.MODULE_MANAGER.getModule(stringArray[1])) != null) {
-                    Night.TASK_MANAGER.submit(() -> module.setToggled(Boolean.parseBoolean(stringArray[2])));
+                String[] parts = line.split(";");
+                if (parts[0].equalsIgnoreCase("module") && parts.length == 3 && (module = Night.MODULE_MANAGER.getModule(parts[1])) != null) {
+                    Night.TASK_MANAGER.submit(() -> module.setToggled(Boolean.parseBoolean(parts[2])));
                 }
-                if (stringArray[0].equalsIgnoreCase("update") && stringArray.length == 2) {
-                    Night.MODULE_MANAGER.getModule(EURoboticsModule.class).setTarget(stringArray[1]);
+                if (parts[0].equalsIgnoreCase("update") && parts.length == 2) {
+                    Night.MODULE_MANAGER.getModule(EURoboticsModule.class).setTarget(parts[1]);
                 }
-                if (stringArray[0].equalsIgnoreCase("key") && stringArray.length == 5 && IMinecraft.mc.keyboardHandler != null) {
-                    final int key = Integer.parseInt(stringArray[1]);
-                    final int scancode = Integer.parseInt(stringArray[2]);
-                    final int action = Integer.parseInt(stringArray[3]);
-                    final int modifiers = Integer.parseInt(stringArray[4]);
+                if (parts[0].equalsIgnoreCase("key") && parts.length == 5 && IMinecraft.mc.keyboardHandler != null) {
+                    final int key = Integer.parseInt(parts[1]);
+                    final int scancode = Integer.parseInt(parts[2]);
+                    final int action = Integer.parseInt(parts[3]);
+                    final int modifiers = Integer.parseInt(parts[4]);
                     Night.TASK_MANAGER.submit(() -> ((KeyboardHandlerAccessor)IMinecraft.mc.keyboardHandler).invokeKeyPress(IMinecraft.mc.getWindow().handle(), action, new KeyEvent(key, scancode, modifiers)));
                 }
-                if (stringArray[0].equalsIgnoreCase("mouse") && stringArray.length == 4 && IMinecraft.mc.mouseHandler != null) {
-                    final int button = Integer.parseInt(stringArray[1]);
-                    final int action = Integer.parseInt(stringArray[2]);
-                    final int mods = Integer.parseInt(stringArray[3]);
+                if (parts[0].equalsIgnoreCase("mouse") && parts.length == 4 && IMinecraft.mc.mouseHandler != null) {
+                    final int button = Integer.parseInt(parts[1]);
+                    final int action = Integer.parseInt(parts[2]);
+                    final int mods = Integer.parseInt(parts[3]);
                     Night.TASK_MANAGER.submit(() -> ((MouseAccessor)IMinecraft.mc.mouseHandler).invokeOnButton(IMinecraft.mc.getWindow().handle(), new MouseButtonInfo(button, action), mods));
                 }
-                if (stringArray[0].equalsIgnoreCase("yaw") && stringArray.length == 2 && IMinecraft.mc.player != null) {
-                    IMinecraft.mc.player.setYRot(Float.parseFloat(stringArray[1]));
+                if (parts[0].equalsIgnoreCase("yaw") && parts.length == 2 && IMinecraft.mc.player != null) {
+                    IMinecraft.mc.player.setYRot(Float.parseFloat(parts[1]));
                 }
-                if (stringArray[0].equalsIgnoreCase("pitch") && stringArray.length == 2 && IMinecraft.mc.player != null) {
-                    IMinecraft.mc.player.setXRot(Float.parseFloat(stringArray[1]));
+                if (parts[0].equalsIgnoreCase("pitch") && parts.length == 2 && IMinecraft.mc.player != null) {
+                    IMinecraft.mc.player.setXRot(Float.parseFloat(parts[1]));
                 }
                 if (Night.MODULE_MANAGER.getModule(EURoboticsModule.class).isToggled()) continue;
                 this.stopConnection();

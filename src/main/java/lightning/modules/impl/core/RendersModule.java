@@ -20,9 +20,9 @@ extends Module {
     public ColorSetting fillColor = new ColorSetting("FillColor", "The color used for the fill rendering.", new ModeSetting.Visibility(this.renderMode, "Fill", "Both"), ColorUtils.getDefaultFillColor());
     public ColorSetting outlineColor = new ColorSetting("OutlineColor", "The color used for the outline rendering.", new ModeSetting.Visibility(this.renderMode, "Outline", "Both"), ColorUtils.getDefaultOutlineColor());
 
-    public Color getColor(String string, Color color, float f) {
-        if (string.equalsIgnoreCase("Fade")) {
-            return ColorUtils.getColor(color, (int)((float)color.getAlpha() * f));
+    public Color getColor(String mode, Color color, float progress) {
+        if (mode.equalsIgnoreCase("Fade")) {
+            return ColorUtils.getColor(color, (int)((float)color.getAlpha() * progress));
         }
         return color;
     }

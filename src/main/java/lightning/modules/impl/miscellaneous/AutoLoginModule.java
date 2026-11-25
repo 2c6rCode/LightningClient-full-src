@@ -31,12 +31,12 @@ extends Module {
         Packet<?> packet = packetReceiveEvent.getPacket();
         if (packet instanceof ClientboundSystemChatPacket) {
             ClientboundSystemChatPacket clientboundSystemChatPacket = (ClientboundSystemChatPacket)packet;
-            String string = clientboundSystemChatPacket.content().getString().toLowerCase();
-            if (string.contains("/register")) {
+            String message = clientboundSystemChatPacket.content().getString().toLowerCase();
+            if (message.contains("/register")) {
                 mc.getConnection().sendCommand("register " + this.password.getValue() + " " + this.password.getValue());
                 Night.CHAT_MANAGER.tagged("Registered successfully.", this.getName());
                 this.timer.reset();
-            } else if (string.contains("/login")) {
+            } else if (message.contains("/login")) {
                 mc.getConnection().sendCommand("login " + this.password.getValue());
                 Night.CHAT_MANAGER.tagged("Logged in as " + mc.getUser().getName() + ".", this.getName());
                 this.timer.reset();

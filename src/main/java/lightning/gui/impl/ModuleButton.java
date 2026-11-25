@@ -65,156 +65,153 @@ implements ExpandableRow {
         return this.module.getName();
     }
 
-    public ModuleButton(Module module, Frame frame, int n) {
-        super(frame, n, module.getDescription());
+    public ModuleButton(Module module, Frame frame, int height) {
+        super(frame, height, module.getDescription());
         this.module = module;
-        float f = module.isToggled() ? 1.0f : 0.0f;
-        this.fillAnim = new Animation(f, f, 200, Easing.Method.EASE_OUT_CUBIC);
-        int n2 = 13;
-        List<Setting> list = module.getSettings();
-        for (int i = 0; i < list.size(); ++i) {
-            Object object;
-            Object object2;
-            Setting setting;
-            Setting setting2 = list.get(i);
-            if (setting2 instanceof BooleanSetting) {
-                setting = (BooleanSetting)setting2;
-                if (setting.getTag().equals("Enabled") && (object2 = setting.getVisibility()) instanceof CategorySetting.Visibility) {
-                    object = (CategorySetting.Visibility)object2;
-                    if (i > 0 && list.get(i - 1) == ((CategorySetting.Visibility)object).getValue()) continue;
+        float initial = module.isToggled() ? 1.0f : 0.0f;
+        this.fillAnim = new Animation(initial, initial, 200, Easing.Method.EASE_OUT_CUBIC);
+        int childHeight = 13;
+        List<Setting> settings = module.getSettings();
+        for (int i = 0; i < settings.size(); ++i) {
+            Setting setting = settings.get(i);
+            if (setting instanceof BooleanSetting) {
+                BooleanSetting boolSetting = (BooleanSetting)setting;
+                if (boolSetting.getTag().equals("Enabled") && boolSetting.getVisibility() instanceof CategorySetting.Visibility) {
+                    CategorySetting.Visibility catVis = (CategorySetting.Visibility)boolSetting.getVisibility();
+                    if (i > 0 && settings.get(i - 1) == catVis.getValue()) continue;
                 }
-                this.buttons.add(new BooleanButton((BooleanSetting)setting, frame, n2));
+                this.buttons.add(new BooleanButton(boolSetting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof NumberSetting) {
-                this.buttons.add(new NumberButton((NumberSetting)setting2, frame, n2));
+            if (setting instanceof NumberSetting) {
+                this.buttons.add(new NumberButton((NumberSetting)setting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof CategorySetting) {
+            if (setting instanceof CategorySetting) {
                 Setting.Visibility visibility;
                 BooleanSetting booleanSetting;
-                setting = (CategorySetting)setting2;
-                object2 = null;
-                if (i + 1 < list.size() && (object = list.get(i + 1)) instanceof BooleanSetting && (booleanSetting = (BooleanSetting)object).getTag().equals("Enabled") && (visibility = booleanSetting.getVisibility()) instanceof CategorySetting.Visibility && ((CategorySetting.Visibility)visibility).getValue() == setting) {
-                    object2 = booleanSetting;
+                CategorySetting catSetting = (CategorySetting)setting;
+                BooleanSetting enableSetting = null;
+                if (i + 1 < settings.size() && settings.get(i + 1) instanceof BooleanSetting && (booleanSetting = (BooleanSetting)settings.get(i + 1)).getTag().equals("Enabled") && (visibility = booleanSetting.getVisibility()) instanceof CategorySetting.Visibility && ((CategorySetting.Visibility)visibility).getValue() == catSetting) {
+                    enableSetting = booleanSetting;
                 }
-                this.buttons.add(new CategoryButton((CategorySetting)setting, (BooleanSetting)object2, frame, n2));
+                this.buttons.add(new CategoryButton(catSetting, enableSetting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof BindSetting) {
-                this.buttons.add(new BindButton((BindSetting)setting2, frame, n2));
+            if (setting instanceof BindSetting) {
+                this.buttons.add(new BindButton((BindSetting)setting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof ModeSetting) {
-                this.buttons.add(new ModeButton((ModeSetting)setting2, frame, n2));
+            if (setting instanceof ModeSetting) {
+                this.buttons.add(new ModeButton((ModeSetting)setting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof WhitelistSetting) {
-                this.buttons.add(new WhitelistButton((WhitelistSetting)setting2, frame, n2));
+            if (setting instanceof WhitelistSetting) {
+                this.buttons.add(new WhitelistButton((WhitelistSetting)setting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof StringSetting) {
-                this.buttons.add(new StringButton((StringSetting)setting2, frame, n2));
+            if (setting instanceof StringSetting) {
+                this.buttons.add(new StringButton((StringSetting)setting, frame, childHeight));
                 continue;
             }
-            if (setting2 instanceof ImageSetting) {
-                this.buttons.add(new ImageButton((ImageSetting)setting2, frame, n2));
+            if (setting instanceof ImageSetting) {
+                this.buttons.add(new ImageButton((ImageSetting)setting, frame, childHeight));
                 continue;
             }
-            if (!(setting2 instanceof ColorSetting)) continue;
-            this.buttons.add(new ColorButton((ColorSetting)setting2, frame, n2));
+            if (!(setting instanceof ColorSetting)) continue;
+            this.buttons.add(new ColorButton((ColorSetting)setting, frame, childHeight));
         }
     }
 
     public int getRequiredWidth() {
-        int n = 0;
+        int arrowWidth = 0;
         try {
             ClickGuiModule clickGuiModule = Night.MODULE_MANAGER.getModule(ClickGuiModule.class);
             if (clickGuiModule.triangles.getValue() && !this.buttons.isEmpty()) {
-                n = Night.FONT_MANAGER.getWidth("\u25bc") + 4;
+                arrowWidth = Night.FONT_MANAGER.getWidth("\u25bc") + 4;
             }
         }
         catch (Throwable throwable) {
             // empty catch block
         }
-        int n2 = Night.FONT_MANAGER.getWidth(this.module.getName());
-        return this.getPadding() * 2 + 6 + 3 + n2 + 8 + 16 + n + 5;
+        int nameWidth = Night.FONT_MANAGER.getWidth(this.module.getName());
+        return this.getPadding() * 2 + 6 + 3 + nameWidth + 8 + 16 + arrowWidth + 5;
     }
 
-    private static Color mixColor(Color color, Color color2, float f) {
-        float f2 = Math.max(0.0f, Math.min(1.0f, f));
-        int n = Math.round((float)color.getRed() + (float)(color2.getRed() - color.getRed()) * f2);
-        int n2 = Math.round((float)color.getGreen() + (float)(color2.getGreen() - color.getGreen()) * f2);
-        int n3 = Math.round((float)color.getBlue() + (float)(color2.getBlue() - color.getBlue()) * f2);
-        int n4 = Math.round((float)color.getAlpha() + (float)(color2.getAlpha() - color.getAlpha()) * f2);
-        return new Color(n, n2, n3, n4);
-    }
-
-    @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        ColorGui.renderModule(this, guiGraphicsExtractor, n, n2, f);
+    private static Color mixColor(Color color, Color color2, float t) {
+        float clamped = Math.max(0.0f, Math.min(1.0f, t));
+        int r = Math.round((float)color.getRed() + (float)(color2.getRed() - color.getRed()) * clamped);
+        int g = Math.round((float)color.getGreen() + (float)(color2.getGreen() - color.getGreen()) * clamped);
+        int b = Math.round((float)color.getBlue() + (float)(color2.getBlue() - color.getBlue()) * clamped);
+        int a = Math.round((float)color.getAlpha() + (float)(color2.getAlpha() - color.getAlpha()) * clamped);
+        return new Color(r, g, b, a);
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        if (this.isHovering(d, d2)) {
-            if (n == 0) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        ColorGui.renderModule(this, guiGraphicsExtractor, mouseX, mouseY, partialTicks);
+    }
+
+    @Override
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.isHovering(mouseX, mouseY)) {
+            if (button == 0) {
                 this.module.setToggled(!this.module.isToggled());
                 this.playClickSound();
-            } else if (n == 1) {
+            } else if (button == 1) {
                 this.open = !this.open;
                 this.openAnim.setEasing(this.open ? Easing.Method.EASE_OUT_QUAD : Easing.Method.EASE_IN_QUAD);
                 if (this.open) {
-                    for (Button button : this.buttons) {
-                        if (button instanceof BooleanButton) {
-                            ((BooleanButton)button).resetSlide();
+                    for (Button child : this.buttons) {
+                        if (child instanceof BooleanButton) {
+                            ((BooleanButton)child).resetSlide();
                             continue;
                         }
-                        if (!(button instanceof NumberButton)) continue;
-                        ((NumberButton)button).resetSlide();
+                        if (!(child instanceof NumberButton)) continue;
+                        ((NumberButton)child).resetSlide();
                     }
                 }
                 this.playClickSound();
             }
         }
         if (this.open) {
-            for (Button button : this.buttons) {
-                if (!button.isVisible()) continue;
-                button.mouseClicked(d, d2, n);
+            for (Button child : this.buttons) {
+                if (!child.isVisible()) continue;
+                child.mouseClicked(mouseX, mouseY, button);
             }
         }
     }
 
     @Override
-    public void mouseReleased(double d, double d2, int n) {
-        for (Button button : this.buttons) {
-            button.mouseReleased(d, d2, n);
+    public void mouseReleased(double mouseX, double mouseY, int button) {
+        for (Button child : this.buttons) {
+            child.mouseReleased(mouseX, mouseY, button);
         }
     }
 
     @Override
-    public void mouseDragged(double d, double d2, int n, double d3, double d4) {
-        for (Button button : this.buttons) {
-            button.mouseDragged(d, d2, n, d3, d4);
+    public void mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        for (Button child : this.buttons) {
+            child.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
     }
 
     @Override
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
         if (this.open) {
-            for (Button button : this.buttons) {
-                if (!button.isVisible()) continue;
-                button.keyPressed(n, n2, n3);
+            for (Button child : this.buttons) {
+                if (!child.isVisible()) continue;
+                child.keyPressed(keyCode, scanCode, modifiers);
             }
         }
     }
 
     @Override
-    public void charTyped(char c, int n) {
+    public void charTyped(char ch, int modifiers) {
         if (this.open) {
-            for (Button button : this.buttons) {
-                if (!button.isVisible()) continue;
-                button.charTyped(c, n);
+            for (Button child : this.buttons) {
+                if (!child.isVisible()) continue;
+                child.charTyped(ch, modifiers);
             }
         }
     }
@@ -248,18 +245,18 @@ implements ExpandableRow {
         return this.fillAnim;
     }
 
-    public void setOpen(boolean bl) {
-        this.open = bl;
+    public void setOpen(boolean open) {
+        this.open = open;
     }
 
     @Override
-    public void setSearchQuery(String string) {
-        this.searchQuery = string;
+    public void setSearchQuery(String searchQuery) {
+        this.searchQuery = searchQuery;
     }
 
     @Override
-    public void setRevealHeight(int n) {
-        this.revealHeight = n;
+    public void setRevealHeight(int revealHeight) {
+        this.revealHeight = revealHeight;
     }
 }
 

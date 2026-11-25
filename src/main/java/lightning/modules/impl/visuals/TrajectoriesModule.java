@@ -101,69 +101,69 @@ extends Module {
             return;
         }
         this.hitEntities.clear();
-        float f = Mth.lerp((float)renderWorldEvent.getTickDelta(), (float)TrajectoriesModule.mc.player.yRotO, (float)TrajectoriesModule.mc.player.getYRot());
+        float yaw = Mth.lerp((float)renderWorldEvent.getTickDelta(), (float)TrajectoriesModule.mc.player.yRotO, (float)TrajectoriesModule.mc.player.getYRot());
         if (TrajectoriesModule.mc.player.getOffhandItem().getItem() instanceof CrossbowItem && EnchantmentHelper.getItemEnchantmentLevel((Holder)TrajectoriesModule.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.MULTISHOT), (ItemInstance)TrajectoriesModule.mc.player.getOffhandItem()) != 0 || TrajectoriesModule.mc.player.getMainHandItem().getItem() instanceof CrossbowItem && EnchantmentHelper.getItemEnchantmentLevel((Holder)TrajectoriesModule.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.MULTISHOT), (ItemInstance)TrajectoriesModule.mc.player.getMainHandItem()) != 0) {
-            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), f - 10.0f, renderWorldEvent.getTickDelta());
-            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), f, renderWorldEvent.getTickDelta());
-            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), f + 10.0f, renderWorldEvent.getTickDelta());
+            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), yaw - 10.0f, renderWorldEvent.getTickDelta());
+            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), yaw, renderWorldEvent.getTickDelta());
+            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), yaw + 10.0f, renderWorldEvent.getTickDelta());
         } else {
-            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), f, renderWorldEvent.getTickDelta());
+            this.project(renderWorldEvent.getMatrices(), interactionHand == InteractionHand.OFF_HAND ? TrajectoriesModule.mc.player.getOffhandItem().getItem() : TrajectoriesModule.mc.player.getMainHandItem().getItem(), yaw, renderWorldEvent.getTickDelta());
         }
     }
 
-    private void project(PoseStack poseStack, Item item, float f, float f2) {
-        Vec3 vec3;
-        double d = Mth.lerp((double)f2, (double)TrajectoriesModule.mc.player.xo, (double)TrajectoriesModule.mc.player.getX());
-        double d2 = Mth.lerp((double)f2, (double)TrajectoriesModule.mc.player.yo, (double)TrajectoriesModule.mc.player.getY());
-        double d3 = Mth.lerp((double)f2, (double)TrajectoriesModule.mc.player.zo, (double)TrajectoriesModule.mc.player.getZ());
-        d2 = d2 + (double)TrajectoriesModule.mc.player.getEyeHeight(TrajectoriesModule.mc.player.getPose()) - 0.1000000014901161;
-        float f3 = item instanceof BowItem ? 1.0f : 0.4f;
-        float f4 = Mth.lerp((float)f2, (float)TrajectoriesModule.mc.player.xRotO, (float)TrajectoriesModule.mc.player.getXRot());
-        double d4 = -Mth.sin((double)(f / 180.0f * (float)Math.PI)) * Mth.cos((double)(f4 / 180.0f * (float)Math.PI)) * f3;
-        double d5 = -Mth.sin((double)((f4 - (float)this.getThrowPitch(item)) / 180.0f * 3.141593f)) * f3;
-        double d6 = Mth.cos((double)(f / 180.0f * (float)Math.PI)) * Mth.cos((double)(f4 / 180.0f * (float)Math.PI)) * f3;
-        float f5 = (float)TrajectoriesModule.mc.player.getTicksUsingItem() / 20.0f;
-        if ((f5 = (f5 * f5 + f5 * 2.0f) / 3.0f) > 1.0f || f5 == 0.0f) {
-            f5 = 1.0f;
+    private void project(PoseStack poseStack, Item item, float yaw, float tickDelta) {
+        Vec3 prevPos;
+        double posX = Mth.lerp((double)tickDelta, (double)TrajectoriesModule.mc.player.xo, (double)TrajectoriesModule.mc.player.getX());
+        double posY = Mth.lerp((double)tickDelta, (double)TrajectoriesModule.mc.player.yo, (double)TrajectoriesModule.mc.player.getY());
+        double posZ = Mth.lerp((double)tickDelta, (double)TrajectoriesModule.mc.player.zo, (double)TrajectoriesModule.mc.player.getZ());
+        posY = posY + (double)TrajectoriesModule.mc.player.getEyeHeight(TrajectoriesModule.mc.player.getPose()) - 0.1000000014901161;
+        float initialScale = item instanceof BowItem ? 1.0f : 0.4f;
+        float pitch = Mth.lerp((float)tickDelta, (float)TrajectoriesModule.mc.player.xRotO, (float)TrajectoriesModule.mc.player.getXRot());
+        double velX = -Mth.sin((double)(yaw / 180.0f * (float)Math.PI)) * Mth.cos((double)(pitch / 180.0f * (float)Math.PI)) * initialScale;
+        double velY = -Mth.sin((double)((pitch - (float)this.getThrowPitch(item)) / 180.0f * 3.141593f)) * initialScale;
+        double velZ = Mth.cos((double)(yaw / 180.0f * (float)Math.PI)) * Mth.cos((double)(pitch / 180.0f * (float)Math.PI)) * initialScale;
+        float bowCharge = (float)TrajectoriesModule.mc.player.getTicksUsingItem() / 20.0f;
+        if ((bowCharge = (bowCharge * bowCharge + bowCharge * 2.0f) / 3.0f) > 1.0f || bowCharge == 0.0f) {
+            bowCharge = 1.0f;
         }
-        float f6 = Mth.sqrt((float)((float)(d4 * d4 + d5 * d5 + d6 * d6)));
-        d4 /= (double)f6;
-        d5 /= (double)f6;
-        d6 /= (double)f6;
-        float f7 = (item instanceof BowItem ? f5 * 2.0f : (item instanceof CrossbowItem ? 2.2f : 1.0f)) * this.getThrowVelocity(item);
-        d4 *= (double)f7;
-        d5 *= (double)f7;
-        d6 *= (double)f7;
+        float dirLength = Mth.sqrt((float)((float)(velX * velX + velY * velY + velZ * velZ)));
+        velX /= (double)dirLength;
+        velY /= (double)dirLength;
+        velZ /= (double)dirLength;
+        float throwSpeed = (item instanceof BowItem ? bowCharge * 2.0f : (item instanceof CrossbowItem ? 2.2f : 1.0f)) * this.getThrowVelocity(item);
+        velX *= (double)throwSpeed;
+        velY *= (double)throwSpeed;
+        velZ *= (double)throwSpeed;
         if (!TrajectoriesModule.mc.player.onGround()) {
-            d5 += TrajectoriesModule.mc.player.getDeltaMovement().y;
+            velY += TrajectoriesModule.mc.player.getDeltaMovement().y;
         }
         Matrix4f matrix4f = poseStack.last().pose();
-        boolean bl = false;
+        boolean hit = false;
         BlockHitResult blockHitResult = null;
         Entity entity = null;
-        while (!bl && d2 > -65.0) {
-            vec3 = new Vec3(d, d2, d3);
-            if (TrajectoriesModule.mc.level.getBlockState(new BlockPos((int)(d += d4), (int)(d2 += d5), (int)(d3 += d6))).getBlock() == Blocks.WATER) {
-                d4 *= 0.8;
-                d5 *= 0.8;
-                d6 *= 0.8;
+        while (!hit && posY > -65.0) {
+            prevPos = new Vec3(posX, posY, posZ);
+            if (TrajectoriesModule.mc.level.getBlockState(new BlockPos((int)(posX += velX), (int)(posY += velY), (int)(posZ += velZ))).getBlock() == Blocks.WATER) {
+                velX *= 0.8;
+                velY *= 0.8;
+                velZ *= 0.8;
             } else {
-                d4 *= 0.99;
-                d5 *= 0.99;
-                d6 *= 0.99;
+                velX *= 0.99;
+                velY *= 0.99;
+                velZ *= 0.99;
             }
-            d5 = item instanceof BowItem ? (d5 = d5 - (double)0.05f) : (TrajectoriesModule.mc.player.getMainHandItem().getItem() instanceof CrossbowItem ? (d5 = d5 - (double)0.05f) : (d5 = d5 - (double)0.03f));
-            Vec3 vec32 = new Vec3(d, d2, d3);
-            Entity entity2 = this.getHitEntity(new AABB(d - 1.0, d2 - 1.0, d3 - 1.0, d + 1.0, d2 + 1.0, d3 + 1.0));
-            BlockHitResult blockHitResult2 = TrajectoriesModule.mc.level.clip(new ClipContext(vec3, vec32, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, (Entity)TrajectoriesModule.mc.player));
-            if (entity2 != null) {
-                entity = entity2;
-                bl = true;
-            } else if (blockHitResult2 != null && blockHitResult2.getType() != HitResult.Type.MISS) {
-                blockHitResult = blockHitResult2;
-                bl = true;
+            velY = item instanceof BowItem ? velY - (double)0.05f : (TrajectoriesModule.mc.player.getMainHandItem().getItem() instanceof CrossbowItem ? velY - (double)0.05f : velY - (double)0.03f);
+            Vec3 nextPos = new Vec3(posX, posY, posZ);
+            Entity hitEntity = this.getHitEntity(new AABB(posX - 1.0, posY - 1.0, posZ - 1.0, posX + 1.0, posY + 1.0, posZ + 1.0));
+            BlockHitResult hitBlock = TrajectoriesModule.mc.level.clip(new ClipContext(prevPos, nextPos, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, (Entity)TrajectoriesModule.mc.player));
+            if (hitEntity != null) {
+                entity = hitEntity;
+                hit = true;
+            } else if (hitBlock != null && hitBlock.getType() != HitResult.Type.MISS) {
+                blockHitResult = hitBlock;
+                hit = true;
             }
-            Renderer3D.DEBUG_LINES.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(matrix4f, (float)(vec3.x - TrajectoriesModule.mc.gameRenderer.mainCamera().position().x), (float)(vec3.y - TrajectoriesModule.mc.gameRenderer.mainCamera().position().y), (float)(vec3.z - TrajectoriesModule.mc.gameRenderer.mainCamera().position().z), this.lineColor.getColor().getRGB()), new Renderer3D.Vertex(matrix4f, (float)(vec32.x - TrajectoriesModule.mc.gameRenderer.mainCamera().position().x), (float)(vec32.y - TrajectoriesModule.mc.gameRenderer.mainCamera().position().y), (float)(vec32.z - TrajectoriesModule.mc.gameRenderer.mainCamera().position().z), this.lineColor.getColor().getRGB())));
+            Renderer3D.DEBUG_LINES.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(matrix4f, (float)(prevPos.x - TrajectoriesModule.mc.gameRenderer.mainCamera().position().x), (float)(prevPos.y - TrajectoriesModule.mc.gameRenderer.mainCamera().position().y), (float)(prevPos.z - TrajectoriesModule.mc.gameRenderer.mainCamera().position().z), this.lineColor.getColor().getRGB()), new Renderer3D.Vertex(matrix4f, (float)(nextPos.x - TrajectoriesModule.mc.gameRenderer.mainCamera().position().x), (float)(nextPos.y - TrajectoriesModule.mc.gameRenderer.mainCamera().position().y), (float)(nextPos.z - TrajectoriesModule.mc.gameRenderer.mainCamera().position().z), this.lineColor.getColor().getRGB())));
         }
         if (blockHitResult != null && blockHitResult.getType() == HitResult.Type.BLOCK) {
             AABB box = new AABB(blockHitResult.getLocation().x - 0.15, blockHitResult.getLocation().y - 0.15, blockHitResult.getLocation().z - 0.15, blockHitResult.getLocation().x + 0.15, blockHitResult.getLocation().y + 0.15, blockHitResult.getLocation().z + 0.15);

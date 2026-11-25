@@ -24,60 +24,60 @@ import net.minecraft.world.item.ItemStack;
 public class ItemDropCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
-            ArrayList<String> arrayList = new ArrayList<String>(List.of("all"));
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
+            ArrayList<String> suggestions = new ArrayList<String>(List.of("all"));
             for (Item item : BuiltInRegistries.ITEM) {
-                arrayList.add(BuiltInRegistries.ITEM.getKey(item).getPath());
+                suggestions.add(BuiltInRegistries.ITEM.getKey(item).getPath());
             }
-            return arrayList;
+            return suggestions;
         }
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public void execute(String[] args) {
+        if (args.length == 0) {
             this.messageSyntax();
             return;
         }
-        if (stringArray[0].equalsIgnoreCase("all")) {
+        if (args[0].equalsIgnoreCase("all")) {
             this.dropAllItems();
             return;
         }
-        String string = String.join((CharSequence)" ", stringArray);
-        this.dropSpecificItem(string);
+        String itemName = String.join((CharSequence)" ", args);
+        this.dropSpecificItem(itemName);
     }
 
     private void dropAllItems() {
         if (ItemDropCommand.mc.player == null || ItemDropCommand.mc.gameMode == null) {
             return;
         }
-        int n = ItemDropCommand.mc.player.containerMenu.containerId;
+        int containerId = ItemDropCommand.mc.player.containerMenu.containerId;
         for (int i = 0; i < 36; ++i) {
             ItemStack itemStack = ItemDropCommand.mc.player.getInventory().getItem(i);
             if (itemStack.isEmpty()) continue;
-            ItemDropCommand.mc.gameMode.handleContainerInput(n, ItemDropCommand.invToHandlerSlot(i), 1, ContainerInput.THROW, (Player)ItemDropCommand.mc.player);
+            ItemDropCommand.mc.gameMode.handleContainerInput(containerId, ItemDropCommand.invToHandlerSlot(i), 1, ContainerInput.THROW, (Player)ItemDropCommand.mc.player);
         }
     }
 
-    private void dropSpecificItem(String string) {
+    private void dropSpecificItem(String targetName) {
         if (ItemDropCommand.mc.player == null || ItemDropCommand.mc.gameMode == null) {
             return;
         }
-        int n = ItemDropCommand.mc.player.containerMenu.containerId;
+        int containerId = ItemDropCommand.mc.player.containerMenu.containerId;
         for (int i = 0; i < 36; ++i) {
             ItemStack itemStack = ItemDropCommand.mc.player.getInventory().getItem(i);
             if (itemStack.isEmpty()) continue;
-            String string2 = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
-            String string3 = itemStack.getHoverName().getString();
-            if (!string2.equalsIgnoreCase(string) && !string2.substring(string2.indexOf(58) + 1).equalsIgnoreCase(string) && !string3.equalsIgnoreCase(string)) continue;
-            ItemDropCommand.mc.gameMode.handleContainerInput(n, ItemDropCommand.invToHandlerSlot(i), 1, ContainerInput.THROW, (Player)ItemDropCommand.mc.player);
+            String itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
+            String hoverName = itemStack.getHoverName().getString();
+            if (!itemId.equalsIgnoreCase(targetName) && !itemId.substring(itemId.indexOf(58) + 1).equalsIgnoreCase(targetName) && !hoverName.equalsIgnoreCase(targetName)) continue;
+            ItemDropCommand.mc.gameMode.handleContainerInput(containerId, ItemDropCommand.invToHandlerSlot(i), 1, ContainerInput.THROW, (Player)ItemDropCommand.mc.player);
         }
     }
 
-    private static int invToHandlerSlot(int n) {
-        return n <= 8 ? 36 + n : n;
+    private static int invToHandlerSlot(int slot) {
+        return slot <= 8 ? 36 + slot : slot;
     }
 }
 

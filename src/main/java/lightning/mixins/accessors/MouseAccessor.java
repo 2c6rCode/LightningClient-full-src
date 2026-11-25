@@ -17,6 +17,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(value={MouseHandler.class})
 public interface MouseAccessor {
     @Invoker(value="onButton")
-    public void invokeOnButton(long var1, MouseButtonInfo var3, int var4);
+    public void invokeOnButton(long window, MouseButtonInfo buttonInfo, int action);
 }
 

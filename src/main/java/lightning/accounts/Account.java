@@ -36,19 +36,19 @@ public class Account {
     public Account() {
     }
 
-    public Account(String string, String string2, AccountType accountType) {
-        this.name = string;
-        this.uuid = string2;
+    public Account(String name, String uuid, AccountType accountType) {
+        this.name = name;
+        this.uuid = uuid;
         this.type = accountType;
         this.lastUsed = System.currentTimeMillis();
     }
 
-    public Account(String string, String string2, AccountType accountType, String string3, String string4) {
-        this.name = string;
-        this.uuid = string2;
+    public Account(String name, String uuid, AccountType accountType, String refreshToken, String accessToken) {
+        this.name = name;
+        this.uuid = uuid;
         this.type = accountType;
-        this.refreshToken = string3;
-        this.accessToken = string4;
+        this.refreshToken = refreshToken;
+        this.accessToken = accessToken;
         this.lastUsed = System.currentTimeMillis();
     }
 
@@ -56,16 +56,16 @@ public class Account {
         return this.name;
     }
 
-    public void setName(String string) {
-        this.name = string;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getUuid() {
         return this.uuid;
     }
 
-    public void setUuid(String string) {
-        this.uuid = string;
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     public AccountType getType() {
@@ -80,24 +80,24 @@ public class Account {
         return this.refreshToken;
     }
 
-    public void setRefreshToken(String string) {
-        this.refreshToken = string;
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
     public String getAccessToken() {
         return this.accessToken;
     }
 
-    public void setAccessToken(String string) {
-        this.accessToken = string;
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
     }
 
     public long getLastUsed() {
         return this.lastUsed;
     }
 
-    public void setLastUsed(long l) {
-        this.lastUsed = l;
+    public void setLastUsed(long lastUsed) {
+        this.lastUsed = lastUsed;
     }
 
     public UUID getProfileId() {

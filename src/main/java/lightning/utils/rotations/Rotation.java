@@ -14,9 +14,9 @@ public class Rotation {
     private float yaw;
     private float pitch;
 
-    public Rotation(float f, float f2) {
-        this.yaw = f;
-        this.pitch = f2;
+    public Rotation(float yaw, float pitch) {
+        this.yaw = yaw;
+        this.pitch = pitch;
     }
 
     public Rotation(Entity entity) {
@@ -39,13 +39,13 @@ public class Rotation {
     }
 
     @Generated
-    public void setYaw(float f) {
-        this.yaw = f;
+    public void setYaw(float yaw) {
+        this.yaw = yaw;
     }
 
     @Generated
-    public void setPitch(float f) {
-        this.pitch = f;
+    public void setPitch(float pitch) {
+        this.pitch = pitch;
     }
 }
 

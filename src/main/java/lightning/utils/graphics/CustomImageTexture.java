@@ -87,9 +87,9 @@ extends AbstractTexture {
 
     public GpuTextureView getTextureView() {
         if (this.textureView == null) {
-            String string;
-            if (Night.IMAGE_MANAGER != null && (string = Night.IMAGE_MANAGER.getCurrentImageName()) != null && !string.equalsIgnoreCase("None") && !string.isEmpty()) {
-                Night.IMAGE_MANAGER.setCurrentActiveImage(string);
+            String imageName;
+            if (Night.IMAGE_MANAGER != null && (imageName = Night.IMAGE_MANAGER.getCurrentImageName()) != null && !imageName.equalsIgnoreCase("None") && !imageName.isEmpty()) {
+                Night.IMAGE_MANAGER.setCurrentActiveImage(imageName);
             }
             if (this.textureView == null) {
                 try {

@@ -120,10 +120,10 @@ public class WorldStateReplay {
         ClientPacketListener clientPacketListener = minecraft.getConnection();
         if (localPlayer != null && clientLevel != null && clientPacketListener != null) {
             LOGGER.info("Replaying world state to client...");
-            long l = System.currentTimeMillis();
-            int n = -Math.abs(RANDOM.nextInt());
-            if (n == 0) {
-                n = -1;
+            long startTime = System.currentTimeMillis();
+            int teleportId = -Math.abs(RANDOM.nextInt());
+            if (teleportId == 0) {
+                teleportId = -1;
             }
             GameType gameType = minecraft.gameMode != null ? minecraft.gameMode.getPlayerMode() : GameType.SURVIVAL;
             GameType gameType2 = minecraft.gameMode != null ? minecraft.gameMode.getPreviousPlayerMode() : null;
@@ -142,11 +142,11 @@ public class WorldStateReplay {
             WorldStateReplay.send(connection, new ClientboundSetExperiencePacket(localPlayer.experienceProgress, localPlayer.totalExperience, localPlayer.experienceLevel));
             WorldStateReplay.send(connection, new ClientboundContainerSetContentPacket(localPlayer.inventoryMenu.containerId, localPlayer.inventoryMenu.incrementStateId(), (List)localPlayer.inventoryMenu.getItems(), localPlayer.inventoryMenu.getCarried()));
             WorldStateReplay.sendEntities(connection, clientLevel, localPlayer);
-            WorldStateReplay.send(connection, new ClientboundPlayerPositionPacket(n, new PositionMoveRotation(localPlayer.position(), Vec3.ZERO, localPlayer.getYRot(), localPlayer.getXRot()), Set.of()));
+            WorldStateReplay.send(connection, new ClientboundPlayerPositionPacket(teleportId, new PositionMoveRotation(localPlayer.position(), Vec3.ZERO, localPlayer.getYRot(), localPlayer.getXRot()), Set.of()));
             WorldStateReplay.send(connection, new ClientboundSetEntityMotionPacket((Entity)localPlayer));
-            long l2 = System.currentTimeMillis() - l;
-            LOGGER.info("Level state replay completed in {}ms (teleportId={})", (Object)l2, (Object)n);
-            return n;
+            long elapsedMs = System.currentTimeMillis() - startTime;
+            LOGGER.info("Level state replay completed in {}ms (teleportId={})", (Object)elapsedMs, (Object)teleportId);
+            return teleportId;
         }
         LOGGER.error("Cannot replay world state: player/world/handler is null");
         return 0;
@@ -186,7 +186,7 @@ public class WorldStateReplay {
     }
 
     private static void sendEntities(Connection connection, ClientLevel clientLevel, LocalPlayer localPlayer) {
-        int n = 0;
+        int entityCount = 0;
         for (Entity entity : clientLevel.entitiesForRendering()) {
             if (entity == localPlayer) continue;
             try {
@@ -209,30 +209,30 @@ public class WorldStateReplay {
                         WorldStateReplay.send(connection, new ClientboundSetEquipmentPacket(entity.getId(), arrayList));
                     }
                 }
-                ++n;
+                ++entityCount;
             }
             catch (Exception exception) {
                 LOGGER.warn("Failed to send entity {} (ID: {})", new Object[]{entity.getType().getDescriptionId(), entity.getId(), exception});
             }
         }
-        LOGGER.info("Sent {} entities to client", (Object)n);
+        LOGGER.info("Sent {} entities to client", (Object)entityCount);
     }
 
     private static void sendChunks(Connection connection, LocalPlayer localPlayer, ClientLevel clientLevel) {
-        int n = localPlayer.chunkPosition().x();
-        int n2 = localPlayer.chunkPosition().z();
-        WorldStateReplay.send(connection, new ClientboundSetChunkCacheCenterPacket(n, n2));
-        int n3 = Math.min((Integer)Minecraft.getInstance().options.renderDistance().get(), 8);
-        int n4 = 0;
-        for (int i = n2 - n3; i <= n2 + n3; ++i) {
-            for (int j = n - n3; j <= n + n3; ++j) {
+        int centerX = localPlayer.chunkPosition().x();
+        int centerZ = localPlayer.chunkPosition().z();
+        WorldStateReplay.send(connection, new ClientboundSetChunkCacheCenterPacket(centerX, centerZ));
+        int viewDistance = Math.min((Integer)Minecraft.getInstance().options.renderDistance().get(), 8);
+        int chunkCount = 0;
+        for (int i = centerZ - viewDistance; i <= centerZ + viewDistance; ++i) {
+            for (int j = centerX - viewDistance; j <= centerX + viewDistance; ++j) {
                 LevelChunk levelChunk = clientLevel.getChunkSource().getChunk(j, i, ChunkStatus.FULL, false);
                 if (levelChunk == null) continue;
                 WorldStateReplay.send(connection, new ClientboundLevelChunkWithLightPacket(levelChunk, clientLevel.getChunkSource().getLightEngine(), null, null));
-                ++n4;
+                ++chunkCount;
             }
         }
-        LOGGER.info("Sent {} chunks to client", (Object)n4);
+        LOGGER.info("Sent {} chunks to client", (Object)chunkCount);
     }
 
     private static void send(Connection connection, Packet<?> packet) {

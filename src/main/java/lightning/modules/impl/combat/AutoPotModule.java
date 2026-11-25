@@ -87,8 +87,8 @@ extends Module {
             }
             return;
         }
-        int n = this.findPot(potion);
-        if (n == -1) {
+        int potionSlot = this.findPot(potion);
+        if (potionSlot == -1) {
             if (this.selfToggle.getValue()) {
                 this.setToggled(false);
             }
@@ -97,40 +97,39 @@ extends Module {
         if (!this.throwTimer.hasTimeElapsed(5000L)) {
             return;
         }
-        int n2 = n < 9 ? n : -1;
-        int n3 = AutoPotModule.mc.player.getInventory().getSelectedSlot();
-        if (n2 == -1) {
-            InventoryUtils.swap("Pickup", n, InventoryUtils.HOTBAR_START);
-            n2 = InventoryUtils.HOTBAR_START;
+        int hotbarSlot = potionSlot < 9 ? potionSlot : -1;
+        int oldSlot = AutoPotModule.mc.player.getInventory().getSelectedSlot();
+        if (hotbarSlot == -1) {
+            InventoryUtils.swap("Pickup", potionSlot, InventoryUtils.HOTBAR_START);
+            hotbarSlot = InventoryUtils.HOTBAR_START;
         }
-        float f = this.throwMode.getValue().equalsIgnoreCase("Above") ? -90.0f : 90.0f;
-        float f2 = f;
+        float throwPitch = this.throwMode.getValue().equalsIgnoreCase("Above") ? -90.0f : 90.0f;
         if (this.rotate.getValue()) {
-            float[] fArray = new float[]{AutoPotModule.mc.player.getYRot(), f};
-            Night.ROTATION_MANAGER.legacyRotate(fArray, this, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+            float[] rotations = new float[]{AutoPotModule.mc.player.getYRot(), throwPitch};
+            Night.ROTATION_MANAGER.legacyRotate(rotations, this, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
         }
         this.throwTimer.reset();
-        InventoryUtils.switchSlot(this.swapMode.getValue(), n2, n3);
+        InventoryUtils.switchSlot(this.swapMode.getValue(), hotbarSlot, oldSlot);
         AutoPotModule.mc.gameMode.useItem((Player)AutoPotModule.mc.player, InteractionHand.MAIN_HAND);
-        InventoryUtils.switchBack(this.swapMode.getValue(), n2, n3);
+        InventoryUtils.switchBack(this.swapMode.getValue(), hotbarSlot, oldSlot);
     }
 
     private Potion findMissingPotion() {
-        int n = this.amplifier.getValue().intValue();
+        int minAmplifier = this.amplifier.getValue().intValue();
         for (Potion potion : this.whitelist.getWhitelistedPotions()) {
-            boolean bl = false;
-            for (MobEffectInstance mobEffectInstance : potion.getEffects()) {
-                boolean bl2 = false;
-                for (MobEffectInstance mobEffectInstance2 : AutoPotModule.mc.player.getActiveEffects()) {
-                    if (mobEffectInstance2.getEffect() != mobEffectInstance.getEffect() || mobEffectInstance2.getAmplifier() < n) continue;
-                    bl2 = true;
+            boolean missingEffect = false;
+            for (MobEffectInstance requiredEffect : potion.getEffects()) {
+                boolean hasEffect = false;
+                for (MobEffectInstance activeEffect : AutoPotModule.mc.player.getActiveEffects()) {
+                    if (activeEffect.getEffect() != requiredEffect.getEffect() || activeEffect.getAmplifier() < minAmplifier) continue;
+                    hasEffect = true;
                     break;
                 }
-                if (bl2) continue;
-                bl = true;
+                if (hasEffect) continue;
+                missingEffect = true;
                 break;
             }
-            if (!bl) continue;
+            if (!missingEffect) continue;
             return potion;
         }
         return null;
@@ -147,9 +146,9 @@ extends Module {
     }
 
     private boolean hasNearbyEnemy() {
-        double d = Mth.square((double)this.range.getValue().doubleValue());
+        double rangeSq = Mth.square((double)this.range.getValue().doubleValue());
         for (Player player : AutoPotModule.mc.level.players()) {
-            if (player == AutoPotModule.mc.player || Night.FRIEND_MANAGER.contains(player.getName().getString()) || !(AutoPotModule.mc.player.distanceToSqr((Entity)player) <= d)) continue;
+            if (player == AutoPotModule.mc.player || Night.FRIEND_MANAGER.contains(player.getName().getString()) || !(AutoPotModule.mc.player.distanceToSqr((Entity)player) <= rangeSq)) continue;
             return true;
         }
         return false;
@@ -157,15 +156,15 @@ extends Module {
 
     private boolean isPhased() {
         AABB aABB = AutoPotModule.mc.player.getBoundingBox();
-        int n = Mth.floor((double)aABB.minX);
-        int n2 = Mth.ceil((double)aABB.maxX);
-        int n3 = Mth.floor((double)aABB.minY);
-        int n4 = Mth.ceil((double)aABB.maxY);
-        int n5 = Mth.floor((double)aABB.minZ);
-        int n6 = Mth.ceil((double)aABB.maxZ);
-        for (int i = n; i < n2; ++i) {
-            for (int j = n3; j < n4; ++j) {
-                for (int k = n5; k < n6; ++k) {
+        int minX = Mth.floor((double)aABB.minX);
+        int maxX = Mth.ceil((double)aABB.maxX);
+        int minY = Mth.floor((double)aABB.minY);
+        int maxY = Mth.ceil((double)aABB.maxY);
+        int minZ = Mth.floor((double)aABB.minZ);
+        int maxZ = Mth.ceil((double)aABB.maxZ);
+        for (int i = minX; i < maxX; ++i) {
+            for (int j = minY; j < maxY; ++j) {
+                for (int k = minZ; k < maxZ; ++k) {
                     BlockPos blockPos = new BlockPos(i, j, k);
                     VoxelShape voxelShape = AutoPotModule.mc.level.getBlockState(blockPos).getCollisionShape((BlockGetter)AutoPotModule.mc.level, blockPos);
                     if (voxelShape.isEmpty() || !voxelShape.bounds().move(blockPos).intersects(aABB)) continue;

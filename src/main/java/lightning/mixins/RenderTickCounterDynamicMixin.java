@@ -19,12 +19,12 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(value={DeltaTracker.Timer.class})
 public class RenderTickCounterDynamicMixin {
     @ModifyExpressionValue(method={"advanceGameTime"}, at={@At(value="INVOKE", target="Lit/unimi/dsi/fastutil/floats/FloatUnaryOperator;apply(F)F")})
-    private float night$scaleMspt(float f) {
+    private float night$scaleMspt(float mspt) {
         try {
-            return f / Night.WORLD_MANAGER.getTimerMultiplier();
+            return mspt / Night.WORLD_MANAGER.getTimerMultiplier();
         }
         catch (NullPointerException nullPointerException) {
-            return f;
+            return mspt;
         }
     }
 }

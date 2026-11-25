@@ -74,9 +74,8 @@ extends Module {
         if (ThrowItemModule.mc.gui.screen() != null && !(ThrowItemModule.mc.gui.screen() instanceof InventoryScreen)) {
             return;
         }
-        boolean bl = ThrowItemModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ThrowItemModule.mc.gui.screen() instanceof InventoryScreen);
-        boolean bl2 = bl;
-        if (this.onlyInventory.getValue() && bl) {
+        boolean inOtherContainer = ThrowItemModule.mc.gui.screen() instanceof AbstractContainerScreen && !(ThrowItemModule.mc.gui.screen() instanceof InventoryScreen);
+        if (this.onlyInventory.getValue() && inOtherContainer) {
             return;
         }
         if (this.ticks < this.delay.getValue().intValue()) {
@@ -84,51 +83,51 @@ extends Module {
             return;
         }
         this.ticks = 0;
-        int n = ThrowItemModule.mc.player.containerMenu.containerId;
-        int n2 = 0;
-        int n3 = this.actionsPerTick.getValue().intValue();
-        int n4 = 0;
+        int containerId = ThrowItemModule.mc.player.containerMenu.containerId;
+        int thrownCount = 0;
+        int maxActions = this.actionsPerTick.getValue().intValue();
+        int remainingToThrow = 0;
         for (int i = 0; i < 36; ++i) {
-            int n5;
+            int handlerSlot;
             ItemStack itemStack;
             if (this.ignoreHotbar.getValue() && i <= 8 || (itemStack = ThrowItemModule.mc.player.getInventory().getItem(i)).isEmpty()) continue;
             RekitModule.KitItem kitItem = map.get(i);
-            String string = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
-            boolean bl3 = false;
-            if (kitItem != null && kitItem.id != null && string.equalsIgnoreCase(kitItem.id)) {
-                bl3 = true;
+            String itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
+            boolean belongsToKit = false;
+            if (kitItem != null && kitItem.id != null && itemId.equalsIgnoreCase(kitItem.id)) {
+                belongsToKit = true;
             } else if (this.keepKitItems.getValue()) {
                 for (RekitModule.KitItem kitItem2 : map.values()) {
-                    if (kitItem2 == null || kitItem2.id == null || !string.equalsIgnoreCase(kitItem2.id)) continue;
-                    bl3 = true;
+                    if (kitItem2 == null || kitItem2.id == null || !itemId.equalsIgnoreCase(kitItem2.id)) continue;
+                    belongsToKit = true;
                     break;
                 }
             }
-            boolean bl4 = false;
-            if (!bl3) {
-                bl4 = true;
+            boolean shouldThrow = false;
+            if (!belongsToKit) {
+                shouldThrow = true;
             } else if (this.minimumCount.getValue() && itemStack.getMaxStackSize() > 1 && itemStack.getCount() < this.minCount.getValue().intValue()) {
-                bl4 = true;
+                shouldThrow = true;
             }
-            if (!bl4) continue;
-            ++n4;
-            if (n2 >= n3 || (n5 = this.invToHandlerSlot(i)) < 0) continue;
-            this.throwSlot(n, n5);
-            ++n2;
+            if (!shouldThrow) continue;
+            ++remainingToThrow;
+            if (thrownCount >= maxActions || (handlerSlot = this.invToHandlerSlot(i)) < 0) continue;
+            this.throwSlot(containerId, handlerSlot);
+            ++thrownCount;
         }
-        if (n4 == 0 && this.autoDisable.getValue()) {
+        if (remainingToThrow == 0 && this.autoDisable.getValue()) {
             this.setToggled(false);
         }
     }
 
-    private void throwSlot(int n, int n2) {
-        ThrowItemModule.mc.gameMode.handleContainerInput(n, n2, 1, ContainerInput.THROW, (Player)ThrowItemModule.mc.player);
+    private void throwSlot(int containerId, int slotIndex) {
+        ThrowItemModule.mc.gameMode.handleContainerInput(containerId, slotIndex, 1, ContainerInput.THROW, (Player)ThrowItemModule.mc.player);
     }
 
-    private int invToHandlerSlot(int n) {
+    private int invToHandlerSlot(int invSlot) {
         Inventory inventory = ThrowItemModule.mc.player.getInventory();
         for (Slot slot : ThrowItemModule.mc.player.containerMenu.slots) {
-            if (slot.container != inventory || slot.getContainerSlot() != n) continue;
+            if (slot.container != inventory || slot.getContainerSlot() != invSlot) continue;
             return slot.index;
         }
         return -1;

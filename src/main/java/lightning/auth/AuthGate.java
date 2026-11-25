@@ -94,12 +94,12 @@ public final class AuthGate {
         return properties;
     }
 
-    private static void save(String string, String string2) {
+    private static void save(String username, String licenseKey) {
         try {
             Files.createDirectories(CRED_FILE.getParent(), new FileAttribute[0]);
             Properties properties = new Properties();
-            properties.setProperty("username", string);
-            properties.setProperty("licenseKey", string2);
+            properties.setProperty("username", username);
+            properties.setProperty("licenseKey", licenseKey);
             try (OutputStream outputStream = Files.newOutputStream(CRED_FILE, new OpenOption[0]);){
                 properties.store(outputStream, "Lightning saved login (khong luu mat khau)");
             }
@@ -109,17 +109,17 @@ public final class AuthGate {
         }
     }
 
-    private static String esc(String string) {
-        return string.replace("\\", "\\\\").replace("\"", "\\\"");
+    private static String esc(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
-    private static boolean jsonBool(String string, String string2) {
-        Matcher matcher = Pattern.compile("\"" + string2 + "\"\\s*:\\s*(true|false)").matcher(string);
+    private static boolean jsonBool(String json, String key) {
+        Matcher matcher = Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json);
         return matcher.find() && matcher.group(1).equals("true");
     }
 
-    private static String jsonString(String string, String string2) {
-        Matcher matcher = Pattern.compile("\"" + string2 + "\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(string);
+    private static String jsonString(String json, String key) {
+        Matcher matcher = Pattern.compile("\"" + key + "\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(json);
         if (!matcher.find()) {
             return null;
         }
@@ -138,17 +138,17 @@ public final class AuthGate {
         private AuthResult() {
         }
 
-        static AuthResult ok(String string) {
+        static AuthResult ok(String token) {
             AuthResult authResult = new AuthResult();
             authResult.ok = true;
-            authResult.token = string;
+            authResult.token = token;
             return authResult;
         }
 
-        static AuthResult error(String string) {
+        static AuthResult error(String message) {
             AuthResult authResult = new AuthResult();
             authResult.ok = false;
-            authResult.message = string;
+            authResult.message = message;
             return authResult;
         }
     }

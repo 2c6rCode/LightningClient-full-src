@@ -10,8 +10,8 @@ public enum AccountType {
 
     private final String displayName;
 
-    private AccountType(String string2) {
-        this.displayName = string2;
+    private AccountType(String displayName) {
+        this.displayName = displayName;
     }
 
     public String getDisplayName() {

@@ -74,47 +74,47 @@ public final class MainhandSlotGuard {
         }
     }
 
-    public static boolean isLocked(int n) {
-        return active && n >= lo && n <= hi;
+    public static boolean isLocked(int slot) {
+        return active && slot >= lo && slot <= hi;
     }
 
-    public static int quickButton(int n) {
-        return active ? n : 0;
+    public static int quickButton(int button) {
+        return active ? button : 0;
     }
 
     public static ContainerInput quickInput() {
         return active ? ContainerInput.SWAP : ContainerInput.QUICK_MOVE;
     }
 
-    private static boolean flag(Object object, String string) {
+    private static boolean flag(Object instance, String fieldName) {
         try {
-            Field field = MainhandModule.class.getDeclaredField(string);
+            Field field = MainhandModule.class.getDeclaredField(fieldName);
             field.setAccessible(true);
-            return field.getBoolean(object);
+            return field.getBoolean(instance);
         }
         catch (Throwable throwable) {
             return false;
         }
     }
 
-    public static void tick(MainhandModule mainhandModule, BooleanSetting booleanSetting, ModeSetting modeSetting, NumberSetting numberSetting, NumberSetting numberSetting2) {
+    public static void tick(MainhandModule mainhandModule, BooleanSetting guardEnabled, ModeSetting guardMode, NumberSetting minSlotSetting, NumberSetting maxSlotSetting) {
         try {
-            MainhandSlotGuard.run(mainhandModule, booleanSetting, modeSetting, numberSetting, numberSetting2);
+            MainhandSlotGuard.run(mainhandModule, guardEnabled, guardMode, minSlotSetting, maxSlotSetting);
         }
         catch (Throwable throwable) {
             // empty catch block
         }
     }
 
-    private static void run(MainhandModule mainhandModule, BooleanSetting booleanSetting, ModeSetting modeSetting, NumberSetting numberSetting, NumberSetting numberSetting2) {
-        if (booleanSetting == null || !booleanSetting.getValue() || !mainhandModule.isToggled()) {
+    private static void run(MainhandModule mainhandModule, BooleanSetting guardEnabled, ModeSetting guardMode, NumberSetting minSlotSetting, NumberSetting maxSlotSetting) {
+        if (guardEnabled == null || !guardEnabled.getValue() || !mainhandModule.isToggled()) {
             active = false;
             return;
         }
-        int n = numberSetting.getValue().intValue();
-        int n2 = numberSetting2.getValue().intValue();
-        lo = Math.max(1, Math.min(n, n2)) - 1;
-        hi = Math.min(9, Math.max(n, n2)) - 1;
+        int minSlot = minSlotSetting.getValue().intValue();
+        int maxSlot = maxSlotSetting.getValue().intValue();
+        lo = Math.max(1, Math.min(minSlot, maxSlot)) - 1;
+        hi = Math.min(9, Math.max(minSlot, maxSlot)) - 1;
         active = true;
         Minecraft minecraft = IMinecraft.mc;
         LocalPlayer localPlayer = minecraft.player;
@@ -140,28 +140,28 @@ public final class MainhandSlotGuard {
         if (InventoryUtils.hasActiveSilentSwitch()) {
             return;
         }
-        boolean bl = "Drop".equals(modeSetting == null ? "Inventory" : modeSetting.getValue());
+        boolean dropMode = "Drop".equals(guardMode == null ? "Inventory" : guardMode.getValue());
         Inventory inventory = localPlayer.getInventory();
-        int n3 = 0;
-        for (int i = lo; i <= hi && n3 < 4; ++i) {
+        int movedCount = 0;
+        for (int i = lo; i <= hi && movedCount < 4; ++i) {
             ItemStack itemStack = inventory.getItem(i);
             if (itemStack.isEmpty() || itemStack.is(Items.TOTEM_OF_UNDYING)) continue;
-            int n4 = -1;
-            if (!bl) {
+            int emptySlot = -1;
+            if (!dropMode) {
                 for (int j = 9; j <= 35; ++j) {
                     if (!inventory.getItem(j).isEmpty()) continue;
-                    n4 = j;
+                    emptySlot = j;
                     break;
                 }
             }
-            if (n4 != -1) {
-                InventoryUtils.click(n4, i, ContainerInput.SWAP);
+            if (emptySlot != -1) {
+                InventoryUtils.click(emptySlot, i, ContainerInput.SWAP);
             } else {
                 InventoryUtils.click(36 + i, 1, ContainerInput.THROW);
             }
-            ++n3;
+            ++movedCount;
         }
-        if (n3 > 0) {
+        if (movedCount > 0) {
             cooldown = 1;
         }
     }

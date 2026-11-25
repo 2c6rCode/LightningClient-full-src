@@ -52,13 +52,13 @@ extends Module {
         if (!this.weather.getValue().equalsIgnoreCase("Snow") && !this.weather.getValue().equalsIgnoreCase("Dust")) {
             return;
         }
-        boolean bl = this.weather.getValue().equalsIgnoreCase("Snow");
-        SimpleParticleType simpleParticleType = bl ? ParticleTypes.SNOWFLAKE : ParticleTypes.MYCELIUM;
+        boolean isSnow = this.weather.getValue().equalsIgnoreCase("Snow");
+        SimpleParticleType simpleParticleType = isSnow ? ParticleTypes.SNOWFLAKE : ParticleTypes.MYCELIUM;
         for (int i = 0; i < 6; ++i) {
-            double d = AtmosphereModule.mc.player.getX() + (AtmosphereModule.mc.player.getRandom().nextDouble() - 0.5) * 20.0;
-            double d2 = AtmosphereModule.mc.player.getY() + (bl ? 8.0 + AtmosphereModule.mc.player.getRandom().nextDouble() * 4.0 : AtmosphereModule.mc.player.getRandom().nextDouble() * 6.0 - 1.0);
-            double d3 = AtmosphereModule.mc.player.getZ() + (AtmosphereModule.mc.player.getRandom().nextDouble() - 0.5) * 20.0;
-            AtmosphereModule.mc.level.addParticle((ParticleOptions)simpleParticleType, d, d2, d3, 0.0, bl ? -0.15 : 0.01, 0.0);
+            double particleX = AtmosphereModule.mc.player.getX() + (AtmosphereModule.mc.player.getRandom().nextDouble() - 0.5) * 20.0;
+            double particleY = AtmosphereModule.mc.player.getY() + (isSnow ? 8.0 + AtmosphereModule.mc.player.getRandom().nextDouble() * 4.0 : AtmosphereModule.mc.player.getRandom().nextDouble() * 6.0 - 1.0);
+            double particleZ = AtmosphereModule.mc.player.getZ() + (AtmosphereModule.mc.player.getRandom().nextDouble() - 0.5) * 20.0;
+            AtmosphereModule.mc.level.addParticle((ParticleOptions)simpleParticleType, particleX, particleY, particleZ, 0.0, isSnow ? -0.15 : 0.01, 0.0);
         }
     }
 }

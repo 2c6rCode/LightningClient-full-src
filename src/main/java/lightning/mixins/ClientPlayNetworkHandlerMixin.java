@@ -66,11 +66,11 @@ implements IMinecraft {
                 return;
             }
             ElytraFlyModule elytraFlyModule = Night.MODULE_MANAGER != null ? (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class) : null;
-            boolean bl = elytraFlyModule != null && elytraFlyModule.isToggled() && elytraFlyModule.mode.getValue().equalsIgnoreCase("Bounce");
-            boolean bl2 = bl;
-            if (Night.ROTATION_MANAGER != null && Night.ROTATION_MANAGER.isPacketRotateActive() || bl) {
+            boolean bounceActive = elytraFlyModule != null && elytraFlyModule.isToggled() && elytraFlyModule.mode.getValue().equalsIgnoreCase("Bounce");
+            boolean unusedBounceActive = bounceActive;
+            if (Night.ROTATION_MANAGER != null && Night.ROTATION_MANAGER.isPacketRotateActive() || bounceActive) {
                 this.handleMovePlayer$prevYaw = ClientPlayNetworkHandlerMixin.mc.player.getYRot();
-                this.handleMovePlayer$prevPitch = bl && elytraFlyModule.isBouncePitchOverrideActive() ? elytraFlyModule.getBounceSavedCameraPitch() : ClientPlayNetworkHandlerMixin.mc.player.getXRot();
+                this.handleMovePlayer$prevPitch = bounceActive && elytraFlyModule.isBouncePitchOverrideActive() ? elytraFlyModule.getBounceSavedCameraPitch() : ClientPlayNetworkHandlerMixin.mc.player.getXRot();
                 this.handleMovePlayer$guard = true;
             }
             return;

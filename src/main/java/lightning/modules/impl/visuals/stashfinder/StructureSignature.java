@@ -48,15 +48,15 @@ public class StructureSignature {
         if (minecraft.level == null) {
             return false;
         }
-        int n = map.getOrDefault("Shulkers", 0);
-        int n2 = map.getOrDefault("Chests", 0);
-        int n3 = map.getOrDefault("Hoppers", 0);
-        int n4 = map.getOrDefault("Barrels", 0);
-        int n5 = map.getOrDefault("Crafters", 0);
-        int n6 = map.getOrDefault("Ender Chests", 0);
-        int n7 = map.getOrDefault("Donkey", 0);
-        int n8 = map.getOrDefault("Chest Boat", 0);
-        if (n >= 8 || n2 >= 20 || n3 >= 8 || n4 >= 16 || n5 >= 6 || n6 >= 6 || n7 >= 4 || n8 >= 3) {
+        int shulkers = map.getOrDefault("Shulkers", 0);
+        int chests = map.getOrDefault("Chests", 0);
+        int hoppers = map.getOrDefault("Hoppers", 0);
+        int barrels = map.getOrDefault("Barrels", 0);
+        int crafters = map.getOrDefault("Crafters", 0);
+        int enderChests = map.getOrDefault("Ender Chests", 0);
+        int donkeys = map.getOrDefault("Donkey", 0);
+        int chestBoats = map.getOrDefault("Chest Boat", 0);
+        if (shulkers >= 8 || chests >= 20 || hoppers >= 8 || barrels >= 16 || crafters >= 6 || enderChests >= 6 || donkeys >= 4 || chestBoats >= 3) {
             return false;
         }
         if (minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null && (serverLevel = minecraft.getSingleplayerServer().getLevel(minecraft.level.dimension())) != null && (levelChunk2 = serverLevel.getChunk((chunkPos = levelChunk.getPos()).x(), chunkPos.z())) != null) {
@@ -75,28 +75,28 @@ public class StructureSignature {
 
     private static boolean matchesMultiplayerHeuristic(Minecraft minecraft, LevelChunk levelChunk) {
         ResourceKey resourceKey = minecraft.level != null ? minecraft.level.dimension() : Level.OVERWORLD;
-        int[] nArray = new int[Sig.values().length];
+        int[] sigCounts = new int[Sig.values().length];
         LevelChunkSection[] levelChunkSectionArray = levelChunk.getSections();
         for (int i = 0; i < levelChunkSectionArray.length; ++i) {
             LevelChunkSection levelChunkSection = levelChunkSectionArray[i];
             if (levelChunkSection == null || levelChunkSection.hasOnlyAir()) continue;
-            int n = levelChunk.getSectionYFromSectionIndex(i) << 4;
-            for (int j = 0; j < 16; ++j) {
-                int n2 = n + j;
-                for (int k = 0; k < 16; ++k) {
-                    for (int i2 = 0; i2 < 16; ++i2) {
-                        Block block = levelChunkSection.getBlockState(k, j, i2).getBlock();
+            int baseY = levelChunk.getSectionYFromSectionIndex(i) << 4;
+            for (int localY = 0; localY < 16; ++localY) {
+                int worldY = baseY + localY;
+                for (int localX = 0; localX < 16; ++localX) {
+                    for (int localZ = 0; localZ < 16; ++localZ) {
+                        Block block = levelChunkSection.getBlockState(localX, localY, localZ).getBlock();
                         for (Sig sig : Sig.values()) {
-                            if (sig.dimension != null && sig.dimension != resourceKey || n2 < sig.yMin || n2 > sig.yMax || !sig.blocks.contains(block)) continue;
-                            int n3 = sig.ordinal();
-                            nArray[n3] = nArray[n3] + 1;
+                            if (sig.dimension != null && sig.dimension != resourceKey || worldY < sig.yMin || worldY > sig.yMax || !sig.blocks.contains(block)) continue;
+                            int sigIdx = sig.ordinal();
+                            sigCounts[sigIdx] = sigCounts[sigIdx] + 1;
                         }
                     }
                 }
             }
         }
         for (Sig sig : Sig.values()) {
-            if (sig.dimension != null && sig.dimension != resourceKey || nArray[sig.ordinal()] < sig.threshold || sig.biomeTag != null && !StructureSignature.chunkHasBiome(levelChunk, sig)) continue;
+            if (sig.dimension != null && sig.dimension != resourceKey || sigCounts[sig.ordinal()] < sig.threshold || sig.biomeTag != null && !StructureSignature.chunkHasBiome(levelChunk, sig)) continue;
             return true;
         }
         return false;
@@ -107,13 +107,13 @@ public class StructureSignature {
             return true;
         }
         ChunkPos chunkPos = levelChunk.getPos();
-        int n = Math.clamp((long)((sig.yMin + sig.yMax) / 2), levelChunk.getMinY(), levelChunk.getMaxY());
-        int n2 = n >> 2;
-        int n3 = chunkPos.getMinBlockX() >> 2;
-        int n4 = chunkPos.getMinBlockZ() >> 2;
-        int[][] nArrayArray = new int[][]{{0, 0}, {3, 0}, {0, 3}, {3, 3}, {2, 2}};
-        for (int[] nArray : nArrayArray) {
-            Holder holder = levelChunk.getNoiseBiome(n3 + nArray[0], n2, n4 + nArray[1]);
+        int sampleY = Math.clamp((long)((sig.yMin + sig.yMax) / 2), levelChunk.getMinY(), levelChunk.getMaxY());
+        int quartY = sampleY >> 2;
+        int quartX = chunkPos.getMinBlockX() >> 2;
+        int quartZ = chunkPos.getMinBlockZ() >> 2;
+        int[][] offsets = new int[][]{{0, 0}, {3, 0}, {0, 3}, {3, 3}, {2, 2}};
+        for (int[] offset : offsets) {
+            Holder holder = levelChunk.getNoiseBiome(quartX + offset[0], quartY, quartZ + offset[1]);
             if (holder == null || !holder.is(sig.biomeTag)) continue;
             return true;
         }
@@ -145,13 +145,13 @@ public class StructureSignature {
         final int yMin;
         final int yMax;
 
-        private Sig(Set<Block> set, int n2, TagKey<Biome> tagKey, ResourceKey<Level> resourceKey, int n3, int n4) {
-            this.blocks = set;
-            this.threshold = n2;
-            this.biomeTag = tagKey;
-            this.dimension = resourceKey;
-            this.yMin = n3;
-            this.yMax = n4;
+        private Sig(Set<Block> blocks, int threshold, TagKey<Biome> biomeTag, ResourceKey<Level> dimension, int yMin, int yMax) {
+            this.blocks = blocks;
+            this.threshold = threshold;
+            this.biomeTag = biomeTag;
+            this.dimension = dimension;
+            this.yMin = yMin;
+            this.yMax = yMax;
         }
     }
 }

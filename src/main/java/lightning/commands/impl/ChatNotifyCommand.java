@@ -15,42 +15,42 @@ import lightning.utils.chat.ChatUtils;
 public class ChatNotifyCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
-            ArrayList<String> arrayList = new ArrayList<String>(this.moduleNames());
-            arrayList.add("true");
-            arrayList.add("false");
-            arrayList.add("list");
-            arrayList.add("reset");
-            return arrayList;
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
+            ArrayList<String> suggestions = new ArrayList<String>(this.moduleNames());
+            suggestions.add("true");
+            suggestions.add("false");
+            suggestions.add("list");
+            suggestions.add("reset");
+            return suggestions;
         }
-        if (stringArray.length == 1 && Night.MODULE_MANAGER.getModule(stringArray[0]) != null) {
+        if (args.length == 1 && Night.MODULE_MANAGER.getModule(args[0]) != null) {
             return List.of("true", "false", "reset");
         }
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 2) {
-            Module module2 = Night.MODULE_MANAGER.getModule(stringArray[0]);
-            if (module2 == null) {
+    public void execute(String[] args) {
+        if (args.length == 2) {
+            Module targetModule = Night.MODULE_MANAGER.getModule(args[0]);
+            if (targetModule == null) {
                 Night.CHAT_MANAGER.tagged("Could not find the module specified.", this.getTag(), this.getName());
                 return;
             }
-            switch (stringArray[1]) {
+            switch (args[1]) {
                 case "true": {
-                    module2.chatNotify.setValue(true);
+                    targetModule.chatNotify.setValue(true);
                     Night.CHAT_MANAGER.tagged("Successfully set the module's notification status to " + String.valueOf(ChatUtils.getPrimary()) + "true" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
                     break;
                 }
                 case "false": {
-                    module2.chatNotify.setValue(false);
+                    targetModule.chatNotify.setValue(false);
                     Night.CHAT_MANAGER.tagged("Successfully set the module's notification status to " + String.valueOf(ChatUtils.getPrimary()) + "false" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
                     break;
                 }
                 case "reset": {
-                    module2.chatNotify.setValue(module2.chatNotify.getDefaultValue());
+                    targetModule.chatNotify.setValue(targetModule.chatNotify.getDefaultValue());
                     Night.CHAT_MANAGER.tagged("Successfully set the module's notification status to it's default value.", this.getTag(), this.getName());
                     break;
                 }
@@ -59,40 +59,40 @@ extends Command {
                     break;
                 }
             }
-        } else if (stringArray.length == 1) {
-            switch (stringArray[0]) {
+        } else if (args.length == 1) {
+            switch (args[0]) {
                 case "true": {
-                    for (Module module3 : Night.MODULE_MANAGER.getModules()) {
-                        module3.chatNotify.setValue(true);
+                    for (Module module : Night.MODULE_MANAGER.getModules()) {
+                        module.chatNotify.setValue(true);
                     }
                     Night.CHAT_MANAGER.tagged("Successfully set every module's notification status to " + String.valueOf(ChatUtils.getPrimary()) + "true" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
                     break;
                 }
                 case "false": {
-                    for (Module module4 : Night.MODULE_MANAGER.getModules()) {
-                        module4.chatNotify.setValue(false);
+                    for (Module module : Night.MODULE_MANAGER.getModules()) {
+                        module.chatNotify.setValue(false);
                     }
                     Night.CHAT_MANAGER.tagged("Successfully set every module's notification status to " + String.valueOf(ChatUtils.getPrimary()) + "false" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
                     break;
                 }
                 case "list": {
-                    ArrayList<Module> arrayList = new ArrayList<Module>(Night.MODULE_MANAGER.getModules().stream().filter(module -> module.chatNotify.getValue()).toList());
-                    if (arrayList.isEmpty()) {
+                    ArrayList<Module> notifiableModules = new ArrayList<Module>(Night.MODULE_MANAGER.getModules().stream().filter(module -> module.chatNotify.getValue()).toList());
+                    if (notifiableModules.isEmpty()) {
                         Night.CHAT_MANAGER.tagged("There are currently no modules with their notification status set to " + String.valueOf(ChatUtils.getPrimary()) + "true" + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName() + "-list");
                         break;
                     }
-                    StringBuilder stringBuilder = new StringBuilder();
-                    int n = 0;
-                    for (Module module5 : arrayList) {
-                        stringBuilder.append(ChatUtils.getSecondary()).append(module5.getName()).append(n + 1 == arrayList.size() ? "" : ", ");
-                        ++n;
+                    StringBuilder builder = new StringBuilder();
+                    int index = 0;
+                    for (Module module : notifiableModules) {
+                        builder.append(ChatUtils.getSecondary()).append(module.getName()).append(index + 1 == notifiableModules.size() ? "" : ", ");
+                        ++index;
                     }
-                    Night.CHAT_MANAGER.message(String.valueOf(ChatUtils.getSecondary()) + "Notifiable Modules " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + arrayList.size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(stringBuilder), this.getName() + "-list");
+                    Night.CHAT_MANAGER.message(String.valueOf(ChatUtils.getSecondary()) + "Notifiable Modules " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + notifiableModules.size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(builder), this.getName() + "-list");
                     break;
                 }
                 case "reset": {
-                    for (Module module6 : Night.MODULE_MANAGER.getModules()) {
-                        module6.chatNotify.setValue(module6.chatNotify.getDefaultValue());
+                    for (Module module : Night.MODULE_MANAGER.getModules()) {
+                        module.chatNotify.setValue(module.chatNotify.getDefaultValue());
                     }
                     Night.CHAT_MANAGER.tagged("Successfully set every module's notification status to it's default value.", this.getTag(), this.getName());
                     break;

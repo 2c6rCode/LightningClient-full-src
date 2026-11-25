@@ -19,9 +19,9 @@ import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.level.block.Block;
 
 public class IdentifierUtils {
-    public static Item getItem(String string) {
+    public static Item getItem(String name) {
         try {
-            Item item = (Item)IdentifierUtils.getIdentifier(BuiltInRegistries.ITEM, string);
+            Item item = (Item)IdentifierUtils.getIdentifier(BuiltInRegistries.ITEM, name);
             if (item != null) {
                 return item;
             }
@@ -32,9 +32,9 @@ public class IdentifierUtils {
         return null;
     }
 
-    public static Block getBlock(String string) {
+    public static Block getBlock(String name) {
         try {
-            Block block = (Block)IdentifierUtils.getIdentifier(BuiltInRegistries.BLOCK, string);
+            Block block = (Block)IdentifierUtils.getIdentifier(BuiltInRegistries.BLOCK, name);
             if (block != null) {
                 return block;
             }
@@ -45,9 +45,9 @@ public class IdentifierUtils {
         return null;
     }
 
-    public static Potion getPotion(String string) {
+    public static Potion getPotion(String name) {
         try {
-            Potion potion = (Potion)IdentifierUtils.getIdentifier(BuiltInRegistries.POTION, string);
+            Potion potion = (Potion)IdentifierUtils.getIdentifier(BuiltInRegistries.POTION, name);
             if (potion != null) {
                 return potion;
             }
@@ -58,11 +58,12 @@ public class IdentifierUtils {
         return null;
     }
 
-    public static <T> T getIdentifier(Registry<T> registry, String string) {
-        if (string == null || string.trim().isEmpty()) {
+    public static <T> T getIdentifier(Registry<T> registry, String name) {
+        if (name == null || name.trim().isEmpty()) {
             return null;
         }
-        Identifier identifier = Identifier.tryParse((String)((string = string.trim()).contains(":") ? string : "minecraft:" + string));
+        String normalizedName = name.trim();
+        Identifier identifier = Identifier.tryParse((String)(normalizedName.contains(":") ? normalizedName : "minecraft:" + normalizedName));
         if (identifier == null) {
             return null;
         }

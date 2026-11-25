@@ -76,7 +76,7 @@ extends Module {
         if (!this.whileEating.getValue() && EntityUtils.isEating()) {
             return;
         }
-        List list = AutoWebModule.mc.level.players();
+        List players = AutoWebModule.mc.level.players();
         Runnable runnable = () -> {
             this.rotatePosition = null;
             if (this.ticks < this.delay.getValue().intValue()) {
@@ -91,9 +91,9 @@ extends Module {
                 this.target = null;
                 return;
             }
-            int n = InventoryUtils.find(Items.COBWEB, 0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            int n2 = AutoWebModule.mc.player.getInventory().getSelectedSlot();
-            if (n == -1) {
+            int cobwebSlot = InventoryUtils.find(Items.COBWEB, 0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            int oldSlot = AutoWebModule.mc.player.getInventory().getSelectedSlot();
+            if (cobwebSlot == -1) {
                 if (this.itemDisable.getValue()) {
                     Night.CHAT_MANAGER.tagged("No cobwebs could be found in your hotbar.", this.getName());
                     this.setToggled(false);
@@ -101,15 +101,15 @@ extends Module {
                 this.target = null;
                 return;
             }
-            this.target = this.getTarget(list);
+            this.target = this.getTarget(players);
             if (this.target == null) {
                 if (this.selfDisable.getValue()) {
                     this.setToggled(false);
                 }
                 return;
             }
-            Vec3 vec3 = PositionUtils.extrapolate(this.target, this.extrapolation.getValue().intValue()).getCenter();
-            BlockPos blockPos = new BlockPos((int)Math.floor(vec3.x), (int)vec3.y, (int)Math.floor(vec3.z));
+            Vec3 extrapolatedPos = PositionUtils.extrapolate(this.target, this.extrapolation.getValue().intValue()).getCenter();
+            BlockPos blockPos = new BlockPos((int)Math.floor(extrapolatedPos.x), (int)extrapolatedPos.y, (int)Math.floor(extrapolatedPos.z));
             if (this.target.getItemBySlot(EquipmentSlot.CHEST).getItem().equals(Items.ELYTRA) && AutoWebModule.mc.level.getBlockState(blockPos).getBlock().equals(Blocks.COBWEB)) {
                 blockPos = blockPos.above();
             }
@@ -129,9 +129,9 @@ extends Module {
             if (this.rotate.getValue() && this.airPlace.getValue()) {
                 this.rotatePosition = blockPos;
             }
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), cobwebSlot, oldSlot);
             WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), false, this.render.getValue());
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), cobwebSlot, oldSlot);
             this.ticks = 0;
         };
         if (this.asynchronous.getValue()) {
@@ -146,9 +146,9 @@ extends Module {
         if (this.rotatePosition == null || clientRotationEvent.isCancelled()) {
             return;
         }
-        float[] fArray = RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)this.rotatePosition));
-        clientRotationEvent.setYaw(fArray[0]);
-        clientRotationEvent.setPitch(fArray[1]);
+        float[] rotations = RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)this.rotatePosition));
+        clientRotationEvent.setYaw(rotations[0]);
+        clientRotationEvent.setPitch(rotations[1]);
     }
 
     @Override
@@ -166,18 +166,18 @@ extends Module {
         return this.target.getName().getString();
     }
 
-    private Player getTarget(List<AbstractClientPlayer> list) {
-        Player player = null;
-        for (Player player2 : list) {
-            if (player2 == AutoWebModule.mc.player || !player2.isAlive() || player2.getHealth() <= 0.0f || AutoWebModule.mc.player.distanceToSqr((Entity)player2) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || Night.FRIEND_MANAGER.contains(player2.getName().getString()) || this.holeCheck.getValue() && !HoleUtils.isPlayerInHole(player2)) continue;
-            if (player == null) {
-                player = player2;
+    private Player getTarget(List<AbstractClientPlayer> players) {
+        Player bestTarget = null;
+        for (Player candidate : players) {
+            if (candidate == AutoWebModule.mc.player || !candidate.isAlive() || candidate.getHealth() <= 0.0f || AutoWebModule.mc.player.distanceToSqr((Entity)candidate) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || Night.FRIEND_MANAGER.contains(candidate.getName().getString()) || this.holeCheck.getValue() && !HoleUtils.isPlayerInHole(candidate)) continue;
+            if (bestTarget == null) {
+                bestTarget = candidate;
                 continue;
             }
-            if (!(AutoWebModule.mc.player.distanceToSqr((Entity)player2) < AutoWebModule.mc.player.distanceToSqr((Entity)player))) continue;
-            player = player2;
+            if (!(AutoWebModule.mc.player.distanceToSqr((Entity)candidate) < AutoWebModule.mc.player.distanceToSqr((Entity)bestTarget))) continue;
+            bestTarget = candidate;
         }
-        return player;
+        return bestTarget;
     }
 }
 

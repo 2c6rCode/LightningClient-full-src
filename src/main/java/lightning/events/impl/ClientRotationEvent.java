@@ -20,14 +20,14 @@ extends Event {
         this.rotation = rotation;
     }
 
-    public void setYaw(float f) {
+    public void setYaw(float yaw) {
         this.setCancelled(true);
-        this.rotation.setYaw(f);
+        this.rotation.setYaw(yaw);
     }
 
-    public void setPitch(float f) {
+    public void setPitch(float pitch) {
         this.setCancelled(true);
-        this.rotation.setPitch(f);
+        this.rotation.setPitch(pitch);
     }
 
     @Generated

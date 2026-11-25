@@ -44,8 +44,8 @@ extends Module {
             if (this.line >= this.messages.size()) {
                 this.line = 0;
             }
-            String string = this.shuffled.getValue() ? this.messages.get((int)MathUtils.random(this.messages.size(), 0.0)) : this.messages.get(this.line);
-            SpammerModule.mc.player.connection.sendChat((this.greenText.getValue() ? "> " : "") + string);
+            String message = this.shuffled.getValue() ? this.messages.get((int)MathUtils.random(this.messages.size(), 0.0)) : this.messages.get(this.line);
+            SpammerModule.mc.player.connection.sendChat((this.greenText.getValue() ? "> " : "") + message);
             ++this.line;
             this.timer.reset();
         }

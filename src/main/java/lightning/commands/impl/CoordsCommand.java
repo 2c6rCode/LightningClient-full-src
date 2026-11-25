@@ -13,31 +13,31 @@ import lightning.utils.chat.ChatUtils;
 public class CoordsCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0 && mc.getConnection() != null) {
-            String string = CoordsCommand.mc.player != null ? CoordsCommand.mc.player.getGameProfile().name() : "";
-            return mc.getConnection().getOnlinePlayers().stream().map(playerInfo -> playerInfo.getProfile().name()).filter(string2 -> string2 != null && !string2.isEmpty() && !string2.equalsIgnoreCase(string)).distinct().toList();
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0 && mc.getConnection() != null) {
+            String selfName = CoordsCommand.mc.player != null ? CoordsCommand.mc.player.getGameProfile().name() : "";
+            return mc.getConnection().getOnlinePlayers().stream().map(playerInfo -> playerInfo.getProfile().name()).filter(playerName -> playerName != null && !playerName.isEmpty() && !playerName.equalsIgnoreCase(selfName)).distinct().toList();
         }
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
+    public void execute(String[] args) {
         if (CoordsCommand.mc.player == null || CoordsCommand.mc.level == null) {
             return;
         }
-        String string = CoordsCommand.mc.player.level().dimension().identifier().toString().replace("minecraft:", "");
-        String string2 = (int)CoordsCommand.mc.player.getX() + " " + (int)CoordsCommand.mc.player.getY() + " " + (int)CoordsCommand.mc.player.getZ() + " (" + string + ")";
-        if (stringArray.length == 0) {
-            CoordsCommand.mc.keyboardHandler.setClipboard(string2);
-            Night.CHAT_MANAGER.tagged("Copied your position (" + String.valueOf(ChatUtils.getPrimary()) + string2 + String.valueOf(ChatUtils.getSecondary()) + ") to the clipboard.", this.getTag(), this.getName());
+        String dimension = CoordsCommand.mc.player.level().dimension().identifier().toString().replace("minecraft:", "");
+        String coordsText = (int)CoordsCommand.mc.player.getX() + " " + (int)CoordsCommand.mc.player.getY() + " " + (int)CoordsCommand.mc.player.getZ() + " (" + dimension + ")";
+        if (args.length == 0) {
+            CoordsCommand.mc.keyboardHandler.setClipboard(coordsText);
+            Night.CHAT_MANAGER.tagged("Copied your position (" + String.valueOf(ChatUtils.getPrimary()) + coordsText + String.valueOf(ChatUtils.getSecondary()) + ") to the clipboard.", this.getTag(), this.getName());
             return;
         }
-        if (stringArray.length == 1) {
-            String string3 = stringArray[0];
+        if (args.length == 1) {
+            String targetPlayer = args[0];
             if (mc.getConnection() != null) {
-                mc.getConnection().sendCommand("w " + string3 + " " + string2);
-                Night.CHAT_MANAGER.tagged("Sent your position to " + String.valueOf(ChatUtils.getPrimary()) + string3 + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
+                mc.getConnection().sendCommand("w " + targetPlayer + " " + coordsText);
+                Night.CHAT_MANAGER.tagged("Sent your position to " + String.valueOf(ChatUtils.getPrimary()) + targetPlayer + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName());
             }
             return;
         }

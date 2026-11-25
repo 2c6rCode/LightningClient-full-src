@@ -32,12 +32,12 @@ import org.spongepowered.asm.mixin.injection.At;
 public class TextVisitFactoryMixin
 implements IMinecraft {
     @WrapOperation(method={"iterateFormatted(Ljava/lang/String;ILnet/minecraft/network/chat/Style;Lnet/minecraft/network/chat/Style;Lnet/minecraft/util/FormattedCharSink;)Z"}, at={@At(value="INVOKE", target="Ljava/lang/String;charAt(I)C", ordinal=1)})
-    private static char visitFormatted(String string, int n, Operation<Character> operation, @Local(ordinal=2) LocalRef<Style> localRef) {
-        CustomFormatting customFormatting = CustomFormatting.byCode((char)string.charAt(n));
+    private static char visitFormatted(String text, int index, Operation<Character> operation, @Local(ordinal=2) LocalRef<Style> localRef) {
+        CustomFormatting customFormatting = CustomFormatting.byCode((char)text.charAt(index));
         if (customFormatting != null) {
             localRef.set(FormattingUtils.withExclusiveFormatting(localRef.get(), customFormatting));
         }
-        return ((Character)operation.call(new Object[]{string, n})).charValue();
+        return ((Character)operation.call(new Object[]{text, index})).charValue();
     }
 }
 

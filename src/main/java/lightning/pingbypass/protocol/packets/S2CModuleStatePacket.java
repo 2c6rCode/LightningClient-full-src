@@ -15,9 +15,9 @@ extends PbPacket {
     private final String moduleName;
     private final boolean enabled;
 
-    public S2CModuleStatePacket(String string, boolean bl) {
-        this.moduleName = string;
-        this.enabled = bl;
+    public S2CModuleStatePacket(String moduleName, boolean enabled) {
+        this.moduleName = moduleName;
+        this.enabled = enabled;
     }
 
     public S2CModuleStatePacket(FriendlyByteBuf friendlyByteBuf) {

@@ -16,42 +16,42 @@ public class RichPresence {
     private Assets assets;
     private Timestamps timestamps;
 
-    public void setDetails(String string) {
-        this.details = string;
+    public void setDetails(String details) {
+        this.details = details;
     }
 
-    public void setState(String string) {
-        this.state = string;
+    public void setState(String state) {
+        this.state = state;
     }
 
-    public void setLargeImage(String string, String string2) {
+    public void setLargeImage(String key, String text) {
         if (this.assets == null) {
             this.assets = new Assets();
         }
-        this.assets.large_image = string;
-        this.assets.large_text = string2;
+        this.assets.large_image = key;
+        this.assets.large_text = text;
     }
 
-    public void setSmallImage(String string, String string2) {
+    public void setSmallImage(String key, String text) {
         if (this.assets == null) {
             this.assets = new Assets();
         }
-        this.assets.small_image = string;
-        this.assets.small_text = string2;
+        this.assets.small_image = key;
+        this.assets.small_text = text;
     }
 
-    public void setStart(long l) {
+    public void setStart(long startTimestamp) {
         if (this.timestamps == null) {
             this.timestamps = new Timestamps();
         }
-        this.timestamps.start = l;
+        this.timestamps.start = startTimestamp;
     }
 
-    public void setEnd(long l) {
+    public void setEnd(long endTimestamp) {
         if (this.timestamps == null) {
             this.timestamps = new Timestamps();
         }
-        this.timestamps.end = l;
+        this.timestamps.end = endTimestamp;
     }
 
     public JsonObject toJson() {

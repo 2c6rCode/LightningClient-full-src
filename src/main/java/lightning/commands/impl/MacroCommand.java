@@ -15,64 +15,64 @@ import lightning.utils.input.KeyboardUtils;
 public class MacroCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
             return List.of("add", "remove", "clear", "list");
         }
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length >= 3) {
-            if (stringArray[0].equalsIgnoreCase("add")) {
-                int n = KeyboardUtils.getKeyNumber(stringArray[1]);
-                if (n == 0) {
+    public void execute(String[] args) {
+        if (args.length >= 3) {
+            if (args[0].equalsIgnoreCase("add")) {
+                int keyCode = KeyboardUtils.getKeyNumber(args[1]);
+                if (keyCode == 0) {
                     Night.CHAT_MANAGER.tagged("The keybind specified is not valid.", this.getTag());
                     return;
                 }
-                StringBuilder stringBuilder = new StringBuilder();
-                String[] stringArray2 = Arrays.copyOfRange(stringArray, 2, stringArray.length);
-                int n2 = 0;
-                for (String string : stringArray2) {
-                    stringBuilder.append(string).append(++n2 == stringArray2.length ? "" : " ");
+                StringBuilder messageBuilder = new StringBuilder();
+                String[] messageParts = Arrays.copyOfRange(args, 2, args.length);
+                int index = 0;
+                for (String part : messageParts) {
+                    messageBuilder.append(part).append(++index == messageParts.length ? "" : " ");
                 }
-                Night.MACRO_MANAGER.add(stringBuilder.toString(), n);
-                Night.CHAT_MANAGER.tagged("Successfully added " + String.valueOf(ChatUtils.getPrimary()) + String.valueOf(stringBuilder) + String.valueOf(ChatUtils.getSecondary()) + " as a macro, bound to the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(n) + String.valueOf(ChatUtils.getSecondary()) + " key.", this.getTag(), "command-" + this.getName());
+                Night.MACRO_MANAGER.add(messageBuilder.toString(), keyCode);
+                Night.CHAT_MANAGER.tagged("Successfully added " + String.valueOf(ChatUtils.getPrimary()) + String.valueOf(messageBuilder) + String.valueOf(ChatUtils.getSecondary()) + " as a macro, bound to the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(keyCode) + String.valueOf(ChatUtils.getSecondary()) + " key.", this.getTag(), "command-" + this.getName());
             } else {
                 this.messageSyntax();
             }
-        } else if (stringArray.length == 2) {
-            if (stringArray[0].equalsIgnoreCase("remove")) {
-                int n = KeyboardUtils.getKeyNumber(stringArray[1]);
-                if (n == 0) {
+        } else if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("remove")) {
+                int keyCode = KeyboardUtils.getKeyNumber(args[1]);
+                if (keyCode == 0) {
                     Night.CHAT_MANAGER.tagged("The keybind specified is not valid.", this.getTag());
                     return;
                 }
-                if (!Night.MACRO_MANAGER.containsValue(n)) {
-                    Night.CHAT_MANAGER.tagged("There is no macro with the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(n) + String.valueOf(ChatUtils.getSecondary()) + " key.", this.getTag(), "command-" + this.getName());
+                if (!Night.MACRO_MANAGER.containsValue(keyCode)) {
+                    Night.CHAT_MANAGER.tagged("There is no macro with the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(keyCode) + String.valueOf(ChatUtils.getSecondary()) + " key.", this.getTag(), "command-" + this.getName());
                 } else {
-                    Night.CHAT_MANAGER.tagged("Successfully removed the " + String.valueOf(ChatUtils.getPrimary()) + Night.MACRO_MANAGER.getKey(n) + String.valueOf(ChatUtils.getSecondary()) + " macro.", this.getTag(), "command-" + this.getName());
-                    Night.MACRO_MANAGER.remove(Night.MACRO_MANAGER.getKey(n));
+                    Night.CHAT_MANAGER.tagged("Successfully removed the " + String.valueOf(ChatUtils.getPrimary()) + Night.MACRO_MANAGER.getKey(keyCode) + String.valueOf(ChatUtils.getSecondary()) + " macro.", this.getTag(), "command-" + this.getName());
+                    Night.MACRO_MANAGER.remove(Night.MACRO_MANAGER.getKey(keyCode));
                 }
             } else {
                 this.messageSyntax();
             }
-        } else if (stringArray.length == 1) {
-            if (stringArray[0].equalsIgnoreCase("clear")) {
+        } else if (args.length == 1) {
+            if (args[0].equalsIgnoreCase("clear")) {
                 Night.MACRO_MANAGER.clear();
                 Night.CHAT_MANAGER.tagged("Successfully removed all macros.", this.getTag(), "command-" + this.getName());
-            } else if (stringArray[0].equalsIgnoreCase("list")) {
+            } else if (args[0].equalsIgnoreCase("list")) {
                 if (Night.MACRO_MANAGER.getMacros().isEmpty()) {
                     Night.CHAT_MANAGER.tagged("There are currently no macros added.", this.getTag(), "command-" + this.getName() + "-list");
                 } else {
-                    StringBuilder stringBuilder = new StringBuilder();
-                    int n = 0;
-                    for (String string : Night.MACRO_MANAGER.getMacros().keySet()) {
-                        int n3 = Night.MACRO_MANAGER.getValue(string);
-                        stringBuilder.append(ChatUtils.getSecondary()).append(string).append(ChatUtils.getPrimary()).append(" [").append(ChatUtils.getSecondary()).append(KeyboardUtils.getKeyName(n3)).append(ChatUtils.getPrimary()).append("]").append(ChatUtils.getSecondary()).append(++n == Night.MACRO_MANAGER.getMacros().size() ? "" : ", ");
+                    StringBuilder builder = new StringBuilder();
+                    int index = 0;
+                    for (String macroText : Night.MACRO_MANAGER.getMacros().keySet()) {
+                        int keyCode = Night.MACRO_MANAGER.getValue(macroText);
+                        builder.append(ChatUtils.getSecondary()).append(macroText).append(ChatUtils.getPrimary()).append(" [").append(ChatUtils.getSecondary()).append(KeyboardUtils.getKeyName(keyCode)).append(ChatUtils.getPrimary()).append("]").append(ChatUtils.getSecondary()).append(++index == Night.MACRO_MANAGER.getMacros().size() ? "" : ", ");
                     }
-                    Night.CHAT_MANAGER.message("Macros " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + Night.MACRO_MANAGER.getMacros().size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(stringBuilder), "command-" + this.getName() + "-list");
+                    Night.CHAT_MANAGER.message("Macros " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + Night.MACRO_MANAGER.getMacros().size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(builder), "command-" + this.getName() + "-list");
                 }
             } else {
                 this.messageSyntax();

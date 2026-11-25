@@ -25,9 +25,9 @@ extends Connection {
     private final SocketChannel sc;
     private final Consumer<Packet> callback;
 
-    public UnixConnection(String string, Consumer<Packet> consumer) throws IOException {
-        this.sc = SocketChannel.open(UnixDomainSocketAddress.of(string));
-        this.callback = consumer;
+    public UnixConnection(String socketPath, Consumer<Packet> callback) throws IOException {
+        this.sc = SocketChannel.open(UnixDomainSocketAddress.of(socketPath));
+        this.callback = callback;
         this.sc.configureBlocking(false);
         this.sc.register(this.s, 1);
         Thread thread = new Thread(this::run);
@@ -63,8 +63,8 @@ extends Connection {
                     case 2: {
                         this.sc.read((ByteBuffer)buffer);
                         if (buffer.hasRemaining()) break;
-                        String string = Charset.defaultCharset().decode(((ByteBuffer)buffer).rewind()).toString();
-                        this.callback.accept(new Packet(opcode, JsonParser.parseString((String)string).getAsJsonObject()));
+                        String payloadJson = Charset.defaultCharset().decode(((ByteBuffer)buffer).rewind()).toString();
+                        this.callback.accept(new Packet(opcode, JsonParser.parseString(payloadJson).getAsJsonObject()));
                         buffer = null;
                         state = State.Opcode;
                     }

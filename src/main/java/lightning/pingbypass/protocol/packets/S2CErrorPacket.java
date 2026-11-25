@@ -14,8 +14,8 @@ extends PbPacket {
     public static final int ID = 7;
     private final String message;
 
-    public S2CErrorPacket(String string) {
-        this.message = string;
+    public S2CErrorPacket(String message) {
+        this.message = message;
     }
 
     public S2CErrorPacket(FriendlyByteBuf friendlyByteBuf) {

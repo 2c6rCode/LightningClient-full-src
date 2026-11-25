@@ -228,18 +228,18 @@ TickablePacketListener {
     }
 
     public void tick() {
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         if (!this.lobbyWorldSent) {
             this.lobbyWorldSent = true;
             LobbyWorldSender.sendLobbyWorld(this.connection, this.registryManager);
         }
-        if (l - this.lastKeepAliveTime > 30000L) {
+        if (now - this.lastKeepAliveTime > 30000L) {
             LOGGER.warn("Client {} timed out (no keep-alive for 30s)", (Object)this.profile.name());
             this.connection.disconnect((Component)Component.literal((String)"Timed out"));
         }
-        if (l - this.lastKeepAliveSentTime >= 15000L) {
-            this.lastKeepAliveSentTime = l;
-            this.connection.send((Packet)new ClientboundKeepAlivePacket(l));
+        if (now - this.lastKeepAliveSentTime >= 15000L) {
+            this.lastKeepAliveSentTime = now;
+            this.connection.send((Packet)new ClientboundKeepAlivePacket(now));
         }
         if (this.connectingToServer) {
             ++this.connectionAttemptTicks;
@@ -268,10 +268,10 @@ TickablePacketListener {
                 if (screen instanceof DisconnectedScreen) {
                     DisconnectedScreen disconnectedScreen = (DisconnectedScreen)screen;
                     this.connectingToServer = false;
-                    String string = ((DisconnectedScreenAccessor)disconnectedScreen).night$getDetails().reason().getString();
-                    LOGGER.warn("Connection to {}:{} failed for {}: {}", new Object[]{this.pendingServerIp, this.pendingServerPort, this.profile.name(), string});
-                    this.sendError("Failed to connect to " + this.pendingServerIp + ":" + this.pendingServerPort + ": " + string);
-                    this.sendChat("\u00a7c[PingBypass] Failed to connect to " + this.pendingServerIp + ":" + this.pendingServerPort + " (" + string + ")");
+                    String reason = ((DisconnectedScreenAccessor)disconnectedScreen).night$getDetails().reason().getString();
+                    LOGGER.warn("Connection to {}:{} failed for {}: {}", new Object[]{this.pendingServerIp, this.pendingServerPort, this.profile.name(), reason});
+                    this.sendError("Failed to connect to " + this.pendingServerIp + ":" + this.pendingServerPort + ": " + reason);
+                    this.sendChat("\u00a7c[PingBypass] Failed to connect to " + this.pendingServerIp + ":" + this.pendingServerPort + " (" + reason + ")");
                 } else if (this.connectionAttemptTicks > 600) {
                     this.connectingToServer = false;
                     LOGGER.warn("Connection to {}:{} timed out for {}", new Object[]{this.pendingServerIp, this.pendingServerPort, this.profile.name()});
@@ -296,13 +296,13 @@ TickablePacketListener {
         PbCustomPayload pbCustomPayload = (PbCustomPayload)customPacketPayload;
         FriendlyByteBuf friendlyByteBuf = pbCustomPayload.toBuf();
         try {
-            int n = friendlyByteBuf.readVarInt();
-            if (n == 0) {
-                String string = friendlyByteBuf.readUtf();
-                int n2 = friendlyByteBuf.readVarInt();
-                this.handleJoinRequest(string, n2);
+            int packetId = friendlyByteBuf.readVarInt();
+            if (packetId == 0) {
+                String serverIp = friendlyByteBuf.readUtf();
+                int serverPort = friendlyByteBuf.readVarInt();
+                this.handleJoinRequest(serverIp, serverPort);
             } else {
-                LOGGER.warn("Unexpected packet ID {} from {} during waiting state", (Object)n, (Object)this.profile.name());
+                LOGGER.warn("Unexpected packet ID {} from {} during waiting state", (Object)packetId, (Object)this.profile.name());
             }
         }
         catch (Exception exception) {
@@ -313,53 +313,53 @@ TickablePacketListener {
         }
     }
 
-    void handleJoinRequest(String string, int n) {
-        LOGGER.info("Client {} requested join to {}:{}", new Object[]{this.profile.name(), string, n});
+    void handleJoinRequest(String serverIp, int serverPort) {
+        LOGGER.info("Client {} requested join to {}:{}", new Object[]{this.profile.name(), serverIp, serverPort});
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.getConnection() != null && minecraft.player != null && minecraft.level != null && minecraft.getConnection().registryAccess() != null) {
             LOGGER.info("Proxy already connected to a server, replaying world state for {}", (Object)this.profile.name());
             this.sendChat("\u00a7a[PingBypass] Proxy already connected! Resuming session...");
-            this.onServerConnectionEstablished(minecraft, string, n);
+            this.onServerConnectionEstablished(minecraft, serverIp, serverPort);
             return;
         }
-        this.sendChat("\u00a7d[PingBypass] \u00a7fConnecting to \u00a7a" + string + ":" + n + "\u00a7f...");
-        String string2 = string + ":" + n;
-        ServerAddress serverAddress = ServerAddress.parseString((String)string2);
-        ServerData serverData = new ServerData("PingBypass Target", string2, ServerData.Type.OTHER);
-        this.pendingServerIp = string;
-        this.pendingServerPort = n;
+        this.sendChat("\u00a7d[PingBypass] \u00a7fConnecting to \u00a7a" + serverIp + ":" + serverPort + "\u00a7f...");
+        String serverAddressStr = serverIp + ":" + serverPort;
+        ServerAddress serverAddress = ServerAddress.parseString((String)serverAddressStr);
+        ServerData serverData = new ServerData("PingBypass Target", serverAddressStr, ServerData.Type.OTHER);
+        this.pendingServerIp = serverIp;
+        this.pendingServerPort = serverPort;
         this.connectingToServer = true;
         this.connectionAttemptTicks = 0;
         minecraft.execute(() -> {
             try {
-                LOGGER.info("Initiating connection to {} for {}", (Object)string2, (Object)this.profile.name());
+                LOGGER.info("Initiating connection to {} for {}", (Object)serverAddressStr, (Object)this.profile.name());
                 ConnectScreen.startConnecting((Screen)new TitleScreen(), (Minecraft)minecraft, (ServerAddress)serverAddress, (ServerData)serverData, (boolean)false, null);
             }
             catch (Exception exception) {
-                LOGGER.error("Failed to initiate connection to {} for {}", new Object[]{string2, this.profile.name(), exception});
-                this.sendError("Failed to connect to " + string2 + ": " + exception.getMessage());
+                LOGGER.error("Failed to initiate connection to {} for {}", new Object[]{serverAddressStr, this.profile.name(), exception});
+                this.sendError("Failed to connect to " + serverAddressStr + ": " + exception.getMessage());
                 this.connectingToServer = false;
             }
         });
     }
 
-    private void onServerConnectionEstablished(Minecraft minecraft, String string, int n) {
-        LOGGER.info("Server connection established to {}:{} for {}", new Object[]{string, n, this.profile.name()});
+    private void onServerConnectionEstablished(Minecraft minecraft, String serverIp, int serverPort) {
+        LOGGER.info("Server connection established to {}:{} for {}", new Object[]{serverIp, serverPort, this.profile.name()});
         try {
             Connection connection = minecraft.getConnection().getConnection();
             this.proxyServer.setServerConnection(connection);
             RegistryAccess registryAccess = minecraft.level.registryAccess();
             this.connection.setupOutboundProtocol(GameProtocols.CLIENTBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator((RegistryAccess)registryAccess)));
             LOGGER.info("Re-transitioned outbound encoder to real server registry for {}", (Object)this.profile.name());
-            RegistryAccess registryAccess2 = registryAccess;
-            String string2 = string + ":" + n;
-            this.connection.send((Packet)new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CServerNamePacket(string2))));
+            RegistryAccess inboundRegistryAccess = registryAccess;
+            String serverAddressStr = serverIp + ":" + serverPort;
+            this.connection.send((Packet)new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CServerNamePacket(serverAddressStr))));
             S2CForwarder s2CForwarder = new S2CForwarder(this.connection);
             s2CForwarder.start();
-            int n2 = WorldStateReplay.replay(this.connection, registryAccess);
+            int replayedCount = WorldStateReplay.replay(this.connection, registryAccess);
             PbPlayHandler pbPlayHandler = new PbPlayHandler(this.proxyServer, this.connection, this.profile, s2CForwarder, 0);
-            this.connection.setupInboundProtocol(GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator((RegistryAccess)registryAccess2), () -> false), pbPlayHandler);
-            LOGGER.info("Proxy fully active for {} on {}:{} (awaiting teleport confirm)", new Object[]{this.profile.name(), string, n});
+            this.connection.setupInboundProtocol(GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator((RegistryAccess)inboundRegistryAccess), () -> false), pbPlayHandler);
+            LOGGER.info("Proxy fully active for {} on {}:{} (awaiting teleport confirm)", new Object[]{this.profile.name(), serverIp, serverPort});
         }
         catch (Exception exception) {
             LOGGER.error("Failed to set up forwarding for {}", (Object)this.profile.name(), (Object)exception);
@@ -367,15 +367,15 @@ TickablePacketListener {
         }
     }
 
-    private void sendError(String string) {
+    private void sendError(String message) {
         if (this.connection.isConnected()) {
-            this.connection.send((Packet)new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CErrorPacket(string))));
+            this.connection.send((Packet)new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CErrorPacket(message))));
         }
     }
 
-    private void sendChat(String string) {
+    private void sendChat(String message) {
         if (this.connection.isConnected()) {
-            this.connection.send((Packet)new ClientboundSystemChatPacket((Component)Component.literal((String)string), false));
+            this.connection.send((Packet)new ClientboundSystemChatPacket((Component)Component.literal((String)message), false));
         }
     }
 

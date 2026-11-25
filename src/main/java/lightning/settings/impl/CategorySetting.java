@@ -16,20 +16,20 @@ extends Setting {
     private boolean open = false;
     private final Animation openAnim = new Animation(200, Easing.Method.EASE_OUT_CUBIC);
 
-    public CategorySetting(String string, String string2) {
-        super(string, string, string2, new Setting.Visibility());
+    public CategorySetting(String name, String description) {
+        super(name, name, description, new Setting.Visibility());
     }
 
-    public CategorySetting(String string, String string2, String string3) {
-        super(string, string2, string3, new Setting.Visibility());
+    public CategorySetting(String name, String tag, String description) {
+        super(name, tag, description, new Setting.Visibility());
     }
 
-    public CategorySetting(String string, String string2, Setting.Visibility visibility) {
-        super(string, string, string2, visibility);
+    public CategorySetting(String name, String description, Setting.Visibility visibility) {
+        super(name, name, description, visibility);
     }
 
-    public CategorySetting(String string, String string2, String string3, Setting.Visibility visibility) {
-        super(string, string2, string3, visibility);
+    public CategorySetting(String name, String tag, String description, Setting.Visibility visibility) {
+        super(name, tag, description, visibility);
     }
 
     public float getOpenAmount() {
@@ -47,8 +47,8 @@ extends Setting {
     }
 
     @Generated
-    public void setOpen(boolean bl) {
-        this.open = bl;
+    public void setOpen(boolean open) {
+        this.open = open;
     }
 
     public static class Visibility

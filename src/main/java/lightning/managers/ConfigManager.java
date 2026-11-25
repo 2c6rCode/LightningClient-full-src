@@ -232,18 +232,18 @@ public class ConfigManager {
                 }
             }
             if (jsonObject.has("Macros") && Night.MACRO_MANAGER != null) {
-                for (JsonElement jsonElement2 : jsonObject.get("Macros").getAsJsonArray()) {
+                for (JsonElement macroElement : jsonObject.get("Macros").getAsJsonArray()) {
                     try {
-                        String[] stringArray = jsonElement2.getAsString().split(":", 2);
-                        if (stringArray.length <= 1) continue;
-                        int n = Integer.parseInt(stringArray[0]);
-                        String string = stringArray[1];
-                        Night.MACRO_MANAGER.add(string, n);
+                        String[] parts = macroElement.getAsString().split(":", 2);
+                        if (parts.length <= 1) continue;
+                        int keyCode = Integer.parseInt(parts[0]);
+                        String macroCommand = parts[1];
+                        Night.MACRO_MANAGER.add(macroCommand, keyCode);
                     }
                     catch (NumberFormatException numberFormatException) {
-                        Night.LOGGER.error("Failed to load the " + jsonElement2.getAsString() + " macro!", (Throwable)numberFormatException);
+                        Night.LOGGER.error("Failed to load the " + macroElement.getAsString() + " macro!", (Throwable)numberFormatException);
                         if (Night.CHAT_MANAGER == null) continue;
-                        Night.CHAT_MANAGER.await("The " + jsonElement2.getAsString() + " macro has failed to load. Read the stacktrace for more information.");
+                        Night.CHAT_MANAGER.await("The " + macroElement.getAsString() + " macro has failed to load. Read the stacktrace for more information.");
                     }
                 }
             }
@@ -263,12 +263,12 @@ public class ConfigManager {
         JsonObject jsonObject = new JsonObject();
         jsonObject.add("Config", (JsonElement)new JsonPrimitive(this.currentConfig));
         jsonObject.add("Prefix", (JsonElement)new JsonPrimitive(Night.COMMAND_MANAGER.getPrefix()));
-        JsonArray jsonArray = new JsonArray();
-        Night.FRIEND_MANAGER.getFriends().forEach(string -> jsonArray.add(string));
-        jsonObject.add("Friends", (JsonElement)jsonArray);
-        JsonArray jsonArray2 = new JsonArray();
-        Night.MACRO_MANAGER.getMacros().forEach((string, n) -> jsonArray2.add(n + ":" + string));
-        jsonObject.add("Macros", (JsonElement)jsonArray2);
+        JsonArray friendsArray = new JsonArray();
+        Night.FRIEND_MANAGER.getFriends().forEach(friend -> friendsArray.add(friend));
+        jsonObject.add("Friends", (JsonElement)friendsArray);
+        JsonArray macrosArray = new JsonArray();
+        Night.MACRO_MANAGER.getMacros().forEach((macroText, keyCode) -> macrosArray.add(keyCode + ":" + macroText));
+        jsonObject.add("Macros", (JsonElement)macrosArray);
         OutputStreamWriter outputStreamWriter = new OutputStreamWriter((OutputStream)new FileOutputStream("Lightning/General.json"), StandardCharsets.UTF_8);
         try {
             outputStreamWriter.write(new GsonBuilder().setPrettyPrinting().create().toJson(JsonParser.parseString((String)jsonObject.toString())));
@@ -305,17 +305,17 @@ public class ConfigManager {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void loadModules(String string) throws IOException {
-        if (!FileUtils.fileExists("Lightning/Configs/" + string + ".json")) {
+    public void loadModules(String configName) throws IOException {
+        if (!FileUtils.fileExists("Lightning/Configs/" + configName + ".json")) {
             return;
         }
-        InputStream inputStream = Files.newInputStream(Paths.get("Lightning/Configs/" + string + ".json", new String[0]), new OpenOption[0]);
+        InputStream inputStream = Files.newInputStream(Paths.get("Lightning/Configs/" + configName + ".json", new String[0]), new OpenOption[0]);
         try {
             PingBypassModule pingBypassModule;
             JsonObject jsonObject;
             JsonElement jsonElement = JsonParser.parseReader((Reader)new InputStreamReader(inputStream));
             if (jsonElement == null || !jsonElement.isJsonObject()) {
-                Night.LOGGER.warn("Module configuration is empty or invalid JSON: {}", (Object)string);
+                Night.LOGGER.warn("Module configuration is empty or invalid JSON: {}", (Object)configName);
                 return;
             }
             try {
@@ -334,15 +334,15 @@ public class ConfigManager {
             if (!jsonObject.has("Modules")) {
                 return;
             }
-            JsonObject jsonObject2 = jsonObject.get("Modules").getAsJsonObject();
+            JsonObject modulesJson = jsonObject.get("Modules").getAsJsonObject();
             this.loadingConfig = true;
             try {
-                this.loadModulesInner(jsonObject2);
+                this.loadModulesInner(modulesJson);
             }
             finally {
                 this.loadingConfig = false;
             }
-            this.currentConfig = string;
+            this.currentConfig = configName;
             try {
                 this.saveGeneral();
             }
@@ -375,28 +375,18 @@ public class ConfigManager {
         this.applyModuleJson(module, jsonObject, true);
     }
 
-    public void applyModuleJson(Module module, JsonObject jsonObject, boolean bl) {
-        boolean bl2;
-        boolean bl3 = bl2 = jsonObject.has("Status") && jsonObject.get("Status").getAsBoolean();
+    public void applyModuleJson(Module module, JsonObject jsonObject, boolean includeBinds) {
+        boolean enabled = jsonObject.has("Status") && jsonObject.get("Status").getAsBoolean();
         if (!jsonObject.has("Settings")) {
-            if (bl) {
+            if (includeBinds) {
                 module.resetValues();
             }
-            module.setToggled(bl2, false);
+            module.setToggled(enabled, false);
         } else {
-            JsonObject jsonObject2 = jsonObject.get("Settings").getAsJsonObject();
-            block22: for (Setting setting : module.getSettings()) {
-                String[] stringArray;
-                Setting setting2;
-                Setting setting3;
-                Object object;
-                Setting setting4;
-                Setting setting5;
-                Setting setting6;
-                Setting setting7;
-                Setting setting8;
-                if (!bl && setting instanceof BindSetting) continue;
-                JsonElement jsonElement = jsonObject2.get(setting.getName());
+            JsonObject settingsJson = jsonObject.get("Settings").getAsJsonObject();
+            for (Setting setting : module.getSettings()) {
+                if (!includeBinds && setting instanceof BindSetting) continue;
+                JsonElement jsonElement = settingsJson.get(setting.getName());
                 if (jsonElement != null && jsonElement.isJsonPrimitive()) {
                     if (setting instanceof BooleanSetting booleanSetting) {
                         if (jsonElement.getAsJsonPrimitive().isBoolean()) {
@@ -459,7 +449,8 @@ public class ConfigManager {
                                 }
                             }
                         }
-                    }                    continue;
+                    }
+                    continue;
                 }
                 if (setting instanceof BooleanSetting booleanSetting) {
                     booleanSetting.resetValue();
@@ -481,30 +472,30 @@ public class ConfigManager {
                     positionSetting.resetValue();
                 }
             }
-            module.setToggled(bl2, false);
+            module.setToggled(enabled, false);
         }
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void saveModules(String string) throws IOException {
-        FileUtils.resetFile("Lightning/Configs/" + string + ".json");
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.add("Config", (JsonElement)new JsonPrimitive(string));
-        JsonObject jsonObject2 = new JsonObject();
+    public void saveModules(String configName) throws IOException {
+        FileUtils.resetFile("Lightning/Configs/" + configName + ".json");
+        JsonObject rootJson = new JsonObject();
+        rootJson.add("Config", (JsonElement)new JsonPrimitive(configName));
+        JsonObject modulesJson = new JsonObject();
         for (Module module : Night.MODULE_MANAGER.getModules()) {
-            JsonObject jsonObject3 = this.serializeModuleJson(module);
+            JsonObject moduleJson = this.serializeModuleJson(module);
             if (module instanceof FakePlayerModule) {
-                jsonObject3.add("Status", (JsonElement)new JsonPrimitive(Boolean.valueOf(false)));
+                moduleJson.add("Status", (JsonElement)new JsonPrimitive(Boolean.valueOf(false)));
             }
-            jsonObject2.add(module.getName(), (JsonElement)jsonObject3);
+            modulesJson.add(module.getName(), (JsonElement)moduleJson);
         }
-        jsonObject.add("Modules", (JsonElement)jsonObject2);
-        OutputStreamWriter outputStreamWriter = new OutputStreamWriter((OutputStream)new FileOutputStream("Lightning/Configs/" + string + ".json"), StandardCharsets.UTF_8);
+        rootJson.add("Modules", (JsonElement)modulesJson);
+        OutputStreamWriter outputStreamWriter = new OutputStreamWriter((OutputStream)new FileOutputStream("Lightning/Configs/" + configName + ".json"), StandardCharsets.UTF_8);
         try {
-            outputStreamWriter.write(new GsonBuilder().setPrettyPrinting().create().toJson(JsonParser.parseString((String)jsonObject.toString())));
-            this.currentConfig = string;
+            outputStreamWriter.write(new GsonBuilder().setPrettyPrinting().create().toJson(JsonParser.parseString((String)rootJson.toString())));
+            this.currentConfig = configName;
             try {
                 this.saveGeneral();
             }
@@ -523,39 +514,38 @@ public class ConfigManager {
         return this.serializeModuleJson(module, true);
     }
 
-    public JsonObject serializeModuleJson(Module module, boolean bl) {
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.add("Status", (JsonElement)new JsonPrimitive(Boolean.valueOf(module.isToggled())));
-        JsonObject jsonObject2 = new JsonObject();
+    public JsonObject serializeModuleJson(Module module, boolean includeBinds) {
+        JsonObject moduleJson = new JsonObject();
+        moduleJson.add("Status", (JsonElement)new JsonPrimitive(Boolean.valueOf(module.isToggled())));
+        JsonObject settingsJson = new JsonObject();
         for (Setting setting : module.getSettings()) {
-            Setting setting2;
-            if (!bl && setting instanceof BindSetting) continue;
+            if (!includeBinds && setting instanceof BindSetting) continue;
             if (setting instanceof BooleanSetting booleanSetting) {
-                jsonObject2.add(booleanSetting.getName(), (JsonElement)new JsonPrimitive(Boolean.valueOf(booleanSetting.getValue())));
+                settingsJson.add(booleanSetting.getName(), (JsonElement)new JsonPrimitive(Boolean.valueOf(booleanSetting.getValue())));
             } else if (setting instanceof NumberSetting numberSetting) {
-                jsonObject2.add(numberSetting.getName(), (JsonElement)new JsonPrimitive(numberSetting.getValue()));
+                settingsJson.add(numberSetting.getName(), (JsonElement)new JsonPrimitive(numberSetting.getValue()));
             } else if (setting instanceof ModeSetting modeSetting) {
-                jsonObject2.add(modeSetting.getName(), (JsonElement)new JsonPrimitive(modeSetting.getValue()));
+                settingsJson.add(modeSetting.getName(), (JsonElement)new JsonPrimitive(modeSetting.getValue()));
             } else if (setting instanceof StringSetting stringSetting) {
-                jsonObject2.add(stringSetting.getName(), (JsonElement)new JsonPrimitive(stringSetting.getValue()));
+                settingsJson.add(stringSetting.getName(), (JsonElement)new JsonPrimitive(stringSetting.getValue()));
             } else if (setting instanceof ImageSetting imageSetting) {
-                jsonObject2.add(imageSetting.getName(), (JsonElement)new JsonPrimitive(imageSetting.getValue()));
+                settingsJson.add(imageSetting.getName(), (JsonElement)new JsonPrimitive(imageSetting.getValue()));
             } else if (setting instanceof BindSetting bindSetting) {
-                jsonObject2.add(bindSetting.getName(), (JsonElement)new JsonPrimitive(bindSetting.getValue() + "," + bindSetting.getMode()));
+                settingsJson.add(bindSetting.getName(), (JsonElement)new JsonPrimitive(bindSetting.getValue() + "," + bindSetting.getMode()));
             } else if (setting instanceof ColorSetting colorSetting) {
-                jsonObject2.add(colorSetting.getName(), (JsonElement)new JsonPrimitive(colorSetting.getValue().getColor().getRed() + "," + colorSetting.getValue().getColor().getGreen() + "," + colorSetting.getValue().getColor().getBlue() + "," + colorSetting.getValue().getColor().getAlpha() + "," + colorSetting.isSync() + "," + colorSetting.isRainbow()));
+                settingsJson.add(colorSetting.getName(), (JsonElement)new JsonPrimitive(colorSetting.getValue().getColor().getRed() + "," + colorSetting.getValue().getColor().getGreen() + "," + colorSetting.getValue().getColor().getBlue() + "," + colorSetting.getValue().getColor().getAlpha() + "," + colorSetting.isSync() + "," + colorSetting.isRainbow()));
             } else if (setting instanceof WhitelistSetting whitelistSetting) {
-                StringJoiner stringJoiner = new StringJoiner(",");
-                for (String string : whitelistSetting.getWhitelistIds()) {
-                    stringJoiner.add(string);
+                StringJoiner joiner = new StringJoiner(",");
+                for (String entryId : whitelistSetting.getWhitelistIds()) {
+                    joiner.add(entryId);
                 }
-                jsonObject2.add(whitelistSetting.getName(), (JsonElement)new JsonPrimitive(stringJoiner.toString()));
+                settingsJson.add(whitelistSetting.getName(), (JsonElement)new JsonPrimitive(joiner.toString()));
             } else if (setting instanceof PositionSetting positionSetting) {
-                jsonObject2.add(positionSetting.getName(), (JsonElement)new JsonPrimitive(positionSetting.getX() + "," + positionSetting.getY()));
+                settingsJson.add(positionSetting.getName(), (JsonElement)new JsonPrimitive(positionSetting.getX() + "," + positionSetting.getY()));
             }
         }
-        jsonObject.add("Settings", (JsonElement)jsonObject2);
-        return jsonObject;
+        moduleJson.add("Settings", (JsonElement)settingsJson);
+        return moduleJson;
     }
 
     @Generated
@@ -569,13 +559,13 @@ public class ConfigManager {
     }
 
     @Generated
-    public void setCurrentConfig(String string) {
-        this.currentConfig = string;
+    public void setCurrentConfig(String currentConfig) {
+        this.currentConfig = currentConfig;
     }
 
     @Generated
-    public void setLoadingConfig(boolean bl) {
-        this.loadingConfig = bl;
+    public void setLoadingConfig(boolean loadingConfig) {
+        this.loadingConfig = loadingConfig;
     }
 }
 

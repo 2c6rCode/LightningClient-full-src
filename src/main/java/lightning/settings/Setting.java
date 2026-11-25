@@ -35,10 +35,10 @@ public class Setting {
     }
 
     @Generated
-    public Setting(String string, String string2, String string3, Visibility visibility) {
-        this.name = string;
-        this.tag = string2;
-        this.description = string3;
+    public Setting(String name, String tag, String description, Visibility visibility) {
+        this.name = name;
+        this.tag = tag;
+        this.description = description;
         this.visibility = visibility;
     }
 
@@ -64,8 +64,8 @@ public class Setting {
         }
 
         @Generated
-        public void setVisible(boolean bl) {
-            this.visible = bl;
+        public void setVisible(boolean visible) {
+            this.visible = visible;
         }
 
         @Generated

@@ -21,8 +21,8 @@ extends Event {
     }
 
     @Generated
-    public PlayerTravelEvent(Vec3 vec3) {
-        this.movementInput = vec3;
+    public PlayerTravelEvent(Vec3 movementInput) {
+        this.movementInput = movementInput;
     }
 }
 

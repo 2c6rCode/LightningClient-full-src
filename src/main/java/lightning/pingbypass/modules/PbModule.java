@@ -10,8 +10,8 @@ public abstract class PbModule {
     private final String name;
     private boolean toggled = false;
 
-    protected PbModule(String string) {
-        this.name = string;
+    protected PbModule(String name) {
+        this.name = name;
     }
 
     public String getName() {
@@ -22,9 +22,9 @@ public abstract class PbModule {
         return this.toggled;
     }
 
-    public void setToggled(boolean bl) {
-        this.toggled = bl;
-        if (bl) {
+    public void setToggled(boolean toggled) {
+        this.toggled = toggled;
+        if (toggled) {
             this.onEnable();
         } else {
             this.onDisable();
@@ -41,8 +41,8 @@ public abstract class PbModule {
 
     public abstract List<Setting> getSettings();
 
-    public Setting getSetting(String string) {
-        return this.getSettings().stream().filter(setting -> setting.getName().equalsIgnoreCase(string)).findFirst().orElse(null);
+    public Setting getSetting(String settingName) {
+        return this.getSettings().stream().filter(setting -> setting.getName().equalsIgnoreCase(settingName)).findFirst().orElse(null);
     }
 }
 

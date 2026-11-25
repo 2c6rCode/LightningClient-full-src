@@ -37,7 +37,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={ConnectScreen.class})
 public class ConnectScreenMixin {
     @Inject(method={"startConnecting"}, at={@At(value="HEAD")})
-    private static void connect(Screen screen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, boolean bl, @Nullable TransferState transferState, CallbackInfo callbackInfo) {
+    private static void connect(Screen screen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, boolean quickPlay, @Nullable TransferState transferState, CallbackInfo callbackInfo) {
         try {
             Night.EVENT_HANDLER.post((Event)new ServerConnectEvent(serverAddress, serverData));
             return;

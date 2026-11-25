@@ -48,21 +48,21 @@ extends Module {
 
     @SubscribeEvent
     public void onRenderOverlay(RenderOverlayEvent renderOverlayEvent) {
-        String string;
+        String message;
         if (this.getNull()) {
             return;
         }
-        int n = mc.getWindow().getGuiScaledWidth() / 2;
-        int n2 = mc.getWindow().getGuiScaledHeight() / 4;
-        boolean bl = false;
+        int centerX = mc.getWindow().getGuiScaledWidth() / 2;
+        int baseY = mc.getWindow().getGuiScaledHeight() / 4;
+        boolean showedServerWarning = false;
         if (this.server.getValue() && Night.SERVER_MANAGER.getResponseTimer().hasTimeElapsed(1000)) {
-            string = "Detected server not responding for " + MathUtils.round((float)Night.SERVER_MANAGER.getResponseTimer().timeElapsed() / 1000.0f, 1) + "s.";
-            Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), string, n - Night.FONT_MANAGER.getWidth(string) / 2, n2 - Night.FONT_MANAGER.getHeight(), this.color.getColor());
-            bl = true;
+            message = "Detected server not responding for " + MathUtils.round((float)Night.SERVER_MANAGER.getResponseTimer().timeElapsed() / 1000.0f, 1) + "s.";
+            Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), message, centerX - Night.FONT_MANAGER.getWidth(message) / 2, baseY - Night.FONT_MANAGER.getHeight(), this.color.getColor());
+            showedServerWarning = true;
         }
         if (this.lagback.getValue() && System.currentTimeMillis() - this.lagTime < 3000L) {
-            string = "Detected lagback of " + MathUtils.round(this.lagDistance, 1) + " blocks " + MathUtils.round((float)(System.currentTimeMillis() - this.lagTime) / 1000.0f, 1) + "s.";
-            Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), string, n - Night.FONT_MANAGER.getWidth(string) / 2, n2 - Night.FONT_MANAGER.getHeight() + (bl ? Night.FONT_MANAGER.getHeight() : 0), this.color.getColor());
+            message = "Detected lagback of " + MathUtils.round(this.lagDistance, 1) + " blocks " + MathUtils.round((float)(System.currentTimeMillis() - this.lagTime) / 1000.0f, 1) + "s.";
+            Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), message, centerX - Night.FONT_MANAGER.getWidth(message) / 2, baseY - Night.FONT_MANAGER.getHeight() + (showedServerWarning ? Night.FONT_MANAGER.getHeight() : 0), this.color.getColor());
         }
     }
 }

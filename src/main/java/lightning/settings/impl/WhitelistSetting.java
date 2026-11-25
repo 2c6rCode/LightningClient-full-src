@@ -25,50 +25,50 @@ extends Setting {
     private final Type type;
     private final Set<Object> whitelist = new HashSet<Object>();
 
-    public WhitelistSetting(String string, String string2, Type type) {
-        super(string, string, string2, new Setting.Visibility());
+    public WhitelistSetting(String name, String description, Type type) {
+        super(name, name, description, new Setting.Visibility());
         this.type = type;
     }
 
-    public WhitelistSetting(String string, String string2, String string3, Type type) {
-        super(string, string2, string3, new Setting.Visibility());
+    public WhitelistSetting(String name, String tag, String description, Type type) {
+        super(name, tag, description, new Setting.Visibility());
         this.type = type;
     }
 
-    public WhitelistSetting(String string, String string2, Setting.Visibility visibility, Type type) {
-        super(string, string, string2, visibility);
+    public WhitelistSetting(String name, String description, Setting.Visibility visibility, Type type) {
+        super(name, name, description, visibility);
         this.type = type;
     }
 
-    public WhitelistSetting(String string, String string2, String string3, Setting.Visibility visibility, Type type) {
-        super(string, string2, string3, visibility);
+    public WhitelistSetting(String name, String tag, String description, Setting.Visibility visibility, Type type) {
+        super(name, tag, description, visibility);
         this.type = type;
     }
 
-    public void add(Object object) {
-        this.whitelist.add(object);
+    public void add(Object entry) {
+        this.whitelist.add(entry);
     }
 
-    public void remove(Object object) {
-        this.whitelist.remove(object);
+    public void remove(Object entry) {
+        this.whitelist.remove(entry);
     }
 
-    public boolean isWhitelistContains(Object object) {
-        return this.whitelist.contains(object);
+    public boolean isWhitelistContains(Object entry) {
+        return this.whitelist.contains(entry);
     }
 
     public List<String> getWhitelistIds() {
-        return this.whitelist.stream().<String>map(object -> {
-            if (object instanceof Item) {
-                Item item = (Item)object;
+        return this.whitelist.stream().<String>map(entry -> {
+            if (entry instanceof Item) {
+                Item item = (Item)entry;
                 return BuiltInRegistries.ITEM.getKey(item).toString();
             }
-            if (object instanceof Block) {
-                Block block = (Block)object;
+            if (entry instanceof Block) {
+                Block block = (Block)entry;
                 return BuiltInRegistries.BLOCK.getKey(block).toString();
             }
-            if (object instanceof Potion) {
-                Potion potion = (Potion)object;
+            if (entry instanceof Potion) {
+                Potion potion = (Potion)entry;
                 return BuiltInRegistries.POTION.getKey(potion).toString();
             }
             return null;
@@ -76,7 +76,7 @@ extends Setting {
     }
 
     public List<Potion> getWhitelistedPotions() {
-        return this.whitelist.stream().filter(object -> object instanceof Potion).map(object -> (Potion)object).toList();
+        return this.whitelist.stream().filter(entry -> entry instanceof Potion).map(entry -> (Potion)entry).toList();
     }
 
     public void clear() {

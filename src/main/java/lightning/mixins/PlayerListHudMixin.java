@@ -47,13 +47,13 @@ public abstract class PlayerListHudMixin {
     }
 
     @ModifyConstant(method={"getPlayerInfos"}, constant={@Constant(longValue=80L)}, require=0)
-    private long extraTabLimit(long l) {
+    private long extraTabLimit(long limit) {
         try {
             ExtraTabModule extraTabModule = (ExtraTabModule)Night.MODULE_MANAGER.getModule(ExtraTabModule.class);
-            return extraTabModule.isToggled() ? extraTabModule.limit.getValue().longValue() : l;
+            return extraTabModule.isToggled() ? extraTabModule.limit.getValue().longValue() : limit;
         }
         catch (NullPointerException nullPointerException) {
-            return l;
+            return limit;
         }
     }
 

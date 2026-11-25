@@ -60,120 +60,120 @@ implements IMinecraft {
         if (this.awaitMessages.isEmpty()) {
             return;
         }
-        for (String string : new ArrayList<String>(this.awaitMessages)) {
-            this.addMessage(string);
-            this.awaitMessages.remove(string);
+        for (String message : new ArrayList<String>(this.awaitMessages)) {
+            this.addMessage(message);
+            this.awaitMessages.remove(message);
         }
     }
 
-    public void message(String string) {
+    public void message(String message) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        this.addMessage(this.getWatermark() + " " + String.valueOf(ChatUtils.getSecondary()) + string);
+        this.addMessage(this.getWatermark() + " " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void message(String string, String string2) {
+    public void message(String message, String identifier) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        ChatManager.deleteMessage(string2);
-        this.addMessage(this.getWatermark() + " " + String.valueOf(ChatUtils.getSecondary()) + string, string2);
+        ChatManager.deleteMessage(identifier);
+        this.addMessage(this.getWatermark() + " " + String.valueOf(ChatUtils.getSecondary()) + message, identifier);
     }
 
-    public void tagged(String string, String string2) {
+    public void tagged(String message, String tag) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_AQUA) + " [" + String.valueOf(ChatFormatting.AQUA) + string2 + String.valueOf(ChatFormatting.DARK_AQUA) + "]: " + String.valueOf(ChatUtils.getSecondary()) + string);
+        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_AQUA) + " [" + String.valueOf(ChatFormatting.AQUA) + tag + String.valueOf(ChatFormatting.DARK_AQUA) + "]: " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void tagged(String string, String string2, String string3) {
+    public void tagged(String message, String tag, String identifier) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        ChatManager.deleteMessage(string3);
-        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_AQUA) + " [" + String.valueOf(ChatFormatting.AQUA) + string2 + String.valueOf(ChatFormatting.DARK_AQUA) + "]: " + String.valueOf(ChatUtils.getSecondary()) + string, string3);
+        ChatManager.deleteMessage(identifier);
+        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_AQUA) + " [" + String.valueOf(ChatFormatting.AQUA) + tag + String.valueOf(ChatFormatting.DARK_AQUA) + "]: " + String.valueOf(ChatUtils.getSecondary()) + message, identifier);
     }
 
-    public void info$await(String string) {
-        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.DARK_BLUE) + " [" + String.valueOf(ChatFormatting.BLUE) + "?" + String.valueOf(ChatFormatting.DARK_BLUE) + "] " + String.valueOf(ChatUtils.getSecondary()) + string);
+    public void info$await(String message) {
+        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.DARK_BLUE) + " [" + String.valueOf(ChatFormatting.BLUE) + "?" + String.valueOf(ChatFormatting.DARK_BLUE) + "] " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void info(String string) {
+    public void info(String message) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_BLUE) + " [" + String.valueOf(ChatFormatting.BLUE) + "?" + String.valueOf(ChatFormatting.DARK_BLUE) + "] " + String.valueOf(ChatUtils.getSecondary()) + string);
+        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_BLUE) + " [" + String.valueOf(ChatFormatting.BLUE) + "?" + String.valueOf(ChatFormatting.DARK_BLUE) + "] " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void warn$await(String string) {
-        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.GOLD) + " [" + String.valueOf(ChatFormatting.YELLOW) + "!" + String.valueOf(ChatFormatting.GOLD) + "] " + String.valueOf(ChatUtils.getSecondary()) + string);
+    public void warn$await(String message) {
+        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.GOLD) + " [" + String.valueOf(ChatFormatting.YELLOW) + "!" + String.valueOf(ChatFormatting.GOLD) + "] " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void warn(String string) {
+    public void warn(String message) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.GOLD) + " [" + String.valueOf(ChatFormatting.YELLOW) + "!" + String.valueOf(ChatFormatting.GOLD) + "] " + String.valueOf(ChatUtils.getSecondary()) + string);
+        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.GOLD) + " [" + String.valueOf(ChatFormatting.YELLOW) + "!" + String.valueOf(ChatFormatting.GOLD) + "] " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void error$await(String string) {
-        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.DARK_RED) + " [" + String.valueOf(ChatFormatting.RED) + "!!" + String.valueOf(ChatFormatting.DARK_RED) + "] " + String.valueOf(ChatUtils.getSecondary()) + string);
+    public void error$await(String message) {
+        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.DARK_RED) + " [" + String.valueOf(ChatFormatting.RED) + "!!" + String.valueOf(ChatFormatting.DARK_RED) + "] " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void error(String string) {
+    public void error(String message) {
         if (ChatManager.mc.player == null || ChatManager.mc.gui == null) {
             return;
         }
-        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_RED) + " [" + String.valueOf(ChatFormatting.RED) + "!!" + String.valueOf(ChatFormatting.DARK_RED) + "] " + String.valueOf(ChatUtils.getSecondary()) + string);
+        this.addMessage(this.getWatermark() + String.valueOf(ChatFormatting.DARK_RED) + " [" + String.valueOf(ChatFormatting.RED) + "!!" + String.valueOf(ChatFormatting.DARK_RED) + "] " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void await(String string) {
-        this.awaitMessages.add(this.getWatermark() + " " + String.valueOf(ChatUtils.getSecondary()) + string);
+    public void await(String message) {
+        this.awaitMessages.add(this.getWatermark() + " " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void await(String string, String string2) {
-        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.DARK_AQUA) + " [" + String.valueOf(ChatFormatting.AQUA) + string2 + String.valueOf(ChatFormatting.DARK_AQUA) + "]: " + String.valueOf(ChatUtils.getSecondary()) + string);
+    public void await(String message, String tag) {
+        this.awaitMessages.add(this.getWatermark() + String.valueOf(ChatFormatting.DARK_AQUA) + " [" + String.valueOf(ChatFormatting.AQUA) + tag + String.valueOf(ChatFormatting.DARK_AQUA) + "]: " + String.valueOf(ChatUtils.getSecondary()) + message);
     }
 
-    public void addMessage(String string) {
-        this.addTextMessage((Component)Component.literal((String)string), "");
+    public void addMessage(String message) {
+        this.addTextMessage((Component)Component.literal((String)message), "");
     }
 
-    public void addMessage(String string, String string2) {
-        this.addTextMessage((Component)Component.literal((String)string), string2);
+    public void addMessage(String message, String identifier) {
+        this.addTextMessage((Component)Component.literal((String)message), identifier);
     }
 
     public void addMessage(Component component) {
         this.addTextMessage(component, "");
     }
 
-    public void addMessage(Component component, String string) {
-        this.addTextMessage(component, string);
+    public void addMessage(Component component, String identifier) {
+        this.addTextMessage(component, identifier);
     }
 
-    private void addTextMessage(Component component, String string) {
+    private void addTextMessage(Component component, String identifier) {
         if (!mc.isSameThread()) {
-            mc.execute(() -> this.addTextMessage(component, string));
+            mc.execute(() -> this.addTextMessage(component, identifier));
             return;
         }
         GuiMessage guiMessage = new GuiMessage(ChatManager.mc.gui.hud.getGuiTicks(), component, null, GuiMessageSource.SYSTEM_CLIENT, GuiMessageTag.system());
         ((IChatHudLine)(Object)guiMessage).night$setClientMessage(true);
-        ((IChatHudLine)(Object)guiMessage).night$setClientIdentifier(string);
+        ((IChatHudLine)(Object)guiMessage).night$setClientIdentifier(identifier);
         ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).invokeLogChatMessage(guiMessage);
         ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).invokeAddMessage(guiMessage);
-        List list = ComponentRenderUtils.wrapComponents((FormattedText)guiMessage.content(), (int)Mth.floor((double)((double)((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).invokeGetWidth() / ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).invokeGetScale())), (Font)ChatManager.mc.font);
-        for (int i = 0; i < list.size(); ++i) {
-            FormattedCharSequence formattedCharSequence = (FormattedCharSequence)list.get(i);
+        List wrappedLines = ComponentRenderUtils.wrapComponents((FormattedText)guiMessage.content(), (int)Mth.floor((double)((double)((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).invokeGetWidth() / ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).invokeGetScale())), (Font)ChatManager.mc.font);
+        for (int i = 0; i < wrappedLines.size(); ++i) {
+            FormattedCharSequence formattedCharSequence = (FormattedCharSequence)wrappedLines.get(i);
             if (ChatManager.mc.gui.hud.getChat().isChatFocused() && ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getScrolledLines() > 0) {
                 ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).setHasUnreadNewMessages(true);
                 ChatManager.mc.gui.hud.getChat().scrollChat(1);
             }
-            boolean bl = i == list.size() - 1;
-            GuiMessage.Line line = new GuiMessage.Line(guiMessage, formattedCharSequence, bl);
+            boolean endOfEntry = i == wrappedLines.size() - 1;
+            GuiMessage.Line line = new GuiMessage.Line(guiMessage, formattedCharSequence, endOfEntry);
             ((IChatHudLineVisible)(Object)line).night$setClientMessage(true);
-            ((IChatHudLineVisible)(Object)line).night$setClientIdentifier(string);
+            ((IChatHudLineVisible)(Object)line).night$setClientIdentifier(identifier);
             ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getVisibleMessages().addFirst(line);
             if (!Night.MODULE_MANAGER.getModule(BetterChatModule.class).isToggled() || !Night.MODULE_MANAGER.getModule(BetterChatModule.class).animation.getValue()) continue;
             Night.MODULE_MANAGER.getModule(BetterChatModule.class).getAnimationMap().put(line, System.currentTimeMillis());
@@ -183,20 +183,20 @@ implements IMinecraft {
         }
     }
 
-    public static void deleteMessage(String string) {
+    public static void deleteMessage(String identifier) {
         try {
-            ArrayList<Object> arrayList = new ArrayList<Object>();
-            for (Object object : ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getMessages()) {
-                if (!((IChatHudLine)object).night$isClientMessage() || ((IChatHudLine)object).night$getClientIdentifier().isEmpty() || !((IChatHudLine)object).night$getClientIdentifier().equals(string)) continue;
-                arrayList.add(object);
+            ArrayList<Object> messagesToRemove = new ArrayList<Object>();
+            for (Object messageObj : ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getMessages()) {
+                if (!((IChatHudLine)messageObj).night$isClientMessage() || ((IChatHudLine)messageObj).night$getClientIdentifier().isEmpty() || !((IChatHudLine)messageObj).night$getClientIdentifier().equals(identifier)) continue;
+                messagesToRemove.add(messageObj);
             }
-            ArrayList arrayList2 = new ArrayList();
+            ArrayList<GuiMessage.Line> visibleToRemove = new ArrayList<>();
             for (GuiMessage.Line line : ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getVisibleMessages()) {
-                if (!((IChatHudLineVisible)(Object)line).night$isClientMessage() || ((IChatHudLineVisible)(Object)line).night$getClientIdentifier().isEmpty() || !((IChatHudLineVisible)(Object)line).night$getClientIdentifier().equals(string)) continue;
-                arrayList2.add(line);
+                if (!((IChatHudLineVisible)(Object)line).night$isClientMessage() || ((IChatHudLineVisible)(Object)line).night$getClientIdentifier().isEmpty() || !((IChatHudLineVisible)(Object)line).night$getClientIdentifier().equals(identifier)) continue;
+                visibleToRemove.add(line);
             }
-            ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getMessages().removeAll(arrayList);
-            ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getVisibleMessages().removeAll(arrayList2);
+            ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getMessages().removeAll(messagesToRemove);
+            ((ChatHudAccessor)ChatManager.mc.gui.hud.getChat()).getVisibleMessages().removeAll(visibleToRemove);
         }
         catch (Exception exception) {
             exception.printStackTrace();
@@ -207,11 +207,11 @@ implements IMinecraft {
         return this.getWatermark(null);
     }
 
-    private String getWatermark(String string) {
+    private String getWatermark(String customText) {
         if (!Night.MODULE_MANAGER.getModule(CommandsModule.class).watermark.getValue()) {
             return "";
         }
-        return String.valueOf(FormattingUtils.getFormatting(Night.MODULE_MANAGER.getModule(CommandsModule.class).secondaryWatermarkColor.getValue())) + Night.MODULE_MANAGER.getModule(CommandsModule.class).opening.getValue() + String.valueOf(FormattingUtils.getFormatting(Night.MODULE_MANAGER.getModule(CommandsModule.class).primaryWatermarkColor.getValue())) + (string == null ? Night.MODULE_MANAGER.getModule(CommandsModule.class).watermarkText.getValue() : string) + String.valueOf(FormattingUtils.getFormatting(Night.MODULE_MANAGER.getModule(CommandsModule.class).secondaryWatermarkColor.getValue())) + Night.MODULE_MANAGER.getModule(CommandsModule.class).closing.getValue();
+        return String.valueOf(FormattingUtils.getFormatting(Night.MODULE_MANAGER.getModule(CommandsModule.class).secondaryWatermarkColor.getValue())) + Night.MODULE_MANAGER.getModule(CommandsModule.class).opening.getValue() + String.valueOf(FormattingUtils.getFormatting(Night.MODULE_MANAGER.getModule(CommandsModule.class).primaryWatermarkColor.getValue())) + (customText == null ? Night.MODULE_MANAGER.getModule(CommandsModule.class).watermarkText.getValue() : customText) + String.valueOf(FormattingUtils.getFormatting(Night.MODULE_MANAGER.getModule(CommandsModule.class).secondaryWatermarkColor.getValue())) + Night.MODULE_MANAGER.getModule(CommandsModule.class).closing.getValue();
     }
 }
 

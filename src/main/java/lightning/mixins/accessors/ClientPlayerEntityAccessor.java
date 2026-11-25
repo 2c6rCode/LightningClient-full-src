@@ -22,21 +22,21 @@ public interface ClientPlayerEntityAccessor {
     public boolean invokeIsWalking();
 
     @Invoker(value="isSprintingPossible")
-    public boolean invokeCanSprint(boolean var1);
+    public boolean invokeCanSprint(boolean allowSprinting);
 
     @Invoker(value="sendPosition")
     public void invokeSendMovementPackets();
 
     @Accessor(value="lastOnGround")
-    public void setLastOnGround(boolean var1);
+    public void setLastOnGround(boolean lastOnGround);
 
     @Accessor(value="yRotLast")
-    public void setLastYaw(float var1);
+    public void setLastYaw(float lastYaw);
 
     @Accessor(value="xRotLast")
-    public void setLastPitch(float var1);
+    public void setLastPitch(float lastPitch);
 
     @Accessor(value="lastSentInput")
-    public void setLastSentInput(Input var1);
+    public void setLastSentInput(Input lastSentInput);
 }
 

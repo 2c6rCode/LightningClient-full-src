@@ -38,17 +38,17 @@ public class StashFinderStore {
 
     public static String currentWorldKey() {
         Minecraft minecraft = Minecraft.getInstance();
-        Object object = minecraft.getCurrentServer() != null ? "server_" + minecraft.getCurrentServer().ip : (minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null ? "sp_" + minecraft.getSingleplayerServer().getWorldData().getLevelName() : "unknown");
-        String string = minecraft.level != null ? minecraft.level.dimension().identifier().toString() : "no_dimension";
-        return StashFinderStore.sanitize((String)object) + "__" + StashFinderStore.sanitize(string);
+        String worldPart = minecraft.getCurrentServer() != null ? "server_" + minecraft.getCurrentServer().ip : (minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null ? "sp_" + minecraft.getSingleplayerServer().getWorldData().getLevelName() : "unknown");
+        String dimension = minecraft.level != null ? minecraft.level.dimension().identifier().toString() : "no_dimension";
+        return StashFinderStore.sanitize(worldPart) + "__" + StashFinderStore.sanitize(dimension);
     }
 
-    private static String sanitize(String string) {
-        return string.replaceAll("[^a-zA-Z0-9_.-]", "_");
+    private static String sanitize(String input) {
+        return input.replaceAll("[^a-zA-Z0-9_.-]", "_");
     }
 
-    public static long chunkKey(int n, int n2) {
-        return (long)n & 0xFFFFFFFFL | ((long)n2 & 0xFFFFFFFFL) << 32;
+    public static long chunkKey(int chunkX, int chunkZ) {
+        return (long)chunkX & 0xFFFFFFFFL | ((long)chunkZ & 0xFFFFFFFFL) << 32;
     }
 
     public void loadForWorld() {
@@ -95,18 +95,18 @@ public class StashFinderStore {
         }
     }
 
-    public boolean isEvaluated(long l) {
-        return this.evaluated.contains(l);
+    public boolean isEvaluated(long chunkKey) {
+        return this.evaluated.contains(chunkKey);
     }
 
-    public void markEvaluated(long l) {
-        if (this.evaluated.add(l)) {
+    public void markEvaluated(long chunkKey) {
+        if (this.evaluated.add(chunkKey)) {
             this.dirty = true;
         }
     }
 
-    public void recordStash(int n, int n2, String string, Map<String, Integer> map) {
-        this.stashes.add(new StashData(n, n2, string, map, System.currentTimeMillis()));
+    public void recordStash(int x, int z, String dimension, Map<String, Integer> counts) {
+        this.stashes.add(new StashData(x, z, dimension, counts, System.currentTimeMillis()));
         this.dirty = true;
     }
 

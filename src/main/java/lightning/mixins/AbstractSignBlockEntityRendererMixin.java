@@ -31,7 +31,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={AbstractSignRenderer.class})
 public abstract class AbstractSignBlockEntityRendererMixin<S extends SignRenderState> {
     @Inject(method={"submitSignText"}, at={@At(value="HEAD")}, cancellable=true)
-    private void submitSignText(S s, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, SignText signText, CallbackInfo callbackInfo) {
+    private void submitSignText(S renderState, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, SignText signText, CallbackInfo callbackInfo) {
         try {
             if (((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() && ((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).signText.getValue()) {
                 callbackInfo.cancel();

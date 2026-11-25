@@ -30,16 +30,16 @@ public interface ChatHudAccessor {
     public int getScrolledLines();
 
     @Accessor(value="newMessageSinceScroll")
-    public void setHasUnreadNewMessages(boolean var1);
+    public void setHasUnreadNewMessages(boolean hasUnreadNewMessages);
 
     @Invoker(value="logChatMessage")
-    public void invokeLogChatMessage(GuiMessage var1);
+    public void invokeLogChatMessage(GuiMessage message);
 
     @Invoker(value="addMessageToDisplayQueue")
-    public void invokeAddVisibleMessage(GuiMessage var1);
+    public void invokeAddVisibleMessage(GuiMessage message);
 
     @Invoker(value="addMessageToQueue")
-    public void invokeAddMessage(GuiMessage var1);
+    public void invokeAddMessage(GuiMessage message);
 
     @Invoker(value="getWidth")
     public int invokeGetWidth();

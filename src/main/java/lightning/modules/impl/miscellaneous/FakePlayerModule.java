@@ -197,34 +197,34 @@ extends Module {
             return;
         }
         BlockPos blockPos = this.player.blockPosition();
-        boolean bl = false;
+        boolean shouldChangeDirection = false;
         if (this.changeDirection.getValue() && this.timer.hasTimeElapsed(this.timeout.getValue().longValue() * 1000L)) {
-            bl = true;
+            shouldChangeDirection = true;
             this.timer.reset();
         }
         if (this.hasObstruction(blockPos)) {
             for (Direction direction : Direction.values()) {
-                BlockPos blockPos2 = blockPos.relative(direction);
-                if (!WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(blockPos2)) && !WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(blockPos2.above())) || !WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(blockPos2.above().above())) || !this.player.getDirection().equals((Object)direction)) continue;
-                bl = true;
+                BlockPos adjacentPos = blockPos.relative(direction);
+                if (!WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(adjacentPos)) && !WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(adjacentPos.above())) || !WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(adjacentPos.above().above())) || !this.player.getDirection().equals((Object)direction)) continue;
+                shouldChangeDirection = true;
                 this.timer.reset();
             }
         }
-        if (bl) {
-            double[] dArray = this.generateDirection();
-            if (this.direction == dArray) {
-                dArray = this.generateDirection();
+        if (shouldChangeDirection) {
+            double[] nextDirection = this.generateDirection();
+            if (this.direction == nextDirection) {
+                nextDirection = this.generateDirection();
             }
-            this.direction = dArray;
+            this.direction = nextDirection;
         }
         if (this.stepping && this.stepTimer.hasTimeElapsed(500L)) {
             this.stepping = false;
             this.stepTimer.reset();
         }
         this.player.jumpFromGround();
-        float[] fArray = RotationUtils.getRotations((Entity)this.player, this.player.getX() + this.direction[0], this.player.getY() + (double)this.fixAxisY((Player)this.player), this.player.getZ() + this.direction[1]);
-        this.player.setYRot(fArray[0]);
-        this.player.yHeadRot = fArray[0];
+        float[] rotations = RotationUtils.getRotations((Entity)this.player, this.player.getX() + this.direction[0], this.player.getY() + (double)this.fixAxisY((Player)this.player), this.player.getZ() + this.direction[1]);
+        this.player.setYRot(rotations[0]);
+        this.player.yHeadRot = rotations[0];
         this.player.setXRot(0.0f);
         this.player.setPos(this.player.getX() + this.direction[0], this.player.getY() + (double)this.fixAxisY((Player)this.player), this.player.getZ() + this.direction[1]);
         this.broadcastPosition();
@@ -235,29 +235,29 @@ extends Module {
         if (this.recordState != RecordState.PLAYING || this.player == null || this.frames.isEmpty()) {
             return;
         }
-        int n = this.playIndex;
-        int n2 = (n + 1) % this.frames.size();
-        RecordFrame recordFrame = this.frames.get(n);
-        RecordFrame recordFrame2 = this.frames.get(n2);
-        float f = renderWorldEvent.getTickDelta();
-        if (n2 == 0) {
-            f = 0.0f;
+        int currentIndex = this.playIndex;
+        int nextIndex = (currentIndex + 1) % this.frames.size();
+        RecordFrame currentFrame = this.frames.get(currentIndex);
+        RecordFrame nextFrame = this.frames.get(nextIndex);
+        float tickDelta = renderWorldEvent.getTickDelta();
+        if (nextIndex == 0) {
+            tickDelta = 0.0f;
         }
-        double d = Mth.lerp((double)f, (double)recordFrame.x(), (double)recordFrame2.x());
-        double d2 = Mth.lerp((double)f, (double)recordFrame.y(), (double)recordFrame2.y());
-        double d3 = Mth.lerp((double)f, (double)recordFrame.z(), (double)recordFrame2.z());
-        float f2 = Mth.rotLerp((float)f, (float)recordFrame.yRot(), (float)recordFrame2.yRot());
-        float f3 = Mth.lerp((float)f, (float)recordFrame.xRot(), (float)recordFrame2.xRot());
-        float f4 = Mth.rotLerp((float)f, (float)recordFrame.yHeadRot(), (float)recordFrame2.yHeadRot());
-        this.player.setPos(d, d2, d3);
-        this.player.setYRot(f2);
-        this.player.setXRot(f3);
-        this.player.yHeadRot = f4;
-        this.player.yBodyRot = f2;
+        double x = Mth.lerp((double)tickDelta, (double)currentFrame.x(), (double)nextFrame.x());
+        double y = Mth.lerp((double)tickDelta, (double)currentFrame.y(), (double)nextFrame.y());
+        double z = Mth.lerp((double)tickDelta, (double)currentFrame.z(), (double)nextFrame.z());
+        float yRot = Mth.rotLerp((float)tickDelta, (float)currentFrame.yRot(), (float)nextFrame.yRot());
+        float xRot = Mth.lerp((float)tickDelta, (float)currentFrame.xRot(), (float)nextFrame.xRot());
+        float yHeadRot = Mth.rotLerp((float)tickDelta, (float)currentFrame.yHeadRot(), (float)nextFrame.yHeadRot());
+        this.player.setPos(x, y, z);
+        this.player.setYRot(yRot);
+        this.player.setXRot(xRot);
+        this.player.yHeadRot = yHeadRot;
+        this.player.yBodyRot = yRot;
         this.player.setOldPosAndRot();
-        this.player.yHeadRotO = f4;
-        this.player.yBodyRotO = f2;
-        this.player.setPose(recordFrame.pose());
+        this.player.yHeadRotO = yHeadRot;
+        this.player.yBodyRotO = yRot;
+        this.player.setPose(currentFrame.pose());
         this.player.refreshDimensions();
     }
 
@@ -353,11 +353,11 @@ extends Module {
 
     public boolean hasObstruction(BlockPos blockPos) {
         for (Direction direction : Direction.values()) {
-            BlockPos blockPos2 = blockPos.relative(direction);
-            if (WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(blockPos2))) {
+            BlockPos adjacentPos = blockPos.relative(direction);
+            if (WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(adjacentPos))) {
                 return true;
             }
-            if (!WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(blockPos2.above()))) continue;
+            if (!WorldUtils.blocksMovement(FakePlayerModule.mc.level.getBlockState(adjacentPos.above()))) continue;
             return true;
         }
         return false;
@@ -386,9 +386,9 @@ extends Module {
     }
 
     public double[] generateDirection() {
-        double d = MathUtils.random(Math.PI * 2, 0.0);
-        double[] dArray = new double[]{-Math.sin(d), Math.cos(d)};
-        return new double[]{dArray[0] * (double)this.velocity.getValue().floatValue(), dArray[1] * (double)this.velocity.getValue().floatValue()};
+        double angle = MathUtils.random(Math.PI * 2, 0.0);
+        double[] unitDir = new double[]{-Math.sin(angle), Math.cos(angle)};
+        return new double[]{unitDir[0] * (double)this.velocity.getValue().floatValue(), unitDir[1] * (double)this.velocity.getValue().floatValue()};
     }
 
     @Generated

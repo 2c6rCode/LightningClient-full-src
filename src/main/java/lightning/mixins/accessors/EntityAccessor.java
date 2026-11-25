@@ -19,12 +19,12 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(value={Entity.class})
 public interface EntityAccessor {
     @Invoker(value="getInputVector")
-    public static Vec3 invokeMovementInputToVelocity(Vec3 vec3, float f, float f2) {
+    public static Vec3 invokeMovementInputToVelocity(Vec3 movementInput, float speed, float yaw) {
         throw new AssertionError();
     }
 
     @Invoker(value="setSharedFlag")
-    public void invokeSetSharedFlag(int var1, boolean var2);
+    public void invokeSetSharedFlag(int flag, boolean value);
 
     @Accessor(value="yRot")
     public float getRawYRot();
@@ -33,9 +33,9 @@ public interface EntityAccessor {
     public float getRawXRot();
 
     @Accessor(value="yRot")
-    public void setRawYRot(float var1);
+    public void setRawYRot(float yRot);
 
     @Accessor(value="xRot")
-    public void setRawXRot(float var1);
+    public void setRawXRot(float xRot);
 }
 

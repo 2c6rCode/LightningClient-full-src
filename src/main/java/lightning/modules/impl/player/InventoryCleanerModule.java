@@ -56,8 +56,8 @@ extends Module {
 
     @SubscribeEvent
     public void onTick(TickEvent tickEvent) {
-        int n;
-        int n2;
+        int handlerSlot;
+        int invSlot;
         if (InventoryCleanerModule.mc.player == null || InventoryCleanerModule.mc.level == null || InventoryCleanerModule.mc.gameMode == null) {
             return;
         }
@@ -67,45 +67,43 @@ extends Module {
         if (!InventoryCleanerModule.mc.player.containerMenu.getCarried().isEmpty()) {
             return;
         }
-        long l = System.currentTimeMillis();
-        if (l - RekitModule.lastContainerActionMs < 200L || l - InventorySorterModule.lastContainerActionMs < 200L) {
+        long now = System.currentTimeMillis();
+        if (now - RekitModule.lastContainerActionMs < 200L || now - InventorySorterModule.lastContainerActionMs < 200L) {
             return;
         }
-        boolean bl = InventoryCleanerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(InventoryCleanerModule.mc.gui.screen() instanceof InventoryScreen);
-        boolean bl2 = bl;
+        boolean inOtherContainer = InventoryCleanerModule.mc.gui.screen() instanceof AbstractContainerScreen && !(InventoryCleanerModule.mc.gui.screen() instanceof InventoryScreen);
         if (this.ticks < this.delay.getValue().intValue()) {
             ++this.ticks;
             return;
         }
         this.ticks = 0;
-        int n3 = InventoryCleanerModule.mc.player.containerMenu.containerId;
-        int n4 = 0;
-        int n5 = this.actionsPerTick.getValue().intValue();
-        for (n2 = 0; n2 < 36 && n4 < n5; ++n2) {
+        int containerId = InventoryCleanerModule.mc.player.containerMenu.containerId;
+        int dropped = 0;
+        int maxActions = this.actionsPerTick.getValue().intValue();
+        for (invSlot = 0; invSlot < 36 && dropped < maxActions; ++invSlot) {
             ItemStack itemStack;
-            if (this.ignoreHotbar.getValue() && n2 <= 8 || (itemStack = InventoryCleanerModule.mc.player.getInventory().getItem(n2)).isEmpty() || !this.shouldDrop(itemStack) || (n = this.invToHandlerSlot(n2)) < 0) continue;
-            this.throwSlot(n3, n);
-            ++n4;
+            if (this.ignoreHotbar.getValue() && invSlot <= 8 || (itemStack = InventoryCleanerModule.mc.player.getInventory().getItem(invSlot)).isEmpty() || !this.shouldDrop(itemStack) || (handlerSlot = this.invToHandlerSlot(invSlot)) < 0) continue;
+            this.throwSlot(containerId, handlerSlot);
+            ++dropped;
         }
-        if (this.throwWorse.getValue() && n4 < n5) {
-            n4 += this.runThrowWorsePass(n3, n5 - n4);
+        if (this.throwWorse.getValue() && dropped < maxActions) {
+            dropped += this.runThrowWorsePass(containerId, maxActions - dropped);
         }
-        int n6 = this.ignoreCustomName.getValue() && this.hasCustomContainerTitle() && !(InventoryCleanerModule.mc.player.containerMenu instanceof ShulkerBoxMenu) ? 1 : 0;
-        n2 = n6;
-        if (bl && this.others.getValue() && n6 == 0 && n4 < n5) {
-            n = InventoryCleanerModule.mc.player.containerMenu.slots.size();
-            int n7 = n - 36;
-            for (int i = 0; i < n7 && n4 < n5; ++i) {
+        boolean skipCustomContainer = this.ignoreCustomName.getValue() && this.hasCustomContainerTitle() && !(InventoryCleanerModule.mc.player.containerMenu instanceof ShulkerBoxMenu);
+        if (inOtherContainer && this.others.getValue() && !skipCustomContainer && dropped < maxActions) {
+            int totalSlots = InventoryCleanerModule.mc.player.containerMenu.slots.size();
+            int containerSlots = totalSlots - 36;
+            for (int i = 0; i < containerSlots && dropped < maxActions; ++i) {
                 ItemStack itemStack = ((Slot)InventoryCleanerModule.mc.player.containerMenu.slots.get(i)).getItem();
                 if (itemStack.isEmpty() || !this.shouldDrop(itemStack)) continue;
-                this.throwSlot(n3, i);
-                ++n4;
+                this.throwSlot(containerId, i);
+                ++dropped;
             }
         }
     }
 
-    private void throwSlot(int n, int n2) {
-        InventoryCleanerModule.mc.gameMode.handleContainerInput(n, n2, 1, ContainerInput.THROW, (Player)InventoryCleanerModule.mc.player);
+    private void throwSlot(int containerId, int slotIndex) {
+        InventoryCleanerModule.mc.gameMode.handleContainerInput(containerId, slotIndex, 1, ContainerInput.THROW, (Player)InventoryCleanerModule.mc.player);
     }
 
     private boolean hasCustomContainerTitle() {
@@ -122,48 +120,48 @@ extends Module {
     }
 
     private boolean shouldDrop(ItemStack itemStack) {
-        boolean bl = this.whitelist.isWhitelistContains(itemStack.getItem());
+        boolean inWhitelist = this.whitelist.isWhitelistContains(itemStack.getItem());
         return switch (this.mode.getValue()) {
             case "All" -> true;
             case "BlackList" -> {
-                if (!bl) {
+                if (!inWhitelist) {
                     yield true;
                 }
                 yield false;
             }
-            default -> bl;
+            default -> inWhitelist;
         };
     }
 
-    private int runThrowWorsePass(int n, int n2) {
-        String[] stringArray = new String[]{"_pickaxe", "_axe", "_shovel", "_hoe", "_sword", "_helmet", "_chestplate", "_leggings", "_boots"};
-        int n3 = n2;
-        block0: for (String string : stringArray) {
-            if (n3 <= 0) break;
-            ArrayList<int[]> arrayList = new ArrayList<int[]>();
-            for (int n4 = 0; n4 < 36; ++n4) {
-                if (this.ignoreHotbar.getValue() && n4 <= 8) continue;
-                ItemStack stack = InventoryCleanerModule.mc.player.getInventory().getItem(n4);
-                if (stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().endsWith(string)) continue;
-                arrayList.add(new int[]{n4, stack.getMaxDamage()});
+    private int runThrowWorsePass(int containerId, int budget) {
+        String[] gearSuffixes = new String[]{"_pickaxe", "_axe", "_shovel", "_hoe", "_sword", "_helmet", "_chestplate", "_leggings", "_boots"};
+        int remaining = budget;
+        block0: for (String suffix : gearSuffixes) {
+            if (remaining <= 0) break;
+            ArrayList<int[]> candidates = new ArrayList<int[]>();
+            for (int invSlot = 0; invSlot < 36; ++invSlot) {
+                if (this.ignoreHotbar.getValue() && invSlot <= 8) continue;
+                ItemStack stack = InventoryCleanerModule.mc.player.getInventory().getItem(invSlot);
+                if (stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().endsWith(suffix)) continue;
+                candidates.add(new int[]{invSlot, stack.getMaxDamage()});
             }
-            if (arrayList.size() < 2) continue;
-            int maxDamage = arrayList.stream().mapToInt(nArray -> nArray[1]).max().orElse(0);
-            for (int[] entry : arrayList) {
-                if (n3 <= 0) continue block0;
-                int n5;
-                if (entry[1] >= maxDamage || (n5 = this.invToHandlerSlot(entry[0])) < 0) continue;
-                this.throwSlot(n, n5);
-                --n3;
+            if (candidates.size() < 2) continue;
+            int maxDamage = candidates.stream().mapToInt(entry -> entry[1]).max().orElse(0);
+            for (int[] entry : candidates) {
+                if (remaining <= 0) continue block0;
+                int handlerSlot;
+                if (entry[1] >= maxDamage || (handlerSlot = this.invToHandlerSlot(entry[0])) < 0) continue;
+                this.throwSlot(containerId, handlerSlot);
+                --remaining;
             }
         }
-        return n2 - n3;
+        return budget - remaining;
     }
 
-    private int invToHandlerSlot(int n) {
+    private int invToHandlerSlot(int invSlot) {
         Inventory inventory = InventoryCleanerModule.mc.player.getInventory();
         for (Slot slot : InventoryCleanerModule.mc.player.containerMenu.slots) {
-            if (slot.container != inventory || slot.getContainerSlot() != n) continue;
+            if (slot.container != inventory || slot.getContainerSlot() != invSlot) continue;
             return slot.index;
         }
         return -1;

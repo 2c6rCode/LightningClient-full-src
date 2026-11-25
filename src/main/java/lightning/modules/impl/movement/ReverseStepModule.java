@@ -37,9 +37,9 @@ extends Module {
         return String.valueOf(this.height.getValue().floatValue());
     }
 
-    private boolean nearBlock(double d) {
-        for (double d2 = 0.0; d2 < d + 0.5; d2 += 0.01) {
-            if (ReverseStepModule.mc.level.noCollision((Entity)ReverseStepModule.mc.player, ReverseStepModule.mc.player.getBoundingBox().move(0.0, -d2, 0.0))) continue;
+    private boolean nearBlock(double maxDistance) {
+        for (double offset = 0.0; offset < maxDistance + 0.5; offset += 0.01) {
+            if (ReverseStepModule.mc.level.noCollision((Entity)ReverseStepModule.mc.player, ReverseStepModule.mc.player.getBoundingBox().move(0.0, -offset, 0.0))) continue;
             return true;
         }
         return false;

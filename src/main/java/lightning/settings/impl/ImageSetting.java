@@ -16,38 +16,38 @@ extends Setting {
     private String value;
     private final String defaultValue;
 
-    public ImageSetting(String string, String string2, String string3) {
-        super(string, string, string2, new Setting.Visibility());
-        this.value = string3;
-        this.defaultValue = string3;
+    public ImageSetting(String name, String description, String defaultValue) {
+        super(name, name, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public ImageSetting(String string, String string2, String string3, String string4) {
-        super(string, string2, string3, new Setting.Visibility());
-        this.value = string4;
-        this.defaultValue = string4;
+    public ImageSetting(String name, String tag, String description, String defaultValue) {
+        super(name, tag, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public ImageSetting(String string, String string2, Setting.Visibility visibility, String string3) {
-        super(string, string, string2, visibility);
-        this.value = string3;
-        this.defaultValue = string3;
+    public ImageSetting(String name, String description, Setting.Visibility visibility, String defaultValue) {
+        super(name, name, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public ImageSetting(String string, String string2, String string3, Setting.Visibility visibility, String string4) {
-        super(string, string2, string3, visibility);
-        this.value = string4;
-        this.defaultValue = string4;
+    public ImageSetting(String name, String tag, String description, Setting.Visibility visibility, String defaultValue) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
     public void resetValue() {
         this.setValue(this.defaultValue);
     }
 
-    public void setValue(String string) {
-        this.value = string;
+    public void setValue(String imageName) {
+        this.value = imageName;
         if (Night.IMAGE_MANAGER != null) {
-            Night.IMAGE_MANAGER.setCurrentActiveImage(string);
+            Night.IMAGE_MANAGER.setCurrentActiveImage(imageName);
         }
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }

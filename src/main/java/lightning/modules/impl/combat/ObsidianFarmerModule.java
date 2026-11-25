@@ -157,24 +157,24 @@ extends Module {
     }
 
     private BlockPos findExistingEnderChest(LocalPlayer localPlayer, ClientLevel clientLevel) {
-        double d = Math.max(this.range.getValue().doubleValue(), this.mineRange.getValue().doubleValue());
-        double d2 = d * d;
-        int n = (int)Math.ceil(d);
-        BlockPos blockPos = localPlayer.blockPosition();
-        BlockPos blockPos2 = null;
-        double d3 = Double.MAX_VALUE;
-        for (int i = -n; i <= n; ++i) {
-            for (int j = -n; j <= n; ++j) {
-                for (int k = -n; k <= n; ++k) {
-                    double d4;
-                    BlockPos blockPos3 = blockPos.offset(i, j, k);
-                    if (!clientLevel.getBlockState(blockPos3).is(Blocks.ENDER_CHEST) || (d4 = localPlayer.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos3))) > d2 || !(d4 < d3)) continue;
-                    d3 = d4;
-                    blockPos2 = blockPos3.immutable();
+        double maxRange = Math.max(this.range.getValue().doubleValue(), this.mineRange.getValue().doubleValue());
+        double maxRangeSq = maxRange * maxRange;
+        int rangeBlocks = (int)Math.ceil(maxRange);
+        BlockPos playerPos = localPlayer.blockPosition();
+        BlockPos bestPos = null;
+        double bestDistSq = Double.MAX_VALUE;
+        for (int i = -rangeBlocks; i <= rangeBlocks; ++i) {
+            for (int j = -rangeBlocks; j <= rangeBlocks; ++j) {
+                for (int k = -rangeBlocks; k <= rangeBlocks; ++k) {
+                    double distSq;
+                    BlockPos pos = playerPos.offset(i, j, k);
+                    if (!clientLevel.getBlockState(pos).is(Blocks.ENDER_CHEST) || (distSq = localPlayer.distanceToSqr(Vec3.atCenterOf((Vec3i)pos))) > maxRangeSq || !(distSq < bestDistSq)) continue;
+                    bestDistSq = distSq;
+                    bestPos = pos.immutable();
                 }
             }
         }
-        return blockPos2;
+        return bestPos;
     }
 
     /*
@@ -184,45 +184,44 @@ extends Module {
         if (!this.placeTimer.hasTimeElapsed((long)this.delay.getValue().intValue() * 50L)) {
             return;
         }
-        BlockPos blockPos = this.findBestPlacePosition(localPlayer, clientLevel);
-        if (blockPos == null) {
+        BlockPos placePos = this.findBestPlacePosition(localPlayer, clientLevel);
+        if (placePos == null) {
             return;
         }
-        int n = this.findEnderChestSlot(localPlayer);
-        if (n == -1) {
+        int echestSlot = this.findEnderChestSlot(localPlayer);
+        if (echestSlot == -1) {
             return;
         }
-        int n2 = localPlayer.getInventory().getSelectedSlot();
+        int oldSlot = localPlayer.getInventory().getSelectedSlot();
         Night.ROTATION_MANAGER.beginBatchRotation();
-        boolean bl = false;
+        boolean placed = false;
         try {
-            int n3;
-            BlockPos blockPos2;
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-            bl = this.tryPlaceAt(blockPos);
-            if (!bl && this.support.getValue() && this.isValidPlaceSpot(localPlayer, clientLevel, blockPos2 = blockPos.below()) && (n3 = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8)) != -1) {
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n3, n2);
-                boolean bl2 = this.tryPlaceAt(blockPos2);
-                if (bl2 && this.isValidPlaceSpot(localPlayer, clientLevel, blockPos)) {
-                    InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-                    bl = this.tryPlaceAt(blockPos);
+            int supportSlot;
+            BlockPos supportPos;
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), echestSlot, oldSlot);
+            placed = this.tryPlaceAt(placePos);
+            if (!placed && this.support.getValue() && this.isValidPlaceSpot(localPlayer, clientLevel, supportPos = placePos.below()) && (supportSlot = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8)) != -1) {
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), supportSlot, oldSlot);
+                boolean supportPlaced = this.tryPlaceAt(supportPos);
+                if (supportPlaced && this.isValidPlaceSpot(localPlayer, clientLevel, placePos)) {
+                    InventoryUtils.switchSlot(this.autoSwitch.getValue(), echestSlot, oldSlot);
+                    placed = this.tryPlaceAt(placePos);
                 }
             }
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), echestSlot, oldSlot);
         }
         finally {
             Night.ROTATION_MANAGER.endBatchRotation();
         }
         this.placeTimer.reset();
-        if (!bl) {
+        if (!placed) {
             return;
         }
-        BlockPos blockPos3 = clientLevel.getBlockState(blockPos).is(Blocks.ENDER_CHEST) ? blockPos.immutable() : this.findExistingEnderChest(localPlayer, clientLevel);
-        BlockPos blockPos4 = blockPos3;
-        if (blockPos3 == null) {
+        BlockPos foundPos = clientLevel.getBlockState(placePos).is(Blocks.ENDER_CHEST) ? placePos.immutable() : this.findExistingEnderChest(localPlayer, clientLevel);
+        if (foundPos == null) {
             return;
         }
-        this.enderChestPos = blockPos3;
+        this.enderChestPos = foundPos;
         this.phase = Phase.Mine;
         this.mineTimer.reset();
         this.retryTimer.reset();
@@ -256,19 +255,18 @@ extends Module {
         if (this.strictDirection.getValue() && direction == null) {
             return;
         }
-        Direction direction2 = direction == null ? Direction.UP : direction;
-        Vec3 vec3 = this.getHitVec(blockPos, direction2);
-        boolean bl = !this.rotate.getValue().equalsIgnoreCase("None");
-        boolean bl2 = bl;
-        if (bl) {
-            float[] fArray = RotationUtils.getRotations(vec3);
+        Direction mineSide = direction == null ? Direction.UP : direction;
+        Vec3 hitVec = this.getHitVec(blockPos, mineSide);
+        boolean shouldRotate = !this.rotate.getValue().equalsIgnoreCase("None");
+        if (shouldRotate) {
+            float[] rotations = RotationUtils.getRotations(hitVec);
             if (Night.ROTATION_MANAGER.isBatchingRotations()) {
-                Night.ROTATION_MANAGER.batchRotate(fArray[0], fArray[1]);
+                Night.ROTATION_MANAGER.batchRotate(rotations[0], rotations[1]);
             } else {
-                Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
+                Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
             }
         }
-        multiPlayerGameMode.startDestroyBlock(blockPos, direction2);
+        multiPlayerGameMode.startDestroyBlock(blockPos, mineSide);
         if (this.swing.getValue()) {
             localPlayer.swing(InteractionHand.MAIN_HAND);
         }
@@ -277,26 +275,26 @@ extends Module {
     }
 
     private BlockPos findBestPlacePosition(LocalPlayer localPlayer, ClientLevel clientLevel) {
-        List<BlockPos> list = this.getPlaceCandidates(localPlayer);
-        list.removeIf(blockPos -> !this.isValidPlaceSpot(localPlayer, clientLevel, (BlockPos)blockPos));
-        list.sort(Comparator.comparingDouble(blockPos -> localPlayer.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos))));
-        return list.isEmpty() ? null : list.getFirst().immutable();
+        List<BlockPos> candidates = this.getPlaceCandidates(localPlayer);
+        candidates.removeIf(blockPos -> !this.isValidPlaceSpot(localPlayer, clientLevel, (BlockPos)blockPos));
+        candidates.sort(Comparator.comparingDouble(blockPos -> localPlayer.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos))));
+        return candidates.isEmpty() ? null : candidates.getFirst().immutable();
     }
 
     private List<BlockPos> getPlaceCandidates(LocalPlayer localPlayer) {
-        LinkedHashSet<BlockPos> linkedHashSet = new LinkedHashSet<BlockPos>();
-        BlockPos blockPos = localPlayer.blockPosition();
-        Direction direction = localPlayer.getDirection();
-        linkedHashSet.add(blockPos.relative(direction));
-        linkedHashSet.add(blockPos.relative(direction).below());
-        for (Direction direction2 : Direction.Plane.HORIZONTAL) {
-            linkedHashSet.add(blockPos.relative(direction2));
+        LinkedHashSet<BlockPos> candidates = new LinkedHashSet<BlockPos>();
+        BlockPos playerPos = localPlayer.blockPosition();
+        Direction facing = localPlayer.getDirection();
+        candidates.add(playerPos.relative(facing));
+        candidates.add(playerPos.relative(facing).below());
+        for (Direction dir : Direction.Plane.HORIZONTAL) {
+            candidates.add(playerPos.relative(dir));
         }
-        for (Direction direction2 : Direction.Plane.HORIZONTAL) {
-            linkedHashSet.add(blockPos.relative(direction2).below());
+        for (Direction dir : Direction.Plane.HORIZONTAL) {
+            candidates.add(playerPos.relative(dir).below());
         }
-        linkedHashSet.add(blockPos.below());
-        return new ArrayList<BlockPos>(linkedHashSet);
+        candidates.add(playerPos.below());
+        return new ArrayList<BlockPos>(candidates);
     }
 
     private boolean isValidPlaceSpot(LocalPlayer localPlayer, ClientLevel clientLevel, BlockPos blockPos) {
@@ -330,33 +328,33 @@ extends Module {
         return !this.strictDirection.getValue() || this.getMineSide(localPlayer, clientLevel, blockPos) != null;
     }
 
-    private boolean canReach(LocalPlayer localPlayer, ClientLevel clientLevel, BlockPos blockPos, double d, double d2) {
-        Vec3 vec3;
-        Vec3 vec32 = localPlayer.getEyePosition();
-        double d3 = vec32.distanceTo(vec3 = Vec3.atCenterOf((Vec3i)blockPos));
-        if (d3 <= d && this.hasLineOfSight(localPlayer, clientLevel, vec32, vec3)) {
+    private boolean canReach(LocalPlayer localPlayer, ClientLevel clientLevel, BlockPos blockPos, double maxRange, double maxWallRange) {
+        Vec3 targetCenter;
+        Vec3 eyePos = localPlayer.getEyePosition();
+        double dist = eyePos.distanceTo(targetCenter = Vec3.atCenterOf((Vec3i)blockPos));
+        if (dist <= maxRange && this.hasLineOfSight(localPlayer, clientLevel, eyePos, targetCenter)) {
             return true;
         }
-        return d3 <= d2;
+        return dist <= maxWallRange;
     }
 
-    private boolean hasLineOfSight(LocalPlayer localPlayer, ClientLevel clientLevel, Vec3 vec3, Vec3 vec32) {
-        BlockHitResult blockHitResult = clientLevel.clip(new ClipContext(vec3, vec32, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)localPlayer));
+    private boolean hasLineOfSight(LocalPlayer localPlayer, ClientLevel clientLevel, Vec3 start, Vec3 end) {
+        BlockHitResult blockHitResult = clientLevel.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)localPlayer));
         return blockHitResult.getType() == HitResult.Type.MISS;
     }
 
     private Direction getMineSide(LocalPlayer localPlayer, ClientLevel clientLevel, BlockPos blockPos) {
-        Vec3 vec3 = localPlayer.getEyePosition();
-        Direction direction = null;
-        double d = Double.MAX_VALUE;
-        for (Direction direction2 : Direction.values()) {
-            Vec3 vec32 = this.getHitVec(blockPos, direction2);
-            double d2 = vec3.distanceTo(vec32);
-            if (d2 >= d || this.strictDirection.getValue() && !this.hasLineOfSight(localPlayer, clientLevel, vec3, vec32)) continue;
-            d = d2;
-            direction = direction2;
+        Vec3 eyePos = localPlayer.getEyePosition();
+        Direction bestDir = null;
+        double bestDist = Double.MAX_VALUE;
+        for (Direction dir : Direction.values()) {
+            Vec3 hitVec = this.getHitVec(blockPos, dir);
+            double dist = eyePos.distanceTo(hitVec);
+            if (dist >= bestDist || this.strictDirection.getValue() && !this.hasLineOfSight(localPlayer, clientLevel, eyePos, hitVec)) continue;
+            bestDist = dist;
+            bestDir = dir;
         }
-        return direction;
+        return bestDir;
     }
 
     private Vec3 getHitVec(BlockPos blockPos, Direction direction) {
@@ -364,12 +362,12 @@ extends Module {
     }
 
     private int findEnderChestSlot(LocalPlayer localPlayer) {
-        int n = this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8;
-        int n2 = localPlayer.getInventory().getSelectedSlot();
-        if (localPlayer.getInventory().getItem(n2).is(Items.ENDER_CHEST)) {
-            return n2;
+        int maxSlot = this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8;
+        int currentSlot = localPlayer.getInventory().getSelectedSlot();
+        if (localPlayer.getInventory().getItem(currentSlot).is(Items.ENDER_CHEST)) {
+            return currentSlot;
         }
-        return InventoryUtils.find(Items.ENDER_CHEST, 0, n);
+        return InventoryUtils.find(Items.ENDER_CHEST, 0, maxSlot);
     }
 
     @Override

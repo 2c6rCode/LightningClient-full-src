@@ -27,7 +27,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class LocalPlayerMixin
 implements IMinecraft {
     @Inject(method={"getViewYRot"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$unlockViewYaw(float f, CallbackInfoReturnable<Float> callbackInfoReturnable) {
+    private void night$unlockViewYaw(float partialTick, CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             if (((LocalPlayer)(Object)this).isPassenger()) {
                 return;
@@ -44,7 +44,7 @@ implements IMinecraft {
     }
 
     @Inject(method={"getViewXRot"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$unlockViewPitch(float f, CallbackInfoReturnable<Float> callbackInfoReturnable) {
+    private void night$unlockViewPitch(float partialTick, CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             RotationLockModule rotationLockModule = (RotationLockModule)Night.MODULE_MANAGER.getModule(RotationLockModule.class);
             if (rotationLockModule.isToggled() && rotationLockModule.custom.getValue() && (rotationLockModule.mode.getValue().equals("Pitch") || rotationLockModule.mode.getValue().equals("Both"))) {

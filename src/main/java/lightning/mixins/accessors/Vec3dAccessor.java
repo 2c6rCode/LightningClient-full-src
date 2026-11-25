@@ -18,14 +18,14 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface Vec3dAccessor {
     @Accessor(value="x")
     @Mutable
-    public void setX(double var1);
+    public void setX(double x);
 
     @Accessor(value="y")
     @Mutable
-    public void setY(double var1);
+    public void setY(double y);
 
     @Accessor(value="z")
     @Mutable
-    public void setZ(double var1);
+    public void setZ(double z);
 }
 

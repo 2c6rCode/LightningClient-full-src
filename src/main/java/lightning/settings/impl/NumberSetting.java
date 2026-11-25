@@ -20,34 +20,34 @@ extends Setting {
     private final Number step;
     private final boolean zeroIsIgnore;
 
-    public NumberSetting(String string, String string2, Number number, Number number2, Number number3) {
-        this(string, string, string2, new Setting.Visibility(), number, number2, number3, 0);
+    public NumberSetting(String name, String description, Number defaultValue, Number minimum, Number maximum) {
+        this(name, name, description, new Setting.Visibility(), defaultValue, minimum, maximum, 0);
     }
 
-    public NumberSetting(String string, String string2, String string3, Number number, Number number2, Number number3) {
-        this(string, string2, string3, new Setting.Visibility(), number, number2, number3, 0);
+    public NumberSetting(String name, String tag, String description, Number defaultValue, Number minimum, Number maximum) {
+        this(name, tag, description, new Setting.Visibility(), defaultValue, minimum, maximum, 0);
     }
 
-    public NumberSetting(String string, String string2, Setting.Visibility visibility, Number number, Number number2, Number number3) {
-        this(string, string, string2, visibility, number, number2, number3, 0);
+    public NumberSetting(String name, String description, Setting.Visibility visibility, Number defaultValue, Number minimum, Number maximum) {
+        this(name, name, description, visibility, defaultValue, minimum, maximum, 0);
     }
 
-    public NumberSetting(String string, String string2, String string3, Setting.Visibility visibility, Number number, Number number2, Number number3) {
-        this(string, string2, string3, visibility, number, number2, number3, 0);
+    public NumberSetting(String name, String tag, String description, Setting.Visibility visibility, Number defaultValue, Number minimum, Number maximum) {
+        this(name, tag, description, visibility, defaultValue, minimum, maximum, 0);
     }
 
-    public NumberSetting(String string, String string2, String string3, Setting.Visibility visibility, Number number, Number number2, Number number3, Number number4) {
-        this(string, string2, string3, visibility, number, number2, number3, number4, false);
+    public NumberSetting(String name, String tag, String description, Setting.Visibility visibility, Number defaultValue, Number minimum, Number maximum, Number step) {
+        this(name, tag, description, visibility, defaultValue, minimum, maximum, step, false);
     }
 
-    public NumberSetting(String string, String string2, String string3, Setting.Visibility visibility, Number number, Number number2, Number number3, Number number4, boolean bl) {
-        super(string, string2, string3, visibility);
-        this.value = number;
-        this.defaultValue = number;
-        this.minimum = number2;
-        this.maximum = number3;
-        this.step = number4;
-        this.zeroIsIgnore = bl;
+    public NumberSetting(String name, String tag, String description, Setting.Visibility visibility, Number defaultValue, Number minimum, Number maximum, Number step, boolean zeroIsIgnore) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.minimum = minimum;
+        this.maximum = maximum;
+        this.step = step;
+        this.zeroIsIgnore = zeroIsIgnore;
     }
 
     public void setValue(Number number) {

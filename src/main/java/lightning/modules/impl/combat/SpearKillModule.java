@@ -88,38 +88,38 @@ extends Module {
         if (this.target == null) {
             return;
         }
-        int n = this.getSpearSlot();
-        if (n == -1 && !this.isHoldingSpear()) {
+        int spearSlot = this.getSpearSlot();
+        if (spearSlot == -1 && !this.isHoldingSpear()) {
             return;
         }
-        boolean bl = false;
-        int n2 = SpearKillModule.mc.player.getInventory().getSelectedSlot();
+        boolean silentSwapped = false;
+        int oldSlot = SpearKillModule.mc.player.getInventory().getSelectedSlot();
         if (!this.isHoldingSpear()) {
             if (this.autoSwap.getValue().equalsIgnoreCase("Off")) {
                 return;
             }
             if (this.autoSwap.getValue().equalsIgnoreCase("Normal")) {
-                InventoryUtils.switchSlot("Normal", n, n2);
+                InventoryUtils.switchSlot("Normal", spearSlot, oldSlot);
             } else if (this.autoSwap.getValue().equalsIgnoreCase("Silent")) {
-                InventoryUtils.switchSlot("Silent", n, n2);
-                bl = true;
+                InventoryUtils.switchSlot("Silent", spearSlot, oldSlot);
+                silentSwapped = true;
             }
         }
         if (this.rotate.getValue()) {
-            float[] fArray = RotationUtils.getRotations(this.target.getX(), this.target.getY() + (double)this.target.getEyeHeight() / 2.0, this.target.getZ());
-            Night.ROTATION_MANAGER.legacyRotate(fArray[0], fArray[1], this, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+            float[] rotations = RotationUtils.getRotations(this.target.getX(), this.target.getY() + (double)this.target.getEyeHeight() / 2.0, this.target.getZ());
+            Night.ROTATION_MANAGER.legacyRotate(rotations[0], rotations[1], this, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
         }
-        double d = SpearKillModule.mc.player.distanceTo((Entity)this.target);
-        if (this.lunge.getValue() && d > this.stopDistance.getValue().doubleValue() && System.currentTimeMillis() - this.lastLungeMs >= this.lungeDelay.getValue().longValue()) {
+        double distance = SpearKillModule.mc.player.distanceTo((Entity)this.target);
+        if (this.lunge.getValue() && distance > this.stopDistance.getValue().doubleValue() && System.currentTimeMillis() - this.lastLungeMs >= this.lungeDelay.getValue().longValue()) {
             this.doLunge(this.target);
             this.lastLungeMs = System.currentTimeMillis();
         }
-        if (d <= this.hitRange.getValue().doubleValue() && this.canAttack()) {
+        if (distance <= this.hitRange.getValue().doubleValue() && this.canAttack()) {
             this.doAttack(this.target);
             this.lastAttackMs = System.currentTimeMillis();
         }
-        if (bl) {
-            InventoryUtils.switchBack("Silent", n, n2);
+        if (silentSwapped) {
+            InventoryUtils.switchBack("Silent", spearSlot, oldSlot);
         }
     }
 
@@ -129,13 +129,13 @@ extends Module {
             return;
         }
         PoseStack poseStack = renderWorldEvent.getMatrices();
-        Vec3 vec3 = EntityUtils.getRenderPos((Entity)this.target, renderWorldEvent.getTickDelta());
-        AABB aABB = this.target.getBoundingBox().move(vec3.x - this.target.getX(), vec3.y - this.target.getY(), vec3.z - this.target.getZ());
+        Vec3 renderPos = EntityUtils.getRenderPos((Entity)this.target, renderWorldEvent.getTickDelta());
+        AABB aABB = this.target.getBoundingBox().move(renderPos.x - this.target.getX(), renderPos.y - this.target.getY(), renderPos.z - this.target.getZ());
         Renderer3D.renderBox(poseStack, aABB, this.fillColor.getColor());
         Renderer3D.renderBoxOutline(poseStack, aABB, this.lineColor.getColor());
         if (this.renderLine.getValue()) {
-            Vec3 vec32 = EntityUtils.getRenderPos((Entity)SpearKillModule.mc.player, renderWorldEvent.getTickDelta()).add(0.0, (double)SpearKillModule.mc.player.getEyeHeight(SpearKillModule.mc.player.getPose()), 0.0);
-            Renderer3D.renderLine(poseStack, vec32, aABB.getCenter(), this.lineColor.getColor());
+            Vec3 eyePos = EntityUtils.getRenderPos((Entity)SpearKillModule.mc.player, renderWorldEvent.getTickDelta()).add(0.0, (double)SpearKillModule.mc.player.getEyeHeight(SpearKillModule.mc.player.getPose()), 0.0);
+            Renderer3D.renderLine(poseStack, eyePos, aABB.getCenter(), this.lineColor.getColor());
         }
     }
 
@@ -153,11 +153,11 @@ extends Module {
         if (Night.FRIEND_MANAGER.contains(player.getName().getString())) {
             return false;
         }
-        double d = SpearKillModule.mc.player.distanceTo((Entity)player);
-        if (d > this.range.getValue().doubleValue()) {
+        double distance = SpearKillModule.mc.player.distanceTo((Entity)player);
+        if (distance > this.range.getValue().doubleValue()) {
             return false;
         }
-        return SpearKillModule.mc.player.hasLineOfSight((Entity)player) || d <= this.wallRange.getValue().doubleValue();
+        return SpearKillModule.mc.player.hasLineOfSight((Entity)player) || distance <= this.wallRange.getValue().doubleValue();
     }
 
     private boolean canAttack() {
@@ -171,14 +171,14 @@ extends Module {
     }
 
     private void doLunge(Player player) {
-        Vec3 vec3 = player.position().subtract(SpearKillModule.mc.player.position());
-        Vec3 vec32 = new Vec3(vec3.x, 0.0, vec3.z);
-        if (vec32.length() < 1.0E-4) {
+        Vec3 toTarget = player.position().subtract(SpearKillModule.mc.player.position());
+        Vec3 horizontalVec = new Vec3(toTarget.x, 0.0, toTarget.z);
+        if (horizontalVec.length() < 1.0E-4) {
             return;
         }
-        Vec3 vec33 = vec32.normalize();
-        double d = Math.max(SpearKillModule.mc.player.getDeltaMovement().y, this.lungeY.getValue().doubleValue());
-        SpearKillModule.mc.player.setDeltaMovement(vec33.x * this.lungeSpeed.getValue().doubleValue(), d, vec33.z * this.lungeSpeed.getValue().doubleValue());
+        Vec3 direction = horizontalVec.normalize();
+        double motionY = Math.max(SpearKillModule.mc.player.getDeltaMovement().y, this.lungeY.getValue().doubleValue());
+        SpearKillModule.mc.player.setDeltaMovement(direction.x * this.lungeSpeed.getValue().doubleValue(), motionY, direction.z * this.lungeSpeed.getValue().doubleValue());
     }
 
     private void doAttack(Player player) {

@@ -49,14 +49,14 @@ implements IMinecraft {
         return NightBeacon.or(player, this.isNightUser(player.getName().getString()));
     }
 
-    public boolean isNightUser(String string) {
-        if (string == null || string.isEmpty()) {
+    public boolean isNightUser(String username) {
+        if (username == null || username.isEmpty()) {
             return false;
         }
-        if (NightUserManager.mc.player != null && NightUserManager.mc.player.getName().getString().equalsIgnoreCase(string)) {
+        if (NightUserManager.mc.player != null && NightUserManager.mc.player.getName().getString().equalsIgnoreCase(username)) {
             return true;
         }
-        return this.onlineUsernames.contains(string.toLowerCase());
+        return this.onlineUsernames.contains(username.toLowerCase());
     }
 
     private void poll() {

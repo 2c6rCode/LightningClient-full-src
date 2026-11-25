@@ -46,35 +46,35 @@ public class HotbarCache {
         }
     }
 
-    public static void extractItem(GuiGraphicsExtractor guiGraphicsExtractor, LivingEntity livingEntity, ItemStack itemStack, int n, int n2, int n3) {
+    public static void extractItem(GuiGraphicsExtractor guiGraphicsExtractor, LivingEntity livingEntity, ItemStack itemStack, int x, int y, int seed) {
         SlotEntry slotEntry;
         if (itemStack.isEmpty()) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
         GuiRenderState guiRenderState = ((GuiGraphicsExtractorAccessor)guiGraphicsExtractor).night$getGuiRenderState();
-        int n4 = n3 >= 1 && n3 <= 10 ? n3 - 1 : -1;
+        int slotIndex = seed >= 1 && seed <= 10 ? seed - 1 : -1;
         TrackingItemStackRenderState trackingItemStackRenderState = null;
-        if (n4 >= 0 && n4 < SLOTS.length) {
-            slotEntry = SLOTS[n4];
-            if (slotEntry.matches(itemStack, n3)) {
+        if (slotIndex >= 0 && slotIndex < SLOTS.length) {
+            slotEntry = SLOTS[slotIndex];
+            if (slotEntry.matches(itemStack, seed)) {
                 trackingItemStackRenderState = slotEntry.renderState;
             } else {
                 trackingItemStackRenderState = new TrackingItemStackRenderState();
                 if (minecraft.getItemModelResolver() != null && livingEntity != null && livingEntity.level() != null) {
-                    minecraft.getItemModelResolver().updateForTopItem((ItemStackRenderState)trackingItemStackRenderState, itemStack, ItemDisplayContext.GUI, livingEntity.level(), (ItemOwner)livingEntity, n3);
+                    minecraft.getItemModelResolver().updateForTopItem((ItemStackRenderState)trackingItemStackRenderState, itemStack, ItemDisplayContext.GUI, livingEntity.level(), (ItemOwner)livingEntity, seed);
                 }
-                slotEntry.set(itemStack, n3, trackingItemStackRenderState);
+                slotEntry.set(itemStack, seed, trackingItemStackRenderState);
             }
         } else {
             trackingItemStackRenderState = new TrackingItemStackRenderState();
             if (minecraft.getItemModelResolver() != null && livingEntity != null && livingEntity.level() != null) {
-                minecraft.getItemModelResolver().updateForTopItem((ItemStackRenderState)trackingItemStackRenderState, itemStack, ItemDisplayContext.GUI, livingEntity.level(), (ItemOwner)livingEntity, n3);
+                minecraft.getItemModelResolver().updateForTopItem((ItemStackRenderState)trackingItemStackRenderState, itemStack, ItemDisplayContext.GUI, livingEntity.level(), (ItemOwner)livingEntity, seed);
             }
         }
         if (guiRenderState != null && trackingItemStackRenderState != null) {
             Matrix3x2f pose = new Matrix3x2f((Matrix3x2fc)guiGraphicsExtractor.pose());
-            guiRenderState.addItem(new GuiItemRenderState(pose, trackingItemStackRenderState, n, n2, (ScreenRectangle)null));
+            guiRenderState.addItem(new GuiItemRenderState(pose, trackingItemStackRenderState, x, y, (ScreenRectangle)null));
         }
     }
 
@@ -92,22 +92,22 @@ public class HotbarCache {
         public int seed;
         public TrackingItemStackRenderState renderState;
 
-        public boolean matches(ItemStack itemStack, int n) {
+        public boolean matches(ItemStack itemStack, int seed) {
             if (itemStack == null || itemStack.isEmpty() || this.renderState == null) {
                 return false;
             }
             if (this.renderState.isAnimated()) {
                 return false;
             }
-            return itemStack.getItem() == this.item && itemStack.getCount() == this.count && itemStack.getDamageValue() == this.damage && Objects.equals(itemStack.getComponents(), this.components) && this.seed == n;
+            return itemStack.getItem() == this.item && itemStack.getCount() == this.count && itemStack.getDamageValue() == this.damage && Objects.equals(itemStack.getComponents(), this.components) && this.seed == seed;
         }
 
-        public void set(ItemStack itemStack, int n, TrackingItemStackRenderState trackingItemStackRenderState) {
+        public void set(ItemStack itemStack, int seed, TrackingItemStackRenderState trackingItemStackRenderState) {
             this.item = itemStack.getItem();
             this.count = itemStack.getCount();
             this.damage = itemStack.getDamageValue();
             this.components = itemStack.getComponents();
-            this.seed = n;
+            this.seed = seed;
             this.renderState = trackingItemStackRenderState;
         }
 

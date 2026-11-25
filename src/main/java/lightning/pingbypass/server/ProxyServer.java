@@ -93,10 +93,9 @@ public class ProxyServer {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void bind(InetAddress inetAddress, int n) throws IOException {
-        LOGGER.info("PingBypass proxy binding to {}:{}", (Object)inetAddress, (Object)n);
-        List<ChannelFuture> list = this.endpoints;
-        synchronized (list) {
+    public void bind(InetAddress address, int port) throws IOException {
+        LOGGER.info("PingBypass proxy binding to {}:{}", (Object)address, (Object)port);
+        synchronized (this.endpoints) {
             EventLoopGroup eventLoopGroup;
             Class<? extends ServerChannel> clazz;
             if (Epoll.isAvailable()) {
@@ -124,8 +123,8 @@ public class ProxyServer {
                     pbSession.configurePacketHandler(channelPipeline);
                     pbSession.setListenerForServerboundHandshake((PacketListener)new PbHandshakeHandler(ProxyServer.this, pbSession));
                 }
-            }).group(eventLoopGroup).localAddress(inetAddress, n)).bind().syncUninterruptibly());
-            LOGGER.info("PingBypass proxy is now listening on {}:{}", (Object)inetAddress, (Object)n);
+            }).group(eventLoopGroup).localAddress(address, port)).bind().syncUninterruptibly());
+            LOGGER.info("PingBypass proxy is now listening on {}:{}", (Object)address, (Object)port);
         }
     }
 
@@ -133,9 +132,7 @@ public class ProxyServer {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public void tick() {
-        List<Connection> list;
-        List<Connection> list2 = list = this.connections;
-        synchronized (list2) {
+        synchronized (this.connections) {
             Iterator<Connection> iterator = this.connections.iterator();
             while (iterator.hasNext()) {
                 Connection connection = iterator.next();
@@ -204,8 +201,8 @@ public class ProxyServer {
         return this.stayConnected;
     }
 
-    public void setStayConnected(boolean bl) {
-        this.stayConnected = bl;
+    public void setStayConnected(boolean stayConnected) {
+        this.stayConnected = stayConnected;
     }
 
     public Connection getServerConnection() {

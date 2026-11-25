@@ -108,24 +108,24 @@ implements IMinecraft {
     }
 
     @Inject(method={"turn"}, at={@At(value="HEAD")}, cancellable=true)
-    public void onTurn(double d, double d2, CallbackInfo callbackInfo) {
+    public void onTurn(double deltaX, double deltaY, CallbackInfo callbackInfo) {
         try {
             if ((Object)this == EntityMixin.mc.player && Night.MODULE_MANAGER != null) {
                 IFreecamModule iFreecamModule = (IFreecamModule)Night.MODULE_MANAGER.getModule("Freecam");
                 if (iFreecamModule != null && iFreecamModule.isToggled() && !iFreecamModule.isRotate()) {
-                    iFreecamModule.onMouseTurn(d, d2);
+                    iFreecamModule.onMouseTurn(deltaX, deltaY);
                     callbackInfo.cancel();
                     return;
                 }
                 ElytraFlyModule elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class);
                 if (elytraFlyModule != null && elytraFlyModule.isFreeLookActive()) {
-                    elytraFlyModule.onMouseTurn(d, d2);
+                    elytraFlyModule.onMouseTurn(deltaX, deltaY);
                     callbackInfo.cancel();
                     return;
                 }
                 AutoMaceModule autoMaceModule = (AutoMaceModule)Night.MODULE_MANAGER.getModule(AutoMaceModule.class);
                 if (autoMaceModule != null && autoMaceModule.isFreeLookActive()) {
-                    autoMaceModule.onMouseTurn(d, d2);
+                    autoMaceModule.onMouseTurn(deltaX, deltaY);
                     callbackInfo.cancel();
                 }
             }
@@ -162,20 +162,20 @@ implements IMinecraft {
     }
 
     @WrapOperation(method={"updateFluidInteraction"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/EntityFluidInteraction;applyCurrentTo(Lnet/minecraft/tags/TagKey;Lnet/minecraft/world/entity/Entity;D)V")})
-    private void updateMovementInFluid(EntityFluidInteraction entityFluidInteraction, TagKey<Fluid> tagKey, Entity entity, double d, Operation<Void> operation) {
+    private void updateMovementInFluid(EntityFluidInteraction entityFluidInteraction, TagKey<Fluid> tagKey, Entity entity, double strength, Operation<Void> operation) {
         if ((Object)this == EntityMixin.mc.player && ((VelocityModule)Night.MODULE_MANAGER.getModule(VelocityModule.class)).isToggled() && ((VelocityModule)Night.MODULE_MANAGER.getModule(VelocityModule.class)).antiLiquidPush.getValue()) {
             return;
         }
-        operation.call(new Object[]{entityFluidInteraction, tagKey, entity, d});
+        operation.call(new Object[]{entityFluidInteraction, tagKey, entity, strength});
     }
 
     @Inject(method={"moveRelative"}, at={@At(value="HEAD")}, cancellable=true)
-    private void updateVelocity(float f, Vec3 vec3, CallbackInfo callbackInfo) {
+    private void updateVelocity(float speed, Vec3 movementInput, CallbackInfo callbackInfo) {
         try {
             if ((Object)this != EntityMixin.mc.player) {
                 return;
             }
-            UpdateVelocityEvent updateVelocityEvent = new UpdateVelocityEvent(vec3, f);
+            UpdateVelocityEvent updateVelocityEvent = new UpdateVelocityEvent(movementInput, speed);
             Night.EVENT_HANDLER.post((Event)updateVelocityEvent);
             if (updateVelocityEvent.isCancelled()) {
                 callbackInfo.cancel();
@@ -223,12 +223,12 @@ implements IMinecraft {
     }
 
     @Inject(method={"setYRot"}, at={@At(value="HEAD")}, cancellable=true)
-    private void setYaw(float f, CallbackInfo callbackInfo) {
+    private void setYaw(float yaw, CallbackInfo callbackInfo) {
         try {
             if ((Object)this != EntityMixin.mc.player) {
                 return;
             }
-            Night.EVENT_HANDLER.post((Event)new ChangeYawEvent(f));
+            Night.EVENT_HANDLER.post((Event)new ChangeYawEvent(yaw));
             return;
         }
         catch (NullPointerException nullPointerException) {
@@ -237,12 +237,12 @@ implements IMinecraft {
     }
 
     @Inject(method={"setXRot"}, at={@At(value="HEAD")}, cancellable=true)
-    private void setPitch(float f, CallbackInfo callbackInfo) {
+    private void setPitch(float pitch, CallbackInfo callbackInfo) {
         try {
             if ((Object)this != EntityMixin.mc.player) {
                 return;
             }
-            Night.EVENT_HANDLER.post((Event)new ChangePitchEvent(f));
+            Night.EVENT_HANDLER.post((Event)new ChangePitchEvent(pitch));
             return;
         }
         catch (NullPointerException nullPointerException) {
@@ -264,19 +264,19 @@ implements IMinecraft {
     }
 
     @ModifyReturnValue(method={"isSprinting()Z"}, at={@At(value="RETURN")})
-    private boolean injectIsSprinting(boolean bl) {
+    private boolean injectIsSprinting(boolean sprinting) {
         try {
             if ((Object)this != EntityMixin.mc.player || Night.MODULE_MANAGER == null) {
-                return bl;
+                return sprinting;
             }
             ElytraFlyModule elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class);
             if (elytraFlyModule != null && elytraFlyModule.isBounceActive() && elytraFlyModule.isGliding()) {
                 return true;
             }
-            return bl;
+            return sprinting;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return sprinting;
         }
     }
 

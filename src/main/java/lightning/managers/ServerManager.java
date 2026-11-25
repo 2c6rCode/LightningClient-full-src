@@ -117,14 +117,14 @@ implements IMinecraft {
         if (System.currentTimeMillis() - this.timeJoined < 4000L) {
             return 20.0f;
         }
-        int n = 0;
-        float f = 0.0f;
-        for (float f2 : this.tickRates) {
-            if (!(f2 > 0.0f)) continue;
-            f += f2;
-            ++n;
+        int sampleCount = 0;
+        float tickRateSum = 0.0f;
+        for (float rate : this.tickRates) {
+            if (!(rate > 0.0f)) continue;
+            tickRateSum += rate;
+            ++sampleCount;
         }
-        return f / (float)n;
+        return tickRateSum / (float)sampleCount;
     }
 
     public int getPingDelay() {

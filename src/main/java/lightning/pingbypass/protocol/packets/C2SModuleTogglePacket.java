@@ -15,9 +15,9 @@ extends PbPacket {
     private final String moduleName;
     private final boolean enabled;
 
-    public C2SModuleTogglePacket(String string, boolean bl) {
-        this.moduleName = string;
-        this.enabled = bl;
+    public C2SModuleTogglePacket(String moduleName, boolean enabled) {
+        this.moduleName = moduleName;
+        this.enabled = enabled;
     }
 
     public C2SModuleTogglePacket(FriendlyByteBuf friendlyByteBuf) {

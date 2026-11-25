@@ -56,8 +56,8 @@ public class TransferRehook {
                     connection3.setupOutboundProtocol(GameProtocols.CLIENTBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator((RegistryAccess)registryAccess)));
                     S2CForwarder s2CForwarder = new S2CForwarder(connection3);
                     s2CForwarder.start();
-                    int n = WorldStateReplay.replay(connection3, registryAccess);
-                    PbPlayHandler pbPlayHandler2 = new PbPlayHandler(Night.PROXY_SERVER, connection3, profile, s2CForwarder, n);
+                    int teleportId = WorldStateReplay.replay(connection3, registryAccess);
+                    PbPlayHandler pbPlayHandler2 = new PbPlayHandler(Night.PROXY_SERVER, connection3, profile, s2CForwarder, teleportId);
                     connection3.setupInboundProtocol(GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator((RegistryAccess)registryAccess), () -> false), pbPlayHandler2);
                     LOGGER.info("[PB] Rewired {} onto the new server connection after transfer", (Object)profile.name());
                 }

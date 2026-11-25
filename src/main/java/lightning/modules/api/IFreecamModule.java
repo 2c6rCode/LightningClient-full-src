@@ -8,7 +8,7 @@ public interface IFreecamModule {
 
     public boolean isRotate();
 
-    public void onMouseTurn(double var1, double var3);
+    public void onMouseTurn(double deltaX, double deltaY);
 
     public float getFreeYaw();
 

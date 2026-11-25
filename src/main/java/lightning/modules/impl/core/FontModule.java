@@ -65,15 +65,15 @@ extends Module {
         catch (Throwable throwable) {
             return;
         }
-        int n = this.style.getValue().equalsIgnoreCase("BoldItalic") ? 3 : (this.style.getValue().equalsIgnoreCase("Bold") ? 1 : (this.style.getValue().equalsIgnoreCase("Italic") ? 2 : 0));
-        int n2 = this.size.getValue().intValue();
-        Font font = new Font(this.name.getValue(), n, n2);
-        Font font2 = new Font("Segoe UI Symbol", n, n2);
-        Font font3 = new Font("Segoe UI Emoji", 0, n2);
-        Font font4 = new Font("Arial Unicode MS", n, n2);
-        Font font5 = new Font("SansSerif", n, n2);
-        Font font6 = new Font("Dialog", n, n2);
-        Night.FONT_MANAGER.setFontRenderer(new FontRenderer(new Font[]{font, font2, font3, font4, font5, font6}, this.size.getValue().floatValue() / 2.0f));
+        int fontStyle = this.style.getValue().equalsIgnoreCase("BoldItalic") ? 3 : (this.style.getValue().equalsIgnoreCase("Bold") ? 1 : (this.style.getValue().equalsIgnoreCase("Italic") ? 2 : 0));
+        int fontSize = this.size.getValue().intValue();
+        Font primaryFont = new Font(this.name.getValue(), fontStyle, fontSize);
+        Font symbolFont = new Font("Segoe UI Symbol", fontStyle, fontSize);
+        Font emojiFont = new Font("Segoe UI Emoji", 0, fontSize);
+        Font unicodeFont = new Font("Arial Unicode MS", fontStyle, fontSize);
+        Font sansSerifFont = new Font("SansSerif", fontStyle, fontSize);
+        Font dialogFont = new Font("Dialog", fontStyle, fontSize);
+        Night.FONT_MANAGER.setFontRenderer(new FontRenderer(new Font[]{primaryFont, symbolFont, emojiFont, unicodeFont, sansSerifFont, dialogFont}, this.size.getValue().floatValue() / 2.0f));
     }
 }
 

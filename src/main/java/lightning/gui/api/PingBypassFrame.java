@@ -24,8 +24,8 @@ extends Frame {
     private static final String CATEGORY_NAME = "PingBypass";
     private Set<String> lastKnownModules = Collections.emptySet();
 
-    public PingBypassFrame(int n, int n2, int n3, int n4) {
-        super(null, n, n2, n3, n4);
+    public PingBypassFrame(int x, int y, int width, int height) {
+        super(null, x, y, width, height);
     }
 
     private boolean isActive() {
@@ -38,133 +38,133 @@ extends Frame {
         if (pingBypassModule == null) {
             return;
         }
-        TreeSet<String> treeSet = new TreeSet<String>(pingBypassModule.getProxyModuleStates().keySet());
-        if (treeSet.equals(this.lastKnownModules)) {
+        TreeSet<String> sortedModules = new TreeSet<String>(pingBypassModule.getProxyModuleStates().keySet());
+        if (sortedModules.equals(this.lastKnownModules)) {
             return;
         }
-        this.lastKnownModules = treeSet;
+        this.lastKnownModules = sortedModules;
         this.getButtons().clear();
-        for (String string : treeSet) {
-            this.getButtons().add(new ProxyModuleButton(string, this, this.getHeight()));
+        for (String moduleName : sortedModules) {
+            this.getButtons().add(new ProxyModuleButton(moduleName, this, this.getHeight()));
         }
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, String string) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks, String searchQuery) {
         if (!this.isActive()) {
             return;
         }
         this.refreshButtons();
         if (this.isDragging()) {
-            this.setX(n - this.getDragX());
-            this.setY(n2 - this.getDragY());
+            this.setX(mouseX - this.getDragX());
+            this.setY(mouseY - this.getDragY());
         }
-        boolean bl = string != null && !string.isEmpty();
-        int n3 = this.getHeight();
+        boolean hasSearch = searchQuery != null && !searchQuery.isEmpty();
+        int totalHeight = this.getHeight();
         if (this.isOpen()) {
-            ++n3;
-            for (Button object : this.getButtons()) {
-                if (bl && object instanceof ProxyModuleButton) {
-                    Button button = (ProxyModuleButton)object;
-                    if (!((ProxyModuleButton)button).getModuleName().toLowerCase().contains(string.toLowerCase())) {
-                        object.setVisible(false);
+            ++totalHeight;
+            for (Button button : this.getButtons()) {
+                if (hasSearch && button instanceof ProxyModuleButton) {
+                    ProxyModuleButton proxyButton = (ProxyModuleButton)button;
+                    if (!proxyButton.getModuleName().toLowerCase().contains(searchQuery.toLowerCase())) {
+                        button.setVisible(false);
                         continue;
                     }
-                    object.setVisible(true);
+                    button.setVisible(true);
                 } else {
-                    object.setVisible(true);
+                    button.setVisible(true);
                 }
-                if (!object.isVisible()) continue;
-                object.setX(this.getX());
-                object.setY(this.getY() + n3);
-                n3 += object.getHeight();
+                if (!button.isVisible()) continue;
+                button.setX(this.getX());
+                button.setY(this.getY() + totalHeight);
+                totalHeight += button.getHeight();
             }
         }
-        this.setTotalHeight(n3);
+        this.setTotalHeight(totalHeight);
         Renderer2D.renderQuad(guiGraphicsExtractor, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), new Color(21, 21, 21, 200));
         Color color = ClickGuiScreen.getButtonColor(this.getY(), 200);
         Renderer2D.renderQuad(guiGraphicsExtractor, this.getX(), this.getY() + this.getHeight() - 1, this.getX() + this.getWidth(), this.getY() + this.getHeight(), color);
         Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, CATEGORY_NAME, this.getX() + this.getTextPadding(), this.getY() + 2, Color.WHITE);
         if (this.isOpen()) {
-            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX(), this.getY() + this.getHeight(), this.getX() + this.getWidth(), this.getY() + n3 + 1, new Color(16, 16, 16, 180));
+            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX(), this.getY() + this.getHeight(), this.getX() + this.getWidth(), this.getY() + totalHeight + 1, new Color(16, 16, 16, 180));
             for (Button button : this.getButtons()) {
                 if (!button.isVisible()) continue;
-                button.render(guiGraphicsExtractor, n, n2, f);
+                button.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
             }
         }
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        this.render(guiGraphicsExtractor, n, n2, f, "");
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        this.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks, "");
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
         if (!this.isActive()) {
             return;
         }
-        if (this.isHovering(d, d2)) {
-            if (n == 0) {
+        if (this.isHovering(mouseX, mouseY)) {
+            if (button == 0) {
                 this.setDragging(true);
-                this.setDragX((int)(d - (double)this.getX()));
-                this.setDragY((int)(d2 - (double)this.getY()));
-            } else if (n == 1) {
+                this.setDragX((int)(mouseX - (double)this.getX()));
+                this.setDragY((int)(mouseY - (double)this.getY()));
+            } else if (button == 1) {
                 this.setOpen(!this.isOpen());
             }
         }
         if (this.isOpen()) {
-            for (Button button : this.getButtons()) {
-                if (!button.isVisible()) continue;
-                button.mouseClicked(d, d2, n);
+            for (Button child : this.getButtons()) {
+                if (!child.isVisible()) continue;
+                child.mouseClicked(mouseX, mouseY, button);
             }
         }
     }
 
     @Override
-    public void mouseReleased(double d, double d2, int n) {
+    public void mouseReleased(double mouseX, double mouseY, int button) {
         if (!this.isActive()) {
             return;
         }
-        if (n == 0) {
+        if (button == 0) {
             this.setDragging(false);
         }
-        for (Button button : this.getButtons()) {
-            if (!button.isVisible()) continue;
-            button.mouseReleased(d, d2, n);
+        for (Button child : this.getButtons()) {
+            if (!child.isVisible()) continue;
+            child.mouseReleased(mouseX, mouseY, button);
         }
     }
 
     @Override
-    public void mouseScrolled(double d, double d2, double d3, double d4) {
+    public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (!this.isActive()) {
             return;
         }
-        super.mouseScrolled(d, d2, d3, d4);
+        super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!this.isActive()) {
             return;
         }
         if (this.isOpen()) {
-            for (Button button : this.getButtons()) {
-                if (!button.isVisible()) continue;
-                button.keyPressed(n, n2, n3);
+            for (Button child : this.getButtons()) {
+                if (!child.isVisible()) continue;
+                child.keyPressed(keyCode, scanCode, modifiers);
             }
         }
     }
 
     @Override
-    public void charTyped(char c, int n) {
+    public void charTyped(char ch, int modifiers) {
         if (!this.isActive()) {
             return;
         }
         if (this.isOpen()) {
-            for (Button button : this.getButtons()) {
-                if (!button.isVisible()) continue;
-                button.charTyped(c, n);
+            for (Button child : this.getButtons()) {
+                if (!child.isVisible()) continue;
+                child.charTyped(ch, modifiers);
             }
         }
     }

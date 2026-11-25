@@ -40,10 +40,10 @@ implements IMinecraft {
         if (packet instanceof ClientboundExplodePacket) {
             ClientboundExplodePacket clientboundExplodePacket = (ClientboundExplodePacket)packet;
             if (BoostManager.mc.player.position().distanceTo(clientboundExplodePacket.center()) <= 6.0) {
-                clientboundExplodePacket.playerKnockback().ifPresent(vec3 -> {
-                    if (vec3.x != 0.0 || vec3.z != 0.0) {
+                clientboundExplodePacket.playerKnockback().ifPresent(knockback -> {
+                    if (knockback.x != 0.0 || knockback.z != 0.0) {
                         this.explosionTimer.reset();
-                        this.boostExplosionSpeed = Math.hypot(vec3.x, vec3.z);
+                        this.boostExplosionSpeed = Math.hypot(knockback.x, knockback.z);
                         this.canLongjump = true;
                         this.longjumpTimer.reset();
                     }
@@ -69,7 +69,7 @@ implements IMinecraft {
         }
     }
 
-    public double getBoostSpeed(boolean bl) {
+    public double getBoostSpeed(boolean unused) {
         return this.boostExplosionSpeed;
     }
 

@@ -20,6 +20,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface CustomPayloadC2SPacketAccessor {
     @Mutable
     @Accessor(value="payload")
-    public void setPayload(CustomPacketPayload var1);
+    public void setPayload(CustomPacketPayload payload);
 }
 

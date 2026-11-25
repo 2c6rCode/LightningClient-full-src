@@ -19,10 +19,10 @@ extends PbPacket {
     private final int buttonNum;
     private final String containerInput;
 
-    public S2CWindowClickPacket(int n, int n2, int n3, ContainerInput containerInput) {
-        this.containerId = n;
-        this.slotNum = n2;
-        this.buttonNum = n3;
+    public S2CWindowClickPacket(int containerId, int slotNum, int buttonNum, ContainerInput containerInput) {
+        this.containerId = containerId;
+        this.slotNum = slotNum;
+        this.buttonNum = buttonNum;
         this.containerInput = containerInput.name();
     }
 

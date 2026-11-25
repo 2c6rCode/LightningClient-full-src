@@ -113,7 +113,7 @@ extends Module {
         if (!this.whileEating.getValue() && EntityUtils.isEating()) {
             return;
         }
-        List list = HoleFillModule.mc.level.players();
+        List players = HoleFillModule.mc.level.players();
         Runnable runnable = () -> {
             Target target;
             this.blocksPlaced = 0;
@@ -126,9 +126,9 @@ extends Module {
                 this.positions = new ArrayList<BlockPos>();
                 return;
             }
-            int n = this.webs.getValue() ? InventoryUtils.find(Items.COBWEB, 0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8) : InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            int n2 = HoleFillModule.mc.player.getInventory().getSelectedSlot();
-            if (n == -1) {
+            int itemSlot = this.webs.getValue() ? InventoryUtils.find(Items.COBWEB, 0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8) : InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            int oldSlot = HoleFillModule.mc.player.getInventory().getSelectedSlot();
+            if (itemSlot == -1) {
                 if (this.itemDisable.getValue()) {
                     Night.CHAT_MANAGER.tagged("No " + (this.webs.getValue() ? "cobwebs" : "blocks") + " could be found in your hotbar.", this.getName());
                     this.setToggled(false);
@@ -136,7 +136,7 @@ extends Module {
                 this.positions = new ArrayList<BlockPos>();
                 return;
             }
-            this.positions = this.mode.getValue().equalsIgnoreCase("Smart") ? ((target = this.getTarget(list)) == null ? new ArrayList<BlockPos>() : target.positions()) : this.getPositions(null);
+            this.positions = this.mode.getValue().equalsIgnoreCase("Smart") ? ((target = this.getTarget(players)) == null ? new ArrayList<BlockPos>() : target.positions()) : this.getPositions(null);
             if (this.refill.getValue()) {
                 this.updateExitedHole(HoleFillModule.mc.player);
                 if (this.refillPos != null) {
@@ -168,7 +168,7 @@ extends Module {
             }
             Night.ROTATION_MANAGER.beginBatchRotation();
             try {
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), itemSlot, oldSlot);
                 for (BlockPos blockPos : this.positions) {
                     if (this.blocksPlaced >= this.bpt.getValue().intValue()) break;
                     Direction direction = WorldUtils.getDirection(blockPos, this.strictDirection.getValue());
@@ -177,7 +177,7 @@ extends Module {
                     if (!blockPos.equals((Object)this.refillPos)) continue;
                     this.refillPos = null;
                 }
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), itemSlot, oldSlot);
             }
             finally {
                 Night.ROTATION_MANAGER.endBatchRotation();
@@ -195,18 +195,18 @@ extends Module {
         for (EndCrystal endCrystal : HoleFillModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(HoleFillModule.mc.player.blockPosition()).inflate(this.attackRange.getValue().doubleValue() + 3.0))) {
             if (!endCrystal.isAlive() || endCrystal.isRemoved() || endCrystal.tickCount < this.attackAge.getValue().intValue()) continue;
             AABB aABB = endCrystal.getBoundingBox();
-            boolean bl = false;
+            boolean intersectsHole = false;
             for (BlockPos blockPos : this.positions) {
                 if (!HoleFillModule.mc.level.getBlockState(blockPos).canBeReplaced() || !new AABB(blockPos).intersects(aABB)) continue;
-                bl = true;
+                intersectsHole = true;
                 break;
             }
-            if (!bl || aABB.distanceToSqr(HoleFillModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && HoleFillModule.mc.player.isUsingItem()) continue;
+            if (!intersectsHole || aABB.distanceToSqr(HoleFillModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && HoleFillModule.mc.player.isUsingItem()) continue;
             if (this.attackRotate.getValue()) {
-                float[] object = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
-                Night.ROTATION_MANAGER.silentRotate((float)object[0], (float)object[1]);
-                boolean bl2 = aABB.contains(HoleFillModule.mc.player.getEyePosition());
-                if (!bl2 && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
+                float[] rotations = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
+                Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
+                boolean insideEye = aABB.contains(HoleFillModule.mc.player.getEyePosition());
+                if (!insideEye && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
             }
             mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
             if (!this.attackSwing.getValue()) continue;
@@ -216,10 +216,10 @@ extends Module {
     }
 
     private void updateExitedHole(LocalPlayer localPlayer) {
-        BlockPos blockPos = PositionUtils.getFlooredPosition((Entity)localPlayer);
-        boolean bl = this.isHole(blockPos);
-        if (bl) {
-            this.lastHolePos = blockPos.immutable();
+        BlockPos currentPos = PositionUtils.getFlooredPosition((Entity)localPlayer);
+        boolean inHole = this.isHole(currentPos);
+        if (inHole) {
+            this.lastHolePos = currentPos.immutable();
             this.wasInHole = true;
             return;
         }
@@ -227,7 +227,7 @@ extends Module {
             this.wasInHole = false;
             return;
         }
-        if (!blockPos.equals((Object)this.lastHolePos)) {
+        if (!currentPos.equals((Object)this.lastHolePos)) {
             this.refillPos = this.lastHolePos.immutable();
         }
         this.wasInHole = false;
@@ -260,40 +260,40 @@ extends Module {
         return String.valueOf(this.positions.size());
     }
 
-    private Target getTarget(List<AbstractClientPlayer> list) {
-        Target target = null;
-        for (Player player : list) {
-            List<BlockPos> list2;
-            if (player == HoleFillModule.mc.player || !player.isAlive() || player.getHealth() <= 0.0f || HoleFillModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || Night.FRIEND_MANAGER.contains(player.getName().getString()) || this.holeCheck.getValue() && HoleUtils.isPlayerInHole(player) || (list2 = this.getPositions(player)).isEmpty()) continue;
-            if (target == null) {
-                target = new Target(player, list2);
+    private Target getTarget(List<AbstractClientPlayer> players) {
+        Target bestTarget = null;
+        for (Player player : players) {
+            List<BlockPos> holePositions;
+            if (player == HoleFillModule.mc.player || !player.isAlive() || player.getHealth() <= 0.0f || HoleFillModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || Night.FRIEND_MANAGER.contains(player.getName().getString()) || this.holeCheck.getValue() && HoleUtils.isPlayerInHole(player) || (holePositions = this.getPositions(player)).isEmpty()) continue;
+            if (bestTarget == null) {
+                bestTarget = new Target(player, holePositions);
                 continue;
             }
-            if (!(HoleFillModule.mc.player.distanceToSqr((Entity)player) < HoleFillModule.mc.player.distanceToSqr((Entity)target.player()))) continue;
-            target = new Target(player, list2);
+            if (!(HoleFillModule.mc.player.distanceToSqr((Entity)player) < HoleFillModule.mc.player.distanceToSqr((Entity)bestTarget.player()))) continue;
+            bestTarget = new Target(player, holePositions);
         }
-        return target;
+        return bestTarget;
     }
 
     private List<BlockPos> getPositions(Player player) {
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-        int n = this.range.getValue().intValue();
-        BlockPos blockPos = HoleFillModule.mc.player.blockPosition();
-        for (BlockPos blockPos2 : BlockPos.betweenClosed((BlockPos)blockPos.offset(-n, -n, -n), (BlockPos)blockPos.offset(n, n, n))) {
-            if (HoleFillModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2)) > Mth.square((double)this.range.getValue().doubleValue()) || !WorldUtils.isPlaceable(blockPos2) || this.safety.getValue() && HoleFillModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2)) <= Mth.square((double)this.safetyRange.getValue().doubleValue())) continue;
-            if (this.selfWeb.getValue() && HoleUtils.isPlayerInHole((Player)HoleFillModule.mc.player) && HoleFillModule.mc.player.blockPosition().equals((Object)blockPos2)) {
-                arrayList.add(blockPos2.immutable());
+        ArrayList<BlockPos> holePositions = new ArrayList<BlockPos>();
+        int rangeBlocks = this.range.getValue().intValue();
+        BlockPos playerPos = HoleFillModule.mc.player.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed((BlockPos)playerPos.offset(-rangeBlocks, -rangeBlocks, -rangeBlocks), (BlockPos)playerPos.offset(rangeBlocks, rangeBlocks, rangeBlocks))) {
+            if (HoleFillModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)pos)) > Mth.square((double)this.range.getValue().doubleValue()) || !WorldUtils.isPlaceable(pos) || this.safety.getValue() && HoleFillModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)pos)) <= Mth.square((double)this.safetyRange.getValue().doubleValue())) continue;
+            if (this.selfWeb.getValue() && HoleUtils.isPlayerInHole((Player)HoleFillModule.mc.player) && HoleFillModule.mc.player.blockPosition().equals((Object)pos)) {
+                holePositions.add(pos.immutable());
                 continue;
             }
-            if (HoleUtils.getSingleHole(blockPos2, 1.0) != null) {
-                if (player != null && player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2)) > Mth.square((double)this.smartRange.getValue().doubleValue())) continue;
-                arrayList.add(blockPos2.immutable());
+            if (HoleUtils.getSingleHole(pos, 1.0) != null) {
+                if (player != null && player.distanceToSqr(Vec3.atCenterOf((Vec3i)pos)) > Mth.square((double)this.smartRange.getValue().doubleValue())) continue;
+                holePositions.add(pos.immutable());
                 continue;
             }
-            if (!this.doubleHoles.getValue() || HoleUtils.getDoubleHole(blockPos2, 1.0) == null || player != null && player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2)) > Mth.square((double)this.smartRange.getValue().doubleValue())) continue;
-            arrayList.add(blockPos2.immutable());
+            if (!this.doubleHoles.getValue() || HoleUtils.getDoubleHole(pos, 1.0) == null || player != null && player.distanceToSqr(Vec3.atCenterOf((Vec3i)pos)) > Mth.square((double)this.smartRange.getValue().doubleValue())) continue;
+            holePositions.add(pos.immutable());
         }
-        return arrayList;
+        return holePositions;
     }
 
     private record Target(Player player, List<BlockPos> positions) {

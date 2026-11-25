@@ -17,16 +17,16 @@ public final class CrystalWingsState {
         this.last = 0L;
     }
 
-    public void record(long l, long l2, int n, int n2) {
-        if (!this.hasKey || this.key != l || l2 - this.last > (long)n2 * 1000000L) {
+    public void record(long entityKey, long nowNanos, int requiredSamples, int timeoutMs) {
+        if (!this.hasKey || this.key != entityKey || nowNanos - this.last > (long)timeoutMs * 1000000L) {
             this.clear();
         }
-        this.key = l;
+        this.key = entityKey;
         this.hasKey = true;
-        this.last = l2;
+        this.last = nowNanos;
         this.count = Math.min(10000, this.count + 1);
-        if (this.count >= Math.max(1, n) && this.appeared == 0L) {
-            this.appeared = l2;
+        if (this.count >= Math.max(1, requiredSamples) && this.appeared == 0L) {
+            this.appeared = nowNanos;
         }
     }
 
@@ -34,8 +34,8 @@ public final class CrystalWingsState {
         return this.count;
     }
 
-    public void expire(long l, int n) {
-        if (this.hasKey && l - this.last > (long)n * 1000000L) {
+    public void expire(long nowNanos, int timeoutMs) {
+        if (this.hasKey && nowNanos - this.last > (long)timeoutMs * 1000000L) {
             this.clear();
         }
     }
@@ -44,8 +44,8 @@ public final class CrystalWingsState {
         return this.appeared;
     }
 
-    public boolean visible(long l, int n, long l2, int n2) {
-        return this.hasKey && this.appeared != 0L && l2 != 0L && l >= this.last && l >= l2 && l - this.last <= (long)n * 1000000L && l - l2 <= (long)n2 * 1000000L;
+    public boolean visible(long nowNanos, int staleMs, long appearedNanos, int maxAgeMs) {
+        return this.hasKey && this.appeared != 0L && appearedNanos != 0L && nowNanos >= this.last && nowNanos >= appearedNanos && nowNanos - this.last <= (long)staleMs * 1000000L && nowNanos - appearedNanos <= (long)maxAgeMs * 1000000L;
     }
 }
 

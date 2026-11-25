@@ -67,8 +67,8 @@ implements IMinecraft {
     private final List<MemeInstance> instances = new ArrayList<MemeInstance>();
     private long lastNanos = 0L;
 
-    private static RenderType buildLayer(String string, Identifier identifier) {
-        return RenderType.create((String)("night_" + string), (RenderSetup)RenderSetup.builder((RenderPipeline)NO_DEPTH_MEME_PIPELINE).withTexture("Sampler0", identifier).useLightmap().useOverlay().affectsCrumbling().sortOnUpload().setOutline(RenderSetup.OutlineProperty.NONE).createRenderSetup());
+    private static RenderType buildLayer(String name, Identifier identifier) {
+        return RenderType.create((String)("night_" + name), (RenderSetup)RenderSetup.builder((RenderPipeline)NO_DEPTH_MEME_PIPELINE).withTexture("Sampler0", identifier).useLightmap().useOverlay().affectsCrumbling().sortOnUpload().setOutline(RenderSetup.OutlineProperty.NONE).createRenderSetup());
     }
 
     private static RenderType getCircleLayer() {
@@ -87,10 +87,10 @@ implements IMinecraft {
         return arrowLayer;
     }
 
-    public void spawn(Vector3f vector3f, float f) {
+    public void spawn(Vector3f position, float size) {
         MemeInstance memeInstance = new MemeInstance();
-        memeInstance.pos.set((Vector3fc)vector3f);
-        memeInstance.size = f;
+        memeInstance.pos.set((Vector3fc)position);
+        memeInstance.size = size;
         this.instances.add(memeInstance);
     }
 
@@ -102,15 +102,15 @@ implements IMinecraft {
         if (KillEffectMemeRenderer.mc.player == null || KillEffectMemeRenderer.mc.level == null) {
             return;
         }
-        long l = System.nanoTime();
-        float f = this.lastNanos == 0L ? 0.0f : Math.min((float)(l - this.lastNanos) / 1.0E9f, 0.1f);
-        this.lastNanos = l;
-        float f2 = 0.90000004f;
+        long now = System.nanoTime();
+        float deltaSeconds = this.lastNanos == 0L ? 0.0f : Math.min((float)(now - this.lastNanos) / 1.0E9f, 0.1f);
+        this.lastNanos = now;
+        float totalDuration = 0.90000004f;
         Iterator<MemeInstance> iterator = this.instances.iterator();
         while (iterator.hasNext()) {
             MemeInstance instance = iterator.next();
-            instance.age += f;
-            if (!(instance.age >= f2)) continue;
+            instance.age += deltaSeconds;
+            if (!(instance.age >= totalDuration)) continue;
             iterator.remove();
         }
         if (this.instances.isEmpty()) {
@@ -118,18 +118,18 @@ implements IMinecraft {
         }
         PoseStack.Pose pose = poseStack.last();
         Camera camera = KillEffectMemeRenderer.mc.gameRenderer.mainCamera();
-        Vector3f vector3f = new Vector3f(camera.upVector());
-        Vector3f vector3f2 = new Vector3f(camera.leftVector());
-        Vec3 vec3 = camera.position();
-        Vector3f vector3f3 = new Vector3f((float)vec3.x, (float)vec3.y, (float)vec3.z);
-        Vector3f vector3f4 = new Vector3f();
+        Vector3f up = new Vector3f(camera.upVector());
+        Vector3f left = new Vector3f(camera.leftVector());
+        Vec3 camPosVec = camera.position();
+        Vector3f camPos = new Vector3f((float)camPosVec.x, (float)camPosVec.y, (float)camPosVec.z);
+        Vector3f relativePos = new Vector3f();
         RenderType circleLayer = KillEffectMemeRenderer.getCircleLayer();
         try (ByteBufferBuilder circleByteBuffer = new ByteBufferBuilder(1024)) {
             BufferBuilder circleBufferBuilder = new BufferBuilder(circleByteBuffer, circleLayer.primitiveTopology(), circleLayer.format());
             for (MemeInstance instance : this.instances) {
                 if (instance.age % 0.3f >= 0.18f) continue;
-                vector3f4.set((Vector3fc)instance.pos).sub((Vector3fc)vector3f3);
-                KillEffectMemeRenderer.emitBillboard(circleBufferBuilder, pose, vector3f4, vector3f, vector3f2, instance.size, 255);
+                relativePos.set((Vector3fc)instance.pos).sub((Vector3fc)camPos);
+                KillEffectMemeRenderer.emitBillboard(circleBufferBuilder, pose, relativePos, up, left, instance.size, 255);
             }
             MeshData meshData = circleBufferBuilder.build();
             if (meshData != null) {
@@ -142,9 +142,9 @@ implements IMinecraft {
             BufferBuilder arrowBufferBuilder = new BufferBuilder(arrowByteBuffer, arrowLayer.primitiveTopology(), arrowLayer.format());
             for (MemeInstance instance : this.instances) {
                 if (instance.age % 0.3f >= 0.18f) continue;
-                vector3f4.set((Vector3fc)instance.pos).sub((Vector3fc)vector3f3);
-                arrowPos.set((Vector3fc)vector3f2).mul(-instance.size * 1.1f).add(vector3f.x * instance.size * 1.1f, vector3f.y * instance.size * 1.1f, vector3f.z * instance.size * 1.1f).add((Vector3fc)vector3f4);
-                KillEffectMemeRenderer.emitBillboard(arrowBufferBuilder, pose, arrowPos, vector3f, vector3f2, instance.size * 0.8f, 255);
+                relativePos.set((Vector3fc)instance.pos).sub((Vector3fc)camPos);
+                arrowPos.set((Vector3fc)left).mul(-instance.size * 1.1f).add(up.x * instance.size * 1.1f, up.y * instance.size * 1.1f, up.z * instance.size * 1.1f).add((Vector3fc)relativePos);
+                KillEffectMemeRenderer.emitBillboard(arrowBufferBuilder, pose, arrowPos, up, left, instance.size * 0.8f, 255);
             }
             MeshData meshData2 = arrowBufferBuilder.build();
             if (meshData2 != null) {
@@ -153,18 +153,18 @@ implements IMinecraft {
         }
     }
 
-    private static void emitBillboard(BufferBuilder bufferBuilder, PoseStack.Pose pose, Vector3f vector3f, Vector3f vector3f2, Vector3f vector3f3, float f, int n) {
-        Vector3f vector3f4 = new Vector3f((Vector3fc)vector3f2).mul(f);
-        Vector3f vector3f5 = new Vector3f((Vector3fc)vector3f3).mul(f);
-        Vector3f vector3f6 = new Vector3f((Vector3fc)vector3f).sub((Vector3fc)vector3f4).sub((Vector3fc)vector3f5);
-        Vector3f vector3f7 = new Vector3f((Vector3fc)vector3f).sub((Vector3fc)vector3f4).add((Vector3fc)vector3f5);
-        Vector3f vector3f8 = new Vector3f((Vector3fc)vector3f).add((Vector3fc)vector3f4).add((Vector3fc)vector3f5);
-        Vector3f vector3f9 = new Vector3f((Vector3fc)vector3f).add((Vector3fc)vector3f4).sub((Vector3fc)vector3f5);
-        int n2 = n << 24 | 0xFFFFFF;
-        bufferBuilder.addVertex(pose, vector3f6.x, vector3f6.y, vector3f6.z).setColor(n2).setUv(1.0f, 1.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
-        bufferBuilder.addVertex(pose, vector3f7.x, vector3f7.y, vector3f7.z).setColor(n2).setUv(0.0f, 1.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
-        bufferBuilder.addVertex(pose, vector3f8.x, vector3f8.y, vector3f8.z).setColor(n2).setUv(0.0f, 0.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
-        bufferBuilder.addVertex(pose, vector3f9.x, vector3f9.y, vector3f9.z).setColor(n2).setUv(1.0f, 0.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
+    private static void emitBillboard(BufferBuilder bufferBuilder, PoseStack.Pose pose, Vector3f center, Vector3f up, Vector3f left, float size, int alpha) {
+        Vector3f halfUp = new Vector3f((Vector3fc)up).mul(size);
+        Vector3f halfLeft = new Vector3f((Vector3fc)left).mul(size);
+        Vector3f bottomLeft = new Vector3f((Vector3fc)center).sub((Vector3fc)halfUp).sub((Vector3fc)halfLeft);
+        Vector3f bottomRight = new Vector3f((Vector3fc)center).sub((Vector3fc)halfUp).add((Vector3fc)halfLeft);
+        Vector3f topRight = new Vector3f((Vector3fc)center).add((Vector3fc)halfUp).add((Vector3fc)halfLeft);
+        Vector3f topLeft = new Vector3f((Vector3fc)center).add((Vector3fc)halfUp).sub((Vector3fc)halfLeft);
+        int color = alpha << 24 | 0xFFFFFF;
+        bufferBuilder.addVertex(pose, bottomLeft.x, bottomLeft.y, bottomLeft.z).setColor(color).setUv(1.0f, 1.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
+        bufferBuilder.addVertex(pose, bottomRight.x, bottomRight.y, bottomRight.z).setColor(color).setUv(0.0f, 1.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
+        bufferBuilder.addVertex(pose, topRight.x, topRight.y, topRight.z).setColor(color).setUv(0.0f, 0.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
+        bufferBuilder.addVertex(pose, topLeft.x, topLeft.y, topLeft.z).setColor(color).setUv(1.0f, 0.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0.0f, 1.0f, 0.0f);
     }
 
     static {

@@ -41,8 +41,8 @@ extends Module {
         if (AntiVoidModule.mc.player == null || AntiVoidModule.mc.level == null) {
             return false;
         }
-        int n = AntiVoidModule.mc.level.getMinY();
-        for (int i = (int)AntiVoidModule.mc.player.getY(); i >= n; --i) {
+        int minY = AntiVoidModule.mc.level.getMinY();
+        for (int i = (int)AntiVoidModule.mc.player.getY(); i >= minY; --i) {
             BlockPos blockPos = BlockPos.containing((double)AntiVoidModule.mc.player.getX(), (double)i, (double)AntiVoidModule.mc.player.getZ());
             BlockState blockState = AntiVoidModule.mc.level.getBlockState(blockPos);
             if (blockState.isAir() || blockState.getCollisionShape((BlockGetter)AntiVoidModule.mc.level, blockPos).isEmpty()) continue;

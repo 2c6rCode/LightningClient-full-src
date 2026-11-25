@@ -39,15 +39,15 @@ extends Button {
     private final Animation sliderAnim;
     private boolean prevVisible = false;
 
-    public NumberButton(NumberSetting numberSetting, Frame frame, int n) {
-        super(numberSetting, frame, n, numberSetting.getDescription());
+    public NumberButton(NumberSetting numberSetting, Frame frame, int height) {
+        super(numberSetting, frame, height, numberSetting.getDescription());
         this.setting = numberSetting;
         this.slideAnim = new Animation(0.0f, 0.0f, 220, Easing.Method.EASE_OUT_CUBIC);
         this.sliderAnim = new Animation(0.0f, 0.0f, 220, Easing.Method.EASE_OUT_CUBIC);
     }
 
-    public void setPrevVisible(boolean bl) {
-        this.prevVisible = bl;
+    public void setPrevVisible(boolean prevVisible) {
+        this.prevVisible = prevVisible;
     }
 
     public void resetSlide() {
@@ -62,83 +62,82 @@ extends Button {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        float f2;
-        int n3;
-        double d;
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        float animatedWidth;
+        int slideOffset;
+        double valueWidth;
         if (!this.prevVisible) {
             this.resetSlide();
             this.prevVisible = true;
         }
-        double d2 = this.getWidth() - 2 - this.getPadding() * 2;
-        double d3 = Math.min(d2, (double)Math.max(0, n - this.getX() - 1 - this.getPadding()));
+        double trackWidth = this.getWidth() - 2 - this.getPadding() * 2;
+        double mouseOffset = Math.min(trackWidth, (double)Math.max(0, mouseX - this.getX() - 1 - this.getPadding()));
         if (this.setting.getType() == NumberSetting.Type.INTEGER) {
-            d = d2 * (double)(this.setting.getValue().intValue() - this.setting.getMinimum().intValue()) / (double)(this.setting.getMaximum().intValue() - this.setting.getMinimum().intValue());
+            valueWidth = trackWidth * (double)(this.setting.getValue().intValue() - this.setting.getMinimum().intValue()) / (double)(this.setting.getMaximum().intValue() - this.setting.getMinimum().intValue());
             if (this.dragging) {
-                int n4 = (int)MathUtils.round(d3 / d2 * (double)(this.setting.getMaximum().intValue() - this.setting.getMinimum().intValue()) + (double)this.setting.getMinimum().intValue(), 0);
-                n3 = this.setting.getStep().intValue();
-                this.setting.setValue(n3 > 0 ? Math.round((float)n4 / (float)n3) * n3 : n4);
+                int rawInt = (int)MathUtils.round(mouseOffset / trackWidth * (double)(this.setting.getMaximum().intValue() - this.setting.getMinimum().intValue()) + (double)this.setting.getMinimum().intValue(), 0);
+                int stepInt = this.setting.getStep().intValue();
+                this.setting.setValue(stepInt > 0 ? Math.round((float)rawInt / (float)stepInt) * stepInt : rawInt);
             }
         } else if (this.setting.getType() == NumberSetting.Type.FLOAT) {
-            d = d2 * (double)(this.setting.getValue().floatValue() - this.setting.getMinimum().floatValue()) / (double)(this.setting.getMaximum().floatValue() - this.setting.getMinimum().floatValue());
+            valueWidth = trackWidth * (double)(this.setting.getValue().floatValue() - this.setting.getMinimum().floatValue()) / (double)(this.setting.getMaximum().floatValue() - this.setting.getMinimum().floatValue());
             if (this.dragging) {
-                float f3 = (float)MathUtils.round(d3 / d2 * (double)(this.setting.getMaximum().floatValue() - this.setting.getMinimum().floatValue()) + (double)this.setting.getMinimum().floatValue(), 2);
-                float f4 = this.setting.getStep().floatValue();
-                float f5 = f4 > 0.0f ? (float)MathUtils.round((float)Math.round(f3 / f4) * f4, 2) : f3;
-                this.setting.setValue(Float.valueOf(f5));
+                float rawFloat = (float)MathUtils.round(mouseOffset / trackWidth * (double)(this.setting.getMaximum().floatValue() - this.setting.getMinimum().floatValue()) + (double)this.setting.getMinimum().floatValue(), 2);
+                float stepFloat = this.setting.getStep().floatValue();
+                float steppedFloat = stepFloat > 0.0f ? (float)MathUtils.round((float)Math.round(rawFloat / stepFloat) * stepFloat, 2) : rawFloat;
+                this.setting.setValue(Float.valueOf(steppedFloat));
             }
         } else if (this.setting.getType() == NumberSetting.Type.DOUBLE) {
-            d = d2 * (this.setting.getValue().doubleValue() - this.setting.getMinimum().doubleValue()) / (this.setting.getMaximum().doubleValue() - this.setting.getMinimum().doubleValue());
+            valueWidth = trackWidth * (this.setting.getValue().doubleValue() - this.setting.getMinimum().doubleValue()) / (this.setting.getMaximum().doubleValue() - this.setting.getMinimum().doubleValue());
             if (this.dragging) {
-                double d4 = MathUtils.round(d3 / d2 * (this.setting.getMaximum().doubleValue() - this.setting.getMinimum().doubleValue()) + this.setting.getMinimum().doubleValue(), 2);
-                double d5 = this.setting.getStep().doubleValue();
-                double d6 = d5 > 0.0 ? MathUtils.round((double)Math.round(d4 / d5) * d5, 2) : d4;
-                this.setting.setValue(d6);
+                double rawDouble = MathUtils.round(mouseOffset / trackWidth * (this.setting.getMaximum().doubleValue() - this.setting.getMinimum().doubleValue()) + this.setting.getMinimum().doubleValue(), 2);
+                double stepDouble = this.setting.getStep().doubleValue();
+                double steppedDouble = stepDouble > 0.0 ? MathUtils.round((double)Math.round(rawDouble / stepDouble) * stepDouble, 2) : rawDouble;
+                this.setting.setValue(steppedDouble);
             }
         } else {
-            d = d2 * (double)(this.setting.getValue().longValue() - this.setting.getMinimum().longValue()) / (double)(this.setting.getMaximum().longValue() - this.setting.getMinimum().longValue());
+            valueWidth = trackWidth * (double)(this.setting.getValue().longValue() - this.setting.getMinimum().longValue()) / (double)(this.setting.getMaximum().longValue() - this.setting.getMinimum().longValue());
             if (this.dragging) {
-                long l = (long)MathUtils.round(d3 / d2 * (double)(this.setting.getMaximum().longValue() - this.setting.getMinimum().longValue()) + (double)this.setting.getMinimum().longValue(), 0);
-                this.setting.setValue(l);
+                long rawLong = (long)MathUtils.round(mouseOffset / trackWidth * (double)(this.setting.getMaximum().longValue() - this.setting.getMinimum().longValue()) + (double)this.setting.getMinimum().longValue(), 0);
+                this.setting.setValue(rawLong);
             }
         }
-        float f6 = this.slideAnim.get(1.0f);
-        n3 = Math.round((1.0f - f6) * -20.0f);
-        int n5 = this.getX() + this.getPadding() + 1 + n3;
-        int n6 = this.getX() + this.getWidth() - this.getPadding() - 1 + n3;
-        LightningSkin.fq(guiGraphicsExtractor, n5, this.getY(), n6, this.getY() + this.getHeight() - 1, new Color(0, 0, 0, 45));
-        if (this.isHovering(n, n2)) {
-            LightningSkin.fq(guiGraphicsExtractor, n5, this.getY(), n6, this.getY() + this.getHeight() - 1, new Color(255, 255, 255, 12));
+        float slideProgress = this.slideAnim.get(1.0f);
+        slideOffset = Math.round((1.0f - slideProgress) * -20.0f);
+        int leftX = this.getX() + this.getPadding() + 1 + slideOffset;
+        int rightX = this.getX() + this.getWidth() - this.getPadding() - 1 + slideOffset;
+        LightningSkin.fq(guiGraphicsExtractor, leftX, this.getY(), rightX, this.getY() + this.getHeight() - 1, new Color(0, 0, 0, 45));
+        if (this.isHovering(mouseX, mouseY)) {
+            LightningSkin.fq(guiGraphicsExtractor, leftX, this.getY(), rightX, this.getY() + this.getHeight() - 1, new Color(255, 255, 255, 12));
         }
-        float f7 = (float)Math.max(0.0, Math.min(d2, d));
+        float targetWidth = (float)Math.max(0.0, Math.min(trackWidth, valueWidth));
         if (this.dragging) {
-            this.sliderAnim.setCurrent(f7);
-            this.sliderAnim.setPrev(f7);
-            f2 = f7;
+            this.sliderAnim.setCurrent(targetWidth);
+            this.sliderAnim.setPrev(targetWidth);
+            animatedWidth = targetWidth;
         } else {
-            f2 = this.sliderAnim.get(f7);
+            animatedWidth = this.sliderAnim.get(targetWidth);
         }
-        if (f2 > 0.5f) {
-            LightningSkin.fq(guiGraphicsExtractor, n5, this.getY(), (float)n5 + f2, this.getY() + this.getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 95));
-            LightningSkin.fq(guiGraphicsExtractor, (float)n5 + f2 - 1.0f, this.getY(), (float)n5 + f2 + 1.0f, this.getY() + this.getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 230));
+        if (animatedWidth > 0.5f) {
+            LightningSkin.fq(guiGraphicsExtractor, leftX, this.getY(), (float)leftX + animatedWidth, this.getY() + this.getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 95));
+            LightningSkin.fq(guiGraphicsExtractor, (float)leftX + animatedWidth - 1.0f, this.getY(), (float)leftX + animatedWidth + 1.0f, this.getY() + this.getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 230));
         }
-        boolean bl = System.currentTimeMillis() / 500L % 2L == 0L;
-        boolean bl2 = bl;
-        String string = this.selecting ? "" : (bl ? "|" : "");
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)(this.listening ? this.currentString + string : this.setting.getTag()), n5 + this.getTextPadding() - this.getPadding() + 2, this.getY() + 2, Color.WHITE);
+        boolean showCursor = System.currentTimeMillis() / 500L % 2L == 0L;
+        String cursor = this.selecting ? "" : (showCursor ? "|" : "");
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)(this.listening ? this.currentString + cursor : this.setting.getTag()), leftX + this.getTextPadding() - this.getPadding() + 2, this.getY() + 2, Color.WHITE);
         if (!this.listening) {
-            String string2 = this.setting.isZeroIsIgnore() && this.setting.getValue().doubleValue() == 0.0 ? "Ignore" : String.valueOf(this.setting.getValue());
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, String.valueOf(ChatFormatting.GRAY) + string2, n6 - this.getTextPadding() + this.getPadding() - Night.FONT_MANAGER.getWidth(string2), this.getY() + 2, Color.WHITE);
+            String valueText = this.setting.isZeroIsIgnore() && this.setting.getValue().doubleValue() == 0.0 ? "Ignore" : String.valueOf(this.setting.getValue());
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, String.valueOf(ChatFormatting.GRAY) + valueText, rightX - this.getTextPadding() + this.getPadding() - Night.FONT_MANAGER.getWidth(valueText), this.getY() + 2, Color.WHITE);
         }
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        if (this.isHovering(d, d2) && n == 0) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.isHovering(mouseX, mouseY) && button == 0) {
             this.dragging = true;
         }
-        if (n == 1) {
-            if (this.isHovering(d, d2) && !this.listening) {
+        if (button == 1) {
+            if (this.isHovering(mouseX, mouseY) && !this.listening) {
                 this.listening = true;
                 this.currentString = "";
             } else {
@@ -149,8 +148,8 @@ extends Button {
     }
 
     @Override
-    public void mouseReleased(double d, double d2, int n) {
-        if (n == 0) {
+    public void mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0) {
             if (this.dragging) {
                 this.playClickSound();
             }
@@ -159,7 +158,7 @@ extends Button {
     }
 
     @Override
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!this.listening) {
             return;
         }
@@ -206,10 +205,9 @@ extends Button {
     }
 
     @Override
-    public void charTyped(char c, int n) {
+    public void charTyped(char ch, int modifiers) {
         if (this.listening) {
-            this.currentString = this.selecting ? String.valueOf(c) : this.currentString + c;
-            String string = this.currentString;
+            this.currentString = this.selecting ? String.valueOf(ch) : this.currentString + ch;
             if (this.selecting) {
                 this.selecting = false;
             }

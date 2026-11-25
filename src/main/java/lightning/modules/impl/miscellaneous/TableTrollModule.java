@@ -30,13 +30,13 @@ extends Module {
             ++this.ticks;
             return;
         }
-        int n = 0;
-        for (int i = 0; i < Night.WORLD_MANAGER.getRadius(5.0) && n <= this.limit.getValue().intValue(); ++i) {
+        int placedCount = 0;
+        for (int i = 0; i < Night.WORLD_MANAGER.getRadius(5.0) && placedCount <= this.limit.getValue().intValue(); ++i) {
             BlockPos blockPos = TableTrollModule.mc.player.blockPosition().offset(Night.WORLD_MANAGER.getOffset(i));
             if (!WorldUtils.isPlaceable(blockPos) || TableTrollModule.mc.level.getBlockState(blockPos.below()).canBeReplaced() || TableTrollModule.mc.level.getBlockState(blockPos.below()).getBlock() == Blocks.ENDER_CHEST) continue;
             WorldUtils.placeBlock(blockPos, WorldUtils.getDirection(blockPos, false), InteractionHand.MAIN_HAND, false, false);
             this.ticks = this.delay.getValue().intValue();
-            ++n;
+            ++placedCount;
         }
     }
 }

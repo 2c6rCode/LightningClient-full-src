@@ -43,26 +43,26 @@ implements IPatchModule {
         if (!(packet instanceof ClientboundContainerSetSlotPacket)) {
             return;
         }
-        ClientboundContainerSetSlotPacket clientboundContainerSetSlotPacket = (ClientboundContainerSetSlotPacket)packet;
-        if (clientboundContainerSetSlotPacket.getContainerId() != 0) {
+        ClientboundContainerSetSlotPacket setSlotPacket = (ClientboundContainerSetSlotPacket)packet;
+        if (setSlotPacket.getContainerId() != 0) {
             return;
         }
-        int n = clientboundContainerSetSlotPacket.getSlot();
-        if (n < 36 || n > 44) {
+        int slot = setSlotPacket.getSlot();
+        if (slot < 36 || slot > 44) {
             return;
         }
-        int n2 = n - 36;
-        ItemStack itemStack = clientboundContainerSetSlotPacket.getItem();
-        ItemStack itemStack2 = PatchModule.mc.player.getInventory().getItem(n2);
-        ItemStack itemStack3 = PatchModule.mc.player.getMainHandItem();
-        if (!itemStack.isEmpty() && !itemStack2.isEmpty() && itemStack.getItem() == itemStack2.getItem() && itemStack.getCount() == itemStack2.getCount()) {
+        int hotbarIndex = slot - 36;
+        ItemStack packetStack = setSlotPacket.getItem();
+        ItemStack inventoryStack = PatchModule.mc.player.getInventory().getItem(hotbarIndex);
+        ItemStack mainHandStack = PatchModule.mc.player.getMainHandItem();
+        if (!packetStack.isEmpty() && !inventoryStack.isEmpty() && packetStack.getItem() == inventoryStack.getItem() && packetStack.getCount() == inventoryStack.getCount()) {
             packetReceiveEvent.setCancelled(true);
             return;
         }
-        if (PatchModule.mc.gui.screen() == null && !itemStack2.isEmpty() && !itemStack.isEmpty() && itemStack2.getItem() != itemStack.getItem()) {
-            int n3 = PatchModule.mc.player.getInventory().getSelectedSlot();
-            int n4 = Night.POSITION_MANAGER.getServerSlot();
-            if (n2 != n3 && (itemStack.getItem() == itemStack3.getItem() || n4 >= 0 && n4 <= 8 && itemStack.getItem() == PatchModule.mc.player.getInventory().getItem(n4).getItem())) {
+        if (PatchModule.mc.gui.screen() == null && !inventoryStack.isEmpty() && !packetStack.isEmpty() && inventoryStack.getItem() != packetStack.getItem()) {
+            int selectedSlot = PatchModule.mc.player.getInventory().getSelectedSlot();
+            int serverSlot = Night.POSITION_MANAGER.getServerSlot();
+            if (hotbarIndex != selectedSlot && (packetStack.getItem() == mainHandStack.getItem() || serverSlot >= 0 && serverSlot <= 8 && packetStack.getItem() == PatchModule.mc.player.getInventory().getItem(serverSlot).getItem())) {
                 packetReceiveEvent.setCancelled(true);
                 return;
             }

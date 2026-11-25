@@ -88,7 +88,7 @@ public class ClientPlayerInteractionManagerMixin {
     private boolean night$stoppedSprintForClick = false;
 
     @Inject(method={"handleContainerInput"}, at={@At(value="HEAD")})
-    private void beforeContainerClick(int n, int n2, int n3, ContainerInput containerInput, Player player, CallbackInfo callbackInfo) {
+    private void beforeContainerClick(int containerId, int slotNum, int buttonNum, ContainerInput containerInput, Player player, CallbackInfo callbackInfo) {
         try {
             this.night$stoppedSprintForClick = false;
             InventoryControlModule inventoryControlModule = (InventoryControlModule)Night.MODULE_MANAGER.getModule(InventoryControlModule.class);
@@ -116,7 +116,7 @@ public class ClientPlayerInteractionManagerMixin {
     }
 
     @Inject(method={"handleContainerInput"}, at={@At(value="TAIL")})
-    private void afterContainerClick(int n, int n2, int n3, ContainerInput containerInput, Player player, CallbackInfo callbackInfo) {
+    private void afterContainerClick(int containerId, int slotNum, int buttonNum, ContainerInput containerInput, Player player, CallbackInfo callbackInfo) {
         if (!this.night$stoppedSprintForClick) {
             return;
         }
@@ -279,7 +279,7 @@ public class ClientPlayerInteractionManagerMixin {
     }
 
     @Inject(method={"handlePickItemFromBlock"}, at={@At(value="HEAD")}, cancellable=true)
-    private void onPickBlock(BlockPos blockPos, boolean bl, CallbackInfo callbackInfo) {
+    private void onPickBlock(BlockPos blockPos, boolean includeData, CallbackInfo callbackInfo) {
         try {
             NoMiddleClickModule noMiddleClickModule;
             if (Night.MODULE_MANAGER != null && (noMiddleClickModule = (NoMiddleClickModule)Night.MODULE_MANAGER.getModule(NoMiddleClickModule.class)) != null && noMiddleClickModule.isToggled()) {
@@ -293,7 +293,7 @@ public class ClientPlayerInteractionManagerMixin {
     }
 
     @Inject(method={"handlePickItemFromEntity"}, at={@At(value="HEAD")}, cancellable=true)
-    private void onPickEntity(Entity entity, boolean bl, CallbackInfo callbackInfo) {
+    private void onPickEntity(Entity entity, boolean includeData, CallbackInfo callbackInfo) {
         try {
             NoMiddleClickModule noMiddleClickModule;
             if (Night.MODULE_MANAGER != null && (noMiddleClickModule = (NoMiddleClickModule)Night.MODULE_MANAGER.getModule(NoMiddleClickModule.class)) != null && noMiddleClickModule.isToggled()) {

@@ -60,12 +60,12 @@ public class ClickGuiBackground {
     private static float phaseSeconds;
     private static long lastPhaseUpdateMs;
 
-    private static void ensureProcessed(int n, float f, float f2, Color color, boolean bl) {
-        long l = System.currentTimeMillis();
-        if (l - lastProcessedAtMs < 8L) {
+    private static void ensureProcessed(int blurRadius, float speed, float alpha, Color color, boolean darkMode) {
+        long now = System.currentTimeMillis();
+        if (now - lastProcessedAtMs < 8L) {
             return;
         }
-        lastProcessedAtMs = l;
+        lastProcessedAtMs = now;
         PostChain postChain = Minecraft.getInstance().getShaderManager().getPostChain(CHAIN_ID, LevelTargetBundle.MAIN_TARGETS);
         if (postChain != chain) {
             chain = postChain;
@@ -74,7 +74,7 @@ public class ClickGuiBackground {
         if (chain == null) {
             return;
         }
-        ClickGuiBackground.writeUniforms(n, f, f2, color, bl);
+        ClickGuiBackground.writeUniforms(blurRadius, speed, alpha, color, darkMode);
         chain.process(Minecraft.getInstance().gameRenderer.mainRenderTarget(), GraphicsResourceAllocator.UNPOOLED);
         RenderTarget renderTarget = (RenderTarget)((PostEffectProcessorAccessor)chain).getPersistentTargets().get(TARGET_ID);
         if (renderTarget == null || renderTarget.getColorTextureView() == null) {
@@ -92,7 +92,7 @@ public class ClickGuiBackground {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    private static void writeUniforms(int n, float f, float f2, Color color, boolean bl) {
+    private static void writeUniforms(int blurRadius, float speed, float alpha, Color color, boolean darkMode) {
         for (PostPass postPass : ((PostEffectProcessorAccessor)chain).getPasses()) {
             GpuBuffer gpuBuffer;
             Map<String, GpuBuffer> map = ((PostPassAccessor)postPass).night$getCustomUniforms();
@@ -100,18 +100,18 @@ public class ClickGuiBackground {
             if ((uboBuffer == null || map.get(UNIFORM_NAME) != uboBuffer) && (gpuBuffer = map.put(UNIFORM_NAME, uboBuffer = RenderSystem.getDevice().createBuffer(() -> "Lightning ClickGUI BG UBO", 136, (long)UBO_SIZE))) != null) {
                 gpuBuffer.close();
             }
-            long l = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
             if (lastPhaseUpdateMs >= 0L) {
-                phaseSeconds += (float)(l - lastPhaseUpdateMs) / 1000.0f * f;
+                phaseSeconds += (float)(now - lastPhaseUpdateMs) / 1000.0f * speed;
             }
-            lastPhaseUpdateMs = l;
-            float f3 = (float)color.getRed() / 255.0f;
-            float f4 = (float)color.getGreen() / 255.0f;
-            float f5 = (float)color.getBlue() / 255.0f;
-            float f6 = bl ? 1.0f : 0.0f;
+            lastPhaseUpdateMs = now;
+            float red = (float)color.getRed() / 255.0f;
+            float green = (float)color.getGreen() / 255.0f;
+            float blue = (float)color.getBlue() / 255.0f;
+            float darkFlag = darkMode ? 1.0f : 0.0f;
             MemoryStack memoryStack = MemoryStack.stackPush();
             try {
-                ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4(phaseSeconds, (float)n, f2, f).putVec4(f3, f4, f5, f6).get();
+                ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4(phaseSeconds, (float)blurRadius, alpha, speed).putVec4(red, green, blue, darkFlag).get();
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(uboBuffer.slice(), byteBuffer);
             }
             finally {
@@ -121,17 +121,17 @@ public class ClickGuiBackground {
         }
     }
 
-    public static void renderBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, int n3, float f, float f2, Color color, boolean bl) {
-        if (f2 <= 0.001f || n3 < 0) {
+    public static void renderBackground(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, int blurRadius, float speed, float alpha, Color color, boolean darkMode) {
+        if (alpha <= 0.001f || blurRadius < 0) {
             return;
         }
-        ClickGuiBackground.ensureProcessed(n3, f, f2, color, bl);
+        ClickGuiBackground.ensureProcessed(blurRadius, speed, alpha, color, darkMode);
         if (texture == null) {
             return;
         }
-        int n4 = Math.min(255, Math.max(0, Math.round(f2 * 255.0f)));
-        int n5 = n4 << 24 | 0xFFFFFF;
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, 0, 0, 0.0f, 0.0f, n, n2, n, n2, n, n2, n5);
+        int alphaByte = Math.min(255, Math.max(0, Math.round(alpha * 255.0f)));
+        int tintColor = alphaByte << 24 | 0xFFFFFF;
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, 0, 0, 0.0f, 0.0f, width, height, width, height, width, height, tintColor);
     }
 
     static {

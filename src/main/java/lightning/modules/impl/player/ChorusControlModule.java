@@ -117,8 +117,8 @@ extends Module {
         if (this.packet == null) {
             return;
         }
-        Vec3 vec3 = new Vec3(this.packet.change().position().x(), this.packet.change().position().y(), this.packet.change().position().z());
-        AABB aABB = EntityTypes.PLAYER.getDimensions().makeBoundingBox(vec3);
+        Vec3 teleportPos = new Vec3(this.packet.change().position().x(), this.packet.change().position().y(), this.packet.change().position().z());
+        AABB aABB = EntityTypes.PLAYER.getDimensions().makeBoundingBox(teleportPos);
         if (this.mode.getValue().equalsIgnoreCase("Fill") || this.mode.getValue().equalsIgnoreCase("Both")) {
             Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, this.fillColor.getColor());
         }

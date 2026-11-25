@@ -34,8 +34,8 @@ extends Button {
     private String previousValue;
     private long valueChangeTime;
 
-    public ModeButton(ModeSetting modeSetting, Frame frame, int n) {
-        super(modeSetting, frame, n, modeSetting.getDescription());
+    public ModeButton(ModeSetting modeSetting, Frame frame, int height) {
+        super(modeSetting, frame, height, modeSetting.getDescription());
         this.setting = modeSetting;
         this.lastValue = modeSetting.getValue();
     }
@@ -45,89 +45,87 @@ extends Button {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        String string;
-        int n3;
-        int n4;
-        boolean bl = this.isHovering(n, n2);
-        float f2 = this.hoverAnim.get(bl ? 1.0f : 0.0f);
-        float f3 = this.textAnim.get(bl ? 1.0f : 0.0f);
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        String curText;
+        int alpha;
+        int slideOffset;
+        boolean hovered = this.isHovering(mouseX, mouseY);
+        float hoverProgress = this.hoverAnim.get(hovered ? 1.0f : 0.0f);
+        float textProgress = this.textAnim.get(hovered ? 1.0f : 0.0f);
         LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), this.getX() + this.getWidth() - this.getPadding() - 1, this.getY() + this.getParent().getHeight() - 1, new Color(0, 0, 0, 40));
-        if (f2 > 0.001f) {
-            Color color = new Color(255, 255, 255, (int)(20.0f * f2));
+        if (hoverProgress > 0.001f) {
+            Color color = new Color(255, 255, 255, (int)(20.0f * hoverProgress));
             LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), this.getX() + this.getWidth() - this.getPadding() - 1, this.getY() + this.getParent().getHeight() - 1, color);
         }
-        float f4 = (float)(this.getX() + this.getTextPadding() + 3) + f3 * 1.5f;
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, this.setting.getTag(), (int)f4, this.getY() + 2, Color.WHITE);
-        String string2 = this.setting.getValue();
-        if (!string2.equals(this.lastValue)) {
+        float textX = (float)(this.getX() + this.getTextPadding() + 3) + textProgress * 1.5f;
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, this.setting.getTag(), (int)textX, this.getY() + 2, Color.WHITE);
+        String currentValue = this.setting.getValue();
+        if (!currentValue.equals(this.lastValue)) {
             this.previousValue = this.lastValue;
-            this.lastValue = string2;
+            this.lastValue = currentValue;
             this.valueChangeTime = System.currentTimeMillis();
         }
-        float f5 = this.valueChangeTime == 0L ? 1.0f : Easing.ease(Easing.toDelta(this.valueChangeTime, 180), Easing.Method.EASE_OUT_CUBIC);
-        int n5 = this.getX() + this.getWidth() - this.getTextPadding() - 1;
-        if (f5 < 1.0f && this.previousValue != null) {
-            n4 = Math.round(f5 * 10.0f);
-            n3 = Math.round(255.0f * (1.0f - f5));
-            string = String.valueOf(ChatFormatting.GRAY) + this.previousValue;
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n5 - Night.FONT_MANAGER.getWidth(string) - n4, this.getY() + 2, new Color(255, 255, 255, n3));
+        float slideProgress = this.valueChangeTime == 0L ? 1.0f : Easing.ease(Easing.toDelta(this.valueChangeTime, 180), Easing.Method.EASE_OUT_CUBIC);
+        int rightEdge = this.getX() + this.getWidth() - this.getTextPadding() - 1;
+        if (slideProgress < 1.0f && this.previousValue != null) {
+            slideOffset = Math.round(slideProgress * 10.0f);
+            alpha = Math.round(255.0f * (1.0f - slideProgress));
+            String prevText = String.valueOf(ChatFormatting.GRAY) + this.previousValue;
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, prevText, rightEdge - Night.FONT_MANAGER.getWidth(prevText) - slideOffset, this.getY() + 2, new Color(255, 255, 255, alpha));
         }
-        n4 = Math.round((1.0f - f5) * 10.0f);
-        n3 = Math.round(255.0f * f5);
-        string = String.valueOf(ChatFormatting.GRAY) + string2;
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n5 - Night.FONT_MANAGER.getWidth(string) + n4, this.getY() + 2, new Color(255, 255, 255, n3));
-        float f6 = this.getOpenAmount();
-        if (f6 > 0.001f) {
-            int n6 = Mth.clamp((int)Math.round((float)this.setting.getModes().size() * f6), (int)0, (int)this.setting.getModes().size());
-            int n7 = n6 * this.getParent().getHeight();
-            int n8 = this.getY() + this.getParent().getHeight();
-            LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 2, n8, this.getX() + this.getWidth() - this.getPadding() - 2, n8 + n7, new Color(11, 11, 11, 210));
-            LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 2, n8, this.getX() + this.getPadding() + 4, n8 + n7, ClickGuiScreen.getButtonColor(this.getY(), 160));
-            for (int i = 0; i < n6; ++i) {
-                String string3 = this.setting.getModes().get(i);
-                int n9 = n8 + i * this.getParent().getHeight();
-                boolean bl2 = this.setting.getValue().equals(string3);
-                boolean bl3 = n >= this.getX() + this.getPadding() && n <= this.getX() + this.getWidth() - this.getPadding() && n2 >= n9 && n2 < n9 + this.getParent().getHeight();
-                boolean bl4 = bl3;
-                if (bl3) {
-                    LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 4, n9, this.getX() + this.getWidth() - this.getPadding() - 2, n9 + this.getParent().getHeight() - 1, new Color(255, 255, 255, 18));
+        slideOffset = Math.round((1.0f - slideProgress) * 10.0f);
+        alpha = Math.round(255.0f * slideProgress);
+        curText = String.valueOf(ChatFormatting.GRAY) + currentValue;
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, curText, rightEdge - Night.FONT_MANAGER.getWidth(curText) + slideOffset, this.getY() + 2, new Color(255, 255, 255, alpha));
+        float openAmount = this.getOpenAmount();
+        if (openAmount > 0.001f) {
+            int visibleModes = Mth.clamp((int)Math.round((float)this.setting.getModes().size() * openAmount), (int)0, (int)this.setting.getModes().size());
+            int dropdownH = visibleModes * this.getParent().getHeight();
+            int dropdownY = this.getY() + this.getParent().getHeight();
+            LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 2, dropdownY, this.getX() + this.getWidth() - this.getPadding() - 2, dropdownY + dropdownH, new Color(11, 11, 11, 210));
+            LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 2, dropdownY, this.getX() + this.getPadding() + 4, dropdownY + dropdownH, ClickGuiScreen.getButtonColor(this.getY(), 160));
+            for (int i = 0; i < visibleModes; ++i) {
+                String modeName = this.setting.getModes().get(i);
+                int itemY = dropdownY + i * this.getParent().getHeight();
+                boolean isSelected = this.setting.getValue().equals(modeName);
+                boolean itemHovered = mouseX >= this.getX() + this.getPadding() && mouseX <= this.getX() + this.getWidth() - this.getPadding() && mouseY >= itemY && mouseY < itemY + this.getParent().getHeight();
+                if (itemHovered) {
+                    LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 4, itemY, this.getX() + this.getWidth() - this.getPadding() - 2, itemY + this.getParent().getHeight() - 1, new Color(255, 255, 255, 18));
                 }
-                if (bl2) {
-                    LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 4, n9, this.getX() + this.getWidth() - this.getPadding() - 2, n9 + this.getParent().getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 45));
+                if (isSelected) {
+                    LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 4, itemY, this.getX() + this.getWidth() - this.getPadding() - 2, itemY + this.getParent().getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 45));
                 }
-                Color color = bl2 ? Color.WHITE : (bl3 ? new Color(220, 220, 230) : new Color(150, 150, 160));
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (bl2 ? "\u2022 " : "  ") + string3, this.getX() + this.getTextPadding() + 5, n9 + 2, color);
+                Color color = isSelected ? Color.WHITE : (itemHovered ? new Color(220, 220, 230) : new Color(150, 150, 160));
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (isSelected ? "\u2022 " : "  ") + modeName, this.getX() + this.getTextPadding() + 5, itemY + 2, color);
             }
         }
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        if (this.isHovering(d, d2)) {
-            if (n == 0) {
-                int n2 = this.setting.getModes().indexOf(this.setting.getValue());
-                if (n2 < this.setting.getModes().size() - 1) {
-                    this.setting.setValue(this.setting.getModes().get(n2 + 1));
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.isHovering(mouseX, mouseY)) {
+            if (button == 0) {
+                int idx = this.setting.getModes().indexOf(this.setting.getValue());
+                if (idx < this.setting.getModes().size() - 1) {
+                    this.setting.setValue(this.setting.getModes().get(idx + 1));
                 } else {
                     this.setting.setValue(this.setting.getModes().get(0));
                 }
                 this.playClickSound();
-            } else if (n == 1) {
+            } else if (button == 1) {
                 this.open = !this.open;
                 this.playClickSound();
             }
         }
         if (this.open) {
-            float f = this.getOpenAmount();
-            int n3 = Mth.clamp((int)Math.round((float)this.setting.getModes().size() * f), (int)0, (int)this.setting.getModes().size());
-            for (int i = 0; i < n3; ++i) {
-                String string = this.setting.getModes().get(i);
-                int n4 = this.getY() + this.getParent().getHeight() + i * this.getParent().getHeight();
-                boolean bl = d >= (double)(this.getX() + this.getPadding()) && d <= (double)(this.getX() + this.getWidth() - this.getPadding()) && d2 >= (double)n4 && d2 < (double)(n4 + this.getParent().getHeight());
-                boolean bl2 = bl;
-                if (!bl || n != 0) continue;
-                this.setting.setValue(string);
+            float openAmount = this.getOpenAmount();
+            int visibleModes = Mth.clamp((int)Math.round((float)this.setting.getModes().size() * openAmount), (int)0, (int)this.setting.getModes().size());
+            for (int i = 0; i < visibleModes; ++i) {
+                String modeName = this.setting.getModes().get(i);
+                int itemY = this.getY() + this.getParent().getHeight() + i * this.getParent().getHeight();
+                boolean itemHovered = mouseX >= (double)(this.getX() + this.getPadding()) && mouseX <= (double)(this.getX() + this.getWidth() - this.getPadding()) && mouseY >= (double)itemY && mouseY < (double)(itemY + this.getParent().getHeight());
+                if (!itemHovered || button != 0) continue;
+                this.setting.setValue(modeName);
                 this.playClickSound();
             }
         }

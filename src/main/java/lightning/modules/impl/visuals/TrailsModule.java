@@ -83,27 +83,25 @@ extends Module {
         if (TrailsModule.mc.level == null || TrailsModule.mc.player == null) {
             return;
         }
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         for (Entity entity : TrailsModule.mc.level.entitiesForRendering()) {
-            List list;
-            List list2;
             if (!this.isValidTarget(entity) || !entity.isAlive()) continue;
-            UUID uUID2 = entity.getUUID();
-            Vec3 vec3 = entity.position().add(0.0, (double)entity.getBbHeight() * 0.5, 0.0);
-            List list3 = list2 = (list = this.trails.computeIfAbsent(uUID2, uUID -> new ArrayList()));
-            synchronized (list3) {
-                if (list.isEmpty()) {
+            UUID entityId = entity.getUUID();
+            Vec3 centerPos = entity.position().add(0.0, (double)entity.getBbHeight() * 0.5, 0.0);
+            List<TrailPoint> points = this.trails.computeIfAbsent(entityId, id -> new ArrayList());
+            synchronized (points) {
+                if (points.isEmpty()) {
                     Projectile projectile;
-                    Entity entity2;
-                    if (entity instanceof Projectile && (entity2 = (projectile = (Projectile)entity).getOwner()) instanceof LivingEntity) {
-                        LivingEntity livingEntity = (LivingEntity)entity2;
-                        list.add(new TrailPoint(livingEntity.getEyePosition().subtract(0.0, 0.1, 0.0), l));
+                    Entity owner;
+                    if (entity instanceof Projectile && (owner = (projectile = (Projectile)entity).getOwner()) instanceof LivingEntity) {
+                        LivingEntity livingEntity = (LivingEntity)owner;
+                        points.add(new TrailPoint(livingEntity.getEyePosition().subtract(0.0, 0.1, 0.0), now));
                     } else if ((double)entity.distanceTo((Entity)TrailsModule.mc.player) <= 3.5 && TrailsModule.mc.player.isAlive()) {
-                        list.add(new TrailPoint(TrailsModule.mc.player.getEyePosition().subtract(0.0, 0.1, 0.0), l));
+                        points.add(new TrailPoint(TrailsModule.mc.player.getEyePosition().subtract(0.0, 0.1, 0.0), now));
                     }
                 }
-                if (list.isEmpty() || ((TrailPoint)list.get(list.size() - 1)).pos().distanceToSqr(vec3) > 1.0E-4) {
-                    list.add(new TrailPoint(vec3, l));
+                if (points.isEmpty() || points.get(points.size() - 1).pos().distanceToSqr(centerPos) > 1.0E-4) {
+                    points.add(new TrailPoint(centerPos, now));
                 }
             }
         }
@@ -117,46 +115,46 @@ extends Module {
         if (TrailsModule.mc.level == null || TrailsModule.mc.player == null || this.trails.isEmpty()) {
             return;
         }
-        long l = System.currentTimeMillis();
-        long l2 = this.fade.getValue().longValue();
+        long now = System.currentTimeMillis();
+        long fadeMs = this.fade.getValue().longValue();
         PoseStack poseStack = renderWorldEvent.getMatrices();
         Color color = this.color.getColor();
-        HashMap<UUID, Entity> hashMap = new HashMap<UUID, Entity>();
+        HashMap<UUID, Entity> aliveEntities = new HashMap<UUID, Entity>();
         for (Entity entity : TrailsModule.mc.level.entitiesForRendering()) {
             if (!entity.isAlive()) continue;
-            hashMap.put(entity.getUUID(), entity);
+            aliveEntities.put(entity.getUUID(), entity);
         }
         Iterator<Map.Entry<UUID, List<TrailPoint>>> iterator = this.trails.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<UUID, List<TrailPoint>> entry = iterator.next();
-            UUID uUID = entry.getKey();
-            List<TrailPoint> list2 = entry.getValue();
-            Entity entity = hashMap.get(uUID);
-            synchronized (list2) {
-                list2.removeIf(trailPoint -> l - trailPoint.time() > l2);
-                if (list2.isEmpty() && entity == null) {
+            UUID entityId = entry.getKey();
+            List<TrailPoint> points = entry.getValue();
+            Entity entity = aliveEntities.get(entityId);
+            synchronized (points) {
+                points.removeIf(trailPoint -> now - trailPoint.time() > fadeMs);
+                if (points.isEmpty() && entity == null) {
                     iterator.remove();
                     continue;
                 }
-                if (list2.size() < 1 && entity == null) {
+                if (points.size() < 1 && entity == null) {
                     continue;
                 }
-                for (int i = 0; i < list2.size() - 1; ++i) {
-                    TrailPoint trailPoint2 = list2.get(i);
-                    TrailPoint trailPoint3 = list2.get(i + 1);
-                    float f = l2 > 0L ? Mth.clamp((float)(1.0f - (float)(l - trailPoint2.time()) / (float)l2), (float)0.0f, (float)1.0f) : 1.0f;
-                    float f2 = l2 > 0L ? Mth.clamp((float)(1.0f - (float)(l - trailPoint3.time()) / (float)l2), (float)0.0f, (float)1.0f) : 1.0f;
-                    Color color2 = ColorUtils.getColor(color, Math.round((float)color.getAlpha() * f));
-                    Color color3 = ColorUtils.getColor(color, Math.round((float)color.getAlpha() * f2));
-                    Renderer3D.renderLine(poseStack, trailPoint2.pos(), trailPoint3.pos(), color2, color3);
+                for (int i = 0; i < points.size() - 1; ++i) {
+                    TrailPoint p1 = points.get(i);
+                    TrailPoint p2 = points.get(i + 1);
+                    float alpha1 = fadeMs > 0L ? Mth.clamp((float)(1.0f - (float)(now - p1.time()) / (float)fadeMs), (float)0.0f, (float)1.0f) : 1.0f;
+                    float alpha2 = fadeMs > 0L ? Mth.clamp((float)(1.0f - (float)(now - p2.time()) / (float)fadeMs), (float)0.0f, (float)1.0f) : 1.0f;
+                    Color c1 = ColorUtils.getColor(color, Math.round((float)color.getAlpha() * alpha1));
+                    Color c2 = ColorUtils.getColor(color, Math.round((float)color.getAlpha() * alpha2));
+                    Renderer3D.renderLine(poseStack, p1.pos(), p2.pos(), c1, c2);
                 }
-                if (entity != null && !list2.isEmpty()) {
-                    TrailPoint trailPoint4 = list2.get(list2.size() - 1);
+                if (entity != null && !points.isEmpty()) {
+                    TrailPoint lastPoint = points.get(points.size() - 1);
                     Vec3 currentPos = EntityUtils.getRenderPos(entity, renderWorldEvent.getTickDelta()).add(0.0, (double)entity.getBbHeight() * 0.5, 0.0);
-                    float f = l2 > 0L ? Mth.clamp((float)(1.0f - (float)(l - trailPoint4.time()) / (float)l2), (float)0.0f, (float)1.0f) : 1.0f;
-                    Color color4 = ColorUtils.getColor(color, Math.round((float)color.getAlpha() * f));
-                    Color color5 = ColorUtils.getColor(color, color.getAlpha());
-                    Renderer3D.renderLine(poseStack, trailPoint4.pos(), currentPos, color4, color5);
+                    float tailAlpha = fadeMs > 0L ? Mth.clamp((float)(1.0f - (float)(now - lastPoint.time()) / (float)fadeMs), (float)0.0f, (float)1.0f) : 1.0f;
+                    Color tailColor = ColorUtils.getColor(color, Math.round((float)color.getAlpha() * tailAlpha));
+                    Color headColor = ColorUtils.getColor(color, color.getAlpha());
+                    Renderer3D.renderLine(poseStack, lastPoint.pos(), currentPos, tailColor, headColor);
                 }
             }
         }

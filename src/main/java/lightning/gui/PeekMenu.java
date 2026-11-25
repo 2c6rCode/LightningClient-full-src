@@ -22,14 +22,14 @@ import net.minecraft.world.item.ItemStack;
 
 public class PeekMenu
 extends ChestMenu {
-    public PeekMenu(int n, Inventory inventory, Container container) {
-        super(MenuType.GENERIC_9x3, n, inventory, container, 3);
+    public PeekMenu(int containerId, Inventory inventory, Container container) {
+        super(MenuType.GENERIC_9x3, containerId, inventory, container, 3);
     }
 
-    public void clicked(int n, int n2, ContainerInput containerInput, Player player) {
+    public void clicked(int slotId, int button, ContainerInput containerInput, Player player) {
     }
 
-    public ItemStack quickMoveStack(Player player, int n) {
+    public ItemStack quickMoveStack(Player player, int index) {
         return ItemStack.EMPTY;
     }
 }

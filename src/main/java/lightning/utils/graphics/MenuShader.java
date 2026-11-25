@@ -63,12 +63,12 @@ implements IMinecraft {
     private static final long START_TIME;
     private static final Identifier STATIC_BG;
 
-    private static void ensureProcessed(float f, float f2, boolean bl) {
+    private static void ensureProcessed(float alpha, float speed, boolean animate) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.getShaderManager() == null || minecraft.gameRenderer == null || minecraft.gameRenderer.mainRenderTarget() == null) {
             return;
         }
-        if (!bl) {
+        if (!animate) {
             return;
         }
         try {
@@ -80,7 +80,7 @@ implements IMinecraft {
             if (chain == null) {
                 return;
             }
-            MenuShader.writeUniforms(f, f2);
+            MenuShader.writeUniforms(alpha, speed);
             chain.process(minecraft.gameRenderer.mainRenderTarget(), GraphicsResourceAllocator.UNPOOLED);
             RenderTarget renderTarget = (RenderTarget)((PostEffectProcessorAccessor)chain).getPersistentTargets().get(TARGET_ID);
             if (renderTarget == null || renderTarget.getColorTextureView() == null) {
@@ -102,7 +102,7 @@ implements IMinecraft {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    private static void writeUniforms(float f, float f2) {
+    private static void writeUniforms(float alpha, float speed) {
         if (chain == null) {
             return;
         }
@@ -113,10 +113,10 @@ implements IMinecraft {
             if ((uboBuffer == null || map.get(UNIFORM_NAME) != uboBuffer) && (gpuBuffer = map.put(UNIFORM_NAME, uboBuffer = RenderSystem.getDevice().createBuffer(() -> "Lightning Menu BG UBO", 136, (long)UBO_SIZE))) != null) {
                 gpuBuffer.close();
             }
-            float f3 = (float)(System.currentTimeMillis() - START_TIME) / 1000.0f;
+            float elapsedSeconds = (float)(System.currentTimeMillis() - START_TIME) / 1000.0f;
             MemoryStack memoryStack = MemoryStack.stackPush();
             try {
-                ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4(f3, f, f2, 0.0f).get();
+                ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4(elapsedSeconds, alpha, speed, 0.0f).get();
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(uboBuffer.slice(), byteBuffer);
             }
             finally {
@@ -126,28 +126,28 @@ implements IMinecraft {
         }
     }
 
-    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, float f2) {
-        MenuShader.render(guiGraphicsExtractor, n, n2, f, f2, true);
+    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, float alpha, float speed) {
+        MenuShader.render(guiGraphicsExtractor, width, height, alpha, speed, true);
     }
 
-    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, float f2, boolean bl) {
+    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, float alpha, float speed, boolean animate) {
         try {
-            MenuShader.ensureProcessed(f, f2, bl);
-            int n3 = Math.min(255, Math.max(0, Math.round(f * 255.0f)));
-            int n4 = n3 << 24 | 0xFFFFFF;
+            MenuShader.ensureProcessed(alpha, speed, animate);
+            int alphaByte = Math.min(255, Math.max(0, Math.round(alpha * 255.0f)));
+            int tintColor = alphaByte << 24 | 0xFFFFFF;
             if (texture != null) {
-                guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, 0, 0, 0.0f, 0.0f, n, n2, n, n2, n, n2, n4);
+                guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, 0, 0, 0.0f, 0.0f, width, height, width, height, width, height, tintColor);
             } else {
-                guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, STATIC_BG, 0, 0, 0.0f, 0.0f, n, n2, n, n2, n, n2, n4);
+                guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, STATIC_BG, 0, 0, 0.0f, 0.0f, width, height, width, height, width, height, tintColor);
             }
         }
         catch (Throwable throwable) {
-            Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, n, n2, new Color(8, 8, 12, (int)(255.0f * f)));
+            Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, width, height, new Color(8, 8, 12, (int)(255.0f * alpha)));
         }
     }
 
-    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        MenuShader.render(guiGraphicsExtractor, n, n2, f, 1.0f);
+    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, float alpha) {
+        MenuShader.render(guiGraphicsExtractor, width, height, alpha, 1.0f);
     }
 
     static {

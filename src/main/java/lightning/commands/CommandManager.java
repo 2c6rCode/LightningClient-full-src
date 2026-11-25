@@ -44,23 +44,23 @@ public class CommandManager {
     public CommandManager() {
         Night.EVENT_HANDLER.subscribe(this);
         try {
-            for (Class<?> object : JarClassScanner.findSubtypesOf(Command.class, Night.class)) {
-                if (object.getAnnotation(RegisterCommand.class) == null || object == ModuleCommand.class) continue;
-                this.commands.add((Command)object.getDeclaredConstructor(new Class[0]).newInstance(new Object[0]));
+            for (Class<?> commandClass : JarClassScanner.findSubtypesOf(Command.class, Night.class)) {
+                if (commandClass.getAnnotation(RegisterCommand.class) == null || commandClass == ModuleCommand.class) continue;
+                this.commands.add((Command)commandClass.getDeclaredConstructor(new Class[0]).newInstance(new Object[0]));
             }
         }
         catch (IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException reflectiveOperationException) {
             Night.LOGGER.error("Failed to register the client's modules!", (Throwable)reflectiveOperationException);
         }
-        HashSet hashSet = new HashSet();
+        HashSet<String> registeredNames = new HashSet<>();
         for (Command command : this.commands) {
-            hashSet.add(command.getName().toLowerCase());
-            for (String string : command.getAliases()) {
-                hashSet.add(string.toLowerCase());
+            registeredNames.add(command.getName().toLowerCase());
+            for (String alias : command.getAliases()) {
+                registeredNames.add(alias.toLowerCase());
             }
         }
         for (Module module : Night.MODULE_MANAGER.getModules()) {
-            if (hashSet.contains(module.getName().toLowerCase())) continue;
+            if (registeredNames.contains(module.getName().toLowerCase())) continue;
             this.commands.add(new ModuleCommand(module));
         }
         for (Command command : this.commands) {
@@ -69,56 +69,56 @@ public class CommandManager {
     }
 
     private void register(Command command) {
-        ArrayList<String> arrayList = new ArrayList<String>();
-        arrayList.add(command.getName());
-        arrayList.addAll(command.getAliases());
-        for (String string : arrayList) {
-            LiteralArgumentBuilder literalArgumentBuilder = LiteralArgumentBuilder.literal((String)string);
-            literalArgumentBuilder.executes(commandContext -> {
+        ArrayList<String> names = new ArrayList<String>();
+        names.add(command.getName());
+        names.addAll(command.getAliases());
+        for (String commandName : names) {
+            LiteralArgumentBuilder<CommandManager> literal = LiteralArgumentBuilder.literal(commandName);
+            literal.executes(commandContext -> {
                 command.execute(new String[0]);
                 return 1;
             });
-            literalArgumentBuilder.then(RequiredArgumentBuilder.argument((String)"args", (ArgumentType)StringArgumentType.greedyString()).suggests((commandContext, suggestionsBuilder) -> {
+            literal.then(RequiredArgumentBuilder.<CommandManager, String>argument("args", StringArgumentType.greedyString()).suggests((commandContext, suggestionsBuilder) -> {
                 String remStr = suggestionsBuilder.getRemaining();
-                String[] stringArray = remStr.split(" ", -1);
-                String string2 = stringArray[stringArray.length - 1].toLowerCase();
-                String[] stringArray2 = Arrays.copyOf(stringArray, stringArray.length - 1);
-                SuggestionsBuilder suggestionsBuilder2 = suggestionsBuilder.createOffset(suggestionsBuilder.getStart() + remStr.length() - string2.length());
-                for (String string3 : command.getSuggestions(stringArray2)) {
-                    if (!string3.toLowerCase().startsWith(string2)) continue;
-                    suggestionsBuilder2.suggest(string3);
+                String[] parts = remStr.split(" ", -1);
+                String prefixToken = parts[parts.length - 1].toLowerCase();
+                String[] prevArgs = Arrays.copyOf(parts, parts.length - 1);
+                SuggestionsBuilder offsetBuilder = suggestionsBuilder.createOffset(suggestionsBuilder.getStart() + remStr.length() - prefixToken.length());
+                for (String suggestion : command.getSuggestions(prevArgs)) {
+                    if (!suggestion.toLowerCase().startsWith(prefixToken)) continue;
+                    offsetBuilder.suggest(suggestion);
                 }
-                return suggestionsBuilder2.buildFuture();
+                return offsetBuilder.buildFuture();
             }).executes(commandContext -> {
-                String argsStr = StringArgumentType.getString((CommandContext)commandContext, (String)"args");
+                String argsStr = StringArgumentType.getString(commandContext, "args");
                 command.execute(argsStr.isEmpty() ? new String[]{} : argsStr.split(" "));
                 return 1;
             }));
-            this.dispatcher.register(literalArgumentBuilder);
+            this.dispatcher.register(literal);
         }
     }
 
     @SubscribeEvent
     public void onChatInput(ChatInputEvent chatInputEvent) {
-        String string = chatInputEvent.getMessage();
-        if (!string.startsWith(this.prefix)) {
+        String message = chatInputEvent.getMessage();
+        if (!message.startsWith(this.prefix)) {
             return;
         }
         chatInputEvent.setCancelled(true);
-        this.execute(string);
+        this.execute(message);
     }
 
-    public void execute(String string) {
+    public void execute(String input) {
         try {
-            this.dispatcher.execute(string.substring(this.prefix.length()), this);
+            this.dispatcher.execute(input.substring(this.prefix.length()), this);
         }
         catch (CommandSyntaxException commandSyntaxException) {
             Night.CHAT_MANAGER.warn("Could not find the command specified.");
         }
     }
 
-    public Command getCommand(String string) {
-        return this.commands.stream().filter(command -> command.getName().equalsIgnoreCase(string.toLowerCase()) || command.getAliases().contains(string.toLowerCase())).findFirst().orElse(null);
+    public Command getCommand(String name) {
+        return this.commands.stream().filter(command -> command.getName().equalsIgnoreCase(name.toLowerCase()) || command.getAliases().contains(name.toLowerCase())).findFirst().orElse(null);
     }
 
     @Generated
@@ -132,8 +132,8 @@ public class CommandManager {
     }
 
     @Generated
-    public void setPrefix(String string) {
-        this.prefix = string;
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
     }
 
     @Generated

@@ -93,11 +93,10 @@ extends Module {
             ++this.ticks;
             return;
         }
-        int n = this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8;
-        int n2 = this.findValidBlockSlot(0, n);
-        if (n2 == -1) {
+        int maxSlot = this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8;
+        int blockSlot = this.findValidBlockSlot(0, maxSlot);
+        if (blockSlot == -1) {
             Input input = ScaffoldModule.mc.player.input != null ? ScaffoldModule.mc.player.input.keyPresses : Input.EMPTY;
-            Input input2 = input;
             if (!input.shift()) {
                 ScaffoldModule.mc.player.input.keyPresses = new Input(input.forward(), input.backward(), input.left(), input.right(), input.jump(), true, input.sprint());
             }
@@ -106,44 +105,44 @@ extends Module {
         if (this.tower.getValue() && ScaffoldModule.mc.options.keyJump.isDown() && !this.isMovingHorizontally()) {
             ScaffoldModule.mc.player.setDeltaMovement(ScaffoldModule.mc.player.getDeltaMovement().x, this.towerSpeed.getValue().doubleValue(), ScaffoldModule.mc.player.getDeltaMovement().z);
         }
-        int n3 = (int)Math.floor(ScaffoldModule.mc.player.getY());
+        int targetY = (int)Math.floor(ScaffoldModule.mc.player.getY());
         if (this.keepY.getValue() && this.isMovingHorizontally()) {
             if (ScaffoldModule.mc.player.onGround() || this.groundPosY < ScaffoldModule.mc.level.getMinY()) {
-                this.groundPosY = n3;
+                this.groundPosY = targetY;
             }
-            n3 = this.groundPosY;
+            targetY = this.groundPosY;
         } else if (this.downwards.getValue() && ScaffoldModule.mc.options.keyShift.isDown()) {
-            n3 = ScaffoldModule.mc.player.getBlockY() - 1;
+            targetY = ScaffoldModule.mc.player.getBlockY() - 1;
         } else {
-            this.groundPosY = n3;
+            this.groundPosY = targetY;
         }
-        BlockPos blockPos = new BlockPos(ScaffoldModule.mc.player.getBlockX(), n3, ScaffoldModule.mc.player.getBlockZ());
-        BlockPos blockPos2 = blockPos.below();
-        List<BlockPos> list = this.getScaffoldPlacements(blockPos2);
-        if (list.isEmpty()) {
+        BlockPos playerPos = new BlockPos(ScaffoldModule.mc.player.getBlockX(), targetY, ScaffoldModule.mc.player.getBlockZ());
+        BlockPos belowPos = playerPos.below();
+        List<BlockPos> placements = this.getScaffoldPlacements(belowPos);
+        if (placements.isEmpty()) {
             return;
         }
-        int n4 = ScaffoldModule.mc.player.getInventory().getSelectedSlot();
-        if (!InventoryUtils.switchSlot(this.autoSwitch.getValue(), n2, n4)) {
+        int previousSlot = ScaffoldModule.mc.player.getInventory().getSelectedSlot();
+        if (!InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, previousSlot)) {
             return;
         }
-        for (BlockPos blockPos3 : list) {
-            if (!ScaffoldModule.mc.level.getBlockState(blockPos3).canBeReplaced() || this.isOnCooldown(blockPos3)) continue;
-            Direction direction = WorldUtils.getDirection(blockPos3, this.strictDirection.getValue());
+        for (BlockPos placePos : placements) {
+            if (!ScaffoldModule.mc.level.getBlockState(placePos).canBeReplaced() || this.isOnCooldown(placePos)) continue;
+            Direction direction = WorldUtils.getDirection(placePos, this.strictDirection.getValue());
             if (direction == null) {
                 if (!this.airPlace.getValue()) continue;
-                WorldUtils.airPlaceBlock(blockPos3, InteractionHand.MAIN_HAND, this.rotate.getValue() ? "Normal" : "None", this.render.getValue());
-                this.lastPlacement = blockPos3;
-                this.predictCollision(blockPos3);
-                this.markAttempted(blockPos3);
+                WorldUtils.airPlaceBlock(placePos, InteractionHand.MAIN_HAND, this.rotate.getValue() ? "Normal" : "None", this.render.getValue());
+                this.lastPlacement = placePos;
+                this.predictCollision(placePos);
+                this.markAttempted(placePos);
                 continue;
             }
-            if (!WorldUtils.placeBlock(blockPos3, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), false, this.render.getValue())) continue;
-            this.lastPlacement = blockPos3;
-            this.predictCollision(blockPos3);
-            this.markAttempted(blockPos3);
+            if (!WorldUtils.placeBlock(placePos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), false, this.render.getValue())) continue;
+            this.lastPlacement = placePos;
+            this.predictCollision(placePos);
+            this.markAttempted(placePos);
         }
-        InventoryUtils.switchBack(this.autoSwitch.getValue(), n2, n4);
+        InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, previousSlot);
         this.ticks = 0;
     }
 
@@ -164,12 +163,12 @@ extends Module {
     }
 
     private boolean isOnCooldown(BlockPos blockPos) {
-        Long l = this.pendingAttempts.get(blockPos);
-        if (l == null) {
+        Long lastAttemptMs = this.pendingAttempts.get(blockPos);
+        if (lastAttemptMs == null) {
             return false;
         }
-        long l2 = Math.max(50L, (long)Night.SERVER_MANAGER.getPing() * 2L);
-        if (System.currentTimeMillis() - l < l2) {
+        long cooldownMs = Math.max(50L, (long)Night.SERVER_MANAGER.getPing() * 2L);
+        if (System.currentTimeMillis() - lastAttemptMs < cooldownMs) {
             return true;
         }
         this.pendingAttempts.remove(blockPos);
@@ -184,8 +183,8 @@ extends Module {
         return Math.abs(ScaffoldModule.mc.player.getDeltaMovement().x) > 0.05 || Math.abs(ScaffoldModule.mc.player.getDeltaMovement().z) > 0.05;
     }
 
-    private int findValidBlockSlot(int n, int n2) {
-        for (int i = n; i <= n2; ++i) {
+    private int findValidBlockSlot(int startSlot, int endSlot) {
+        for (int i = startSlot; i <= endSlot; ++i) {
             BlockItem blockItem;
             Block block;
             Item item;
@@ -198,140 +197,140 @@ extends Module {
     }
 
     private List<BlockPos> getScaffoldPlacements(BlockPos blockPos) {
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
+        ArrayList<BlockPos> placements = new ArrayList<BlockPos>();
         if (this.airPlace.getValue()) {
             if (this.isWithinRange(blockPos)) {
-                arrayList.add(blockPos);
+                placements.add(blockPos);
             }
-            return arrayList;
+            return placements;
         }
-        this.ensurePlaceableWithSupport(blockPos, arrayList);
+        this.ensurePlaceableWithSupport(blockPos, placements);
         if (this.lastPlacement != null) {
-            int n = this.lastPlacement.getX();
-            int n2 = this.lastPlacement.getY();
-            int n3 = this.lastPlacement.getZ();
-            int n4 = blockPos.getX();
-            int n5 = blockPos.getY();
-            int n6 = blockPos.getZ();
-            int n7 = n4 - n;
-            int n8 = n5 - n2;
-            int n9 = n6 - n3;
-            int n10 = Integer.compare(n7, 0);
-            int n11 = Integer.compare(n8, 0);
-            int n12 = Integer.compare(n9, 0);
-            n7 = Math.abs(n7);
-            n8 = Math.abs(n8);
-            n9 = Math.abs(n9);
-            int n13 = n7 << 1;
-            int n14 = n8 << 1;
-            int n15 = n9 << 1;
-            int n16 = 0;
-            if (n7 >= n8 && n7 >= n9) {
-                int n17 = n14 - n7;
-                int n18 = n15 - n7;
+            int curX = this.lastPlacement.getX();
+            int curY = this.lastPlacement.getY();
+            int curZ = this.lastPlacement.getZ();
+            int targetX = blockPos.getX();
+            int targetY = blockPos.getY();
+            int targetZ = blockPos.getZ();
+            int dx = targetX - curX;
+            int dy = targetY - curY;
+            int dz = targetZ - curZ;
+            int stepX = Integer.compare(dx, 0);
+            int stepY = Integer.compare(dy, 0);
+            int stepZ = Integer.compare(dz, 0);
+            dx = Math.abs(dx);
+            dy = Math.abs(dy);
+            dz = Math.abs(dz);
+            int dx2 = dx << 1;
+            int dy2 = dy << 1;
+            int dz2 = dz << 1;
+            int steps = 0;
+            if (dx >= dy && dx >= dz) {
+                int err1 = dy2 - dx;
+                int err2 = dz2 - dx;
                 while (true) {
-                    BlockPos blockPos2 = new BlockPos(n, n2, n3);
-                    this.ensurePlaceableWithSupport(blockPos2, arrayList);
-                    if (++n16 <= 8 && (n != n4 || n2 != n5 || n3 != n6)) {
-                        if (n17 >= 0) {
-                            n2 += n11;
-                            n17 -= n13;
+                    BlockPos stepPos = new BlockPos(curX, curY, curZ);
+                    this.ensurePlaceableWithSupport(stepPos, placements);
+                    if (++steps <= 8 && (curX != targetX || curY != targetY || curZ != targetZ)) {
+                        if (err1 >= 0) {
+                            curY += stepY;
+                            err1 -= dx2;
                         }
-                        if (n18 >= 0) {
-                            n3 += n12;
-                            n18 -= n13;
+                        if (err2 >= 0) {
+                            curZ += stepZ;
+                            err2 -= dx2;
                         }
-                        n += n10;
-                        n17 += n14;
-                        n18 += n15;
+                        curX += stepX;
+                        err1 += dy2;
+                        err2 += dz2;
                         continue;
                     }
                     break;
                 }
-            } else if (n8 >= n7 && n8 >= n9) {
-                int n19 = n13 - n8;
-                int n20 = n15 - n8;
+            } else if (dy >= dx && dy >= dz) {
+                int err1 = dx2 - dy;
+                int err2 = dz2 - dy;
                 while (true) {
-                    BlockPos blockPos3 = new BlockPos(n, n2, n3);
-                    this.ensurePlaceableWithSupport(blockPos3, arrayList);
-                    if (++n16 <= 8 && (n != n4 || n2 != n5 || n3 != n6)) {
-                        if (n19 >= 0) {
-                            n += n10;
-                            n19 -= n14;
+                    BlockPos stepPos = new BlockPos(curX, curY, curZ);
+                    this.ensurePlaceableWithSupport(stepPos, placements);
+                    if (++steps <= 8 && (curX != targetX || curY != targetY || curZ != targetZ)) {
+                        if (err1 >= 0) {
+                            curX += stepX;
+                            err1 -= dy2;
                         }
-                        if (n20 >= 0) {
-                            n3 += n12;
-                            n20 -= n14;
+                        if (err2 >= 0) {
+                            curZ += stepZ;
+                            err2 -= dy2;
                         }
-                        n2 += n11;
-                        n19 += n13;
-                        n20 += n15;
+                        curY += stepY;
+                        err1 += dx2;
+                        err2 += dz2;
                         continue;
                     }
                     break;
                 }
             } else {
-                int n21 = n13 - n9;
-                int n22 = n14 - n9;
+                int err1 = dx2 - dz;
+                int err2 = dy2 - dz;
                 while (true) {
-                    BlockPos blockPos4 = new BlockPos(n, n2, n3);
-                    this.ensurePlaceableWithSupport(blockPos4, arrayList);
-                    if (++n16 > 8 || n == n4 && n2 == n5 && n3 == n6) break;
-                    if (n21 >= 0) {
-                        n += n10;
-                        n21 -= n15;
+                    BlockPos stepPos = new BlockPos(curX, curY, curZ);
+                    this.ensurePlaceableWithSupport(stepPos, placements);
+                    if (++steps > 8 || curX == targetX && curY == targetY && curZ == targetZ) break;
+                    if (err1 >= 0) {
+                        curX += stepX;
+                        err1 -= dz2;
                     }
-                    if (n22 >= 0) {
-                        n2 += n11;
-                        n22 -= n15;
+                    if (err2 >= 0) {
+                        curY += stepY;
+                        err2 -= dz2;
                     }
-                    n3 += n12;
-                    n21 += n13;
-                    n22 += n14;
+                    curZ += stepZ;
+                    err1 += dx2;
+                    err2 += dy2;
                 }
             }
         }
-        return arrayList;
+        return placements;
     }
 
-    private void ensurePlaceableWithSupport(BlockPos blockPos, List<BlockPos> list) {
-        if (!ScaffoldModule.mc.level.getBlockState(blockPos).canBeReplaced()) {
+    private void ensurePlaceableWithSupport(BlockPos pos, List<BlockPos> placements) {
+        if (!ScaffoldModule.mc.level.getBlockState(pos).canBeReplaced()) {
             return;
         }
-        Direction direction = WorldUtils.getDirection(blockPos, this.strictDirection.getValue());
+        Direction direction = WorldUtils.getDirection(pos, this.strictDirection.getValue());
         if (direction != null) {
-            if (!list.contains(blockPos) && this.isWithinRange(blockPos)) {
-                list.add(blockPos);
+            if (!placements.contains(pos) && this.isWithinRange(pos)) {
+                placements.add(pos);
             }
             return;
         }
-        BlockPos blockPos2 = this.getSupportingBlock(blockPos);
-        if (blockPos2 != null) {
-            if (!list.contains(blockPos2) && this.isWithinRange(blockPos2)) {
-                list.add(blockPos2);
+        BlockPos supportPos = this.getSupportingBlock(pos);
+        if (supportPos != null) {
+            if (!placements.contains(supportPos) && this.isWithinRange(supportPos)) {
+                placements.add(supportPos);
             }
         } else {
-            BlockPos blockPos3 = blockPos.below();
-            int n = 0;
-            while (n++ < 3 && ScaffoldModule.mc.level.getBlockState(blockPos3).canBeReplaced()) {
-                if (WorldUtils.getDirection(blockPos3, this.strictDirection.getValue()) != null) {
-                    if (list.contains(blockPos3) || !this.isWithinRange(blockPos3)) break;
-                    list.add(blockPos3);
+            BlockPos belowPos = pos.below();
+            int depth = 0;
+            while (depth++ < 3 && ScaffoldModule.mc.level.getBlockState(belowPos).canBeReplaced()) {
+                if (WorldUtils.getDirection(belowPos, this.strictDirection.getValue()) != null) {
+                    if (placements.contains(belowPos) || !this.isWithinRange(belowPos)) break;
+                    placements.add(belowPos);
                     break;
                 }
-                blockPos3 = blockPos3.below();
+                belowPos = belowPos.below();
             }
         }
-        if (!list.contains(blockPos) && this.isWithinRange(blockPos)) {
-            list.add(blockPos);
+        if (!placements.contains(pos) && this.isWithinRange(pos)) {
+            placements.add(pos);
         }
     }
 
     private BlockPos getSupportingBlock(BlockPos blockPos) {
         for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos blockPos2 = blockPos.relative(direction);
-            if (WorldUtils.getDirection(blockPos2, this.strictDirection.getValue()) == null) continue;
-            return blockPos2;
+            BlockPos neighborPos = blockPos.relative(direction);
+            if (WorldUtils.getDirection(neighborPos, this.strictDirection.getValue()) == null) continue;
+            return neighborPos;
         }
         return null;
     }

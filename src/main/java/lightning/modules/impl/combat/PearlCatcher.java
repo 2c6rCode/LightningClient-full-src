@@ -84,9 +84,9 @@ extends Module {
             }
             return;
         }
-        int n = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n2 = PearlCatcher.mc.player.getInventory().getSelectedSlot();
-        if (n == -1) {
+        int blockSlot = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int oldSlot = PearlCatcher.mc.player.getInventory().getSelectedSlot();
+        if (blockSlot == -1) {
             if (this.itemDisable.getValue()) {
                 Night.CHAT_MANAGER.tagged("No blocks could be found in your hotbar.", this.getName());
                 this.setToggled(false);
@@ -103,9 +103,9 @@ extends Module {
             return;
         }
         if (PearlCatcher.mc.level.getBlockState(blockPos).getBlock().equals(Blocks.AIR)) {
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
             WorldUtils.placeBlock(blockPos, WorldUtils.getDirection(blockPos, false), InteractionHand.MAIN_HAND, this.rotate.getValue(), false, this.render.getValue());
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
         }
     }
 

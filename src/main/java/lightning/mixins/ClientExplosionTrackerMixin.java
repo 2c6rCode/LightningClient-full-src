@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={ClientExplosionTracker.class})
 public class ClientExplosionTrackerMixin {
     @Inject(method={"track"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$cancelDebris(Vec3 vec3, float f, int n, WeightedList<ExplosionParticleInfo> weightedList, CallbackInfo callbackInfo) {
+    private void night$cancelDebris(Vec3 center, float radius, int count, WeightedList<ExplosionParticleInfo> weightedList, CallbackInfo callbackInfo) {
         try {
             NoRenderModule noRenderModule = (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class);
             if (noRenderModule.isToggled() && noRenderModule.explosions.getValue()) {

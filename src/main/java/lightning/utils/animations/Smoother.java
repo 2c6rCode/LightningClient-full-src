@@ -6,9 +6,9 @@ package lightning.utils.animations;
 public class Smoother {
     private double smoothedValue;
 
-    public double smooth(double d, double d2, double d3) {
-        double d4 = 1.0 - Math.exp(-d2 * d3);
-        this.smoothedValue += (d - this.smoothedValue) * d4;
+    public double smooth(double target, double speed, double deltaTime) {
+        double factor = 1.0 - Math.exp(-speed * deltaTime);
+        this.smoothedValue += (target - this.smoothedValue) * factor;
         return this.smoothedValue;
     }
 

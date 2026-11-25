@@ -53,7 +53,7 @@ implements IMinecraft {
     public int height;
 
     @Inject(method={"extractBackground"}, at={@At(value="HEAD")}, cancellable=true)
-    private void renderBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void renderBackground(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
             if (((MenuModule)Night.MODULE_MANAGER.getModule(MenuModule.class)).isToggled() && ((MenuModule)Night.MODULE_MANAGER.getModule(MenuModule.class)).mainMenu.getValue() && ScreenMixin.mc.level == null) {
                 LightningSkin.screenBg((GuiGraphicsExtractor)guiGraphicsExtractor, (float)0.0f, (float)0.0f, (float)this.width, (float)this.height, (Color)new Color(25, 25, 25, 255));
@@ -75,7 +75,7 @@ implements IMinecraft {
     }
 
     @Inject(method={"extractRenderState"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$hideLegitInventory(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void night$hideLegitInventory(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
             if (MainhandModule.hidingLegitInventory && (Object)this instanceof InventoryScreen) {
                 callbackInfo.cancel();
@@ -88,14 +88,14 @@ implements IMinecraft {
     }
 
     @Inject(method={"extractRenderStateWithTooltipAndSubtitles"}, at={@At(value="TAIL")})
-    private void night$shulkerInfoOnTop(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void night$shulkerInfoOnTop(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
             if ((Object)this instanceof AbstractContainerScreen) {
                 Slot slot;
                 AbstractContainerScreen abstractContainerScreen = (AbstractContainerScreen)(Object)this;
                 ShulkerInfoModule shulkerInfoModule = (ShulkerInfoModule)Night.MODULE_MANAGER.getModule(ShulkerInfoModule.class);
                 if (shulkerInfoModule != null && shulkerInfoModule.isToggled() && (slot = ((AbstractContainerScreenAccessor)abstractContainerScreen).getHoveredSlot()) != null && !slot.getItem().isEmpty() && abstractContainerScreen.getMenu().getCarried().isEmpty() && shulkerInfoModule.hasItems(slot.getItem())) {
-                    shulkerInfoModule.renderInfo(guiGraphicsExtractor, n, n2, slot.getItem());
+                    shulkerInfoModule.renderInfo(guiGraphicsExtractor, mouseX, mouseY, slot.getItem());
                 }
             }
             return;

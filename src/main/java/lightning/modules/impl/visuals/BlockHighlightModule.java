@@ -70,10 +70,10 @@ extends Module {
                 this.prevPosition = blockPos;
             }
         }
-        Vec3 vec3 = MathUtils.getVec(blockPos);
+        Vec3 targetRenderPos = MathUtils.getVec(blockPos);
         if (this.animationMode.getValue().equalsIgnoreCase("Slide") && this.renderPosition != null) {
-            float f = Easing.ease(Easing.toDelta(this.animationStart, (int)(Math.pow(this.slideSmoothness.getValue().doubleValue(), 1.4) * 1000.0)), Easing.Method.EASE_OUT_QUART);
-            vec3 = this.renderPosition = this.renderPosition.add(MathUtils.scale(MathUtils.getVec(blockPos).subtract(this.renderPosition), f));
+            float easeProgress = Easing.ease(Easing.toDelta(this.animationStart, (int)(Math.pow(this.slideSmoothness.getValue().doubleValue(), 1.4) * 1000.0)), Easing.Method.EASE_OUT_QUART);
+            targetRenderPos = this.renderPosition = this.renderPosition.add(MathUtils.scale(MathUtils.getVec(blockPos).subtract(this.renderPosition), easeProgress));
         }
         if ((blockState = BlockHighlightModule.mc.level.getBlockState(blockPos)).isAir() || !BlockHighlightModule.mc.level.getWorldBorder().isWithinBounds(blockPos)) {
             return;
@@ -84,15 +84,15 @@ extends Module {
         }
         if (this.mode.getValue().equalsIgnoreCase("Complex")) {
             for (AABB aABB : voxelShape.toAabbs()) {
-                Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB.move(vec3), this.fillColor.getColor());
-                Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB.move(vec3), this.outlineColor.getColor());
+                Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB.move(targetRenderPos), this.fillColor.getColor());
+                Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB.move(targetRenderPos), this.outlineColor.getColor());
             }
         } else {
             if (this.mode.getValue().equalsIgnoreCase("Fill") || this.mode.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBox(renderWorldEvent.getMatrices(), voxelShape.bounds().move(vec3), this.fillColor.getColor());
+                Renderer3D.renderBox(renderWorldEvent.getMatrices(), voxelShape.bounds().move(targetRenderPos), this.fillColor.getColor());
             }
             if (this.mode.getValue().equalsIgnoreCase("Outline") || this.mode.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), voxelShape.bounds().move(vec3), this.outlineColor.getColor());
+                Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), voxelShape.bounds().move(targetRenderPos), this.outlineColor.getColor());
             }
         }
     }

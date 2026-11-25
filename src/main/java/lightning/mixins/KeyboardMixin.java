@@ -39,10 +39,10 @@ public class KeyboardMixin {
     private Minecraft minecraft;
 
     @Inject(method={"keyPress"}, at={@At(value="HEAD")})
-    private void keyPress(long l, int n, KeyEvent keyEvent, CallbackInfo callbackInfo) {
+    private void keyPress(long window, int action, KeyEvent keyEvent, CallbackInfo callbackInfo) {
         try {
-            Night.EVENT_HANDLER.post((Event)new UnfilteredKeyInputEvent(keyEvent.key(), keyEvent.scancode(), n, keyEvent.modifiers()));
-            if (l == this.minecraft.getWindow().handle() && n == 1 && this.minecraft.gui.screen() == null) {
+            Night.EVENT_HANDLER.post((Event)new UnfilteredKeyInputEvent(keyEvent.key(), keyEvent.scancode(), action, keyEvent.modifiers()));
+            if (window == this.minecraft.getWindow().handle() && action == 1 && this.minecraft.gui.screen() == null) {
                 Night.EVENT_HANDLER.post((Event)new KeyInputEvent(keyEvent.key(), keyEvent.modifiers()));
             }
             return;

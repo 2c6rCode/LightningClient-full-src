@@ -221,7 +221,7 @@ TickablePacketListener {
     private boolean wasOnGround = true;
     private long lastKeepAliveSent;
 
-    public PbPlayHandler(ProxyServer proxyServer, Connection connection, GameProfile gameProfile, S2CForwarder s2CForwarder, int n) {
+    public PbPlayHandler(ProxyServer proxyServer, Connection connection, GameProfile gameProfile, S2CForwarder s2CForwarder, int teleportId) {
         this.proxyServer = proxyServer;
         this.clientConnection = connection;
         this.profile = gameProfile;
@@ -234,10 +234,10 @@ TickablePacketListener {
     }
 
     public void tick() {
-        long l = System.currentTimeMillis();
-        if (l - this.lastKeepAliveSent >= 15000L) {
-            this.lastKeepAliveSent = l;
-            this.clientConnection.send((Packet)new ClientboundKeepAlivePacket(l));
+        long now = System.currentTimeMillis();
+        if (now - this.lastKeepAliveSent >= 15000L) {
+            this.lastKeepAliveSent = now;
+            this.clientConnection.send((Packet)new ClientboundKeepAlivePacket(now));
         }
     }
 
@@ -269,11 +269,9 @@ TickablePacketListener {
         if (speedMineModule != null && speedMineModule.isToggled() && speedMineModule.isRunningOnProxy()) {
             minecraft = Minecraft.getInstance();
             if (minecraft.player != null) {
-                Object object;
-                Object object2 = object = speedMineModule.interactSyncLock;
-                synchronized (object2) {
-                    int n = minecraft.player.getInventory().getSelectedSlot();
-                    this.forward((Packet<?>)new ServerboundSetCarriedItemPacket(n));
+                synchronized (speedMineModule.interactSyncLock) {
+                    int selectedSlot = minecraft.player.getInventory().getSelectedSlot();
+                    this.forward((Packet<?>)new ServerboundSetCarriedItemPacket(selectedSlot));
                     speedMineModule.setInteractPaused(true);
                     return;
                 }
@@ -283,9 +281,9 @@ TickablePacketListener {
         if (minecraft.player == null) {
             return;
         }
-        int n = minecraft.player.getInventory().getSelectedSlot();
-        if (n != Night.POSITION_MANAGER.getServerSlot()) {
-            this.forward((Packet<?>)new ServerboundSetCarriedItemPacket(n));
+        int selectedSlot = minecraft.player.getInventory().getSelectedSlot();
+        if (selectedSlot != Night.POSITION_MANAGER.getServerSlot()) {
+            this.forward((Packet<?>)new ServerboundSetCarriedItemPacket(selectedSlot));
         }
     }
 
@@ -303,16 +301,16 @@ TickablePacketListener {
     private void handleMovePlayer0(ServerboundMovePlayerPacket serverboundMovePlayerPacket) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null) {
-            double d = minecraft.player.getY();
+            double previousY = minecraft.player.getY();
             if (serverboundMovePlayerPacket.hasPosition()) {
                 minecraft.player.setPos(serverboundMovePlayerPacket.getX(minecraft.player.getX()), serverboundMovePlayerPacket.getY(minecraft.player.getY()), serverboundMovePlayerPacket.getZ(minecraft.player.getZ()));
-                double d2 = minecraft.player.getY();
-                if (d2 < d && !serverboundMovePlayerPacket.isOnGround()) {
-                    minecraft.player.fallDistance += (double)((float)(d - d2));
+                double currentY = minecraft.player.getY();
+                if (currentY < previousY && !serverboundMovePlayerPacket.isOnGround()) {
+                    minecraft.player.fallDistance += (double)((float)(previousY - currentY));
                 } else if (serverboundMovePlayerPacket.isOnGround()) {
                     minecraft.player.fallDistance = 0.0;
                 }
-                if (d2 > d && !serverboundMovePlayerPacket.isOnGround() && this.wasOnGround) {
+                if (currentY > previousY && !serverboundMovePlayerPacket.isOnGround() && this.wasOnGround) {
                     Night.EVENT_HANDLER.post(new PlayerJumpEvent());
                 }
                 this.wasOnGround = serverboundMovePlayerPacket.isOnGround();
@@ -414,12 +412,11 @@ TickablePacketListener {
     public void handleSetCarriedItem(ServerboundSetCarriedItemPacket serverboundSetCarriedItemPacket) {
         Minecraft minecraft = Minecraft.getInstance();
         SpeedMineModule speedMineModule = Night.MODULE_MANAGER.getModule(SpeedMineModule.class);
-        boolean bl = speedMineModule != null && speedMineModule.isToggled() && speedMineModule.isRunningOnProxy() && (speedMineModule.getPrimary() != null || speedMineModule.getSecondary() != null);
-        boolean bl2 = bl;
+        boolean speedMineActive = speedMineModule != null && speedMineModule.isToggled() && speedMineModule.isRunningOnProxy() && (speedMineModule.getPrimary() != null || speedMineModule.getSecondary() != null);
         if (minecraft.player != null) {
             minecraft.player.getInventory().setSelectedSlot(serverboundSetCarriedItemPacket.getSlot());
         }
-        if (bl || InventoryUtils.hasActiveSilentSwitch()) {
+        if (speedMineActive || InventoryUtils.hasActiveSilentSwitch()) {
             return;
         }
         this.forward((Packet<?>)serverboundSetCarriedItemPacket);
@@ -679,8 +676,8 @@ TickablePacketListener {
     private void handlePbPayload(PbCustomPayload pbCustomPayload) {
         FriendlyByteBuf friendlyByteBuf = pbCustomPayload.toBuf();
         try {
-            int n = friendlyByteBuf.readVarInt();
-            switch (n) {
+            int packetId = friendlyByteBuf.readVarInt();
+            switch (packetId) {
                 case 3: {
                     C2SModuleTogglePacket c2SModuleTogglePacket = new C2SModuleTogglePacket(friendlyByteBuf);
                     PbModule pbModule = Night.PB_MODULE_MANAGER.getModule(c2SModuleTogglePacket.getModuleName());
@@ -734,15 +731,15 @@ TickablePacketListener {
                     C2SFriendSyncPacket c2SFriendSyncPacket = new C2SFriendSyncPacket(friendlyByteBuf);
                     Minecraft.getInstance().execute(() -> {
                         Night.FRIEND_MANAGER.clear();
-                        for (String string : c2SFriendSyncPacket.getFriends()) {
-                            Night.FRIEND_MANAGER.add(string);
+                        for (String friend : c2SFriendSyncPacket.getFriends()) {
+                            Night.FRIEND_MANAGER.add(friend);
                         }
                         LOGGER.info("[PB] Synced {} friend(s) from client", (Object)c2SFriendSyncPacket.getFriends().size());
                     });
                     return;
                 }
             }
-            LOGGER.debug("[PB] Unknown packet ID: {}", (Object)n);
+            LOGGER.debug("[PB] Unknown packet ID: {}", (Object)packetId);
             return;
         }
         catch (Exception exception) {
@@ -765,38 +762,38 @@ TickablePacketListener {
         }
         Minecraft.getInstance().execute(() -> {
             try {
-                String string = c2SSettingChangePacket.getValue();
+                String value = c2SSettingChangePacket.getValue();
                 if (setting instanceof BooleanSetting) {
                     BooleanSetting booleanSetting = (BooleanSetting)setting;
-                    booleanSetting.setValue(Boolean.parseBoolean(string));
+                    booleanSetting.setValue(Boolean.parseBoolean(value));
                 } else if (setting instanceof NumberSetting) {
                     NumberSetting numberSetting = (NumberSetting)setting;
                     switch (numberSetting.getType()) {
                         case INTEGER: {
-                            numberSetting.setValue(Integer.parseInt(string));
+                            numberSetting.setValue(Integer.parseInt(value));
                             break;
                         }
                         case LONG: {
-                            numberSetting.setValue(Long.parseLong(string));
+                            numberSetting.setValue(Long.parseLong(value));
                             break;
                         }
                         case FLOAT: {
-                            numberSetting.setValue(Float.valueOf(Float.parseFloat(string)));
+                            numberSetting.setValue(Float.valueOf(Float.parseFloat(value)));
                             break;
                         }
                         case DOUBLE: {
-                            numberSetting.setValue(Double.parseDouble(string));
+                            numberSetting.setValue(Double.parseDouble(value));
                         }
                     }
                 } else if (setting instanceof ModeSetting) {
                     ModeSetting modeSetting = (ModeSetting)setting;
-                    modeSetting.setValue(string);
+                    modeSetting.setValue(value);
                 } else if (setting instanceof StringSetting) {
                     StringSetting stringSetting = (StringSetting)setting;
-                    stringSetting.setValue(string);
+                    stringSetting.setValue(value);
                 } else if (setting instanceof ColorSetting) {
                     ColorSetting colorSetting = (ColorSetting)setting;
-                    String[] stringArray = string.split(",");
+                    String[] stringArray = value.split(",");
                     if (stringArray.length >= 4) {
                         colorSetting.setColor(new Color(Integer.parseInt(stringArray[0]), Integer.parseInt(stringArray[1]), Integer.parseInt(stringArray[2]), Integer.parseInt(stringArray[3])));
                         if (stringArray.length >= 5) {
@@ -807,7 +804,7 @@ TickablePacketListener {
                         }
                     }
                 }
-                LOGGER.info("[PB] Setting {}.{} = {}", new Object[]{c2SSettingChangePacket.getModuleName(), c2SSettingChangePacket.getSettingName(), string});
+                LOGGER.info("[PB] Setting {}.{} = {}", new Object[]{c2SSettingChangePacket.getModuleName(), c2SSettingChangePacket.getSettingName(), value});
             }
             catch (Exception exception) {
                 LOGGER.warn("[PB] Failed to apply setting {}.{}", new Object[]{c2SSettingChangePacket.getModuleName(), c2SSettingChangePacket.getSettingName(), exception});

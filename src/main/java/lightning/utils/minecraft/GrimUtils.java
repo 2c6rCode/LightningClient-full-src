@@ -19,50 +19,38 @@ public final class GrimUtils {
     }
 
     public static double[] getPossibleEyeHeights(Player player) {
-        double[] dArray;
-        float f = (float)player.getAttributeValue(Attributes.SCALE);
-        double d = 1.62 * (double)f;
-        double d2 = 1.27 * (double)f;
-        double d3 = 0.4 * (double)f;
+        double[] eyeHeights;
+        float scale = (float)player.getAttributeValue(Attributes.SCALE);
+        double standingHeight = 1.62 * (double)scale;
+        double crouchingHeight = 1.27 * (double)scale;
+        double swimmingHeight = 0.4 * (double)scale;
         Pose pose = player.getPose();
         switch (pose) {
             case FALL_FLYING: 
             case SPIN_ATTACK: 
             case SWIMMING: {
-                double[] dArray2 = new double[3];
-                dArray2[0] = d3;
-                dArray2[1] = d;
-                dArray = dArray2;
-                dArray2[2] = d2;
+                eyeHeights = new double[]{swimmingHeight, standingHeight, crouchingHeight};
                 break;
             }
             case CROUCHING: {
-                double[] dArray3 = new double[3];
-                dArray3[0] = d2;
-                dArray3[1] = d;
-                dArray = dArray3;
-                dArray3[2] = d3;
+                eyeHeights = new double[]{crouchingHeight, standingHeight, swimmingHeight};
                 break;
             }
             default: {
-                double[] dArray4 = new double[3];
-                dArray4[0] = d;
-                dArray4[1] = d2;
-                dArray = dArray4;
-                dArray4[2] = d3;
+                eyeHeights = new double[]{standingHeight, crouchingHeight, swimmingHeight};
             }
         }
-        return dArray;
+        return eyeHeights;
     }
 
     public static Vec3[] getPossibleEyePositions(Player player) {
-        Vec3 vec3 = player.position();
-        double[] dArray = GrimUtils.getPossibleEyeHeights(player);
-        Vec3[] vec3Array = new Vec3[dArray.length];
-        for (int i = 0; i < dArray.length; ++i) {
-            vec3Array[i] = vec3.add(0.0, dArray[i], 0.0);
+        Vec3 pos = player.position();
+        double[] eyeHeights = GrimUtils.getPossibleEyeHeights(player);
+        Vec3[] eyePositions = new Vec3[eyeHeights.length];
+        for (int i = 0; i < eyeHeights.length; ++i) {
+            eyePositions[i] = pos.add(0.0, eyeHeights[i], 0.0);
         }
-        return vec3Array;
+        return eyePositions;
     }
 }
 

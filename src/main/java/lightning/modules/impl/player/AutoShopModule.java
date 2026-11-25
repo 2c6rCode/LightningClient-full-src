@@ -108,30 +108,30 @@ extends Module {
         this.bind.disableHoldModes();
     }
 
-    public void handleKey(int n) {
-        this.totemToggleKey(n);
-        if (n == 0) {
+    public void handleKey(int keyCode) {
+        this.totemToggleKey(keyCode);
+        if (keyCode == 0) {
             return;
         }
-        if (this.totem.getValue() != 0 && n == this.totem.getValue()) {
+        if (this.totem.getValue() != 0 && keyCode == this.totem.getValue()) {
             this.enqueueOrder(ShopMode.Totem, this.totemAmount.getValue().intValue());
-        } else if (this.crystal.getValue() != 0 && n == this.crystal.getValue()) {
+        } else if (this.crystal.getValue() != 0 && keyCode == this.crystal.getValue()) {
             this.enqueueOrder(ShopMode.Crystal, this.crystalStacks.getValue().intValue());
-        } else if (this.exp.getValue() != 0 && n == this.exp.getValue()) {
+        } else if (this.exp.getValue() != 0 && keyCode == this.exp.getValue()) {
             this.enqueueOrder(ShopMode.Exp, this.expStacks.getValue().intValue());
-        } else if (this.obsidian.getValue() != 0 && n == this.obsidian.getValue()) {
+        } else if (this.obsidian.getValue() != 0 && keyCode == this.obsidian.getValue()) {
             this.enqueueOrder(ShopMode.Obsidian, this.obsidianStacks.getValue().intValue());
-        } else if (this.enderPearl.getValue() != 0 && n == this.enderPearl.getValue()) {
+        } else if (this.enderPearl.getValue() != 0 && keyCode == this.enderPearl.getValue()) {
             this.enqueueOrder(ShopMode.EnderPearl, this.enderPearlStacks.getValue().intValue());
         }
     }
 
-    public synchronized void enqueueOrder(ShopMode shopMode, int n) {
+    public synchronized void enqueueOrder(ShopMode shopMode, int amount) {
         if (!this.canAccept(AutoShopModule.itemFor(shopMode))) {
             return;
         }
-        Night.LOGGER.info("[AutoShop] MANUAL_REQUEST mode={} amount={}", (Object)shopMode, (Object)n);
-        this.enqueuePurchaseOrder(new PurchaseOrder(shopMode, n));
+        Night.LOGGER.info("[AutoShop] MANUAL_REQUEST mode={} amount={}", (Object)shopMode, (Object)amount);
+        this.enqueuePurchaseOrder(new PurchaseOrder(shopMode, amount));
     }
 
     private synchronized void enqueuePurchaseOrder(PurchaseOrder purchaseOrder) {
@@ -222,8 +222,8 @@ extends Module {
         this.silentSession = false;
     }
 
-    private void resetTransactionWithoutClosingContainer(String string) {
-        Night.LOGGER.warn("[AutoShop] UNEXPECTED_SCREEN FAIL_OPEN_RESET reason={} state={} generation={}", new Object[]{string, this.state, this.generation});
+    private void resetTransactionWithoutClosingContainer(String reason) {
+        Night.LOGGER.warn("[AutoShop] UNEXPECTED_SCREEN FAIL_OPEN_RESET reason={} state={} generation={}", new Object[]{reason, this.state, this.generation});
         this.markAutoFailure();
         this.totemOrderRecovered = false;
         this.state = State.IDLE;
@@ -262,10 +262,10 @@ extends Module {
         this.totemAutoControl().reset();
     }
 
-    private void resetTotemBaseline(int n, String string) {
-        int n2 = this.baselineTotems;
-        this.baselineTotems = n;
-        this.previousObservedTotems = n;
+    private void resetTotemBaseline(int newBaseline, String reason) {
+        int oldBaseline = this.baselineTotems;
+        this.baselineTotems = newBaseline;
+        this.previousObservedTotems = newBaseline;
         this.totemTrackingInitialized = true;
         this.totemContainerResyncPending = false;
         this.totemZeroFailsafePending = false;
@@ -274,7 +274,7 @@ extends Module {
         AutoControl autoControl = this.totemAutoControl();
         autoControl.reset();
         autoControl.wasEnabled = true;
-        Night.LOGGER.info("[AutoShop] TOTEM_BASELINE_RESET reason={} old={} new={}", new Object[]{string, n2, n});
+        Night.LOGGER.info("[AutoShop] TOTEM_BASELINE_RESET reason={} old={} new={}", new Object[]{reason, oldBaseline, newBaseline});
     }
 
     private boolean isTotemAutoOrder() {
@@ -282,17 +282,16 @@ extends Module {
     }
 
     private boolean isUnrelatedInventorySession() {
-        boolean bl;
         Screen screen = AutoShopModule.mc.gui.screen();
-        boolean bl2 = bl = this.state != State.IDLE && this.currentOrder != null;
+        boolean hasActiveOrder = this.state != State.IDLE && this.currentOrder != null;
         if (screen instanceof InventoryScreen) {
             return true;
         }
         if (screen instanceof AbstractContainerScreen) {
-            return !bl;
+            return !hasActiveOrder;
         }
         if (AutoShopModule.mc.player.hasContainerOpen()) {
-            return !bl || !this.silent.getValue() || !this.silentSession && this.expectedReason == ResponseReason.NONE;
+            return !hasActiveOrder || !this.silent.getValue() || !this.silentSession && this.expectedReason == ResponseReason.NONE;
         }
         return false;
     }
@@ -312,37 +311,37 @@ extends Module {
             }
             return;
         }
-        int n = this.stockCount(Items.TOTEM_OF_UNDYING);
+        int currentTotems = this.stockCount(Items.TOTEM_OF_UNDYING);
         if (this.isUnrelatedInventorySession()) {
             this.totemContainerResyncPending = true;
             return;
         }
         if (this.totemContainerResyncPending) {
-            this.resetTotemBaseline(n, "CONTAINER_RESYNC");
+            this.resetTotemBaseline(currentTotems, "CONTAINER_RESYNC");
             return;
         }
         if (!this.totemTrackingInitialized) {
-            this.resetTotemBaseline(n, "ENABLE/SESSION");
-            Night.LOGGER.info("[AutoShop] TOTEM_AUTO_ENABLE baseline={}", (Object)n);
+            this.resetTotemBaseline(currentTotems, "ENABLE/SESSION");
+            Night.LOGGER.info("[AutoShop] TOTEM_AUTO_ENABLE baseline={}", (Object)currentTotems);
             return;
         }
-        if (n > this.previousObservedTotems) {
+        if (currentTotems > this.previousObservedTotems) {
             if (this.isTotemAutoOrder()) {
                 this.totemOrderRecovered = true;
             }
-            this.resetTotemBaseline(n, "STOCK_INCREASE");
-            Night.LOGGER.info("[AutoShop] TOTEM_AUTO_RECOVER stock={}", (Object)n);
+            this.resetTotemBaseline(currentTotems, "STOCK_INCREASE");
+            Night.LOGGER.info("[AutoShop] TOTEM_AUTO_RECOVER stock={}", (Object)currentTotems);
             return;
         }
-        if (n < this.previousObservedTotems) {
-            if (this.previousObservedTotems > 0 && n == 0 && this.baselineTotems > 0 && !this.totemZeroFailsafeUsed) {
+        if (currentTotems < this.previousObservedTotems) {
+            if (this.previousObservedTotems > 0 && currentTotems == 0 && this.baselineTotems > 0 && !this.totemZeroFailsafeUsed) {
                 this.totemZeroFailsafePending = true;
                 Night.LOGGER.info("[AutoShop] TOTEM_ZERO_FAILSAFE baseline={} current=0 configured={}", (Object)this.baselineTotems, (Object)this.totemLostCount.getValue().intValue());
             }
-            int n2 = Math.max(0, this.baselineTotems - n);
-            Night.LOGGER.info("[AutoShop] TOTEM_LOSS baseline={} current={} lost={} configured={}", new Object[]{this.baselineTotems, n, n2, this.totemLostCount.getValue().intValue()});
+            int lostCount = Math.max(0, this.baselineTotems - currentTotems);
+            Night.LOGGER.info("[AutoShop] TOTEM_LOSS baseline={} current={} lost={} configured={}", new Object[]{this.baselineTotems, currentTotems, lostCount, this.totemLostCount.getValue().intValue()});
         }
-        this.previousObservedTotems = n;
+        this.previousObservedTotems = currentTotems;
     }
 
     @Override
@@ -391,9 +390,9 @@ extends Module {
         }
         AutoControl autoControl = this.autoControls[this.currentOrder.mode.ordinal()];
         autoControl.phase = AutoPhase.SERVICED;
-        int n = this.stockCount(AutoShopModule.itemFor(this.currentOrder.mode));
-        autoControl.peakStock = Math.max(autoControl.startStock, n);
-        Night.LOGGER.info("[AutoShop] AUTO_SERVICED mode={} observedStock={} startStock={}", new Object[]{this.currentOrder.mode, n, autoControl.startStock});
+        int currentStock = this.stockCount(AutoShopModule.itemFor(this.currentOrder.mode));
+        autoControl.peakStock = Math.max(autoControl.startStock, currentStock);
+        Night.LOGGER.info("[AutoShop] AUTO_SERVICED mode={} observedStock={} startStock={}", new Object[]{this.currentOrder.mode, currentStock, autoControl.startStock});
     }
 
     private static Item itemFor(ShopMode shopMode) {
@@ -411,18 +410,18 @@ extends Module {
         if (AutoShopModule.mc.player == null) {
             return 0;
         }
-        int n = 0;
+        int totalCount = 0;
         for (int i = 0; i < 36; ++i) {
             ItemStack itemStack = AutoShopModule.mc.player.getInventory().getItem(i);
             if (itemStack.getItem() != item) continue;
-            n += itemStack.getCount();
+            totalCount += itemStack.getCount();
         }
-        return n;
+        return totalCount;
     }
 
     private boolean tryStartAutomaticTotemOrder() {
         OrderOrigin orderOrigin;
-        boolean bl;
+        boolean zeroFailsafe;
         if (!this.totemBelowThreshold.getValue() || !this.totemTrackingInitialized || this.totemContainerResyncPending || AutoShopModule.mc.player == null || AutoShopModule.mc.level == null || mc.getConnection() == null || !AutoShopModule.mc.player.isAlive() || AutoShopModule.mc.player.isDeadOrDying() || AutoShopModule.mc.player.getHealth() <= 0.0f) {
             return false;
         }
@@ -433,52 +432,50 @@ extends Module {
         if (autoControl.phase != AutoPhase.READY && autoControl.phase != AutoPhase.RETRY_COOLDOWN) {
             return false;
         }
-        int n = this.previousObservedTotems;
-        int n2 = n;
-        int n3 = this.totemLostCount.getValue().intValue();
-        boolean bl2 = n2 <= n3;
-        boolean bl3 = bl = this.baselineTotems > 0 && n == 0 && this.totemZeroFailsafePending && !this.totemZeroFailsafeUsed;
-        if (autoControl.phase != AutoPhase.RETRY_COOLDOWN && !bl2 && !bl || !this.autoStartSafe(Items.TOTEM_OF_UNDYING)) {
+        int currentStock = this.previousObservedTotems;
+        int threshold = this.totemLostCount.getValue().intValue();
+        boolean belowThreshold = currentStock <= threshold;
+        zeroFailsafe = this.baselineTotems > 0 && currentStock == 0 && this.totemZeroFailsafePending && !this.totemZeroFailsafeUsed;
+        if (autoControl.phase != AutoPhase.RETRY_COOLDOWN && !belowThreshold && !zeroFailsafe || !this.autoStartSafe(Items.TOTEM_OF_UNDYING)) {
             return false;
         }
         if (autoControl.phase == AutoPhase.RETRY_COOLDOWN && System.nanoTime() - autoControl.retryAtNanos < 0L) {
             return false;
         }
-        OrderOrigin orderOrigin2 = orderOrigin = autoControl.phase == AutoPhase.READY ? OrderOrigin.AUTO_PRIMARY : OrderOrigin.AUTO_RETRY;
+        orderOrigin = autoControl.phase == AutoPhase.READY ? OrderOrigin.AUTO_PRIMARY : OrderOrigin.AUTO_RETRY;
         if (orderOrigin == OrderOrigin.AUTO_PRIMARY) {
-            autoControl.startStock = n;
+            autoControl.startStock = currentStock;
         }
         autoControl.phase = orderOrigin == OrderOrigin.AUTO_PRIMARY ? AutoPhase.RUNNING_PRIMARY : AutoPhase.RUNNING_RETRY;
-        autoControl.peakStock = Math.max(autoControl.peakStock, n);
+        autoControl.peakStock = Math.max(autoControl.peakStock, currentStock);
         this.totemOrderRecovered = false;
         if (orderOrigin == OrderOrigin.AUTO_PRIMARY) {
-            String string = this.totemEpisodeTriggerReason = bl2 ? "LOSS" : "ZERO_FAILSAFE";
-            if (bl && !bl2) {
+            this.totemEpisodeTriggerReason = belowThreshold ? "LOSS" : "ZERO_FAILSAFE";
+            if (zeroFailsafe && !belowThreshold) {
                 this.totemZeroFailsafePending = false;
                 this.totemZeroFailsafeUsed = true;
             }
         }
-        int n4 = this.totemAmount.getValue().intValue();
-        Night.LOGGER.info("[AutoShop] TOTEM_AUTO_TRIGGER reason={} lost={} configured={} amount={} attempt={}", new Object[]{this.totemEpisodeTriggerReason, n2, n3, n4, orderOrigin});
-        this.enqueuePurchaseOrder(new PurchaseOrder(ShopMode.Totem, n4, orderOrigin));
+        int amount = this.totemAmount.getValue().intValue();
+        Night.LOGGER.info("[AutoShop] TOTEM_AUTO_TRIGGER reason={} lost={} configured={} amount={} attempt={}", new Object[]{this.totemEpisodeTriggerReason, currentStock, threshold, amount, orderOrigin});
+        this.enqueuePurchaseOrder(new PurchaseOrder(ShopMode.Totem, amount, orderOrigin));
         return true;
     }
 
     private void tryStartAutomaticOrder() {
-        ShopMode[] shopModeArray;
         if (AutoShopModule.mc.player == null || AutoShopModule.mc.level == null || mc.getConnection() == null) {
             return;
         }
-        for (ShopMode shopMode : shopModeArray = ShopMode.values()) {
+        for (ShopMode shopMode : ShopMode.values()) {
             OrderOrigin orderOrigin;
             if (shopMode == ShopMode.Totem) {
                 if (!this.tryStartAutomaticTotemOrder()) continue;
                 return;
             }
-            int n = shopMode.ordinal();
-            AutoControl autoControl = this.autoControls[n];
-            boolean bl = this.autoEnabled(shopMode);
-            if (!bl) {
+            int modeIndex = shopMode.ordinal();
+            AutoControl autoControl = this.autoControls[modeIndex];
+            boolean enabled = this.autoEnabled(shopMode);
+            if (!enabled) {
                 autoControl.wasEnabled = false;
                 continue;
             }
@@ -487,34 +484,34 @@ extends Module {
                 autoControl.wasEnabled = true;
                 Night.LOGGER.info("[AutoShop] AUTO_REARM mode={} reason=TOGGLE_ON", (Object)shopMode);
             }
-            int n2 = this.stockCount(AutoShopModule.itemFor(shopMode));
-            int n3 = this.thresholdCount(shopMode, AutoShopModule.itemFor(shopMode));
+            int currentStock = this.stockCount(AutoShopModule.itemFor(shopMode));
+            int threshold = this.thresholdCount(shopMode, AutoShopModule.itemFor(shopMode));
             if (autoControl.phase == AutoPhase.SERVICED || autoControl.phase == AutoPhase.EXHAUSTED) {
-                autoControl.peakStock = Math.max(autoControl.peakStock, n2);
-                if (n2 > n3 || autoControl.peakStock > autoControl.startStock && n2 < autoControl.peakStock && n2 <= n3) {
+                autoControl.peakStock = Math.max(autoControl.peakStock, currentStock);
+                if (currentStock > threshold || autoControl.peakStock > autoControl.startStock && currentStock < autoControl.peakStock && currentStock <= threshold) {
                     autoControl.phase = AutoPhase.READY;
-                    Night.LOGGER.info("[AutoShop] AUTO_REARM mode={} reason={}", (Object)shopMode, (Object)(n2 > n3 ? "ABOVE_THRESHOLD" : "RECOVERY_THEN_CONSUMPTION"));
+                    Night.LOGGER.info("[AutoShop] AUTO_REARM mode={} reason={}", (Object)shopMode, (Object)(currentStock > threshold ? "ABOVE_THRESHOLD" : "RECOVERY_THEN_CONSUMPTION"));
                 }
             } else if (autoControl.phase == AutoPhase.RETRY_COOLDOWN) {
-                if (n2 > autoControl.startStock) {
+                if (currentStock > autoControl.startStock) {
                     autoControl.phase = AutoPhase.SERVICED;
-                    autoControl.peakStock = n2;
+                    autoControl.peakStock = currentStock;
                     Night.LOGGER.info("[AutoShop] AUTO_SERVICED mode={} reason=STOCK_INCREASE_DURING_COOLDOWN", (Object)shopMode);
-                } else if (n2 > n3) {
+                } else if (currentStock > threshold) {
                     autoControl.phase = AutoPhase.READY;
                     Night.LOGGER.info("[AutoShop] AUTO_REARM mode={} reason=ABOVE_THRESHOLD", (Object)shopMode);
                 }
             }
-            if (this.state != State.IDLE || !this.orderQueue.isEmpty() || autoControl.phase != AutoPhase.READY && autoControl.phase != AutoPhase.RETRY_COOLDOWN || n2 > n3 || !this.autoStartSafe(AutoShopModule.itemFor(shopMode)) || autoControl.phase == AutoPhase.RETRY_COOLDOWN && System.nanoTime() - autoControl.retryAtNanos < 0L) continue;
-            OrderOrigin orderOrigin2 = orderOrigin = autoControl.phase == AutoPhase.READY ? OrderOrigin.AUTO_PRIMARY : OrderOrigin.AUTO_RETRY;
+            if (this.state != State.IDLE || !this.orderQueue.isEmpty() || autoControl.phase != AutoPhase.READY && autoControl.phase != AutoPhase.RETRY_COOLDOWN || currentStock > threshold || !this.autoStartSafe(AutoShopModule.itemFor(shopMode)) || autoControl.phase == AutoPhase.RETRY_COOLDOWN && System.nanoTime() - autoControl.retryAtNanos < 0L) continue;
+            orderOrigin = autoControl.phase == AutoPhase.READY ? OrderOrigin.AUTO_PRIMARY : OrderOrigin.AUTO_RETRY;
             if (orderOrigin == OrderOrigin.AUTO_PRIMARY) {
-                autoControl.startStock = n2;
+                autoControl.startStock = currentStock;
             }
             autoControl.phase = orderOrigin == OrderOrigin.AUTO_PRIMARY ? AutoPhase.RUNNING_PRIMARY : AutoPhase.RUNNING_RETRY;
-            autoControl.peakStock = Math.max(autoControl.peakStock, n2);
-            int n4 = this.manualAmount(shopMode);
-            Night.LOGGER.info("[AutoShop] {} mode={} attempt={} stock={} threshold={} amount={}", new Object[]{orderOrigin == OrderOrigin.AUTO_PRIMARY ? "AUTO_TRIGGER" : "AUTO_RETRY", shopMode, orderOrigin == OrderOrigin.AUTO_PRIMARY ? "PRIMARY" : "RETRY", n2, n3, n4});
-            this.enqueuePurchaseOrder(new PurchaseOrder(shopMode, n4, orderOrigin));
+            autoControl.peakStock = Math.max(autoControl.peakStock, currentStock);
+            int amount = this.manualAmount(shopMode);
+            Night.LOGGER.info("[AutoShop] {} mode={} attempt={} stock={} threshold={} amount={}", new Object[]{orderOrigin == OrderOrigin.AUTO_PRIMARY ? "AUTO_TRIGGER" : "AUTO_RETRY", shopMode, orderOrigin == OrderOrigin.AUTO_PRIMARY ? "PRIMARY" : "RETRY", currentStock, threshold, amount});
+            this.enqueuePurchaseOrder(new PurchaseOrder(shopMode, amount, orderOrigin));
             return;
         }
     }
@@ -543,7 +540,7 @@ extends Module {
     }
 
     private int thresholdCount(ShopMode shopMode, Item item) {
-        int n = switch (shopMode.ordinal()) {
+        int threshold = switch (shopMode.ordinal()) {
             default -> throw new MatchException(null, null);
             case 0 -> throw new IllegalArgumentException("Totem automatic buying uses loss tracking");
             case 1 -> this.crystalThreshold.getValue().intValue();
@@ -551,7 +548,7 @@ extends Module {
             case 3 -> this.obsidianThreshold.getValue().intValue();
             case 4 -> this.enderPearlThreshold.getValue().intValue();
         };
-        return shopMode == ShopMode.Totem ? n : n * item.getDefaultInstance().getMaxStackSize();
+        return shopMode == ShopMode.Totem ? threshold : threshold * item.getDefaultInstance().getMaxStackSize();
     }
 
     private int manualAmount(ShopMode shopMode) {
@@ -615,19 +612,18 @@ extends Module {
         }
         this.ticks = 0;
         Screen screen = AutoShopModule.mc.gui.screen();
-        boolean bl = screen instanceof AbstractContainerScreen && !(screen instanceof InventoryScreen);
-        boolean bl2 = bl;
+        boolean shopScreenOpen = screen instanceof AbstractContainerScreen && !(screen instanceof InventoryScreen);
         if (this.silent.getValue() && this.silentSession) {
-            boolean bl3 = bl = bl || AutoShopModule.mc.player.hasContainerOpen();
+            shopScreenOpen = shopScreenOpen || AutoShopModule.mc.player.hasContainerOpen();
         }
-        if (this.state != State.WAIT_SHOP && !bl) {
+        if (this.state != State.WAIT_SHOP && !shopScreenOpen) {
             this.abort("Shop GUI closed unexpectedly.");
             return;
         }
         block14: do {
             switch (this.state.ordinal()) {
                 case 1: {
-                    if (bl || this.silent.getValue() && this.realShopScreenIntercepted) {
+                    if (shopScreenOpen || this.silent.getValue() && this.realShopScreenIntercepted) {
                         this.realShopScreenIntercepted = false;
                         Night.LOGGER.info("[AutoShop] SHOP_ACCEPTED mode={} generation={}", this.currentOrder == null ? "unknown" : this.currentOrder.mode, (Object)this.generation);
                         this.state = State.CLICK_ITEM;
@@ -692,13 +688,12 @@ extends Module {
                     break;
                 }
                 case 4: {
-                    int n;
-                    int n3 = n = this.currentOrder != null && this.currentOrder.mode == ShopMode.EnderPearl ? 15 : 16;
+                    int quantitySlot = this.currentOrder != null && this.currentOrder.mode == ShopMode.EnderPearl ? 15 : 16;
                     if (this.silent.getValue() && this.silentSession) {
                         this.armExpectedResponse(ResponseReason.QUANTITY_SELECTION);
                     }
-                    Night.LOGGER.info("[AutoShop] QUANTITY_CLICK mode={} slot={}", this.currentOrder == null ? "unknown" : this.currentOrder.mode, (Object)n);
-                    this.click(n);
+                    Night.LOGGER.info("[AutoShop] QUANTITY_CLICK mode={} slot={}", this.currentOrder == null ? "unknown" : this.currentOrder.mode, (Object)quantitySlot);
+                    this.click(quantitySlot);
                     this.quantitySet = true;
                     this.state = State.CONFIRM;
                     break;
@@ -731,8 +726,8 @@ extends Module {
         Night.CHAT_MANAGER.tagged(this.lastBuyMsg, this.getName());
     }
 
-    public void abort(String string) {
-        Night.LOGGER.warn("[AutoShop] ABORT reason={} state={}", (Object)string, (Object)this.state);
+    public void abort(String reason) {
+        Night.LOGGER.warn("[AutoShop] ABORT reason={} state={}", (Object)reason, (Object)this.state);
         this.markAutoFailure();
         this.totemOrderRecovered = false;
         this.state = State.IDLE;
@@ -743,11 +738,11 @@ extends Module {
         if (AutoShopModule.mc.player != null) {
             AutoShopModule.mc.player.closeContainer();
         }
-        Night.CHAT_MANAGER.tagged("Aborted: " + string, this.getName());
+        Night.CHAT_MANAGER.tagged("Aborted: " + reason, this.getName());
     }
 
-    private void click(int n) {
-        AutoShopSync.click(n, 0, ContainerInput.PICKUP);
+    private void click(int slotIndex) {
+        AutoShopSync.click(slotIndex, 0, ContainerInput.PICKUP);
     }
 
     @Override
@@ -758,8 +753,8 @@ extends Module {
         return "";
     }
 
-    private void totemToggleKey(int n) {
-        if (this.totemToggle.getValue() != 0 && n == this.totemToggle.getValue()) {
+    private void totemToggleKey(int keyCode) {
+        if (this.totemToggle.getValue() != 0 && keyCode == this.totemToggle.getValue()) {
             this.totemBelowThreshold.setValue(this.totemBelowThreshold.getValue() ^ true);
             if (this.chatNotify.getValue()) {
                 if (this.totemBelowThreshold.getValue()) {
@@ -821,13 +816,13 @@ extends Module {
         public int remaining;
         private final OrderOrigin origin;
 
-        public PurchaseOrder(ShopMode shopMode, int n) {
-            this(shopMode, n, OrderOrigin.MANUAL);
+        public PurchaseOrder(ShopMode shopMode, int remaining) {
+            this(shopMode, remaining, OrderOrigin.MANUAL);
         }
 
-        private PurchaseOrder(ShopMode shopMode, int n, OrderOrigin orderOrigin) {
+        private PurchaseOrder(ShopMode shopMode, int remaining, OrderOrigin orderOrigin) {
             this.mode = shopMode;
-            this.remaining = n;
+            this.remaining = remaining;
             this.origin = orderOrigin;
         }
     }

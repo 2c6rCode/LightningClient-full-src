@@ -85,19 +85,17 @@ extends Module {
      */
     @SubscribeEvent
     public void onEntitySpawn(EntitySpawnEvent entitySpawnEvent) {
-        ArrayList<Icon> arrayList;
         if (this.getNull()) {
             return;
         }
-        ArrayList<Icon> arrayList2 = arrayList = this.iconList;
-        synchronized (arrayList2) {
+        synchronized (this.iconList) {
             Entity entity = entitySpawnEvent.getEntity();
             if (entity instanceof ThrownEnderpearl) {
                 ThrownEnderpearl thrownEnderpearl = (ThrownEnderpearl)entity;
                 IconsModule.mc.level.players().stream().min(Comparator.comparingDouble(abstractClientPlayer -> abstractClientPlayer.distanceTo((Entity)thrownEnderpearl))).ifPresent(abstractClientPlayer -> {
-                    Vec3 vec3 = this.projectPearl(thrownEnderpearl.position(), abstractClientPlayer.getYRot(), abstractClientPlayer.getXRot(), abstractClientPlayer.getDeltaMovement());
-                    if (vec3 != null) {
-                        Icon icon = new Icon(this, this, new Vec3(vec3.x, vec3.y, vec3.z), Icon.Type.PEARL);
+                    Vec3 projectedPos = this.projectPearl(thrownEnderpearl.position(), abstractClientPlayer.getYRot(), abstractClientPlayer.getXRot(), abstractClientPlayer.getDeltaMovement());
+                    if (projectedPos != null) {
+                        Icon icon = new Icon(this, this, new Vec3(projectedPos.x, projectedPos.y, projectedPos.z), Icon.Type.PEARL);
                         this.pearlMap.put(icon, thrownEnderpearl.getId());
                         this.iconList.add(icon);
                     }
@@ -111,12 +109,10 @@ extends Module {
      */
     @SubscribeEvent
     public void onPacketReceive(PacketReceiveEvent packetReceiveEvent) {
-        ArrayList<Icon> arrayList;
         if (this.getNull()) {
             return;
         }
-        ArrayList<Icon> arrayList2 = arrayList = this.iconList;
-        synchronized (arrayList2) {
+        synchronized (this.iconList) {
             ClientboundSoundPacket clientboundSoundPacket;
             SoundEvent soundEvent;
             Packet<?> packet = packetReceiveEvent.getPacket();
@@ -131,65 +127,63 @@ extends Module {
      */
     @SubscribeEvent
     public void onRenderWorld(RenderWorldEvent renderWorldEvent) {
-        ArrayList<Icon> arrayList;
         if (this.getNull()) {
             return;
         }
         PoseStack poseStack = renderWorldEvent.getMatrices();
-        ArrayList<Icon> arrayList2 = arrayList = this.iconList;
-        synchronized (arrayList2) {
+        synchronized (this.iconList) {
             this.iconList.removeIf(icon -> icon.type == Icon.Type.CHORUS && System.currentTimeMillis() - icon.time >= (long)(this.duration.getValue().intValue() + 1200) || icon.type == Icon.Type.PEARL && !(IconsModule.mc.level.getEntity(this.pearlMap.get(icon).intValue()) instanceof ThrownEnderpearl) && icon.animation.value() == 0.0f);
             if (this.chorus.getValue()) {
-                for (Icon icon2 : this.iconList.stream().filter(icon -> icon.type == Icon.Type.CHORUS).toList()) {
-                    icon2.render(poseStack, System.currentTimeMillis() - icon2.time >= (long)(600 + this.duration.getValue().intValue()) ? 0.0f : 1.0f, () -> Renderer2D.renderTexture(poseStack, -6.0f, -6.5f, 6.0f, 6.5f, Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/chorus.png"), Color.WHITE), this.chorusColor.getColor());
+                for (Icon entry : this.iconList.stream().filter(icon -> icon.type == Icon.Type.CHORUS).toList()) {
+                    entry.render(poseStack, System.currentTimeMillis() - entry.time >= (long)(600 + this.duration.getValue().intValue()) ? 0.0f : 1.0f, () -> Renderer2D.renderTexture(poseStack, -6.0f, -6.5f, 6.0f, 6.5f, Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/chorus.png"), Color.WHITE), this.chorusColor.getColor());
                 }
             }
             if (this.pearls.getValue()) {
-                for (Icon icon2 : this.iconList.stream().filter(icon -> icon.type == Icon.Type.PEARL).toList()) {
-                    icon2.render(poseStack, !(IconsModule.mc.level.getEntity(this.pearlMap.get(icon2).intValue()) instanceof ThrownEnderpearl) ? 0.0f : 1.0f, () -> Renderer2D.renderTexture(poseStack, -6.5f, -6.5f, 6.5f, 6.5f, Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/pearl.png"), Color.WHITE), this.pearlsColor.getColor());
+                for (Icon entry : this.iconList.stream().filter(icon -> icon.type == Icon.Type.PEARL).toList()) {
+                    entry.render(poseStack, !(IconsModule.mc.level.getEntity(this.pearlMap.get(entry).intValue()) instanceof ThrownEnderpearl) ? 0.0f : 1.0f, () -> Renderer2D.renderTexture(poseStack, -6.5f, -6.5f, 6.5f, 6.5f, Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/pearl.png"), Color.WHITE), this.pearlsColor.getColor());
                 }
             }
         }
     }
 
-    private Vec3 projectPearl(Vec3 vec3, float f, float f2, Vec3 vec32) {
-        double d = vec3.x;
-        double d2 = vec3.y;
-        double d3 = vec3.z;
-        d2 = d2 + (double)IconsModule.mc.player.getEyeHeight(IconsModule.mc.player.getPose()) - 0.1000000014901161;
-        float f3 = 0.4f;
-        double d4 = -Mth.sin((double)(f / 180.0f * (float)Math.PI)) * Mth.cos((double)(f2 / 180.0f * (float)Math.PI)) * f3;
-        double d5 = -Mth.sin((double)(f2 / 180.0f * 3.141593f)) * f3;
-        double d6 = Mth.cos((double)(f / 180.0f * (float)Math.PI)) * Mth.cos((double)(f2 / 180.0f * (float)Math.PI)) * f3;
-        float f4 = Mth.sqrt((float)((float)(d4 * d4 + d5 * d5 + d6 * d6)));
-        d4 /= (double)f4;
-        d5 /= (double)f4;
-        d6 /= (double)f4;
-        float f5 = 1.5f;
-        d4 *= (double)f5;
-        d5 *= (double)f5;
-        d6 *= (double)f5;
-        d4 += vec32.x;
-        d5 += vec32.y;
-        d6 += vec32.z;
-        while (d2 > -65.0) {
-            Vec3 vec33 = new Vec3(d, d2, d3);
-            if (IconsModule.mc.level.getBlockState(new BlockPos((int)(d += d4), (int)(d2 += d5), (int)(d3 += d6))).getBlock() == Blocks.WATER) {
-                d4 *= 0.8;
-                d5 *= 0.8;
-                d6 *= 0.8;
+    private Vec3 projectPearl(Vec3 startPos, float yaw, float pitch, Vec3 shooterVel) {
+        double posX = startPos.x;
+        double posY = startPos.y;
+        double posZ = startPos.z;
+        posY = posY + (double)IconsModule.mc.player.getEyeHeight(IconsModule.mc.player.getPose()) - 0.1000000014901161;
+        float velocityScale = 0.4f;
+        double velX = -Mth.sin((double)(yaw / 180.0f * (float)Math.PI)) * Mth.cos((double)(pitch / 180.0f * (float)Math.PI)) * velocityScale;
+        double velY = -Mth.sin((double)(pitch / 180.0f * 3.141593f)) * velocityScale;
+        double velZ = Mth.cos((double)(yaw / 180.0f * (float)Math.PI)) * Mth.cos((double)(pitch / 180.0f * (float)Math.PI)) * velocityScale;
+        float dirLength = Mth.sqrt((float)((float)(velX * velX + velY * velY + velZ * velZ)));
+        velX /= (double)dirLength;
+        velY /= (double)dirLength;
+        velZ /= (double)dirLength;
+        float throwSpeed = 1.5f;
+        velX *= (double)throwSpeed;
+        velY *= (double)throwSpeed;
+        velZ *= (double)throwSpeed;
+        velX += shooterVel.x;
+        velY += shooterVel.y;
+        velZ += shooterVel.z;
+        while (posY > -65.0) {
+            Vec3 prevPos = new Vec3(posX, posY, posZ);
+            if (IconsModule.mc.level.getBlockState(new BlockPos((int)(posX += velX), (int)(posY += velY), (int)(posZ += velZ))).getBlock() == Blocks.WATER) {
+                velX *= 0.8;
+                velY *= 0.8;
+                velZ *= 0.8;
             } else {
-                d4 *= 0.99;
-                d5 *= 0.99;
-                d6 *= 0.99;
+                velX *= 0.99;
+                velY *= 0.99;
+                velZ *= 0.99;
             }
-            d5 -= (double)0.03f;
-            Vec3 vec34 = new Vec3(d, d2, d3);
+            velY -= (double)0.03f;
+            Vec3 nextPos = new Vec3(posX, posY, posZ);
             for (Entity entity : IconsModule.mc.level.entitiesForRendering()) {
-                if (entity == IconsModule.mc.player || entity instanceof Arrow || entity instanceof ThrownEnderpearl || !entity.getBoundingBox().intersects(new AABB(d - 1.0, d2 - 1.0, d3 - 1.0, d + 1.0, d2 + 1.0, d3 + 1.0))) continue;
+                if (entity == IconsModule.mc.player || entity instanceof Arrow || entity instanceof ThrownEnderpearl || !entity.getBoundingBox().intersects(new AABB(posX - 1.0, posY - 1.0, posZ - 1.0, posX + 1.0, posY + 1.0, posZ + 1.0))) continue;
                 return entity.getBoundingBox().getCenter();
             }
-            BlockHitResult blockHitResult = IconsModule.mc.level.clip(new ClipContext(vec33, vec34, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, (Entity)IconsModule.mc.player));
+            BlockHitResult blockHitResult = IconsModule.mc.level.clip(new ClipContext(prevPos, nextPos, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, (Entity)IconsModule.mc.player));
             if (blockHitResult == null || blockHitResult.getType() == HitResult.Type.MISS) continue;
             return blockHitResult.getLocation();
         }
@@ -203,33 +197,33 @@ extends Module {
         private final long time;
         final IconsModule this$0;
 
-        public Icon(IconsModule iconsModule, IconsModule iconsModule2, Vec3 vec3, Type type) {
+        public Icon(IconsModule iconsModule, IconsModule parent, Vec3 pos, Type type) {
             Objects.requireNonNull(iconsModule);
-            IconsModule iconsModule3 = iconsModule2;
-            Objects.requireNonNull(iconsModule3);
-            this.this$0 = iconsModule3;
-            this.pos = vec3;
+            IconsModule owner = parent;
+            Objects.requireNonNull(owner);
+            this.this$0 = owner;
+            this.pos = pos;
             this.animation = new Animation(0.0f, 1.0f, 600, Easing.Method.EASE_IN_OUT_ELASTIC);
             this.type = type;
             this.time = System.currentTimeMillis();
         }
 
-        private void render(PoseStack poseStack, float f, Runnable runnable, Color color) {
-            float f2 = this.animation.get(f);
-            float f3 = (float)Math.sqrt(IMinecraft.mc.gameRenderer.mainCamera().position().distanceToSqr(this.pos.x, this.pos.y, this.pos.z));
-            float f4 = 0.0018f + this.this$0.scale.getValue().floatValue() / 10000.0f * f3;
-            if ((double)f3 <= 4.0) {
-                f4 = 0.0245f;
+        private void render(PoseStack poseStack, float targetScale, Runnable drawAction, Color color) {
+            float animScale = this.animation.get(targetScale);
+            float distance = (float)Math.sqrt(IMinecraft.mc.gameRenderer.mainCamera().position().distanceToSqr(this.pos.x, this.pos.y, this.pos.z));
+            float worldScale = 0.0018f + this.this$0.scale.getValue().floatValue() / 10000.0f * distance;
+            if ((double)distance <= 4.0) {
+                worldScale = 0.0245f;
             }
-            Vec3 vec3 = new Vec3(this.pos.x - IMinecraft.mc.gameRenderer.mainCamera().position().x, this.pos.y - IMinecraft.mc.gameRenderer.mainCamera().position().y, this.pos.z - IMinecraft.mc.gameRenderer.mainCamera().position().z);
+            Vec3 relPos = new Vec3(this.pos.x - IMinecraft.mc.gameRenderer.mainCamera().position().x, this.pos.y - IMinecraft.mc.gameRenderer.mainCamera().position().y, this.pos.z - IMinecraft.mc.gameRenderer.mainCamera().position().z);
             poseStack.pushPose();
-            poseStack.translate(vec3.x, vec3.y, vec3.z);
+            poseStack.translate(relPos.x, relPos.y, relPos.z);
             poseStack.mulPose((Quaternionfc)IMinecraft.mc.gameRenderer.mainCamera().rotation());
-            poseStack.scale(f4, -f4, f4);
-            poseStack.scale(f2, f2, 1.0f);
+            poseStack.scale(worldScale, -worldScale, worldScale);
+            poseStack.scale(animScale, animScale, 1.0f);
             Renderer2D.renderCircle(poseStack, 0.0f, 0.0f, 12.0f, new Color(0, 0, 0, 100));
             Renderer2D.renderCircle(poseStack, 0.0f, 0.0f, 10.0f, color);
-            runnable.run();
+            drawAction.run();
             poseStack.popPose();
         }
 

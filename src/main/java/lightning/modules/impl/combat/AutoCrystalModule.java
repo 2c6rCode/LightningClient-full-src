@@ -304,16 +304,16 @@ extends Module {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
-        int n = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-        if (this.lastSelectedSlot != -1 && this.lastSelectedSlot != n) {
+        int currentSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+        if (this.lastSelectedSlot != -1 && this.lastSelectedSlot != currentSlot) {
             this.swapTimer.reset();
         }
-        this.lastSelectedSlot = n;
-        long l = 50L;
-        this.attackedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, l));
-        long l2 = Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, 500L) + (long)((20.0f - this.attackSpeed.getValue().floatValue()) * 50.0f);
-        this.placedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > l2);
-        this.countedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, l));
+        this.lastSelectedSlot = currentSlot;
+        long attackClearDelay = 50L;
+        this.attackedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, attackClearDelay));
+        long placeClearDelay = Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, 500L) + (long)((20.0f - this.attackSpeed.getValue().floatValue()) * 50.0f);
+        this.placedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > placeClearDelay);
+        this.countedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, attackClearDelay));
         this.crystalsPerSecond = this.crystalCounter.getCount();
         if (this.losDebug.getValue() && this.losDebugTimer.hasTimeElapsed(1000L)) {
             this.losDebugTimer.reset();
@@ -383,40 +383,39 @@ extends Module {
         }
     }
 
-    private void runCalculation(Set<BlockPos> set, boolean bl) {
-        long l = System.nanoTime();
+    private void runCalculation(Set<BlockPos> reservedPlacements, boolean calcMineTargets) {
+        long startTimeNs = System.nanoTime();
         try {
             this.attackTarget = this.calculateCrystals();
-            this.placeTarget = this.calculatePlacements(null, set);
+            this.placeTarget = this.calculatePlacements(null, reservedPlacements);
         }
         catch (Throwable throwable) {
             return;
         }
-        long l2 = System.nanoTime() - l;
-        this.calculationTime = new DecimalFormat("0.00").format((double)l2 / 1000000.0) + "ms";
+        long elapsedNs = System.nanoTime() - startTimeNs;
+        this.calculationTime = new DecimalFormat("0.00").format((double)elapsedNs / 1000000.0) + "ms";
         this.calculationCount = this.placeTarget == null ? 0 : this.placeTarget.getCalculations();
         this.calculationDamage = this.placeTarget == null ? "0.00" : new DecimalFormat("0.00").format(this.placeTarget.getDamage());
         this.target = this.placeTarget == null ? null : this.placeTarget.getPlayer();
-        Player player = this.target;
-        if (this.blockDestruction.getValue() && bl) {
+        if (this.blockDestruction.getValue() && calcMineTargets) {
             SpeedMineModule speedMineModule = Night.MODULE_MANAGER.getModule(SpeedMineModule.class);
-            BlockPos blockPos = null;
+            BlockPos primaryMinePos = null;
             if (speedMineModule.getPrimary() != null && speedMineModule.getPrimary().isMining()) {
-                blockPos = speedMineModule.getPrimary().getPosition();
+                primaryMinePos = speedMineModule.getPrimary().getPosition();
             }
-            if (blockPos != null) {
-                this.mineTarget = this.calculatePlacements(blockPos, set);
+            if (primaryMinePos != null) {
+                this.mineTarget = this.calculatePlacements(primaryMinePos, reservedPlacements);
             }
-            BlockPos blockPos2 = null;
+            BlockPos secondaryMinePos = null;
             if (speedMineModule.farReach.getValue()) {
                 if (speedMineModule.getSecondary() != null && speedMineModule.getSecondary().isMining()) {
-                    blockPos2 = speedMineModule.getSecondary().getPosition();
+                    secondaryMinePos = speedMineModule.getSecondary().getPosition();
                 }
             } else if (speedMineModule.getSecondary() != null && speedMineModule.getSecondary().isMining()) {
-                blockPos2 = speedMineModule.getSecondary().getPosition();
+                secondaryMinePos = speedMineModule.getSecondary().getPosition();
             }
-            if (blockPos2 != null) {
-                this.mineTargetSecondary = this.calculatePlacements(blockPos2, set);
+            if (secondaryMinePos != null) {
+                this.mineTargetSecondary = this.calculatePlacements(secondaryMinePos, reservedPlacements);
             }
         }
     }
@@ -509,7 +508,6 @@ extends Module {
             return false;
         }
         SpeedMineModule speedMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(SpeedMineModule.class) : null;
-        SpeedMineModule speedMineModule2 = speedMineModule;
         if (speedMineModule == null) {
             return false;
         }
@@ -522,12 +520,10 @@ extends Module {
             return false;
         }
         PhaseModule phaseModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(PhaseModule.class) : null;
-        PhaseModule phaseModule2 = phaseModule;
         if (phaseModule != null && phaseModule.isToggled()) {
             return true;
         }
         KeyActionModule keyActionModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(KeyActionModule.class) : null;
-        KeyActionModule keyActionModule2 = keyActionModule;
         if (keyActionModule != null && keyActionModule.isPearlActive()) {
             return true;
         }
@@ -535,9 +531,8 @@ extends Module {
             return true;
         }
         if (AutoCrystalModule.mc.player != null) {
-            boolean bl = AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.ENDER_PEARL || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.ENDER_PEARL;
-            boolean bl2 = bl;
-            if (bl && (AutoCrystalModule.mc.options.keyUse.isDown() || AutoCrystalModule.mc.player.isUsingItem())) {
+            boolean holdingPearl = AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.ENDER_PEARL || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.ENDER_PEARL;
+            if (holdingPearl && (AutoCrystalModule.mc.options.keyUse.isDown() || AutoCrystalModule.mc.player.isUsingItem())) {
                 return true;
             }
         }
@@ -549,7 +544,6 @@ extends Module {
             return false;
         }
         KeyActionModule keyActionModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(KeyActionModule.class) : null;
-        KeyActionModule keyActionModule2 = keyActionModule;
         if (keyActionModule != null && keyActionModule.isXpActive()) {
             return true;
         }
@@ -557,9 +551,8 @@ extends Module {
             return true;
         }
         if (AutoCrystalModule.mc.player != null) {
-            boolean bl = AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.EXPERIENCE_BOTTLE || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.EXPERIENCE_BOTTLE;
-            boolean bl2 = bl;
-            if (bl && (AutoCrystalModule.mc.options.keyUse.isDown() || AutoCrystalModule.mc.player.isUsingItem())) {
+            boolean holdingXp = AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.EXPERIENCE_BOTTLE || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.EXPERIENCE_BOTTLE;
+            if (holdingXp && (AutoCrystalModule.mc.options.keyUse.isDown() || AutoCrystalModule.mc.player.isUsingItem())) {
                 return true;
             }
         }
@@ -610,11 +603,11 @@ extends Module {
         if (this.isAtActiveUnbrokenMinePos(endCrystal)) {
             return;
         }
-        BlockPos blockPos = endCrystal.blockPosition().below();
-        if (!this.placedCrystals.containsKey(blockPos)) {
-            blockPos = BlockPos.containing((double)endCrystal.getX(), (double)(endCrystal.getY() - 0.5), (double)endCrystal.getZ());
+        BlockPos basePos = endCrystal.blockPosition().below();
+        if (!this.placedCrystals.containsKey(basePos)) {
+            basePos = BlockPos.containing((double)endCrystal.getX(), (double)(endCrystal.getY() - 0.5), (double)endCrystal.getZ());
         }
-        if (!this.placedCrystals.containsKey(blockPos)) {
+        if (!this.placedCrystals.containsKey(basePos)) {
             return;
         }
         if (endCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue())) {
@@ -623,23 +616,22 @@ extends Module {
         if (!AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(endCrystal.blockPosition())) {
             return;
         }
-        boolean bl = this.raytrace.getValue() || endCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
-        boolean bl2 = bl;
-        if (bl && !WorldUtils.canSee((Entity)endCrystal)) {
+        boolean checkLos = this.raytrace.getValue() || endCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
+        if (checkLos && !WorldUtils.canSee((Entity)endCrystal)) {
             return;
         }
         if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
-            float f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal, this.ignoreTerrain.getValue());
-            if (f > this.maximumSelfDamage.getValue().floatValue()) {
+            float selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal, this.ignoreTerrain.getValue());
+            if (selfDamage > this.maximumSelfDamage.getValue().floatValue()) {
                 return;
             }
-            if (this.antiSuicide.getValue() && f > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) {
+            if (this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) {
                 return;
             }
         }
-        float[] fArray = RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition()));
+        float[] rotations = RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition()));
         if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
-            Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), fArray);
+            Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), rotations);
         }
         if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
             Night.ROTATION_MANAGER.legacyRotate(this.calculateRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition())), Night.ROTATION_MANAGER.getLegacyModulePriority(this));
@@ -654,7 +646,7 @@ extends Module {
 
     @SubscribeEvent
     public void onDestroyBlock(DestroyBlockEvent destroyBlockEvent) {
-        PlaceTarget placeTarget2;
+        PlaceTarget selectedTarget;
         if (PingBypassFlags.isPingBypassActive()) {
             return;
         }
@@ -674,47 +666,45 @@ extends Module {
         if (!this.placeTimer.hasTimeElapsed(Float.valueOf(1000.0f - this.placeSpeed.getValue().floatValue() * 50.0f))) {
             return;
         }
-        BlockPos blockPos = destroyBlockEvent.getPosition();
-        if (blockPos == null) {
+        BlockPos minedPos = destroyBlockEvent.getPosition();
+        if (minedPos == null) {
             return;
         }
-        int n = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-        int n2 = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-        boolean bl = false;
-        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && n == -1 && AutoCrystalModule.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
+        int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+        int prevSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+        boolean switched = false;
+        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && crystalSlot == -1 && AutoCrystalModule.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
             return;
         }
-        PlaceTarget placeTarget3 = this.mineTarget == null ? null : this.mineTarget.clone();
-        PlaceTarget placeTarget4 = this.mineTargetSecondary == null ? null : this.mineTargetSecondary.clone();
-        PlaceTarget placeTarget5 = placeTarget4;
-        if (placeTarget3 != null && placeTarget3.getPosition() != null && blockPos.equals((Object)placeTarget3.getException())) {
-            placeTarget2 = placeTarget3;
-        } else if (placeTarget4 != null && placeTarget4.getPosition() != null && blockPos.equals((Object)placeTarget4.getException())) {
-            placeTarget2 = placeTarget4;
+        PlaceTarget primaryMineTarget = this.mineTarget == null ? null : this.mineTarget.clone();
+        PlaceTarget secondaryMineTarget = this.mineTargetSecondary == null ? null : this.mineTargetSecondary.clone();
+        if (primaryMineTarget != null && primaryMineTarget.getPosition() != null && minedPos.equals((Object)primaryMineTarget.getException())) {
+            selectedTarget = primaryMineTarget;
+        } else if (secondaryMineTarget != null && secondaryMineTarget.getPosition() != null && minedPos.equals((Object)secondaryMineTarget.getException())) {
+            selectedTarget = secondaryMineTarget;
         } else if (!this.asynchronous.getValue()) {
-            placeTarget2 = this.calculatePlacements(blockPos);
+            selectedTarget = this.calculatePlacements(minedPos);
         } else {
-            placeTarget2 = placeTarget3 != null ? placeTarget3 : placeTarget4;
+            selectedTarget = primaryMineTarget != null ? primaryMineTarget : secondaryMineTarget;
         }
-        if (placeTarget2 == null || placeTarget2.getPosition() == null || placeTarget2.getDamage() <= 0.0f) {
+        if (selectedTarget == null || selectedTarget.getPosition() == null || selectedTarget.getDamage() <= 0.0f) {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
-        BlockPos targetPos = placeTarget2.getPosition();
+        BlockPos targetPos = selectedTarget.getPosition();
         if (AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf(targetPos)) > Mth.square((double)this.placeRange.getValue().doubleValue())) {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
         Night.RENDER_MANAGER.setRenderPosition(targetPos);
-        boolean bl2 = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf(targetPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
-        boolean bl3 = bl2;
-        if (bl2 && !WorldUtils.canSeeBlock(targetPos)) {
+        boolean checkLos = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf(targetPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
+        if (checkLos && !WorldUtils.canSeeBlock(targetPos)) {
             return;
         }
         EndCrystal endCrystal = null;
-        for (Entity e : AutoCrystalModule.mc.level.getEntities((Entity)null, new AABB(targetPos.above()), entity -> true)) {
-            if (!(e instanceof EndCrystal)) continue;
-            endCrystal = (EndCrystal)e;
+        for (Entity entity : AutoCrystalModule.mc.level.getEntities((Entity)null, new AABB(targetPos.above()), e -> true)) {
+            if (!(entity instanceof EndCrystal)) continue;
+            endCrystal = (EndCrystal)entity;
             break;
         }
         if (endCrystal != null) {
@@ -747,14 +737,14 @@ extends Module {
         }
         if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
             if (this.autoSwitch.getValue().equalsIgnoreCase("Normal") && this.swapBack.getValue() && this.savedSlot == -1) {
-                this.savedSlot = n2;
+                this.savedSlot = prevSlot;
             }
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-            bl = true;
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), crystalSlot, prevSlot);
+            switched = true;
         }
         this.place(targetPos);
-        if (bl) {
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+        if (switched) {
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), crystalSlot, prevSlot);
         }
     }
 
@@ -883,37 +873,36 @@ extends Module {
         if (endCrystal == null || blockPos == null) {
             return false;
         }
-        BlockPos blockPos2 = endCrystal.blockPosition().below();
-        if (Math.abs(blockPos2.getX() - blockPos.getX()) <= 2 && Math.abs(blockPos2.getZ() - blockPos.getZ()) <= 2 && Math.abs(blockPos2.getY() - blockPos.getY()) <= 2) {
+        BlockPos crystalBasePos = endCrystal.blockPosition().below();
+        if (Math.abs(crystalBasePos.getX() - blockPos.getX()) <= 2 && Math.abs(crystalBasePos.getZ() - blockPos.getZ()) <= 2 && Math.abs(crystalBasePos.getY() - blockPos.getY()) <= 2) {
             return true;
         }
         return endCrystal.getBoundingBox().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= 9.0;
     }
 
     private boolean isAtActiveUnbrokenMinePos(EndCrystal endCrystal) {
-        BlockPos blockPos;
-        BlockPos blockPos2;
+        BlockPos secondaryMinePos;
+        BlockPos primaryMinePos;
         if (endCrystal == null || AutoCrystalModule.mc.level == null || AutoCrystalModule.mc.player == null) {
             return false;
         }
         SpeedMineModule speedMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(SpeedMineModule.class) : null;
-        SpeedMineModule speedMineModule2 = speedMineModule;
         if (speedMineModule == null || !speedMineModule.isToggled()) {
             return false;
         }
         SpeedMineModule.Action action = speedMineModule.getPrimary();
-        if (action != null && action.getPosition() != null && this.isCrystalNearMinePos(endCrystal, blockPos2 = action.getPosition())) {
-            return !this.attack.getValue() || !this.isEnemyAtMinePos(blockPos2);
+        if (action != null && action.getPosition() != null && this.isCrystalNearMinePos(endCrystal, primaryMinePos = action.getPosition())) {
+            return !this.attack.getValue() || !this.isEnemyAtMinePos(primaryMinePos);
         }
         SpeedMineModule.Secondary secondary = speedMineModule.getSecondary();
-        if (secondary != null && secondary.getPosition() != null && this.isCrystalNearMinePos(endCrystal, blockPos = secondary.getPosition())) {
-            return !this.attack.getValue() || !this.isEnemyAtMinePos(blockPos);
+        if (secondary != null && secondary.getPosition() != null && this.isCrystalNearMinePos(endCrystal, secondaryMinePos = secondary.getPosition())) {
+            return !this.attack.getValue() || !this.isEnemyAtMinePos(secondaryMinePos);
         }
         return false;
     }
 
     private void attackCrystals() {
-        boolean bl;
+        boolean checkLos;
         if (this.isDead()) {
             return;
         }
@@ -924,71 +913,69 @@ extends Module {
             this.attackTarget = null;
             return;
         }
-        EndCrystal endCrystal = null;
-        boolean bl2 = false;
-        PlaceTarget placeTarget = this.placeTarget;
-        if (placeTarget != null && placeTarget.getPosition() == null && placeTarget.getObstructions() != null && !placeTarget.getObstructions().isEmpty()) {
-            for (Entity entity : placeTarget.getObstructions()) {
-                float f;
-                EndCrystal endCrystal2;
-                if (!(entity instanceof EndCrystal) || !(endCrystal2 = (EndCrystal)entity).isAlive() || this.isAtActiveUnbrokenMinePos(endCrystal2) || endCrystal2.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(endCrystal2.blockPosition())) continue;
-                boolean bl3 = this.raytrace.getValue() || endCrystal2.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
-                bl = bl3;
-                if (bl3 && !WorldUtils.canSee((Entity)endCrystal2) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal2, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
-                endCrystal = endCrystal2;
-                bl2 = true;
+        EndCrystal targetCrystal = null;
+        boolean bypassInhibit = false;
+        PlaceTarget currentPlaceTarget = this.placeTarget;
+        if (currentPlaceTarget != null && currentPlaceTarget.getPosition() == null && currentPlaceTarget.getObstructions() != null && !currentPlaceTarget.getObstructions().isEmpty()) {
+            for (Entity entity : currentPlaceTarget.getObstructions()) {
+                float selfDamage;
+                EndCrystal obstructingCrystal;
+                if (!(entity instanceof EndCrystal) || !(obstructingCrystal = (EndCrystal)entity).isAlive() || this.isAtActiveUnbrokenMinePos(obstructingCrystal) || obstructingCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(obstructingCrystal.blockPosition())) continue;
+                checkLos = this.raytrace.getValue() || obstructingCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
+                if (checkLos && !WorldUtils.canSee((Entity)obstructingCrystal) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), obstructingCrystal, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
+                targetCrystal = obstructingCrystal;
+                bypassInhibit = true;
                 break;
             }
         }
-        if (endCrystal == null) {
-            endCrystal = this.attackTarget;
+        if (targetCrystal == null) {
+            targetCrystal = this.attackTarget;
         }
-        if (endCrystal == null) {
-            List<Player> entity = this.selectTargets(this.getPlayers());
-            float f = -1.0f;
-            for (Entity entity2 : AutoCrystalModule.mc.level.entitiesForRendering()) {
-                float f2;
-                EndCrystal endCrystal3;
-                if (!(entity2 instanceof EndCrystal) || !(endCrystal3 = (EndCrystal)entity2).isAlive() || this.isAtActiveUnbrokenMinePos(endCrystal3) || this.inhibit.getValue() && this.attackedCrystals.containsKey(endCrystal3.getId()) && System.currentTimeMillis() - this.attackedCrystals.get(endCrystal3.getId()) < Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, 100L)) continue;
-                BlockPos blockPos = endCrystal3.blockPosition().below();
-                if (!this.placedCrystals.containsKey(blockPos)) {
-                    blockPos = BlockPos.containing((double)endCrystal3.getX(), (double)(endCrystal3.getY() - 0.5), (double)endCrystal3.getZ());
+        if (targetCrystal == null) {
+            List<Player> targetPlayers = this.selectTargets(this.getPlayers());
+            float bestTargetDamage = -1.0f;
+            for (Entity worldEntity : AutoCrystalModule.mc.level.entitiesForRendering()) {
+                float selfDamage;
+                EndCrystal candidateCrystal;
+                if (!(worldEntity instanceof EndCrystal) || !(candidateCrystal = (EndCrystal)worldEntity).isAlive() || this.isAtActiveUnbrokenMinePos(candidateCrystal) || this.inhibit.getValue() && this.attackedCrystals.containsKey(candidateCrystal.getId()) && System.currentTimeMillis() - this.attackedCrystals.get(candidateCrystal.getId()) < Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, 100L)) continue;
+                BlockPos basePos = candidateCrystal.blockPosition().below();
+                if (!this.placedCrystals.containsKey(basePos)) {
+                    basePos = BlockPos.containing((double)candidateCrystal.getX(), (double)(candidateCrystal.getY() - 0.5), (double)candidateCrystal.getZ());
                 }
-                if (!this.placedCrystals.containsKey(blockPos) || endCrystal3.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(endCrystal3.blockPosition())) continue;
-                bl = this.raytrace.getValue() || endCrystal3.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
-                boolean bl4 = bl;
-                if (bl && !WorldUtils.canSee((Entity)endCrystal3) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f2 = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal3, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f2 > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
-                float f3 = 0.0f;
-                for (Player player : entity) {
-                    float f4 = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), endCrystal3, this.ignoreTerrain.getValue());
-                    if (!(f4 > f3)) continue;
-                    f3 = f4;
+                if (!this.placedCrystals.containsKey(basePos) || candidateCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(candidateCrystal.blockPosition())) continue;
+                checkLos = this.raytrace.getValue() || candidateCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
+                if (checkLos && !WorldUtils.canSee((Entity)candidateCrystal) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), candidateCrystal, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
+                float maxEnemyDamage = 0.0f;
+                for (Player player : targetPlayers) {
+                    float enemyDamage = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), candidateCrystal, this.ignoreTerrain.getValue());
+                    if (!(enemyDamage > maxEnemyDamage)) continue;
+                    maxEnemyDamage = enemyDamage;
                 }
-                if (!(f3 > f)) continue;
-                f = f3;
-                endCrystal = endCrystal3;
-                bl2 = true;
+                if (!(maxEnemyDamage > bestTargetDamage)) continue;
+                bestTargetDamage = maxEnemyDamage;
+                targetCrystal = candidateCrystal;
+                bypassInhibit = true;
             }
         }
-        if (endCrystal == null) {
+        if (targetCrystal == null) {
             return;
         }
-        EndCrystal endCrystal4 = endCrystal;
-        if (this.isAtActiveUnbrokenMinePos(endCrystal4)) {
+        EndCrystal crystalToAttack = targetCrystal;
+        if (this.isAtActiveUnbrokenMinePos(crystalToAttack)) {
             return;
         }
         if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
-            float f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal4, this.ignoreTerrain.getValue());
-            if (f > this.maximumSelfDamage.getValue().floatValue()) {
+            float selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), crystalToAttack, this.ignoreTerrain.getValue());
+            if (selfDamage > this.maximumSelfDamage.getValue().floatValue()) {
                 return;
             }
-            if (this.antiSuicide.getValue() && f > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) {
+            if (this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) {
                 return;
             }
         }
-        float[] fArray = this.calculateRotations(Vec3.atCenterOf((Vec3i)endCrystal4.blockPosition()));
+        float[] rotations = this.calculateRotations(Vec3.atCenterOf((Vec3i)crystalToAttack.blockPosition()));
         if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-            Night.ROTATION_MANAGER.legacyRotate(fArray, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+            Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
         }
         if (this.swapDelay.getValue().intValue() > 0 && !this.swapTimer.hasTimeElapsed(this.swapDelay.getValue().longValue() * 50L)) {
             return;
@@ -996,111 +983,105 @@ extends Module {
         if (!this.attackTimer.hasTimeElapsed(Float.valueOf(1000.0f - this.attackSpeed.getValue().floatValue() * 50.0f))) {
             return;
         }
-        Entity entity = AutoCrystalModule.mc.level.getEntity(endCrystal4.getId());
-        String string = null;
+        Entity entity = AutoCrystalModule.mc.level.getEntity(crystalToAttack.getId());
+        String rejectReason = null;
         if (entity == null) {
-            string = "entity-gone";
+            rejectReason = "entity-gone";
         } else if (!(entity instanceof EndCrystal)) {
-            string = "not-end-crystal";
+            rejectReason = "not-end-crystal";
         } else if (!((EndCrystal)entity).isAlive()) {
-            string = "dead";
-        } else if (this.inhibit.getValue() && !bl2 && this.attackedCrystals.containsKey(entity.getId())) {
-            string = "inhibit";
+            rejectReason = "dead";
+        } else if (this.inhibit.getValue() && !bypassInhibit && this.attackedCrystals.containsKey(entity.getId())) {
+            rejectReason = "inhibit";
         } else if (entity.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue())) {
-            string = "range";
+            rejectReason = "range";
         } else if (!AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(entity.blockPosition())) {
-            string = "border";
+            rejectReason = "border";
         } else {
-            boolean bl5 = this.raytrace.getValue() || entity.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
-            bl = bl5;
-            if (bl5 && !WorldUtils.canSee(entity)) {
-                string = "cannot-see";
+            boolean needLos = this.raytrace.getValue() || entity.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
+            if (needLos && !WorldUtils.canSee(entity)) {
+                rejectReason = "cannot-see";
             }
         }
-        if (string != null) {
+        if (rejectReason != null) {
             return;
         }
         this.attackRunnable = () -> {
             if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
-                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)endCrystal4.blockPosition())));
+                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)crystalToAttack.blockPosition())));
             }
-            this.attack(endCrystal4);
+            this.attack(crystalToAttack);
         };
     }
 
-    private void placeCrystals(boolean bl) {
+    private void placeCrystals(boolean sequentialPlace) {
         if (!this.isDead() && !this.shouldPause("Place")) {
-            PlaceTarget placeTarget;
-            PlaceTarget placeTarget2 = placeTarget = this.placeTarget == null ? null : this.placeTarget.clone();
-            if (placeTarget != null && placeTarget.getPosition() != null) {
-                if (placeTarget.getPlayer() != null && placeTarget.getPlayer().isAlive() && !placeTarget.getPlayer().isDeadOrDying() && !(placeTarget.getPlayer().getHealth() <= 0.0f)) {
-                    int n = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-                    int n2 = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-                    if (this.autoSwitch.getValue().equalsIgnoreCase("None") || n != -1 || AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.END_CRYSTAL || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL) {
-                        BlockPos blockPos = placeTarget.getPosition();
+            PlaceTarget targetPlacement = this.placeTarget == null ? null : this.placeTarget.clone();
+            if (targetPlacement != null && targetPlacement.getPosition() != null) {
+                if (targetPlacement.getPlayer() != null && targetPlacement.getPlayer().isAlive() && !targetPlacement.getPlayer().isDeadOrDying() && !(targetPlacement.getPlayer().getHealth() <= 0.0f)) {
+                    int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+                    int prevSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+                    if (this.autoSwitch.getValue().equalsIgnoreCase("None") || crystalSlot != -1 || AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.END_CRYSTAL || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL) {
+                        BlockPos blockPos = targetPlacement.getPosition();
                         if (AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.placeRange.getValue().doubleValue())) {
                             Night.RENDER_MANAGER.setRenderPosition(null);
                         } else {
                             Night.RENDER_MANAGER.setRenderPosition(blockPos);
                             if (AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(blockPos) && (AutoCrystalModule.mc.level.getBlockState(blockPos).getBlock() == Blocks.OBSIDIAN || AutoCrystalModule.mc.level.getBlockState(blockPos).getBlock() == Blocks.BEDROCK) && AutoCrystalModule.mc.level.getBlockState(blockPos.offset(0, 1, 0)).isAir() && (!this.placements.getValue().equalsIgnoreCase("Protocol") || AutoCrystalModule.mc.level.getBlockState(blockPos.offset(0, 2, 0)).isAir())) {
-                                boolean bl2;
-                                boolean bl3 = bl2 = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
-                                if (!(bl2 && !WorldUtils.canSeeBlock(blockPos) || AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(blockPos), entity -> true).stream().anyMatch(entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal)))) {
-                                    Object object;
-                                    EndCrystal endCrystal = null;
-                                    Iterator iterator = AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(blockPos), entity -> entity instanceof EndCrystal && entity.isAlive()).iterator();
+                                boolean checkLos = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
+                                if (!(checkLos && !WorldUtils.canSeeBlock(blockPos) || AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(blockPos), entity -> true).stream().anyMatch(entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal)))) {
+                                    EndCrystal existingCrystal = null;
+                                    Iterator<Entity> iterator = AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(blockPos), entity -> entity instanceof EndCrystal && entity.isAlive()).iterator();
                                     if (iterator.hasNext()) {
-                                        object = (Entity)iterator.next();
-                                        endCrystal = (EndCrystal)object;
+                                        existingCrystal = (EndCrystal)iterator.next();
                                     }
-                                    if (endCrystal != null) {
-                                        if (this.attack.getValue() && !this.isAtActiveUnbrokenMinePos(endCrystal)) {
+                                    if (existingCrystal != null) {
+                                        if (this.attack.getValue() && !this.isAtActiveUnbrokenMinePos(existingCrystal)) {
                                             if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
-                                                float f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal, this.ignoreTerrain.getValue());
-                                                if (f <= this.maximumSelfDamage.getValue().floatValue() && (!this.antiSuicide.getValue() || f <= AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) {
-                                                    float[] fArray = this.calculateRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition()));
+                                                float selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), existingCrystal, this.ignoreTerrain.getValue());
+                                                if (selfDamage <= this.maximumSelfDamage.getValue().floatValue() && (!this.antiSuicide.getValue() || selfDamage <= AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) {
+                                                    float[] rotations = this.calculateRotations(Vec3.atCenterOf((Vec3i)existingCrystal.blockPosition()));
                                                     if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-                                                        Night.ROTATION_MANAGER.legacyRotate(fArray, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+                                                        Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                                                     }
                                                     if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
-                                                        Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition())));
+                                                        Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)existingCrystal.blockPosition())));
                                                     }
-                                                    this.attack(endCrystal);
+                                                    this.attack(existingCrystal);
                                                 }
                                             } else {
-                                                object = this.calculateRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition()));
+                                                float[] rotations = this.calculateRotations(Vec3.atCenterOf((Vec3i)existingCrystal.blockPosition()));
                                                 if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-                                                    Night.ROTATION_MANAGER.legacyRotate((float[])object, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+                                                    Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                                                 }
                                                 if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
-                                                    Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)endCrystal.blockPosition())));
+                                                    Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)existingCrystal.blockPosition())));
                                                 }
-                                                this.attack(endCrystal);
+                                                this.attack(existingCrystal);
                                             }
                                         }
                                     } else {
                                         for (Entity rendEntity : AutoCrystalModule.mc.level.entitiesForRendering()) {
-                                            boolean bl4;
                                             if (!(rendEntity instanceof EndCrystal)) continue;
                                             EndCrystal cry = (EndCrystal)rendEntity;
                                             if (!cry.isAlive() || this.isAtActiveUnbrokenMinePos(cry)) continue;
-                                            BlockPos blockPos2 = cry.blockPosition().below();
-                                            if (!this.placedCrystals.containsKey(blockPos2)) {
-                                                blockPos2 = BlockPos.containing((double)cry.getX(), (double)(cry.getY() - 0.5), (double)cry.getZ());
+                                            BlockPos cryBasePos = cry.blockPosition().below();
+                                            if (!this.placedCrystals.containsKey(cryBasePos)) {
+                                                cryBasePos = BlockPos.containing((double)cry.getX(), (double)(cry.getY() - 0.5), (double)cry.getZ());
                                             }
-                                            if (!this.placedCrystals.containsKey(blockPos2)) continue;
-                                            double d = cry.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition());
-                                            boolean bl5 = d <= Mth.square((double)this.attackRange.getValue().doubleValue());
-                                            boolean bl6 = this.raytrace.getValue() || d > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
-                                            boolean bl7 = bl4 = bl5 && (!bl6 || WorldUtils.canSee((Entity)cry));
-                                            if (bl4) {
+                                            if (!this.placedCrystals.containsKey(cryBasePos)) continue;
+                                            double distSq = cry.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition());
+                                            boolean withinAttackRange = distSq <= Mth.square((double)this.attackRange.getValue().doubleValue());
+                                            boolean needCryLos = this.raytrace.getValue() || distSq > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
+                                            boolean canAttackCry = withinAttackRange && (!needCryLos || WorldUtils.canSee((Entity)cry));
+                                            if (canAttackCry) {
                                                 if (this.attack.getValue()) {
                                                     if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
-                                                        float f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), cry, this.ignoreTerrain.getValue());
-                                                        if (f <= this.maximumSelfDamage.getValue().floatValue() && (!this.antiSuicide.getValue() || f <= AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) {
-                                                            float[] fArray = this.calculateRotations(Vec3.atCenterOf((Vec3i)cry.blockPosition()));
+                                                        float selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), cry, this.ignoreTerrain.getValue());
+                                                        if (selfDamage <= this.maximumSelfDamage.getValue().floatValue() && (!this.antiSuicide.getValue() || selfDamage <= AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) {
+                                                            float[] rotations = this.calculateRotations(Vec3.atCenterOf((Vec3i)cry.blockPosition()));
                                                             if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-                                                                Night.ROTATION_MANAGER.legacyRotate(fArray, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+                                                                Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                                                             }
                                                             if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
                                                                 Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)cry.blockPosition())));
@@ -1108,9 +1089,9 @@ extends Module {
                                                             this.attack(cry);
                                                         }
                                                     } else {
-                                                        float[] fArray = this.calculateRotations(Vec3.atCenterOf((Vec3i)cry.blockPosition()));
+                                                        float[] rotations = this.calculateRotations(Vec3.atCenterOf((Vec3i)cry.blockPosition()));
                                                         if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-                                                            Night.ROTATION_MANAGER.legacyRotate(fArray, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+                                                            Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                                                         }
                                                         if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
                                                             Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)cry.blockPosition())));
@@ -1120,7 +1101,7 @@ extends Module {
                                                 }
                                                 return;
                                             }
-                                            if (!blockPos2.equals((Object)blockPos)) continue;
+                                            if (!cryBasePos.equals((Object)blockPos)) continue;
                                             return;
                                         }
                                         CrystalPlacementHelper.PlacementResult placeRes = CrystalPlacementHelper.getVisiblePlacement(blockPos);
@@ -1130,11 +1111,11 @@ extends Module {
                                             Night.ROTATION_MANAGER.legacyRotate(rot, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                                         }
                                         if ((this.swapDelay.getValue().intValue() <= 0 || this.swapTimer.hasTimeElapsed(this.swapDelay.getValue().longValue() * 50L)) && this.placeTimer.hasTimeElapsed(Float.valueOf(1000.0f - this.placeSpeed.getValue().floatValue() * 50.0f))) {
-                                            if (!bl && this.placedSequentially) {
+                                            if (!sequentialPlace && this.placedSequentially) {
                                                 this.placedSequentially = false;
                                             } else {
-                                                this.placeRunnable = () -> this.executePlaceCrystals(hitVec, n2, n, blockPos);
-                                                if (bl) {
+                                                this.placeRunnable = () -> this.executePlaceCrystals(hitVec, prevSlot, crystalSlot, blockPos);
+                                                if (sequentialPlace) {
                                                     this.placeRunnable.run();
                                                     this.placeRunnable = null;
                                                     this.placedSequentially = true;
@@ -1164,131 +1145,128 @@ extends Module {
         if (this.shouldPause("Attack")) {
             return null;
         }
-        List<Player> list = this.selectTargets(this.getPlayers());
-        if (list.isEmpty()) {
+        List<Player> targetPlayers = this.selectTargets(this.getPlayers());
+        if (targetPlayers.isEmpty()) {
             return null;
         }
-        EndCrystal endCrystal = null;
-        float f = 0.0f;
+        EndCrystal bestCrystal = null;
+        float bestDamage = 0.0f;
         for (Entity entity : AutoCrystalModule.mc.level.entitiesForRendering()) {
-            float f2;
-            EndCrystal endCrystal2;
-            if (!(entity instanceof EndCrystal) || !(endCrystal2 = (EndCrystal)entity).isAlive() || this.isAtActiveUnbrokenMinePos(endCrystal2) || this.inhibit.getValue() && this.attackedCrystals.containsKey(entity.getId()) || endCrystal2.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(endCrystal2.blockPosition())) continue;
-            boolean bl = this.raytrace.getValue() || endCrystal2.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
-            boolean bl2 = bl;
-            if (bl && !WorldUtils.canSee((Entity)endCrystal2) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f2 = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal2, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f2 > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
-            boolean bl3 = false;
-            for (Player player : list) {
-                float f3 = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), endCrystal2, this.ignoreTerrain.getValue());
-                if (f3 < this.getMinimumDamage(player, this.minimumDamage.getValue().floatValue()) && f3 < player.getHealth() + player.getAbsorptionAmount() && !(f3 * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player.getHealth() + player.getAbsorptionAmount()) || !(f3 > f) && !(f3 > player.getHealth() + player.getAbsorptionAmount())) continue;
-                endCrystal = endCrystal2;
-                f = f3;
-                if (!(f3 > player.getHealth() + player.getAbsorptionAmount())) continue;
-                bl3 = true;
+            float selfDamage;
+            EndCrystal candidateCrystal;
+            if (!(entity instanceof EndCrystal) || !(candidateCrystal = (EndCrystal)entity).isAlive() || this.isAtActiveUnbrokenMinePos(candidateCrystal) || this.inhibit.getValue() && this.attackedCrystals.containsKey(entity.getId()) || candidateCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(candidateCrystal.blockPosition())) continue;
+            boolean checkLos = this.raytrace.getValue() || candidateCrystal.getBoundingBox().distanceToSqr(AutoCrystalModule.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue());
+            if (checkLos && !WorldUtils.canSee((Entity)candidateCrystal) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), candidateCrystal, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
+            boolean isLethal = false;
+            for (Player player : targetPlayers) {
+                float targetDamage = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), candidateCrystal, this.ignoreTerrain.getValue());
+                if (targetDamage < this.getMinimumDamage(player, this.minimumDamage.getValue().floatValue()) && targetDamage < player.getHealth() + player.getAbsorptionAmount() && !(targetDamage * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player.getHealth() + player.getAbsorptionAmount()) || !(targetDamage > bestDamage) && !(targetDamage > player.getHealth() + player.getAbsorptionAmount())) continue;
+                bestCrystal = candidateCrystal;
+                bestDamage = targetDamage;
+                if (!(targetDamage > player.getHealth() + player.getAbsorptionAmount())) continue;
+                isLethal = true;
                 break;
             }
-            if (!bl3) continue;
+            if (!isLethal) continue;
         }
-        return endCrystal;
+        return bestCrystal;
     }
 
     private PlaceTarget calculatePlacements(BlockPos blockPos) {
         return this.calculatePlacements(blockPos, Night.WORLD_MANAGER.getReservedPlacements());
     }
 
-    private PlaceTarget calculatePlacements(BlockPos blockPos2, Set<BlockPos> set) {
+    private PlaceTarget calculatePlacements(BlockPos exceptionPos, Set<BlockPos> reservedPlacements) {
         if (!this.place.getValue()) {
             return null;
         }
         if (!this.shouldPause("Place") && (!this.autoSwitch.getValue().equalsIgnoreCase("None") && InventoryUtils.findHotbar(Items.END_CRYSTAL) != -1 || AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.END_CRYSTAL || AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL)) {
-            List<Player> list = this.selectTargets(this.getPlayers());
-            if (list.isEmpty()) {
+            List<Player> targetPlayers = this.selectTargets(this.getPlayers());
+            if (targetPlayers.isEmpty()) {
                 return null;
             }
-            BlockPos blockPos3 = null;
-            Player player = null;
-            float f = 0.0f;
-            float f2 = 0.0f;
-            BlockPos blockPos4 = this.placeTarget == null ? null : this.placeTarget.getPosition();
-            float f3 = 0.5f;
-            ArrayList<Entity> arrayList = new ArrayList<Entity>();
-            int n = 0;
+            BlockPos bestPos = null;
+            Player bestPlayer = null;
+            float bestScore = 0.0f;
+            float bestDamage = 0.0f;
+            BlockPos currentPos = this.placeTarget == null ? null : this.placeTarget.getPosition();
+            ArrayList<Entity> obstructions = new ArrayList<Entity>();
+            int calcCount = 0;
             block0: for (int i = 0; i < Night.WORLD_MANAGER.getRadius(Math.max(this.placeRange.getValue().doubleValue(), this.placeWallsRange.getValue().doubleValue())); ++i) {
-                float f4;
-                boolean bl;
-                BlockPos blockPos5 = AutoCrystalModule.mc.player.blockPosition().offset(Night.WORLD_MANAGER.getOffset(i));
-                if (AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos5)) > Mth.square((double)this.placeRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(blockPos5) || AutoCrystalModule.mc.level.getBlockState(blockPos5).getBlock() != Blocks.OBSIDIAN && AutoCrystalModule.mc.level.getBlockState(blockPos5).getBlock() != Blocks.BEDROCK || !AutoCrystalModule.mc.level.getBlockState(blockPos5.offset(0, 1, 0)).isAir() || this.placements.getValue().equalsIgnoreCase("Protocol") && !AutoCrystalModule.mc.level.getBlockState(blockPos5.offset(0, 2, 0)).isAir()) continue;
-                boolean bl2 = bl = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos5)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
-                if (bl && !WorldUtils.canSeeBlock(blockPos5)) continue;
-                AABB aABB = new AABB((double)(blockPos5.getX() - 1), (double)(blockPos5.getY() + 1), (double)(blockPos5.getZ() - 1), (double)(blockPos5.getX() + 2), (double)(blockPos5.getY() + 3), (double)(blockPos5.getZ() + 2));
-                if (set.stream().anyMatch(blockPos -> aABB.intersects(new AABB(blockPos)))) continue;
-                List<Entity> list2 = AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(blockPos5), entity -> entity.isAlive() && !(entity instanceof ExperienceOrb));
-                boolean bl3 = false;
-                ArrayList<EndCrystal> arrayList2 = new ArrayList<EndCrystal>();
-                for (Entity entity2 : list2) {
-                    if (!(entity2 instanceof EndCrystal)) {
-                        bl3 = true;
+                float selfDamage;
+                boolean checkLos;
+                BlockPos candidatePos = AutoCrystalModule.mc.player.blockPosition().offset(Night.WORLD_MANAGER.getOffset(i));
+                if (AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos)) > Mth.square((double)this.placeRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(candidatePos) || AutoCrystalModule.mc.level.getBlockState(candidatePos).getBlock() != Blocks.OBSIDIAN && AutoCrystalModule.mc.level.getBlockState(candidatePos).getBlock() != Blocks.BEDROCK || !AutoCrystalModule.mc.level.getBlockState(candidatePos.offset(0, 1, 0)).isAir() || this.placements.getValue().equalsIgnoreCase("Protocol") && !AutoCrystalModule.mc.level.getBlockState(candidatePos.offset(0, 2, 0)).isAir()) continue;
+                checkLos = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
+                if (checkLos && !WorldUtils.canSeeBlock(candidatePos)) continue;
+                AABB crystalBox = new AABB((double)(candidatePos.getX() - 1), (double)(candidatePos.getY() + 1), (double)(candidatePos.getZ() - 1), (double)(candidatePos.getX() + 2), (double)(candidatePos.getY() + 3), (double)(candidatePos.getZ() + 2));
+                if (reservedPlacements.stream().anyMatch(reservedPos -> crystalBox.intersects(new AABB(reservedPos)))) continue;
+                List<Entity> entitiesInBox = AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(candidatePos), entity -> entity.isAlive() && !(entity instanceof ExperienceOrb));
+                boolean blocked = false;
+                ArrayList<EndCrystal> blockingCrystals = new ArrayList<EndCrystal>();
+                for (Entity entityInBox : entitiesInBox) {
+                    if (!(entityInBox instanceof EndCrystal)) {
+                        blocked = true;
                         break;
                     }
-                    EndCrystal endCrystal = (EndCrystal)entity2;
+                    EndCrystal endCrystal = (EndCrystal)entityInBox;
                     if (this.isAtActiveUnbrokenMinePos(endCrystal)) {
-                        bl3 = true;
+                        blocked = true;
                         break;
                     }
-                    BlockPos blockPos6 = endCrystal.blockPosition().below();
-                    if (!this.placedCrystals.containsKey(blockPos6)) {
-                        blockPos6 = BlockPos.containing((double)endCrystal.getX(), (double)(endCrystal.getY() - 0.5), (double)endCrystal.getZ());
+                    BlockPos crystalBasePos = endCrystal.blockPosition().below();
+                    if (!this.placedCrystals.containsKey(crystalBasePos)) {
+                        crystalBasePos = BlockPos.containing((double)endCrystal.getX(), (double)(endCrystal.getY() - 0.5), (double)endCrystal.getZ());
                     }
-                    if (this.placedCrystals.containsKey(blockPos6) && endCrystal.tickCount < 20 - this.attackSpeed.getValue().intValue() + 15) continue;
-                    arrayList2.add(endCrystal);
+                    if (this.placedCrystals.containsKey(crystalBasePos) && endCrystal.tickCount < 20 - this.attackSpeed.getValue().intValue() + 15) continue;
+                    blockingCrystals.add(endCrystal);
                 }
-                if (bl3) continue;
-                double d = Mth.square((double)10.0);
-                boolean bl4 = false;
-                for (Player player2 : list) {
-                    if (!(player2.distanceToSqr((double)blockPos5.getX() + 0.5, (double)blockPos5.getY() + 1.0, (double)blockPos5.getZ() + 0.5) <= d)) continue;
-                    bl4 = true;
+                if (blocked) continue;
+                double maxTargetDistSq = Mth.square((double)10.0);
+                boolean hasNearTarget = false;
+                for (Player candidateTarget : targetPlayers) {
+                    if (!(candidateTarget.distanceToSqr((double)candidatePos.getX() + 0.5, (double)candidatePos.getY() + 1.0, (double)candidatePos.getZ() + 0.5) <= maxTargetDistSq)) continue;
+                    hasNearTarget = true;
                     break;
                 }
-                if (!bl4 || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f4 = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), blockPos5, blockPos2, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f4 > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
-                for (Player player2 : list) {
-                    ++n;
-                    float f5 = DamageUtils.getCrystalDamage((Entity)player2, PositionUtils.extrapolate(player2, this.extrapolation.getValue().intValue()), blockPos5, blockPos2, this.ignoreTerrain.getValue());
-                    if (f5 < this.getMinimumDamage(player2, this.minimumDamage.getValue().floatValue()) && f5 < player2.getHealth() + player2.getAbsorptionAmount() && !(f5 * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player2.getHealth() + player2.getAbsorptionAmount()) || f5 <= 0.0f) continue;
-                    if (blockPos2 == null && !arrayList2.isEmpty()) {
-                        arrayList.add((Entity)arrayList2.getFirst());
+                if (!hasNearTarget || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), candidatePos, exceptionPos, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
+                for (Player candidateTarget : targetPlayers) {
+                    ++calcCount;
+                    float targetDamage = DamageUtils.getCrystalDamage((Entity)candidateTarget, PositionUtils.extrapolate(candidateTarget, this.extrapolation.getValue().intValue()), candidatePos, exceptionPos, this.ignoreTerrain.getValue());
+                    if (targetDamage < this.getMinimumDamage(candidateTarget, this.minimumDamage.getValue().floatValue()) && targetDamage < candidateTarget.getHealth() + candidateTarget.getAbsorptionAmount() && !(targetDamage * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= candidateTarget.getHealth() + candidateTarget.getAbsorptionAmount()) || targetDamage <= 0.0f) continue;
+                    if (exceptionPos == null && !blockingCrystals.isEmpty()) {
+                        obstructions.add((Entity)blockingCrystals.getFirst());
                         continue block0;
                     }
-                    float f6 = blockPos5.equals((Object)blockPos4) ? 0.5f : 0.0f;
-                    float f7 = f5 + f6;
-                    if (!(f7 > f)) continue;
-                    blockPos3 = blockPos5;
-                    player = player2;
-                    f = f7;
-                    f2 = f5;
+                    float bias = candidatePos.equals((Object)currentPos) ? 0.5f : 0.0f;
+                    float score = targetDamage + bias;
+                    if (!(score > bestScore)) continue;
+                    bestPos = candidatePos;
+                    bestPlayer = candidateTarget;
+                    bestScore = score;
+                    bestDamage = targetDamage;
                 }
             }
-            return blockPos3 == null ? new PlaceTarget(null, null, arrayList, null, 0.0f, n) : new PlaceTarget(blockPos3, player, arrayList, blockPos2, f2, n);
+            return bestPos == null ? new PlaceTarget(null, null, obstructions, null, 0.0f, calcCount) : new PlaceTarget(bestPos, bestPlayer, obstructions, exceptionPos, bestDamage, calcCount);
         }
         return null;
     }
 
-    private float[] calculateRotations(Vec3 vec3) {
-        float[] fArray = RotationUtils.getRotations(vec3);
+    private float[] calculateRotations(Vec3 targetPos) {
+        float[] rotations = RotationUtils.getRotations(targetPos);
         if (this.yawStep.getValue()) {
-            float f;
-            float f2 = Night.ROTATION_MANAGER.getServerYaw() - fArray[0];
-            if (Math.abs(f2) > 180.0f) {
-                f2 += f2 > 0.0f ? -360.0f : 360.0f;
+            float diff = Night.ROTATION_MANAGER.getServerYaw() - rotations[0];
+            if (Math.abs(diff) > 180.0f) {
+                diff += diff > 0.0f ? -360.0f : 360.0f;
             }
-            float f3 = (float)(f2 > 0.0f ? -1 : 1) * this.yawStepThreshold.getValue().floatValue();
-            fArray[0] = f = Math.abs(f2) > this.yawStepThreshold.getValue().floatValue() ? Night.ROTATION_MANAGER.getServerYaw() + f3 : fArray[0];
+            float step = (float)(diff > 0.0f ? -1 : 1) * this.yawStepThreshold.getValue().floatValue();
+            rotations[0] = Math.abs(diff) > this.yawStepThreshold.getValue().floatValue() ? Night.ROTATION_MANAGER.getServerYaw() + step : rotations[0];
         }
-        return fArray;
+        return rotations;
     }
 
     private void attack(EndCrystal endCrystal) {
-        int n;
+        int swordSlot;
         if (endCrystal == null || !endCrystal.isAlive() || endCrystal.isRemoved()) {
             return;
         }
@@ -1296,24 +1274,24 @@ extends Module {
             return;
         }
         if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
-            float f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal, this.ignoreTerrain.getValue());
-            if (f > this.maximumSelfDamage.getValue().floatValue()) {
+            float selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), endCrystal, this.ignoreTerrain.getValue());
+            if (selfDamage > this.maximumSelfDamage.getValue().floatValue()) {
                 return;
             }
-            if (this.antiSuicide.getValue() && f > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) {
+            if (this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) {
                 return;
             }
         }
-        int n2 = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-        int n3 = -1;
-        if (!this.antiWeakness.getValue().equalsIgnoreCase("None") && AutoCrystalModule.mc.player.hasEffect(MobEffects.WEAKNESS) && (n = InventoryUtils.findBestSword(InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
-            InventoryUtils.switchSlot(this.antiWeakness.getValue(), n, n2);
-            n3 = n;
+        int prevSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+        int switchedSlot = -1;
+        if (!this.antiWeakness.getValue().equalsIgnoreCase("None") && AutoCrystalModule.mc.player.hasEffect(MobEffects.WEAKNESS) && (swordSlot = InventoryUtils.findBestSword(InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
+            InventoryUtils.switchSlot(this.antiWeakness.getValue(), swordSlot, prevSlot);
+            switchedSlot = swordSlot;
         }
         mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-        if (n3 != -1) {
-            InventoryUtils.switchBack(this.antiWeakness.getValue(), n3, n2);
+        if (switchedSlot != -1) {
+            InventoryUtils.switchBack(this.antiWeakness.getValue(), switchedSlot, prevSlot);
         }
         this.attackedCrystals.put(endCrystal.getId(), System.currentTimeMillis());
         this.attackTimer.reset();
@@ -1323,7 +1301,7 @@ extends Module {
     private void place(BlockPos blockPos) {
         InteractionHand interactionHand = AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
         CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(blockPos);
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemOnPacket(interactionHand, new BlockHitResult(placementResult.hitVec, placementResult.direction, blockPos, false), n));
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemOnPacket(interactionHand, new BlockHitResult(placementResult.hitVec, placementResult.direction, blockPos, false), sequence));
         switch (this.swing.getValue()) {
             case "Default": {
                 AutoCrystalModule.mc.player.swing(interactionHand);
@@ -1378,78 +1356,77 @@ extends Module {
         this.mineIgnoreTryPlace(blockPos);
     }
 
-    private void mineIgnoreTryPlace(BlockPos blockPos2) {
+    private void mineIgnoreTryPlace(BlockPos minedPos) {
         if (this.shouldPause("Place")) {
             return;
         }
         if (!this.placeTimer.hasTimeElapsed(Float.valueOf(1000.0f - this.placeSpeed.getValue().floatValue() * 50.0f))) {
             return;
         }
-        List<Player> list = this.selectTargets(this.getPlayers());
-        if (list.isEmpty()) {
+        List<Player> targetPlayers = this.selectTargets(this.getPlayers());
+        if (targetPlayers.isEmpty()) {
             return;
         }
-        boolean bl = false;
-        for (Player object : list) {
-            if (object.equals((Object)AutoCrystalModule.mc.player)) continue;
-            BlockPos n2 = object.blockPosition();
-            if (Math.abs(blockPos2.getX() - n2.getX()) > 1 || Math.abs(blockPos2.getZ() - n2.getZ()) > 1 || Math.abs(blockPos2.getY() - n2.getY()) > 1) continue;
-            bl = true;
+        boolean enemyNearMinedPos = false;
+        for (Player targetPlayer : targetPlayers) {
+            if (targetPlayer.equals((Object)AutoCrystalModule.mc.player)) continue;
+            BlockPos targetPos = targetPlayer.blockPosition();
+            if (Math.abs(minedPos.getX() - targetPos.getX()) > 1 || Math.abs(minedPos.getZ() - targetPos.getZ()) > 1 || Math.abs(minedPos.getY() - targetPos.getY()) > 1) continue;
+            enemyNearMinedPos = true;
             break;
         }
-        if (!bl) {
+        if (!enemyNearMinedPos) {
             return;
         }
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-        arrayList.add(blockPos2.above());
+        ArrayList<BlockPos> candidatePositions = new ArrayList<BlockPos>();
+        candidatePositions.add(minedPos.above());
         for (Direction dir : Direction.Plane.HORIZONTAL) {
-            arrayList.add(blockPos2.relative(dir).above());
+            candidatePositions.add(minedPos.relative(dir).above());
         }
-        int n = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-        int n2 = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && n == -1 && AutoCrystalModule.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
+        int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+        int prevSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && crystalSlot == -1 && AutoCrystalModule.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
             return;
         }
-        Iterator iterator = arrayList.iterator();
+        Iterator<BlockPos> iterator = candidatePositions.iterator();
         while (iterator.hasNext()) {
-            float f;
-            BlockPos blockPos3 = (BlockPos)iterator.next();
-            BlockPos blockPos4 = blockPos3.below();
-            if (AutoCrystalModule.mc.level.getBlockState(blockPos4).getBlock() != Blocks.OBSIDIAN && AutoCrystalModule.mc.level.getBlockState(blockPos4).getBlock() != Blocks.BEDROCK || !AutoCrystalModule.mc.level.getBlockState(blockPos3).isAir() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos3)) > Mth.square((double)this.placeRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(blockPos3)) continue;
-            boolean bl2 = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos3)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
-            boolean bl3 = bl2;
-            if (bl2 && !WorldUtils.canSeeBlock(blockPos4) || AutoCrystalModule.mc.level.getEntities((Entity)null, new AABB(blockPos3), entity -> true).stream().anyMatch(entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal))) continue;
-            AABB aABB = new AABB((double)(blockPos3.getX() - 1), (double)blockPos3.getY(), (double)(blockPos3.getZ() - 1), (double)(blockPos3.getX() + 2), (double)(blockPos3.getY() + 2), (double)(blockPos3.getZ() + 2));
-            if (Night.WORLD_MANAGER.getReservedPlacements().stream().anyMatch(blockPos -> aABB.intersects(new AABB(blockPos))) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, null, blockPos3, null, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
-            boolean bl4 = false;
-            for (Player player2 : list) {
-                float bl5;
-                if (player2.equals((Object)AutoCrystalModule.mc.player) || !((bl5 = DamageUtils.getCrystalDamage((Entity)player2, PositionUtils.extrapolate(player2, this.extrapolation.getValue().intValue()), blockPos3, blockPos2, this.ignoreTerrain.getValue())) >= this.getMinimumDamage(player2, this.minimumDamage.getValue().floatValue()))) continue;
-                bl4 = true;
+            float selfDamage;
+            BlockPos crystalPos = iterator.next();
+            BlockPos basePos = crystalPos.below();
+            if (AutoCrystalModule.mc.level.getBlockState(basePos).getBlock() != Blocks.OBSIDIAN && AutoCrystalModule.mc.level.getBlockState(basePos).getBlock() != Blocks.BEDROCK || !AutoCrystalModule.mc.level.getBlockState(crystalPos).isAir() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)crystalPos)) > Mth.square((double)this.placeRange.getValue().doubleValue()) || !AutoCrystalModule.mc.level.getWorldBorder().isWithinBounds(crystalPos)) continue;
+            boolean checkLos = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)crystalPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
+            if (checkLos && !WorldUtils.canSeeBlock(basePos) || AutoCrystalModule.mc.level.getEntities((Entity)null, new AABB(crystalPos), entity -> true).stream().anyMatch(entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal))) continue;
+            AABB crystalBox = new AABB((double)(crystalPos.getX() - 1), (double)crystalPos.getY(), (double)(crystalPos.getZ() - 1), (double)(crystalPos.getX() + 2), (double)(crystalPos.getY() + 2), (double)(crystalPos.getZ() + 2));
+            if (Night.WORLD_MANAGER.getReservedPlacements().stream().anyMatch(reservedPos -> crystalBox.intersects(new AABB(reservedPos))) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, null, crystalPos, null, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount())) continue;
+            boolean dealsEnoughDamage = false;
+            for (Player enemy : targetPlayers) {
+                float enemyDamage;
+                if (enemy.equals((Object)AutoCrystalModule.mc.player) || !((enemyDamage = DamageUtils.getCrystalDamage((Entity)enemy, PositionUtils.extrapolate(enemy, this.extrapolation.getValue().intValue()), crystalPos, minedPos, this.ignoreTerrain.getValue())) >= this.getMinimumDamage(enemy, this.minimumDamage.getValue().floatValue()))) continue;
+                dealsEnoughDamage = true;
                 break;
             }
-            if (!bl4) continue;
-            CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(blockPos3);
-            Vec3 vec3 = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)blockPos3).add(0.0, 0.5, 0.0);
+            if (!dealsEnoughDamage) continue;
+            CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(crystalPos);
+            Vec3 hitVec = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)crystalPos).add(0.0, 0.5, 0.0);
             if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-                Night.ROTATION_MANAGER.legacyRotate(this.calculateRotations(vec3), Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+                Night.ROTATION_MANAGER.legacyRotate(this.calculateRotations(hitVec), Night.ROTATION_MANAGER.getLegacyModulePriority(this));
             }
             if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
-                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(vec3));
+                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(hitVec));
             }
-            boolean bl5 = false;
+            boolean switched = false;
             if (AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
                 if (this.autoSwitch.getValue().equalsIgnoreCase("Normal") && this.swapBack.getValue() && this.savedSlot == -1) {
-                    this.savedSlot = n2;
+                    this.savedSlot = prevSlot;
                 }
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-                bl5 = true;
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), crystalSlot, prevSlot);
+                switched = true;
             }
-            this.place(blockPos3);
-            if (bl5) {
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+            this.place(crystalPos);
+            if (switched) {
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), crystalSlot, prevSlot);
             }
-            this.mineIgnorePlacedPos = blockPos3;
+            this.mineIgnorePlacedPos = crystalPos;
             return;
         }
     }
@@ -1485,52 +1462,51 @@ extends Module {
         if (Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
             return List.of(AutoCrystalModule.mc.player);
         }
-        long l = System.currentTimeMillis();
-        if (l - this.lastPlayerCacheTime < 50L) {
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - this.lastPlayerCacheTime < 50L) {
             return this.cachedPlayers;
         }
-        ArrayList<Player> arrayList = new ArrayList<Player>();
+        ArrayList<Player> players = new ArrayList<Player>();
         for (Player player : AutoCrystalModule.mc.level.players()) {
             if (player == AutoCrystalModule.mc.player || EntityUtils.isGhost((Entity)player) || !player.isAlive() || AutoCrystalModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || Night.FRIEND_MANAGER.contains(player.getName().getString())) continue;
-            boolean bl = player.getMainHandItem().getItem() == Items.END_CRYSTAL || player.getOffhandItem().getItem() == Items.END_CRYSTAL;
-            boolean bl2 = bl;
-            if (this.ignoreNaked.getValue() && EntityUtils.isNaked(player) && !bl) continue;
-            arrayList.add(player);
+            boolean holdingCrystal = player.getMainHandItem().getItem() == Items.END_CRYSTAL || player.getOffhandItem().getItem() == Items.END_CRYSTAL;
+            if (this.ignoreNaked.getValue() && EntityUtils.isNaked(player) && !holdingCrystal) continue;
+            players.add(player);
         }
-        this.cachedPlayers = arrayList;
-        this.lastPlayerCacheTime = l;
-        return arrayList;
+        this.cachedPlayers = players;
+        this.lastPlayerCacheTime = nowMs;
+        return players;
     }
 
-    private List<Player> selectTargets(List<Player> list) {
-        if (list.size() <= 1 || this.targetMode.getValue().equalsIgnoreCase("All")) {
-            return list;
+    private List<Player> selectTargets(List<Player> players) {
+        if (players.size() <= 1 || this.targetMode.getValue().equalsIgnoreCase("All")) {
+            return players;
         }
-        Player player = null;
-        double d = 0.0;
-        for (Player player2 : list) {
-            double d2;
+        Player bestPlayer = null;
+        double bestScore = 0.0;
+        for (Player candidate : players) {
+            double score;
             switch (this.targetMode.getValue()) {
                 case "Nearest": {
-                    d2 = -AutoCrystalModule.mc.player.distanceToSqr((Entity)player2);
+                    score = -AutoCrystalModule.mc.player.distanceToSqr((Entity)candidate);
                     break;
                 }
                 case "Farthest": {
-                    d2 = AutoCrystalModule.mc.player.distanceToSqr((Entity)player2);
+                    score = AutoCrystalModule.mc.player.distanceToSqr((Entity)candidate);
                     break;
                 }
                 default: {
-                    double d3 = d2 = (double)(-(player2.getHealth() + player2.getAbsorptionAmount()));
+                    score = -(candidate.getHealth() + candidate.getAbsorptionAmount());
                 }
             }
-            if (player != null && !(d2 > d)) continue;
-            player = player2;
-            d = d2;
+            if (bestPlayer != null && !(score > bestScore)) continue;
+            bestPlayer = candidate;
+            bestScore = score;
         }
-        return List.of(player);
+        return List.of(bestPlayer);
     }
 
-    private boolean shouldPause(String string) {
+    private boolean shouldPause(String actionType) {
         if (this.isPearlPaused()) {
             return true;
         }
@@ -1540,13 +1516,13 @@ extends Module {
         if (this.awaitMine.getValue() && this.pauseForAutoMine()) {
             return true;
         }
-        boolean bl = this.whileEating.getValue().equalsIgnoreCase("None") || string.equalsIgnoreCase("Attack") && this.whileEating.getValue().equalsIgnoreCase("Place") || string.equalsIgnoreCase("Place") && this.whileEating.getValue().equalsIgnoreCase("Attack");
-        return bl && EntityUtils.isEating();
+        boolean pauseWhileEating = this.whileEating.getValue().equalsIgnoreCase("None") || actionType.equalsIgnoreCase("Attack") && this.whileEating.getValue().equalsIgnoreCase("Place") || actionType.equalsIgnoreCase("Place") && this.whileEating.getValue().equalsIgnoreCase("Attack");
+        return pauseWhileEating && EntityUtils.isEating();
     }
 
-    private float getMinimumDamage(Player player, float f) {
+    private float getMinimumDamage(Player player, float minDamage) {
         if (player == null) {
-            return f;
+            return minDamage;
         }
         if (this.chestBreak.getValue() && AutoCrystalModule.mc.level.getEntities((Entity)null, new AABB(player.blockPosition()).inflate(1.0), entity -> true).stream().anyMatch(entity -> {
             ItemEntity itemEntity;
@@ -1558,29 +1534,28 @@ extends Module {
             return 2.0f;
         }
         if (this.facePlaceMode.getValue().equalsIgnoreCase("None")) {
-            return f;
+            return minDamage;
         }
         if (this.facePlaceSpeed.getValue().equalsIgnoreCase("Normal") || this.facePlaceTimer.hasTimeElapsed(this.facePlaceDelay.getValue().longValue() * 50L)) {
             if (this.facePlaceMode.getValue().equalsIgnoreCase("Always")) {
-                return Math.min(f, 2.0f);
+                return Math.min(minDamage, 2.0f);
             }
             if (this.facePlaceMode.getValue().equalsIgnoreCase("Dynamic") && this.healthPlace.getValue() && player.getHealth() + player.getAbsorptionAmount() <= this.health.getValue().floatValue()) {
-                return Math.min(f, 2.0f);
+                return Math.min(minDamage, 2.0f);
             }
             if (this.facePlaceMode.getValue().equalsIgnoreCase("Dynamic") && this.armorPlace.getValue()) {
                 for (EquipmentSlot equipmentSlot : new EquipmentSlot[]{EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD}) {
                     ItemStack itemStack = player.getItemBySlot(equipmentSlot);
                     if (itemStack.isEmpty() || itemStack.get(DataComponents.EQUIPPABLE) == null || Math.round((double)(itemStack.getMaxDamage() - itemStack.getDamageValue()) * 100.0 / (double)itemStack.getMaxDamage()) > (long)this.percentage.getValue().intValue()) continue;
-                    return Math.min(f, 2.0f);
+                    return Math.min(minDamage, 2.0f);
                 }
             }
         }
-        return f;
+        return minDamage;
     }
 
     private boolean executeBasePlace() {
-        boolean bl;
-        int n;
+        boolean placed;
         BlockState blockState;
         if (this.isDead()) {
             return false;
@@ -1591,107 +1566,105 @@ extends Module {
         if (this.shouldPause("Place")) {
             return false;
         }
-        Player player = this.target;
-        if (player == null) {
-            double d = Double.MAX_VALUE;
-            for (Player player2 : AutoCrystalModule.mc.level.players()) {
-                if (EntityUtils.isGhost((Entity)player2) || player2 == AutoCrystalModule.mc.player || !player2.isAlive() || Night.FRIEND_MANAGER.contains(player2.getName().getString())) continue;
-                double d3 = AutoCrystalModule.mc.player.distanceToSqr((Entity)player2);
-                if (!(d3 <= Mth.square((double)this.enemyRange.getValue().doubleValue())) || !(d3 < d)) continue;
-                d = d3;
-                player = player2;
+        Player targetPlayer = this.target;
+        if (targetPlayer == null) {
+            double bestDistSq = Double.MAX_VALUE;
+            for (Player candidate : AutoCrystalModule.mc.level.players()) {
+                if (EntityUtils.isGhost((Entity)candidate) || candidate == AutoCrystalModule.mc.player || !candidate.isAlive() || Night.FRIEND_MANAGER.contains(candidate.getName().getString())) continue;
+                double distSq = AutoCrystalModule.mc.player.distanceToSqr((Entity)candidate);
+                if (!(distSq <= Mth.square((double)this.enemyRange.getValue().doubleValue())) || !(distSq < bestDistSq)) continue;
+                bestDistSq = distSq;
+                targetPlayer = candidate;
             }
         }
-        if (player == null) {
+        if (targetPlayer == null) {
             return false;
         }
-        PlaceTarget placeTarget = this.placeTarget;
-        float f = placeTarget != null && placeTarget.getPosition() != null ? placeTarget.getDamage() : 0.0f;
-        float f2 = f;
-        if (f >= player.getHealth() + player.getAbsorptionAmount()) {
+        PlaceTarget currentPlace = this.placeTarget;
+        float currentDamage = currentPlace != null && currentPlace.getPosition() != null ? currentPlace.getDamage() : 0.0f;
+        if (currentDamage >= targetPlayer.getHealth() + targetPlayer.getAbsorptionAmount()) {
             return false;
         }
-        BlockPos blockPos = PositionUtils.getFlooredPosition((Entity)player);
-        double d = this.basePlaceRadius.getValue().doubleValue();
-        int n2 = (int)Math.ceil(d);
-        int n3 = blockPos.getY() - 1;
-        int n4 = blockPos.getY() - 3;
-        LinkedHashSet<BlockPos> linkedHashSet = new LinkedHashSet<BlockPos>();
-        for (int i = n3; i >= n4; --i) {
-            for (int j = -n2; j <= n2; ++j) {
-                for (int k = -n2; k <= n2; ++k) {
-                    if ((double)(j * j + k * k) > d * d) continue;
-                    linkedHashSet.add(new BlockPos(blockPos.getX() + j, i, blockPos.getZ() + k));
+        BlockPos targetFootPos = PositionUtils.getFlooredPosition((Entity)targetPlayer);
+        double scanRadius = this.basePlaceRadius.getValue().doubleValue();
+        int radiusCeil = (int)Math.ceil(scanRadius);
+        int maxY = targetFootPos.getY() - 1;
+        int minY = targetFootPos.getY() - 3;
+        LinkedHashSet<BlockPos> candidateSet = new LinkedHashSet<BlockPos>();
+        for (int i = maxY; i >= minY; --i) {
+            for (int j = -radiusCeil; j <= radiusCeil; ++j) {
+                for (int k = -radiusCeil; k <= radiusCeil; ++k) {
+                    if ((double)(j * j + k * k) > scanRadius * scanRadius) continue;
+                    candidateSet.add(new BlockPos(targetFootPos.getX() + j, i, targetFootPos.getZ() + k));
                 }
             }
         }
-        BlockPos blockPos2 = null;
-        float f3 = 0.0f;
-        double d4 = Double.MAX_VALUE;
-        for (BlockPos blockPos3 : linkedHashSet) {
-            double d5;
-            float f4;
-            float f5;
-            if (!this.isBaseCandidateValid(blockPos3) || (blockState = AutoCrystalModule.mc.level.getBlockState(blockPos3)).getBlock() == Blocks.OBSIDIAN || blockState.getBlock() == Blocks.BEDROCK || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f5 = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), blockPos3, null, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f5 > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) || (f4 = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), blockPos3, null, this.ignoreTerrain.getValue())) < this.basePlaceMinDamage.getValue().floatValue() || f4 < this.getMinimumDamage(player, this.minimumDamage.getValue().floatValue()) && f4 < player.getHealth() + player.getAbsorptionAmount() && !(f4 * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player.getHealth() + player.getAbsorptionAmount()) || f > 0.0f && f4 < f * this.basePlaceRatio.getValue().floatValue() || !((d5 = (double)(-f4) * 10.0 + AutoCrystalModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos3)) + player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos3))) < d4)) continue;
-            d4 = d5;
-            blockPos2 = blockPos3;
-            f3 = f4;
+        BlockPos bestBasePos = null;
+        float bestBaseDamage = 0.0f;
+        double bestScore = Double.MAX_VALUE;
+        for (BlockPos candidatePos : candidateSet) {
+            double score;
+            float targetDamage;
+            float selfDamage;
+            if (!this.isBaseCandidateValid(candidatePos) || (blockState = AutoCrystalModule.mc.level.getBlockState(candidatePos)).getBlock() == Blocks.OBSIDIAN || blockState.getBlock() == Blocks.BEDROCK || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)AutoCrystalModule.mc.player, PositionUtils.extrapolate((Player)AutoCrystalModule.mc.player, this.extrapolation.getValue().intValue()), candidatePos, null, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > AutoCrystalModule.mc.player.getHealth() + AutoCrystalModule.mc.player.getAbsorptionAmount()) || (targetDamage = DamageUtils.getCrystalDamage((Entity)targetPlayer, PositionUtils.extrapolate(targetPlayer, this.extrapolation.getValue().intValue()), candidatePos, null, this.ignoreTerrain.getValue())) < this.basePlaceMinDamage.getValue().floatValue() || targetDamage < this.getMinimumDamage(targetPlayer, this.minimumDamage.getValue().floatValue()) && targetDamage < targetPlayer.getHealth() + targetPlayer.getAbsorptionAmount() && !(targetDamage * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= targetPlayer.getHealth() + targetPlayer.getAbsorptionAmount()) || currentDamage > 0.0f && targetDamage < currentDamage * this.basePlaceRatio.getValue().floatValue() || !((score = (double)(-targetDamage) * 10.0 + AutoCrystalModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos)) + targetPlayer.distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos))) < bestScore)) continue;
+            bestScore = score;
+            bestBasePos = candidatePos;
+            bestBaseDamage = targetDamage;
         }
-        if (blockPos2 == null) {
+        if (bestBasePos == null) {
             return false;
         }
         int obsidianSlot = this.basePlaceSwitch.getValue().equalsIgnoreCase("None") ? -1 : InventoryUtils.find(Items.OBSIDIAN, 0, this.basePlaceSwitch.getValue().equalsIgnoreCase("AltSwap") || this.basePlaceSwitch.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END);
         if (obsidianSlot == -1) {
             return false;
         }
-        Direction direction = WorldUtils.getDirection(blockPos2, this.basePlaceStrictDirection.getValue());
+        Direction direction = WorldUtils.getDirection(bestBasePos, this.basePlaceStrictDirection.getValue());
         if (direction == null && !this.basePlaceAirPlace.getValue()) {
             return false;
         }
-        int n6 = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-        if (!InventoryUtils.switchSlot(this.basePlaceSwitch.getValue(), obsidianSlot, n6)) {
+        int prevSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+        if (!InventoryUtils.switchSlot(this.basePlaceSwitch.getValue(), obsidianSlot, prevSlot)) {
             return false;
         }
         if (direction != null) {
-            bl = WorldUtils.placeBlock(blockPos2, direction, InteractionHand.MAIN_HAND, this.basePlaceRotate.getValue() ? "Normal" : "None", true, this.renderMode.getValue().equalsIgnoreCase("Both") || this.renderMode.getValue().equalsIgnoreCase("Fill"));
+            placed = WorldUtils.placeBlock(bestBasePos, direction, InteractionHand.MAIN_HAND, this.basePlaceRotate.getValue() ? "Normal" : "None", true, this.renderMode.getValue().equalsIgnoreCase("Both") || this.renderMode.getValue().equalsIgnoreCase("Fill"));
         } else {
-            WorldUtils.airPlaceBlock(blockPos2, InteractionHand.MAIN_HAND, this.basePlaceRotate.getValue() ? "Normal" : "None", this.renderMode.getValue().equalsIgnoreCase("Both") || this.renderMode.getValue().equalsIgnoreCase("Fill"));
-            bl = true;
+            WorldUtils.airPlaceBlock(bestBasePos, InteractionHand.MAIN_HAND, this.basePlaceRotate.getValue() ? "Normal" : "None", this.renderMode.getValue().equalsIgnoreCase("Both") || this.renderMode.getValue().equalsIgnoreCase("Fill"));
+            placed = true;
         }
-        InventoryUtils.switchBack(this.basePlaceSwitch.getValue(), obsidianSlot, n6);
-        if (bl) {
-            this.placeTarget = new PlaceTarget(blockPos2, player, Collections.emptyList(), null, f3, 1);
+        InventoryUtils.switchBack(this.basePlaceSwitch.getValue(), obsidianSlot, prevSlot);
+        if (placed) {
+            this.placeTarget = new PlaceTarget(bestBasePos, targetPlayer, Collections.emptyList(), null, bestBaseDamage, 1);
             if (this.place.getValue()) {
-                int n7 = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-                int n8 = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
-                boolean bl2 = AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL || AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.END_CRYSTAL || n7 != -1 && !this.autoSwitch.getValue().equalsIgnoreCase("None");
-                boolean bl3 = bl2;
-                if (bl2) {
-                    CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(blockPos2);
-                    Vec3 hitVec = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)blockPos2).add(0.0, 0.5, 0.0);
+                int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+                int currentSlot = AutoCrystalModule.mc.player.getInventory().getSelectedSlot();
+                boolean hasCrystal = AutoCrystalModule.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL || AutoCrystalModule.mc.player.getMainHandItem().getItem() == Items.END_CRYSTAL || crystalSlot != -1 && !this.autoSwitch.getValue().equalsIgnoreCase("None");
+                if (hasCrystal) {
+                    CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(bestBasePos);
+                    Vec3 hitVec = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)bestBasePos).add(0.0, 0.5, 0.0);
                     if (this.rotate.getValue().equalsIgnoreCase("Normal") || this.basePlaceRotate.getValue()) {
                         Night.ROTATION_MANAGER.legacyRotate(this.calculateRotations(hitVec), Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                     } else if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
                         Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(hitVec));
                     }
-                    boolean bl4 = false;
-                    if (AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL && n7 != -1) {
-                        InventoryUtils.switchSlot(this.autoSwitch.getValue(), n7, n8);
-                        bl4 = true;
+                    boolean switchedCrystal = false;
+                    if (AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL && crystalSlot != -1) {
+                        InventoryUtils.switchSlot(this.autoSwitch.getValue(), crystalSlot, currentSlot);
+                        switchedCrystal = true;
                     }
-                    this.place(blockPos2);
-                    if (bl4) {
-                        InventoryUtils.switchBack(this.autoSwitch.getValue(), n7, n8);
+                    this.place(bestBasePos);
+                    if (switchedCrystal) {
+                        InventoryUtils.switchBack(this.autoSwitch.getValue(), crystalSlot, currentSlot);
                     }
                 }
             }
-            Night.RENDER_MANAGER.setRenderPosition(blockPos2);
+            Night.RENDER_MANAGER.setRenderPosition(bestBasePos);
         }
-        return bl;
+        return placed;
     }
 
     private boolean isBaseCandidateValid(BlockPos blockPos) {
-        BlockState blockState;
+        BlockState twoAboveState;
         if (AutoCrystalModule.mc.level == null || AutoCrystalModule.mc.player == null) {
             return false;
         }
@@ -1704,13 +1677,12 @@ extends Module {
         if (AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.placeRange.getValue().doubleValue())) {
             return false;
         }
-        boolean bl = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
-        boolean bl2 = bl;
-        if (bl && !WorldUtils.canSeeBlock(blockPos)) {
+        boolean checkLos = this.raytrace.getValue() || AutoCrystalModule.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue());
+        if (checkLos && !WorldUtils.canSeeBlock(blockPos)) {
             return false;
         }
-        BlockState blockState2 = AutoCrystalModule.mc.level.getBlockState(blockPos);
-        if (!blockState2.canBeReplaced()) {
+        BlockState baseState = AutoCrystalModule.mc.level.getBlockState(blockPos);
+        if (!baseState.canBeReplaced()) {
             return false;
         }
         if (!WorldUtils.isPlaceable(blockPos)) {
@@ -1719,12 +1691,12 @@ extends Module {
         if (!this.basePlaceAirPlace.getValue() && WorldUtils.getDirection(blockPos, this.basePlaceStrictDirection.getValue()) == null) {
             return false;
         }
-        BlockPos blockPos2 = blockPos.above();
-        BlockState blockState3 = AutoCrystalModule.mc.level.getBlockState(blockPos2);
-        if (!blockState3.canBeReplaced() || !AutoCrystalModule.mc.level.getFluidState(blockPos2).isEmpty()) {
+        BlockPos abovePos = blockPos.above();
+        BlockState aboveState = AutoCrystalModule.mc.level.getBlockState(abovePos);
+        if (!aboveState.canBeReplaced() || !AutoCrystalModule.mc.level.getFluidState(abovePos).isEmpty()) {
             return false;
         }
-        if (this.placements.getValue().equalsIgnoreCase("Protocol") && !(blockState = AutoCrystalModule.mc.level.getBlockState(blockPos.above(2))).canBeReplaced()) {
+        if (this.placements.getValue().equalsIgnoreCase("Protocol") && !(twoAboveState = AutoCrystalModule.mc.level.getBlockState(blockPos.above(2))).canBeReplaced()) {
             return false;
         }
         return AutoCrystalModule.mc.level.getEntities((Entity)null, this.getCrystalPlacementBox(blockPos), entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal)).isEmpty();
@@ -1748,26 +1720,25 @@ extends Module {
         return this.calculationDamage;
     }
 
-    private void executePlaceCrystals(Vec3 vec3, int n, int n2, BlockPos blockPos) {
-        boolean bl = false;
+    private void executePlaceCrystals(Vec3 hitVec, int prevSlot, int crystalSlot, BlockPos blockPos) {
+        boolean switched = false;
         if (this.rotate.getValue().equalsIgnoreCase("Packet") || this.rotate.getValue().equalsIgnoreCase("Silent")) {
-            Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(vec3));
+            Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(hitVec));
         }
         if (AutoCrystalModule.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
             if (this.autoSwitch.getValue().equalsIgnoreCase("Normal") && this.swapBack.getValue() && this.savedSlot == -1) {
-                this.savedSlot = n;
+                this.savedSlot = prevSlot;
             }
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n2, n);
-            bl = true;
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), crystalSlot, prevSlot);
+            switched = true;
         }
         this.place(blockPos);
-        if (bl) {
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n2, n);
+        if (switched) {
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), crystalSlot, prevSlot);
         }
         if (this.godSync.getValue()) {
-            boolean bl2;
-            boolean bl3 = bl2 = !this.antiKick.getValue() || !(AutoCrystalModule.mc.player.getMainHandItem().getItem() instanceof ExperienceBottleItem) && !(AutoCrystalModule.mc.player.getOffhandItem().getItem() instanceof ExperienceBottleItem) && !Night.MODULE_MANAGER.getModule(KeyActionModule.class).isXpActive();
-            if ((!this.antiKick.getValue() || this.kickTicks > this.kickThreshold.getValue().intValue()) && bl2) {
+            boolean allowPredict = !this.antiKick.getValue() || !(AutoCrystalModule.mc.player.getMainHandItem().getItem() instanceof ExperienceBottleItem) && !(AutoCrystalModule.mc.player.getOffhandItem().getItem() instanceof ExperienceBottleItem) && !Night.MODULE_MANAGER.getModule(KeyActionModule.class).isXpActive();
+            if ((!this.antiKick.getValue() || this.kickTicks > this.kickThreshold.getValue().intValue()) && allowPredict) {
                 if (!this.fast.getValue()) {
                     for (Entity entity : AutoCrystalModule.mc.level.entitiesForRendering()) {
                         if (entity.getId() <= this.highestID) continue;
@@ -1775,15 +1746,14 @@ extends Module {
                     }
                 }
                 for (int i = 1 - this.offset.getValue().intValue(); i < this.predictions.getValue().intValue(); ++i) {
-                    Entity entity;
-                    entity = AutoCrystalModule.mc.level.getEntity(this.highestID);
+                    Entity entity = AutoCrystalModule.mc.level.getEntity(this.highestID);
                     if (entity != null && !(entity instanceof EndCrystal)) continue;
-                    int n3 = this.highestID + i;
-                    mc.getConnection().send((Packet)new ServerboundAttackPacket(n3));
+                    int predictedId = this.highestID + i;
+                    mc.getConnection().send((Packet)new ServerboundAttackPacket(predictedId));
                     if (this.godSwing.getValue().equals("Strict")) {
                         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                     }
-                    this.attackedCrystals.put(n3, System.currentTimeMillis());
+                    this.attackedCrystals.put(predictedId, System.currentTimeMillis());
                 }
                 if (this.godSwing.getValue().equals("Normal")) {
                     mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
@@ -1836,13 +1806,13 @@ extends Module {
         }
 
         @Generated
-        public PlaceTarget(BlockPos blockPos, Player player, List<Entity> list, BlockPos blockPos2, float f, int n) {
-            this.position = blockPos;
+        public PlaceTarget(BlockPos position, Player player, List<Entity> obstructions, BlockPos exception, float damage, int calculations) {
+            this.position = position;
             this.player = player;
-            this.obstructions = list;
-            this.exception = blockPos2;
-            this.damage = f;
-            this.calculations = n;
+            this.obstructions = obstructions;
+            this.exception = exception;
+            this.damage = damage;
+            this.calculations = calculations;
         }
     }
 }

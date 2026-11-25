@@ -42,10 +42,10 @@ public class ClientWorldMixin {
     }
 
     @Inject(method={"destroyBlockProgress"}, at={@At(value="HEAD")})
-    private void destroyBlockProgress(int n, BlockPos blockPos, int n2, CallbackInfo callbackInfo) {
+    private void destroyBlockProgress(int breakerId, BlockPos blockPos, int progress, CallbackInfo callbackInfo) {
         try {
-            if (n2 >= 0 && n2 <= 9) {
-                Night.EVENT_HANDLER.post((Event)new PlayerMineEvent(n, blockPos));
+            if (progress >= 0 && progress <= 9) {
+                Night.EVENT_HANDLER.post((Event)new PlayerMineEvent(breakerId, blockPos));
             }
             return;
         }

@@ -29,8 +29,8 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerMove(PlayerMoveEvent playerMoveEvent) {
-        float f;
-        float f2;
+        float verticalMultiplier;
+        float horizontalMultiplier;
         if (FastSwimModule.mc.player == null) {
             return;
         }
@@ -42,22 +42,22 @@ extends Module {
             return;
         }
         if (FastSwimModule.mc.player.isInLava()) {
-            f2 = this.hLava.getValue().floatValue();
-            f = this.vLava.getValue().floatValue();
+            horizontalMultiplier = this.hLava.getValue().floatValue();
+            verticalMultiplier = this.vLava.getValue().floatValue();
         } else if (FastSwimModule.mc.player.isInWater()) {
-            f2 = this.hWater.getValue().floatValue();
-            f = this.vWater.getValue().floatValue();
+            horizontalMultiplier = this.hWater.getValue().floatValue();
+            verticalMultiplier = this.vWater.getValue().floatValue();
         } else {
             return;
         }
-        Vector2d vector2d = MovementUtils.forward(MovementUtils.DEFAULT_SPEED * (double)f2);
-        double d = playerMoveEvent.getMovement().y;
+        Vector2d forward = MovementUtils.forward(MovementUtils.DEFAULT_SPEED * (double)horizontalMultiplier);
+        double motionY = playerMoveEvent.getMovement().y;
         if (FastSwimModule.mc.options.keyJump.isDown()) {
-            d = 0.04 * (double)f;
+            motionY = 0.04 * (double)verticalMultiplier;
         } else if (FastSwimModule.mc.options.keyShift.isDown()) {
-            d = -0.04 * (double)f;
+            motionY = -0.04 * (double)verticalMultiplier;
         }
-        playerMoveEvent.setMovement(new Vec3(vector2d.x, d, vector2d.y));
+        playerMoveEvent.setMovement(new Vec3(forward.x, motionY, forward.y));
         playerMoveEvent.setCancelled(true);
     }
 }

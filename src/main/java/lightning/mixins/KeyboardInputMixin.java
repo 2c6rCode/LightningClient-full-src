@@ -61,10 +61,10 @@ extends ClientInput {
                 }
                 IAutoWalkModule iAutoWalkModule = (IAutoWalkModule)Night.MODULE_MANAGER.getModule("AutoWalk");
                 if (iAutoWalkModule != null && iAutoWalkModule.isToggled() && !BaritoneUtils.isActive()) {
-                    boolean bl = iAutoWalkModule.isBackward();
-                    boolean bl2 = !bl;
-                    this.keyPresses = new Input(bl2, bl, this.keyPresses.left(), this.keyPresses.right(), this.keyPresses.jump(), this.keyPresses.shift(), this.keyPresses.sprint());
-                    this.moveVector = new Vec2(this.moveVector.x, bl ? -1.0f : 1.0f);
+                    boolean backward = iAutoWalkModule.isBackward();
+                    boolean forward = !backward;
+                    this.keyPresses = new Input(forward, backward, this.keyPresses.left(), this.keyPresses.right(), this.keyPresses.jump(), this.keyPresses.shift(), this.keyPresses.sprint());
+                    this.moveVector = new Vec2(this.moveVector.x, backward ? -1.0f : 1.0f);
                 }
                 EventInput eventInput = new EventInput(this.keyPresses.forward(), this.keyPresses.backward(), this.keyPresses.left(), this.keyPresses.right(), this.keyPresses.jump(), this.keyPresses.shift(), this.keyPresses.sprint());
                 Night.EVENT_HANDLER.post((Event)eventInput);
@@ -72,9 +72,9 @@ extends ClientInput {
             }
             ISprintModule iSprintModule = Night.MODULE_MANAGER == null ? null : (ISprintModule)Night.MODULE_MANAGER.getModule("Sprint");
             if (iSprintModule != null && iSprintModule.isGrimCompensating()) {
-                int n = iSprintModule.getGrimStrafe();
-                this.keyPresses = new Input(true, false, n > 0, n < 0, this.keyPresses.jump(), this.keyPresses.shift(), this.keyPresses.sprint());
-                this.moveVector = n == 0 ? new Vec2(0.0f, 1.0f) : new Vec2(n > 0 ? 1.0f : -1.0f, 1.0f);
+                int grimStrafe = iSprintModule.getGrimStrafe();
+                this.keyPresses = new Input(true, false, grimStrafe > 0, grimStrafe < 0, this.keyPresses.jump(), this.keyPresses.shift(), this.keyPresses.sprint());
+                this.moveVector = grimStrafe == 0 ? new Vec2(0.0f, 1.0f) : new Vec2(grimStrafe > 0 ? 1.0f : -1.0f, 1.0f);
                 Minecraft.getInstance().player.setSprinting(true);
             }
             return;

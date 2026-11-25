@@ -16,12 +16,12 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public class AccountButton {
-    public static Button create(int n, int n2, int n3, int n4, Screen screen) {
+    public static Button create(int x, int y, int width, int height, Screen parent) {
         return Button.builder((Component)Component.literal((String)"Accounts"), button -> {
             if (Minecraft.getInstance() != null) {
-                Minecraft.getInstance().gui.setScreen((Screen)new AccountManagerScreen(screen));
+                Minecraft.getInstance().gui.setScreen((Screen)new AccountManagerScreen(parent));
             }
-        }).bounds(n, n2, n3, n4).build();
+        }).bounds(x, y, width, height).build();
     }
 }
 

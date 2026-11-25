@@ -51,24 +51,24 @@ extends Module {
         if (ArrowControlsModule.mc.gui.screen() != null && (!this.inventory.getValue() || ArrowControlsModule.mc.gui.screen() instanceof ChatScreen || ArrowControlsModule.mc.gui.screen() instanceof BookEditScreen || ArrowControlsModule.mc.gui.screen() instanceof SignEditScreen || ArrowControlsModule.mc.gui.screen() instanceof JigsawBlockEditScreen || ArrowControlsModule.mc.gui.screen() instanceof StructureBlockEditScreen || ArrowControlsModule.mc.gui.screen() instanceof AnvilScreen || ArrowControlsModule.mc.gui.screen() instanceof CreativeModeInventoryScreen && CreativeInventoryScreenAccessor.getSelectedTab().getType() == CreativeModeTab.Type.SEARCH)) {
             return;
         }
-        float f = 0.0f;
-        float f2 = 0.0f;
-        float f3 = (float)(System.currentTimeMillis() - this.lastTime) / 10.0f * this.speed.getValue().floatValue();
+        float deltaYaw = 0.0f;
+        float deltaPitch = 0.0f;
+        float step = (float)(System.currentTimeMillis() - this.lastTime) / 10.0f * this.speed.getValue().floatValue();
         this.lastTime = System.currentTimeMillis();
         if (InputConstants.isKeyDown((Window)mc.getWindow(), (int)263)) {
-            f -= f3;
+            deltaYaw -= step;
         }
         if (InputConstants.isKeyDown((Window)mc.getWindow(), (int)262)) {
-            f += f3;
+            deltaYaw += step;
         }
         if (InputConstants.isKeyDown((Window)mc.getWindow(), (int)265)) {
-            f2 -= f3;
+            deltaPitch -= step;
         }
         if (InputConstants.isKeyDown((Window)mc.getWindow(), (int)264)) {
-            f2 += f3;
+            deltaPitch += step;
         }
-        ArrowControlsModule.mc.player.setYRot(ArrowControlsModule.mc.player.getYRot() + f);
-        ArrowControlsModule.mc.player.setXRot(Mth.clamp((float)(ArrowControlsModule.mc.player.getXRot() + f2), (float)-90.0f, (float)90.0f));
+        ArrowControlsModule.mc.player.setYRot(ArrowControlsModule.mc.player.getYRot() + deltaYaw);
+        ArrowControlsModule.mc.player.setXRot(Mth.clamp((float)(ArrowControlsModule.mc.player.getXRot() + deltaPitch), (float)-90.0f, (float)90.0f));
     }
 
     @Override

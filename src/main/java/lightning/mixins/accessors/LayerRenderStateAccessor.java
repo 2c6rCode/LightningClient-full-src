@@ -34,6 +34,6 @@ public interface LayerRenderStateAccessor {
     public IntList night$getTintLayers();
 
     @Invoker(value="applyTransform")
-    public void night$applyTransform(PoseStack.Pose var1);
+    public void night$applyTransform(PoseStack.Pose pose);
 }
 

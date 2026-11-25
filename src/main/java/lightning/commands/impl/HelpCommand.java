@@ -14,34 +14,34 @@ import lightning.utils.chat.ChatUtils;
 public class HelpCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length != 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length != 0) {
             return List.of();
         }
         return Night.COMMAND_MANAGER.getCommands().stream().map(Command::getName).toList();
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 1) {
-            Command command = Night.COMMAND_MANAGER.getCommand(stringArray[0]);
+    public void execute(String[] args) {
+        if (args.length == 1) {
+            Command command = Night.COMMAND_MANAGER.getCommand(args[0]);
             if (command == null) {
                 Night.CHAT_MANAGER.tagged("Could not find the command specified.", this.getTag(), this.getName());
                 return;
             }
             Night.CHAT_MANAGER.info(command.getTag() + String.valueOf(ChatUtils.getPrimary()) + " - " + String.valueOf(ChatUtils.getSecondary()) + command.getName() + " " + command.getSyntax());
             Night.CHAT_MANAGER.info(command.getDescription());
-        } else if (stringArray.length == 0) {
-            ArrayList<Command> arrayList = Night.COMMAND_MANAGER.getCommands();
-            if (arrayList.isEmpty()) {
+        } else if (args.length == 0) {
+            ArrayList<Command> commands = Night.COMMAND_MANAGER.getCommands();
+            if (commands.isEmpty()) {
                 Night.CHAT_MANAGER.tagged("There are currently no registered commands.", this.getTag(), this.getName() + "-list");
             } else {
-                StringBuilder stringBuilder = new StringBuilder();
-                int n = 0;
-                for (Command command : arrayList) {
-                    stringBuilder.append(ChatUtils.getSecondary()).append(command.getName()).append(++n == arrayList.size() ? "" : ", ");
+                StringBuilder builder = new StringBuilder();
+                int index = 0;
+                for (Command command : commands) {
+                    builder.append(ChatUtils.getSecondary()).append(command.getName()).append(++index == commands.size() ? "" : ", ");
                 }
-                Night.CHAT_MANAGER.message("Commands " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + arrayList.size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(stringBuilder), this.getName() + "-list");
+                Night.CHAT_MANAGER.message("Commands " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + commands.size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(builder), this.getName() + "-list");
             }
         } else {
             this.messageSyntax();

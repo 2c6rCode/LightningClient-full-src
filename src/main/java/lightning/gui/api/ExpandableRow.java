@@ -15,8 +15,8 @@ public interface ExpandableRow {
 
     public List<Button> getButtons();
 
-    public void setRevealHeight(int var1);
+    public void setRevealHeight(int revealHeight);
 
-    public void setSearchQuery(String var1);
+    public void setSearchQuery(String query);
 }
 

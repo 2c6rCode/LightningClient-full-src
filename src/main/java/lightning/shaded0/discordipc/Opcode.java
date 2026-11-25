@@ -12,8 +12,8 @@ public enum Opcode {
 
     private static final Opcode[] VALUES;
 
-    public static Opcode valueOf(int n) {
-        return VALUES[n];
+    public static Opcode valueOf(int ordinal) {
+        return VALUES[ordinal];
     }
 
     static {

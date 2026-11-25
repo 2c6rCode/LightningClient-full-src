@@ -170,21 +170,21 @@ extends Module {
 
     @SubscribeEvent
     public void onTick(TickEvent tickEvent) {
-        int n;
-        boolean bl;
+        int supportSlot;
+        boolean hasSupport;
         if (PistonKickModule.mc.player == null || PistonKickModule.mc.level == null) {
             return;
         }
         if (this.pauseOnEat.getValue() && EntityUtils.isEating()) {
             return;
         }
-        long l = System.currentTimeMillis();
-        if (l - this.lastActionMs < this.delay.getValue().longValue() * 50L) {
+        long now = System.currentTimeMillis();
+        if (now - this.lastActionMs < this.delay.getValue().longValue() * 50L) {
             return;
         }
-        int n2 = this.findPiston();
-        int n3 = this.findPower();
-        if (n2 == -1 || n3 == -1) {
+        int pistonSlot = this.findPiston();
+        int powerSlot = this.findPower();
+        if (pistonSlot == -1 || powerSlot == -1) {
             this.resetState();
             return;
         }
@@ -202,10 +202,10 @@ extends Module {
         }
         if (this.currentTarget == null) {
             List<Player> enemies = this.getEnemies();
-            for (Player object : enemies) {
+            for (Player candidate : enemies) {
                 List<BlockPos> enemyPhased;
-                if (!this.inAirTarget.getValue() && !object.onGround() || (enemyPhased = this.getPhasedSolidBlocks(object)).isEmpty()) continue;
-                this.currentTarget = object;
+                if (!this.inAirTarget.getValue() && !candidate.onGround() || (enemyPhased = this.getPhasedSolidBlocks(candidate)).isEmpty()) continue;
+                this.currentTarget = candidate;
                 this.targetPhasedPos = enemyPhased.get(0);
                 break;
             }
@@ -218,31 +218,31 @@ extends Module {
             this.breakNearbyCrystals(this.currentTarget);
         }
         if (this.pistonPos != null && this.pushDir != null) {
-            boolean bl3 = this.isPistonPlacedAndFacing(this.pistonPos, this.pushDir);
-            boolean bl4 = this.isPistonExtended(this.pistonPos);
-            boolean bl5 = this.isPistonPowered(this.pistonPos);
-            boolean bl13 = this.power.getValue().equalsIgnoreCase("Lever");
-            if (bl4) {
-                long bl22;
+            boolean pistonPlaced = this.isPistonPlacedAndFacing(this.pistonPos, this.pushDir);
+            boolean pistonExtended = this.isPistonExtended(this.pistonPos);
+            boolean pistonPowered = this.isPistonPowered(this.pistonPos);
+            boolean useLever = this.power.getValue().equalsIgnoreCase("Lever");
+            if (pistonExtended) {
+                long holdDelayMs;
                 if (this.extendedSinceMs == 0L) {
-                    this.extendedSinceMs = l;
+                    this.extendedSinceMs = now;
                 }
-                if (l - this.extendedSinceMs < (bl22 = Math.max(50L, this.pushDelay.getValue().longValue())) || this.leverTurnedOnMs > 0L && l - this.leverTurnedOnMs < 50L) {
-                    this.lastActionMs = l;
+                if (now - this.extendedSinceMs < (holdDelayMs = Math.max(50L, this.pushDelay.getValue().longValue())) || this.leverTurnedOnMs > 0L && now - this.leverTurnedOnMs < 50L) {
+                    this.lastActionMs = now;
                     return;
                 }
-                if (bl13 && this.redstonePos != null && this.isLever(this.redstonePos) && this.isLeverPowered(this.redstonePos)) {
+                if (useLever && this.redstonePos != null && this.isLever(this.redstonePos) && this.isLeverPowered(this.redstonePos)) {
                     this.clickLever(this.redstonePos);
                     this.leverTurnedOnMs = 0L;
-                    this.lastActionMs = l;
+                    this.lastActionMs = now;
                     return;
                 }
-                if (bl13 && this.redstonePos != null && !this.isLeverPowered(this.redstonePos) && bl4) {
-                    this.lastActionMs = l;
+                if (useLever && this.redstonePos != null && !this.isLeverPowered(this.redstonePos) && pistonExtended) {
+                    this.lastActionMs = now;
                     return;
                 }
-                List<BlockPos> bl7 = this.getPhasedSolidBlocks(this.currentTarget);
-                if (bl7.isEmpty()) {
+                List<BlockPos> phased = this.getPhasedSolidBlocks(this.currentTarget);
+                if (phased.isEmpty()) {
                     this.resetState();
                     return;
                 }
@@ -252,18 +252,18 @@ extends Module {
                 this.pushDir = null;
                 this.extendedSinceMs = 0L;
                 this.leverTurnedOnMs = 0L;
-                this.lastActionMs = l;
+                this.lastActionMs = now;
             } else {
                 this.extendedSinceMs = 0L;
             }
-            if (bl3 && bl5 && !bl4) {
-                this.lastActionMs = l;
+            if (pistonPlaced && pistonPowered && !pistonExtended) {
+                this.lastActionMs = now;
                 return;
             }
             boolean airPlaceCurrent = this.airPlace.getValue();
-            if (!bl3 && !PistonHelper.canPlace(this.pistonPos, null, airPlaceCurrent, true)) {
-                bl = !bl13 && this.redstonePos != null && this.redstonePos.equals((Object)this.pistonPos.below()) && (PistonHelper.canPlace(this.redstonePos, null, airPlaceCurrent, true) || this.isPowerSource(this.redstonePos)) || !this.supportPositions.isEmpty() && this.supportPositions.stream().anyMatch(blockPos -> PistonHelper.canPlace(blockPos, null, airPlaceCurrent, true) || this.isSolidBlock((BlockPos)blockPos)) || this.supportPos != null && (PistonHelper.canPlace(this.supportPos, null, airPlaceCurrent, true) || this.isSolidBlock(this.supportPos));
-                if (!bl) {
+            if (!pistonPlaced && !PistonHelper.canPlace(this.pistonPos, null, airPlaceCurrent, true)) {
+                hasSupport = !useLever && this.redstonePos != null && this.redstonePos.equals((Object)this.pistonPos.below()) && (PistonHelper.canPlace(this.redstonePos, null, airPlaceCurrent, true) || this.isPowerSource(this.redstonePos)) || !this.supportPositions.isEmpty() && this.supportPositions.stream().anyMatch(blockPos -> PistonHelper.canPlace(blockPos, null, airPlaceCurrent, true) || this.isSolidBlock((BlockPos)blockPos)) || this.supportPos != null && (PistonHelper.canPlace(this.supportPos, null, airPlaceCurrent, true) || this.isSolidBlock(this.supportPos));
+                if (!hasSupport) {
                     this.resetState();
                 }
             }
@@ -274,72 +274,72 @@ extends Module {
         if (this.pistonPos == null || this.pushDir == null) {
             return;
         }
-        boolean bl8 = this.airPlace.getValue();
-        boolean bl9 = this.power.getValue().equalsIgnoreCase("Lever");
-        for (BlockPos bl6 : this.supportPositions) {
-            int supportSlot;
-            if (this.isSolidBlock(bl6) || !PistonHelper.canPlace(bl6, null, bl8, true) || (supportSlot = this.findSupportBlock()) == -1) continue;
-            this.placeBlock(supportSlot, bl6, null);
-            this.lastActionMs = l;
+        boolean airPlace = this.airPlace.getValue();
+        boolean useLeverMode = this.power.getValue().equalsIgnoreCase("Lever");
+        for (BlockPos supportBlockPos : this.supportPositions) {
+            int candidateSupportSlot;
+            if (this.isSolidBlock(supportBlockPos) || !PistonHelper.canPlace(supportBlockPos, null, airPlace, true) || (candidateSupportSlot = this.findSupportBlock()) == -1) continue;
+            this.placeBlock(candidateSupportSlot, supportBlockPos, null);
+            this.lastActionMs = now;
             if (this.oneTwelve.getValue() || this.merge.getValue()) continue;
             return;
         }
-        if (this.supportPos != null && !this.isSolidBlock(this.supportPos) && !this.supportPositions.contains(this.supportPos) && PistonHelper.canPlace(this.supportPos, null, bl8, true) && (n = this.findSupportBlock()) != -1) {
-            this.placeBlock(n, this.supportPos, null);
-            this.lastActionMs = l;
+        if (this.supportPos != null && !this.isSolidBlock(this.supportPos) && !this.supportPositions.contains(this.supportPos) && PistonHelper.canPlace(this.supportPos, null, airPlace, true) && (supportSlot = this.findSupportBlock()) != -1) {
+            this.placeBlock(supportSlot, this.supportPos, null);
+            this.lastActionMs = now;
             if (!this.oneTwelve.getValue() && !this.merge.getValue()) {
                 return;
             }
         }
-        boolean bl7 = !bl9 && this.redstonePos != null && this.redstonePos.equals((Object)this.pistonPos.below());
-        if (bl7 && !this.isPowerSource(this.redstonePos) && PistonHelper.canPlace(this.redstonePos, null, bl8, true)) {
-            this.placeBlock(n3, this.redstonePos, null);
-            this.lastActionMs = l;
+        boolean powerBelowPiston = !useLeverMode && this.redstonePos != null && this.redstonePos.equals((Object)this.pistonPos.below());
+        if (powerBelowPiston && !this.isPowerSource(this.redstonePos) && PistonHelper.canPlace(this.redstonePos, null, airPlace, true)) {
+            this.placeBlock(powerSlot, this.redstonePos, null);
+            this.lastActionMs = now;
             if (!this.oneTwelve.getValue() && !this.merge.getValue()) {
                 return;
             }
         }
-        boolean bl11 = !this.isPistonPlacedAndFacing(this.pistonPos, this.pushDir);
-        if (bl11 && PistonHelper.canPlace(this.pistonPos, null, bl8, true)) {
-            this.placeBlock(n2, this.pistonPos, this.pushDir);
-            this.lastActionMs = l;
+        boolean needPiston = !this.isPistonPlacedAndFacing(this.pistonPos, this.pushDir);
+        if (needPiston && PistonHelper.canPlace(this.pistonPos, null, airPlace, true)) {
+            this.placeBlock(pistonSlot, this.pistonPos, this.pushDir);
+            this.lastActionMs = now;
             if (!this.oneTwelve.getValue() && !this.merge.getValue()) {
                 return;
             }
         }
         if (this.redstonePos != null && !this.isPistonPowered(this.pistonPos) && !this.isPowerSource(this.redstonePos)) {
-            boolean bl2 = !bl9 || this.isPistonPlacedAndFacing(this.pistonPos, this.pushDir) || bl8;
-            if (bl2 && PistonHelper.canPlace(this.redstonePos, null, bl8, true)) {
-                this.placeBlock(n3, this.redstonePos, null);
-                this.lastActionMs = l;
-                if (bl9) {
+            boolean canPlacePower = !useLeverMode || this.isPistonPlacedAndFacing(this.pistonPos, this.pushDir) || airPlace;
+            if (canPlacePower && PistonHelper.canPlace(this.redstonePos, null, airPlace, true)) {
+                this.placeBlock(powerSlot, this.redstonePos, null);
+                this.lastActionMs = now;
+                if (useLeverMode) {
                     this.clickLever(this.redstonePos);
-                    this.leverTurnedOnMs = l;
+                    this.leverTurnedOnMs = now;
                 }
             }
-        } else if (bl9 && this.redstonePos != null && this.isLever(this.redstonePos) && !this.isLeverPowered(this.redstonePos) && !this.isPistonExtended(this.pistonPos) && this.extendedSinceMs == 0L) {
+        } else if (useLeverMode && this.redstonePos != null && this.isLever(this.redstonePos) && !this.isLeverPowered(this.redstonePos) && !this.isPistonExtended(this.pistonPos) && this.extendedSinceMs == 0L) {
             this.clickLever(this.redstonePos);
-            this.leverTurnedOnMs = l;
-            this.lastActionMs = l;
+            this.leverTurnedOnMs = now;
+            this.lastActionMs = now;
         }
     }
 
     private boolean searchPlacement(Player player) {
-        List<BlockPos> list = this.getPhasedSolidBlocks(player);
-        if (list.isEmpty()) {
+        List<BlockPos> phasedBlocks = this.getPhasedSolidBlocks(player);
+        if (phasedBlocks.isEmpty()) {
             return false;
         }
-        if (list.size() >= 2) {
+        if (phasedBlocks.size() >= 2) {
             Direction direction = PistonKickModule.mc.player.getDirection();
             Direction.Axis axis = direction.getAxis();
-            list.sort((blockPos, blockPos2) -> {
-                boolean bl = axis == Direction.Axis.Z && blockPos.getZ() != blockPos2.getZ() || axis == Direction.Axis.X && blockPos.getX() != blockPos2.getX();
-                return bl ? -1 : 1;
+            phasedBlocks.sort((posA, posB) -> {
+                boolean aligned = axis == Direction.Axis.Z && posA.getZ() != posB.getZ() || axis == Direction.Axis.X && posA.getX() != posB.getX();
+                return aligned ? -1 : 1;
             });
         }
-        for (BlockPos blockPos3 : list) {
-            if (!this.searchPlacementForBlock(player, blockPos3)) continue;
-            this.targetPhasedPos = blockPos3;
+        for (BlockPos phasedPos : phasedBlocks) {
+            if (!this.searchPlacementForBlock(player, phasedPos)) continue;
+            this.targetPhasedPos = phasedPos;
             return true;
         }
         return false;
@@ -569,55 +569,54 @@ extends Module {
         return false;
     }
 
-    private BlockPos findBestPowerPos(BlockPos blockPos, BlockPos blockPos2, BlockPos blockPos3, Direction direction) {
-        BlockPos blockPos4 = null;
-        double d = Double.MAX_VALUE;
-        boolean bl = this.airPlace.getValue();
-        Direction[] directionArray = new Direction[]{Direction.DOWN, direction.getOpposite(), direction.getClockWise(), direction.getCounterClockWise(), Direction.UP};
-        for (Direction direction2 : directionArray) {
-            double d2;
-            BlockPos blockPos5 = blockPos.relative(direction2);
-            if (blockPos5.equals((Object)blockPos2) || blockPos5.equals((Object)blockPos2.below()) || blockPos5.equals((Object)blockPos3) || blockPos5.equals((Object)blockPos3.above()) || blockPos5.equals((Object)blockPos.relative(direction))) continue;
-            if (this.isPowerSource(blockPos5)) {
-                return blockPos5;
+    private BlockPos findBestPowerPos(BlockPos pistonPos, BlockPos targetAbove, BlockPos pushDest, Direction pushDirection) {
+        BlockPos bestPos = null;
+        double bestDistSq = Double.MAX_VALUE;
+        boolean airPlace = this.airPlace.getValue();
+        Direction[] dirs = new Direction[]{Direction.DOWN, pushDirection.getOpposite(), pushDirection.getClockWise(), pushDirection.getCounterClockWise(), Direction.UP};
+        for (Direction dir : dirs) {
+            double distSq;
+            BlockPos candidatePos = pistonPos.relative(dir);
+            if (candidatePos.equals((Object)targetAbove) || candidatePos.equals((Object)targetAbove.below()) || candidatePos.equals((Object)pushDest) || candidatePos.equals((Object)pushDest.above()) || candidatePos.equals((Object)pistonPos.relative(pushDirection))) continue;
+            if (this.isPowerSource(candidatePos)) {
+                return candidatePos;
             }
-            if (!PistonHelper.canPlace(blockPos5, null, bl, true) || !this.inRange(blockPos5) || !((d2 = PistonKickModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos5))) < d)) continue;
-            d = d2;
-            blockPos4 = blockPos5;
+            if (!PistonHelper.canPlace(candidatePos, null, airPlace, true) || !this.inRange(candidatePos) || !((distSq = PistonKickModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos))) < bestDistSq)) continue;
+            bestDistSq = distSq;
+            bestPos = candidatePos;
         }
-        return blockPos4;
+        return bestPos;
     }
 
-    private void placeBlock(int n, BlockPos blockPos, Direction direction2) {
-        if (n == -1 || PistonKickModule.mc.player == null) {
+    private void placeBlock(int slot, BlockPos blockPos, Direction pistonFacing) {
+        if (slot == -1 || PistonKickModule.mc.player == null) {
             return;
         }
-        Direction direction3 = this.strictDirection.getValue() ? WorldUtils.getDirection(blockPos, true) : PistonHelper.getPlaceSide(blockPos, direction -> true);
-        Direction direction4 = direction3;
-        if (direction3 == null) {
+        Direction placeSide = this.strictDirection.getValue() ? WorldUtils.getDirection(blockPos, true) : PistonHelper.getPlaceSide(blockPos, direction -> true);
+        if (placeSide == null) {
             if (this.airPlace.getValue()) {
                 if (this.power.getValue().equalsIgnoreCase("Lever") && this.pistonPos != null && this.pushDir != null && blockPos.equals((Object)this.pistonPos.relative(this.pushDir.getOpposite()))) {
-                    direction3 = this.pushDir;
+                    placeSide = this.pushDir;
                 } else {
-                    direction3 = PistonHelper.getClickSide(blockPos);
-                    if (direction3 == null) {
-                        direction3 = Direction.UP;
+                    placeSide = PistonHelper.getClickSide(blockPos);
+                    if (placeSide == null) {
+                        placeSide = Direction.UP;
                     }
                 }
             } else {
                 return;
             }
         }
-        int n2 = PistonKickModule.mc.player.getInventory().getSelectedSlot();
-        this.doSwap(n, n2);
+        int oldSlot = PistonKickModule.mc.player.getInventory().getSelectedSlot();
+        this.doSwap(slot, oldSlot);
         if (this.shouldRotate()) {
-            this.doRotate(blockPos, direction3);
-            if (direction2 != null) {
-                this.snapPistonFacing(direction2);
+            this.doRotate(blockPos, placeSide);
+            if (pistonFacing != null) {
+                this.snapPistonFacing(pistonFacing);
             }
         }
-        PistonHelper.placeBlock(blockPos, direction3, false);
-        this.restoreSlot(n, n2);
+        PistonHelper.placeBlock(blockPos, placeSide, false);
+        this.restoreSlot(slot, oldSlot);
         if (this.render.getValue()) {
             Night.RENDER_MANAGER.getRenderPositions().removeIf(renderPosition -> renderPosition.getPos().equals((Object)blockPos));
             Night.RENDER_MANAGER.getRenderPositions().add(new RenderPosition(blockPos));
@@ -625,14 +624,14 @@ extends Module {
     }
 
     private void snapPistonFacing(Direction direction) {
-        float f = switch (direction) {
+        float yaw = switch (direction) {
             case Direction.SOUTH -> 180.0f;
             case Direction.NORTH -> 0.0f;
             case Direction.EAST -> 90.0f;
             case Direction.WEST -> -90.0f;
             default -> 0.0f;
         };
-        Night.ROTATION_MANAGER.silentRotate(f, 0.0f);
+        Night.ROTATION_MANAGER.silentRotate(yaw, 0.0f);
     }
 
     private boolean isPistonPlacedAndFacing(BlockPos blockPos, Direction direction) {
@@ -663,8 +662,8 @@ extends Module {
         }
         if (this.power.getValue().equalsIgnoreCase("Lever")) {
             for (Direction direction : Direction.values()) {
-                BlockPos blockPos2 = blockPos.relative(direction);
-                if (!this.isLever(blockPos2) || !this.isLeverPowered(blockPos2)) continue;
+                BlockPos neighborPos = blockPos.relative(direction);
+                if (!this.isLever(neighborPos) || !this.isLeverPowered(neighborPos)) continue;
                 return true;
             }
             return PistonKickModule.mc.level.hasNeighborSignal(blockPos);
@@ -728,14 +727,14 @@ extends Module {
         if (PistonKickModule.mc.level == null) {
             return false;
         }
-        BlockPos blockPos2 = blockPos.relative(direction);
-        BlockPos blockPos3 = blockPos2.above();
-        BlockState blockState = PistonKickModule.mc.level.getBlockState(blockPos2);
-        BlockState blockState2 = PistonKickModule.mc.level.getBlockState(blockPos3);
-        if (!blockState.isAir() && (!blockState.canBeReplaced() || blockState.blocksMotion() || this.isImmovable(blockState))) {
+        BlockPos pushPos = blockPos.relative(direction);
+        BlockPos pushAbovePos = pushPos.above();
+        BlockState pushState = PistonKickModule.mc.level.getBlockState(pushPos);
+        BlockState pushAboveState = PistonKickModule.mc.level.getBlockState(pushAbovePos);
+        if (!pushState.isAir() && (!pushState.canBeReplaced() || pushState.blocksMotion() || this.isImmovable(pushState))) {
             return false;
         }
-        return blockState2.isAir() || blockState2.canBeReplaced() && !blockState2.blocksMotion() && !this.isImmovable(blockState2);
+        return pushAboveState.isAir() || pushAboveState.canBeReplaced() && !pushAboveState.blocksMotion() && !this.isImmovable(pushAboveState);
     }
 
     private boolean isImmovable(BlockState blockState) {
@@ -744,39 +743,38 @@ extends Module {
     }
 
     public List<BlockPos> getPhasedSolidBlocks(Player player) {
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
+        ArrayList<BlockPos> solidBlocks = new ArrayList<BlockPos>();
         if (player == null || PistonKickModule.mc.level == null) {
-            return arrayList;
+            return solidBlocks;
         }
-        List<BlockPos> list = EntityUtils.getPhasedBlocks((Entity)player);
-        for (BlockPos blockPos2 : list) {
-            BlockState blockState = PistonKickModule.mc.level.getBlockState(blockPos2);
+        List<BlockPos> phasedBlocks = EntityUtils.getPhasedBlocks((Entity)player);
+        for (BlockPos pos : phasedBlocks) {
+            BlockState blockState = PistonKickModule.mc.level.getBlockState(pos);
             if (!this.isHardPhasedBlock(blockState)) continue;
-            arrayList.add(blockPos2);
+            solidBlocks.add(pos);
         }
-        if (arrayList.isEmpty()) {
-            BlockPos blockPos = BlockPos.containing((double)player.getX(), (double)(player.getY() + 0.1), (double)player.getZ());
-            if (this.isHardPhasedBlock(PistonKickModule.mc.level.getBlockState(blockPos))) {
-                arrayList.add(blockPos);
+        if (solidBlocks.isEmpty()) {
+            BlockPos feetPos = BlockPos.containing((double)player.getX(), (double)(player.getY() + 0.1), (double)player.getZ());
+            if (this.isHardPhasedBlock(PistonKickModule.mc.level.getBlockState(feetPos))) {
+                solidBlocks.add(feetPos);
             } else {
-                BlockPos blockPos2;
-                blockPos2 = player.blockPosition();
-                if (this.isHardPhasedBlock(PistonKickModule.mc.level.getBlockState(blockPos2))) {
-                    arrayList.add(blockPos2);
+                BlockPos blockPos = player.blockPosition();
+                if (this.isHardPhasedBlock(PistonKickModule.mc.level.getBlockState(blockPos))) {
+                    solidBlocks.add(blockPos);
                 } else {
-                    BlockPos abovePos = blockPos.above();
+                    BlockPos abovePos = feetPos.above();
                     if (this.isHardPhasedBlock(PistonKickModule.mc.level.getBlockState(abovePos))) {
-                        arrayList.add(abovePos);
+                        solidBlocks.add(abovePos);
                     }
                 }
             }
         }
-        return arrayList;
+        return solidBlocks;
     }
 
     public BlockPos getPhasedSolidBlock(Player player) {
-        List<BlockPos> list = this.getPhasedSolidBlocks(player);
-        return list.isEmpty() ? null : list.get(0);
+        List<BlockPos> blocks = this.getPhasedSolidBlocks(player);
+        return blocks.isEmpty() ? null : blocks.get(0);
     }
 
     private boolean isDecoyOrPassableBlock(BlockState blockState) {
@@ -799,19 +797,19 @@ extends Module {
     }
 
     private boolean inRange(BlockPos blockPos) {
-        double d = this.placeRange.getValue().floatValue();
-        return PistonKickModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= d * d;
+        double maxRange = this.placeRange.getValue().floatValue();
+        return PistonKickModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= maxRange * maxRange;
     }
 
     private void breakNearbyCrystals(Player player) {
-        double d = this.breakRange.getValue().floatValue();
-        AABB aABB = player.getBoundingBox().inflate(d);
-        PistonKickModule.mc.level.getEntitiesOfClass(EndCrystal.class, aABB, endCrystal -> endCrystal.isAlive() && PistonKickModule.mc.player.distanceToSqr((Entity)endCrystal) <= d * d).stream().min(Comparator.comparingDouble(endCrystal -> PistonKickModule.mc.player.distanceToSqr((Entity)endCrystal))).ifPresent(endCrystal -> {
-            float f = DamageUtils.getCrystalDamage((Entity)PistonKickModule.mc.player, null, endCrystal, false);
-            if (f > this.maxLocalDamage.getValue().floatValue()) {
+        double maxRange = this.breakRange.getValue().floatValue();
+        AABB aABB = player.getBoundingBox().inflate(maxRange);
+        PistonKickModule.mc.level.getEntitiesOfClass(EndCrystal.class, aABB, endCrystal -> endCrystal.isAlive() && PistonKickModule.mc.player.distanceToSqr((Entity)endCrystal) <= maxRange * maxRange).stream().min(Comparator.comparingDouble(endCrystal -> PistonKickModule.mc.player.distanceToSqr((Entity)endCrystal))).ifPresent(endCrystal -> {
+            float selfDamage = DamageUtils.getCrystalDamage((Entity)PistonKickModule.mc.player, null, endCrystal, false);
+            if (selfDamage > this.maxLocalDamage.getValue().floatValue()) {
                 return;
             }
-            if (this.safety.getValue() && f >= PistonKickModule.mc.player.getHealth() + PistonKickModule.mc.player.getAbsorptionAmount()) {
+            if (this.safety.getValue() && selfDamage >= PistonKickModule.mc.player.getHealth() + PistonKickModule.mc.player.getAbsorptionAmount()) {
                 return;
             }
             mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
@@ -824,50 +822,50 @@ extends Module {
     }
 
     private void doRotate(BlockPos blockPos, Direction direction) {
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)blockPos).add((double)direction.getStepX() * 0.5, (double)direction.getStepY() * 0.5, (double)direction.getStepZ() * 0.5);
-        float[] fArray = RotationUtils.getRotations(vec3);
-        Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
+        Vec3 hitVec = Vec3.atCenterOf((Vec3i)blockPos).add((double)direction.getStepX() * 0.5, (double)direction.getStepY() * 0.5, (double)direction.getStepZ() * 0.5);
+        float[] rotations = RotationUtils.getRotations(hitVec);
+        Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
     }
 
-    private void doSwap(int n, int n2) {
-        InventoryUtils.switchSlot(this.swapAction.getValue(), n, n2);
+    private void doSwap(int targetSlot, int oldSlot) {
+        InventoryUtils.switchSlot(this.swapAction.getValue(), targetSlot, oldSlot);
     }
 
-    private void restoreSlot(int n, int n2) {
-        InventoryUtils.switchBack(this.swapAction.getValue(), n, n2);
+    private void restoreSlot(int targetSlot, int oldSlot) {
+        InventoryUtils.switchBack(this.swapAction.getValue(), targetSlot, oldSlot);
     }
 
     private int findPower() {
         if (this.power.getValue().equalsIgnoreCase("Lever")) {
             return this.findBlock(Blocks.LEVER);
         }
-        int n = this.findBlock(Blocks.REDSTONE_BLOCK);
-        if (n != -1) {
-            return n;
+        int slot = this.findBlock(Blocks.REDSTONE_BLOCK);
+        if (slot != -1) {
+            return slot;
         }
         return this.findBlock(Blocks.REDSTONE_TORCH);
     }
 
     private int findSupportBlock() {
-        int n = this.findBlock(Blocks.OBSIDIAN);
-        if (n != -1) {
-            return n;
+        int slot = this.findBlock(Blocks.OBSIDIAN);
+        if (slot != -1) {
+            return slot;
         }
-        n = this.findBlock(Blocks.CRYING_OBSIDIAN);
-        if (n != -1) {
-            return n;
+        slot = this.findBlock(Blocks.CRYING_OBSIDIAN);
+        if (slot != -1) {
+            return slot;
         }
-        n = this.findBlock(Blocks.ENDER_CHEST);
-        if (n != -1) {
-            return n;
+        slot = this.findBlock(Blocks.ENDER_CHEST);
+        if (slot != -1) {
+            return slot;
         }
-        n = this.findBlock(Blocks.NETHERITE_BLOCK);
-        if (n != -1) {
-            return n;
+        slot = this.findBlock(Blocks.NETHERITE_BLOCK);
+        if (slot != -1) {
+            return slot;
         }
-        n = this.findBlock(Blocks.COBBLESTONE);
-        if (n != -1) {
-            return n;
+        slot = this.findBlock(Blocks.COBBLESTONE);
+        if (slot != -1) {
+            return slot;
         }
         return this.findPower();
     }
@@ -881,9 +879,9 @@ extends Module {
     }
 
     private int findPiston() {
-        int n = this.findBlock(Blocks.PISTON);
-        if (n != -1) {
-            return n;
+        int slot = this.findBlock(Blocks.PISTON);
+        if (slot != -1) {
+            return slot;
         }
         return this.findBlock(Blocks.STICKY_PISTON);
     }
@@ -898,8 +896,8 @@ extends Module {
             }
             return -1;
         }
-        int n = this.swapAction.getValue().equalsIgnoreCase("AltSwap") || this.swapAction.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END;
-        for (int i = 0; i <= n; ++i) {
+        int maxSlot = this.swapAction.getValue().equalsIgnoreCase("AltSwap") || this.swapAction.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END;
+        for (int i = 0; i <= maxSlot; ++i) {
             BlockItem blockItem;
             Item item;
             ItemStack itemStack = PistonKickModule.mc.player.getInventory().getItem(i);
@@ -910,8 +908,8 @@ extends Module {
     }
 
     private List<Player> getEnemies() {
-        double d = this.targetRange.getValue().floatValue();
-        return PistonKickModule.mc.level.players().stream().filter(abstractClientPlayer -> abstractClientPlayer != PistonKickModule.mc.player).filter(abstractClientPlayer -> !EntityUtils.isGhost((Entity)abstractClientPlayer)).filter(abstractClientPlayer -> !abstractClientPlayer.isSpectator() && abstractClientPlayer.isAlive()).filter(abstractClientPlayer -> !Night.FRIEND_MANAGER.contains(abstractClientPlayer.getName().getString())).filter(abstractClientPlayer -> PistonKickModule.mc.player.distanceToSqr((Entity)abstractClientPlayer) <= d * d).sorted(Comparator.comparingDouble(abstractClientPlayer -> PistonKickModule.mc.player.distanceToSqr((Entity)abstractClientPlayer))).collect(Collectors.toList());
+        double maxRange = this.targetRange.getValue().floatValue();
+        return PistonKickModule.mc.level.players().stream().filter(abstractClientPlayer -> abstractClientPlayer != PistonKickModule.mc.player).filter(abstractClientPlayer -> !EntityUtils.isGhost((Entity)abstractClientPlayer)).filter(abstractClientPlayer -> !abstractClientPlayer.isSpectator() && abstractClientPlayer.isAlive()).filter(abstractClientPlayer -> !Night.FRIEND_MANAGER.contains(abstractClientPlayer.getName().getString())).filter(abstractClientPlayer -> PistonKickModule.mc.player.distanceToSqr((Entity)abstractClientPlayer) <= maxRange * maxRange).sorted(Comparator.comparingDouble(abstractClientPlayer -> PistonKickModule.mc.player.distanceToSqr((Entity)abstractClientPlayer))).collect(Collectors.toList());
     }
 
     private record LeverCandidate(BlockPos leverPos, List<BlockPos> neededSupports) {

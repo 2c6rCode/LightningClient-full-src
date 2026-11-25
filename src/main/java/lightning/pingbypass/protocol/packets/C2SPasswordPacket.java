@@ -14,8 +14,8 @@ extends PbPacket {
     public static final int ID = 2;
     private final String password;
 
-    public C2SPasswordPacket(String string) {
-        this.password = string;
+    public C2SPasswordPacket(String password) {
+        this.password = password;
     }
 
     public C2SPasswordPacket(FriendlyByteBuf friendlyByteBuf) {

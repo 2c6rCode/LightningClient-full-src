@@ -19,8 +19,8 @@ extends Event {
     }
 
     @Generated
-    public ChangeYawEvent(float f) {
-        this.yaw = f;
+    public ChangeYawEvent(float yaw) {
+        this.yaw = yaw;
     }
 }
 

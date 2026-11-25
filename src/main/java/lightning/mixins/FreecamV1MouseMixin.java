@@ -33,14 +33,14 @@ public class FreecamV1MouseMixin {
     private Minecraft minecraft;
 
     @Inject(method={"onScroll"}, at={@At(value="HEAD")})
-    private void night$freecamV1$onScroll(long l, double d, double d2, CallbackInfo callbackInfo) {
+    private void night$freecamV1$onScroll(long window, double horizontal, double vertical, CallbackInfo callbackInfo) {
         try {
-            if (Night.MODULE_MANAGER == null || this.minecraft.gui.screen() != null || l != this.minecraft.getWindow().handle()) {
+            if (Night.MODULE_MANAGER == null || this.minecraft.gui.screen() != null || window != this.minecraft.getWindow().handle()) {
                 return;
             }
             FreecamV1Module freecamV1Module = (FreecamV1Module)Night.MODULE_MANAGER.getModule(FreecamV1Module.class);
-            if (freecamV1Module != null && freecamV1Module.isToggled() && d2 != 0.0) {
-                freecamV1Module.onScroll(d2);
+            if (freecamV1Module != null && freecamV1Module.isToggled() && vertical != 0.0) {
+                freecamV1Module.onScroll(vertical);
             }
             return;
         }

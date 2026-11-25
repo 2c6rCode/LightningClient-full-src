@@ -14,8 +14,8 @@ extends PbPacket {
     public static final int ID = 13;
     private final int slot;
 
-    public S2CSlotSyncPacket(int n) {
-        this.slot = n;
+    public S2CSlotSyncPacket(int slot) {
+        this.slot = slot;
     }
 
     public S2CSlotSyncPacket(FriendlyByteBuf friendlyByteBuf) {

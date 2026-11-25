@@ -17,6 +17,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(value={KeyboardHandler.class})
 public interface KeyboardHandlerAccessor {
     @Invoker(value="keyPress")
-    public void invokeKeyPress(long var1, int var3, KeyEvent var4);
+    public void invokeKeyPress(long window, int action, KeyEvent keyEvent);
 }
 

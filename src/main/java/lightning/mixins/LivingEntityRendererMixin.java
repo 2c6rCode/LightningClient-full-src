@@ -56,19 +56,19 @@ implements IMinecraft {
     }
 
     @Inject(method={"submit"}, at={@At(value="HEAD")}, cancellable=true)
-    private void submit(S s, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState cameraRenderState, CallbackInfo callbackInfo) {
+    private void submit(S renderState, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState cameraRenderState, CallbackInfo callbackInfo) {
         try {
             NoRenderModule noRenderModule = (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class);
             if (!noRenderModule.isToggled()) {
                 return;
             }
-            if (noRenderModule.corpses.getValue() && ((LivingEntityRenderState)s).deathTime > 0.0f) {
+            if (noRenderModule.corpses.getValue() && ((LivingEntityRenderState)renderState).deathTime > 0.0f) {
                 callbackInfo.cancel();
                 return;
             }
-            if (noRenderModule.player.getValue() && s instanceof AvatarRenderState && !((ISelfState)s).night$isSelf() && LivingEntityRendererMixin.mc.player != null) {
-                double dx = ((LivingEntityRenderState)s).x - LivingEntityRendererMixin.mc.player.getX();
-                double dz = ((LivingEntityRenderState)s).z - LivingEntityRendererMixin.mc.player.getZ();
+            if (noRenderModule.player.getValue() && renderState instanceof AvatarRenderState && !((ISelfState)renderState).night$isSelf() && LivingEntityRendererMixin.mc.player != null) {
+                double dx = ((LivingEntityRenderState)renderState).x - LivingEntityRendererMixin.mc.player.getX();
+                double dz = ((LivingEntityRenderState)renderState).z - LivingEntityRendererMixin.mc.player.getZ();
                 if (dx * dx + dz * dz <= 1.0) {
                     callbackInfo.cancel();
                 }
@@ -81,18 +81,18 @@ implements IMinecraft {
     }
 
     @Inject(method={"extractRenderState"}, at={@At(value="TAIL")})
-    private void night$extractRenderState(T t, S s, float f, CallbackInfo callbackInfo) {
+    private void night$extractRenderState(T entity, S renderState, float partialTick, CallbackInfo callbackInfo) {
         try {
             ElytraFlyModule elytraFlyModule;
-            ((ISelfState)s).night$setSelf(t == LivingEntityRendererMixin.mc.player);
-            if (t == LivingEntityRendererMixin.mc.player && Night.ROTATION_MANAGER.inRenderTime()) {
-                ((LivingEntityRenderState)s).bodyRot = Night.ROTATION_MANAGER.getRenderRotations()[0];
-                ((LivingEntityRenderState)s).yRot = Mth.wrapDegrees((float)(Night.ROTATION_MANAGER.getRenderRotations()[0] - ((LivingEntityRenderState)s).bodyRot));
-                ((LivingEntityRenderState)s).xRot = Night.ROTATION_MANAGER.getRenderRotations()[1];
+            ((ISelfState)renderState).night$setSelf(entity == LivingEntityRendererMixin.mc.player);
+            if (entity == LivingEntityRendererMixin.mc.player && Night.ROTATION_MANAGER.inRenderTime()) {
+                ((LivingEntityRenderState)renderState).bodyRot = Night.ROTATION_MANAGER.getRenderRotations()[0];
+                ((LivingEntityRenderState)renderState).yRot = Mth.wrapDegrees((float)(Night.ROTATION_MANAGER.getRenderRotations()[0] - ((LivingEntityRenderState)renderState).bodyRot));
+                ((LivingEntityRenderState)renderState).xRot = Night.ROTATION_MANAGER.getRenderRotations()[1];
                 return;
             }
-            if (t == LivingEntityRendererMixin.mc.player && Night.MODULE_MANAGER != null && (elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class)) != null && elytraFlyModule.isToggled() && elytraFlyModule.mode.getValue().equalsIgnoreCase("Bounce") && elytraFlyModule.bounceAutoPitch.getValue()) {
-                ((LivingEntityRenderState)s).xRot = elytraFlyModule.bouncePitch.getValue().floatValue();
+            if (entity == LivingEntityRendererMixin.mc.player && Night.MODULE_MANAGER != null && (elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class)) != null && elytraFlyModule.isToggled() && elytraFlyModule.mode.getValue().equalsIgnoreCase("Bounce") && elytraFlyModule.bounceAutoPitch.getValue()) {
+                ((LivingEntityRenderState)renderState).xRot = elytraFlyModule.bouncePitch.getValue().floatValue();
             }
             return;
         }

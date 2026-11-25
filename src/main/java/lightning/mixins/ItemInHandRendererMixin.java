@@ -75,7 +75,7 @@ public abstract class ItemInHandRendererMixin {
     private ItemStack offHandItem;
 
     @Inject(method={"submitHandsWithItems"}, at={@At(value="HEAD")})
-    private void night$startHands(float f, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, LocalPlayer localPlayer, int n, CallbackInfo callbackInfo) {
+    private void night$startHands(float partialTick, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, LocalPlayer localPlayer, int light, CallbackInfo callbackInfo) {
         HandsRenderState.renderingHands = true;
     }
 
@@ -83,7 +83,7 @@ public abstract class ItemInHandRendererMixin {
     private void night$tickViewModel(CallbackInfo callbackInfo) {
         try {
             ViewModelModule viewModelModule = Night.MODULE_MANAGER != null ? (ViewModelModule)Night.MODULE_MANAGER.getModule(ViewModelModule.class) : null;
-            ViewModelModule viewModelModule2 = viewModelModule;
+            ViewModelModule unusedViewModelModule = viewModelModule;
             if (viewModelModule == null || !viewModelModule.isToggled()) {
                 return;
             }
@@ -109,17 +109,17 @@ public abstract class ItemInHandRendererMixin {
     }
 
     @Inject(method={"submitArmWithItem"}, at={@At(value="HEAD")})
-    private void night$applyViewModelTransformHead(AbstractClientPlayer abstractClientPlayer, float f, float f2, InteractionHand interactionHand, float f3, ItemStack itemStack, float f4, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int n, CallbackInfo callbackInfo) {
+    private void night$applyViewModelTransformHead(AbstractClientPlayer abstractClientPlayer, float partialTick, float xRot, InteractionHand interactionHand, float swingProgress, ItemStack itemStack, float equippedProgress, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int light, CallbackInfo callbackInfo) {
         try {
             ViewModelModule viewModelModule = Night.MODULE_MANAGER != null ? (ViewModelModule)Night.MODULE_MANAGER.getModule(ViewModelModule.class) : null;
-            ViewModelModule viewModelModule2 = viewModelModule;
+            ViewModelModule unusedViewModelModule = viewModelModule;
             if (viewModelModule == null || !viewModelModule.isToggled()) {
                 return;
             }
             poseStack.pushPose();
-            boolean bl = interactionHand == InteractionHand.MAIN_HAND || viewModelModule.mode.getValue().equalsIgnoreCase("Both");
-            boolean bl2 = bl;
-            if (bl) {
+            boolean isMainHand = interactionHand == InteractionHand.MAIN_HAND || viewModelModule.mode.getValue().equalsIgnoreCase("Both");
+            boolean unusedIsMainHand = isMainHand;
+            if (isMainHand) {
                 poseStack.translate(viewModelModule.positionMainX.getValue().floatValue(), viewModelModule.positionMainY.getValue().floatValue(), viewModelModule.positionMainZ.getValue().floatValue());
                 poseStack.scale(viewModelModule.scaleMainX.getValue().floatValue(), viewModelModule.scaleMainY.getValue().floatValue(), viewModelModule.scaleMainZ.getValue().floatValue());
                 poseStack.mulPose((Quaternionfc)Axis.XP.rotationDegrees(viewModelModule.rotationMainX.getValue().floatValue()));
@@ -140,10 +140,10 @@ public abstract class ItemInHandRendererMixin {
     }
 
     @Inject(method={"submitArmWithItem"}, at={@At(value="RETURN")})
-    private void night$applyViewModelTransformReturn(AbstractClientPlayer abstractClientPlayer, float f, float f2, InteractionHand interactionHand, float f3, ItemStack itemStack, float f4, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int n, CallbackInfo callbackInfo) {
+    private void night$applyViewModelTransformReturn(AbstractClientPlayer abstractClientPlayer, float partialTick, float xRot, InteractionHand interactionHand, float swingProgress, ItemStack itemStack, float equippedProgress, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int light, CallbackInfo callbackInfo) {
         try {
             ViewModelModule viewModelModule = Night.MODULE_MANAGER != null ? (ViewModelModule)Night.MODULE_MANAGER.getModule(ViewModelModule.class) : null;
-            ViewModelModule viewModelModule2 = viewModelModule;
+            ViewModelModule unusedViewModelModule = viewModelModule;
             if (viewModelModule == null || !viewModelModule.isToggled()) {
                 return;
             }
@@ -156,28 +156,28 @@ public abstract class ItemInHandRendererMixin {
     }
 
     @Inject(method={"applyEatTransform"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$applyEatTransform(PoseStack poseStack, float f, HumanoidArm humanoidArm, ItemStack itemStack, Player player, CallbackInfo callbackInfo) {
+    private void night$applyEatTransform(PoseStack poseStack, float partialTick, HumanoidArm humanoidArm, ItemStack itemStack, Player player, CallbackInfo callbackInfo) {
         try {
             ViewModelModule viewModelModule = Night.MODULE_MANAGER != null ? (ViewModelModule)Night.MODULE_MANAGER.getModule(ViewModelModule.class) : null;
-            ViewModelModule viewModelModule2 = viewModelModule;
+            ViewModelModule unusedViewModelModule = viewModelModule;
             if (viewModelModule == null || !viewModelModule.isToggled()) {
                 return;
             }
-            float f2 = viewModelModule.eatingMultiplier.getValue().floatValue();
-            if (f2 < 1.0f) {
-                float f3;
-                float f4 = (float)player.getUseItemRemainingTicks() - f + 1.0f;
-                float f5 = f4 / (float)itemStack.getUseDuration((LivingEntity)player);
-                if (f5 < 0.8f) {
-                    f3 = Mth.abs((float)(Mth.cos((double)(f4 / 4.0f * (float)Math.PI)) * 0.1f)) * f2;
-                    poseStack.translate(0.0f, f3, 0.0f);
+            float eatingMultiplier = viewModelModule.eatingMultiplier.getValue().floatValue();
+            if (eatingMultiplier < 1.0f) {
+                float wobble;
+                float timeLeft = (float)player.getUseItemRemainingTicks() - partialTick + 1.0f;
+                float useProgress = timeLeft / (float)itemStack.getUseDuration((LivingEntity)player);
+                if (useProgress < 0.8f) {
+                    wobble = Mth.abs((float)(Mth.cos((double)(timeLeft / 4.0f * (float)Math.PI)) * 0.1f)) * eatingMultiplier;
+                    poseStack.translate(0.0f, wobble, 0.0f);
                 }
-                f3 = 1.0f - (float)Math.pow(f5, 27.0);
-                int n = humanoidArm == HumanoidArm.RIGHT ? 1 : -1;
-                poseStack.translate(f3 * 0.6f * (float)n, f3 * -0.5f, f3 * 0.0f);
-                poseStack.mulPose((Quaternionfc)Axis.YP.rotationDegrees((float)n * f3 * 90.0f));
-                poseStack.mulPose((Quaternionfc)Axis.XP.rotationDegrees(f3 * 10.0f));
-                poseStack.mulPose((Quaternionfc)Axis.ZP.rotationDegrees((float)n * f3 * 30.0f));
+                wobble = 1.0f - (float)Math.pow(useProgress, 27.0);
+                int armSign = humanoidArm == HumanoidArm.RIGHT ? 1 : -1;
+                poseStack.translate(wobble * 0.6f * (float)armSign, wobble * -0.5f, wobble * 0.0f);
+                poseStack.mulPose((Quaternionfc)Axis.YP.rotationDegrees((float)armSign * wobble * 90.0f));
+                poseStack.mulPose((Quaternionfc)Axis.XP.rotationDegrees(wobble * 10.0f));
+                poseStack.mulPose((Quaternionfc)Axis.ZP.rotationDegrees((float)armSign * wobble * 30.0f));
                 callbackInfo.cancel();
             }
             if (viewModelModule.eatAnimation.getValue()) {
@@ -191,39 +191,39 @@ public abstract class ItemInHandRendererMixin {
     }
 
     @ModifyArg(method={"renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V")}, index=4)
-    private int night$handsOutline(int n, @Local(argsOnly=true) ItemStack itemStack) {
-        return ItemInHandRendererMixin.computeHandsOutlineColor(n);
+    private int night$handsOutline(int outlineColor, @Local(argsOnly=true) ItemStack itemStack) {
+        return ItemInHandRendererMixin.computeHandsOutlineColor(outlineColor);
     }
 
-    private static int computeHandsOutlineColor(int n) {
+    private static int computeHandsOutlineColor(int outlineColor) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) {
-            return n;
+            return outlineColor;
         }
         ShadersModule shadersModule = (ShadersModule)Night.MODULE_MANAGER.getModule(ShadersModule.class);
         if (shadersModule.isToggled() && shadersModule.hands.getValue()) {
             return shadersModule.getFillColor((Entity)minecraft.player);
         }
-        return n;
+        return outlineColor;
     }
 
     @Inject(method={"submitHandsWithItems"}, at={@At(value="RETURN")})
-    private void night$flushHandOutline(float f, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, LocalPlayer localPlayer, int n, CallbackInfo callbackInfo) {
+    private void night$flushHandOutline(float partialTick, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, LocalPlayer localPlayer, int light, CallbackInfo callbackInfo) {
         HandsRenderState.renderingHands = false;
     }
 
     @Inject(method={"swingArm"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$swingArm(float f, PoseStack poseStack, int n, HumanoidArm humanoidArm, CallbackInfo callbackInfo) {
+    private void night$swingArm(float swingProgress, PoseStack poseStack, int armSign, HumanoidArm humanoidArm, CallbackInfo callbackInfo) {
         try {
             SwingModule swingModule = (SwingModule)Night.MODULE_MANAGER.getModule(SwingModule.class);
             if (!swingModule.isToggled()) {
                 return;
             }
-            float f2 = swingModule.translateX.getValue() ? -0.4f * Mth.sin((double)(Mth.sqrt((float)f) * (float)Math.PI)) : 0.0f;
-            float f3 = swingModule.translateY.getValue() ? 0.2f * Mth.sin((double)(Mth.sqrt((float)f) * ((float)Math.PI * 2))) : 0.0f;
-            float f4 = swingModule.translateZ.getValue() ? -0.2f * Mth.sin((double)(f * (float)Math.PI)) : 0.0f;
-            poseStack.translate((float)n * f2, f3, f4);
-            ItemInHandRendererMixin.night$applyItemArmAttackTransform(poseStack, humanoidArm, f, swingModule);
+            float translateX = swingModule.translateX.getValue() ? -0.4f * Mth.sin((double)(Mth.sqrt((float)swingProgress) * (float)Math.PI)) : 0.0f;
+            float translateY = swingModule.translateY.getValue() ? 0.2f * Mth.sin((double)(Mth.sqrt((float)swingProgress) * ((float)Math.PI * 2))) : 0.0f;
+            float translateZ = swingModule.translateZ.getValue() ? -0.2f * Mth.sin((double)(swingProgress * (float)Math.PI)) : 0.0f;
+            poseStack.translate((float)armSign * translateX, translateY, translateZ);
+            ItemInHandRendererMixin.night$applyItemArmAttackTransform(poseStack, humanoidArm, swingProgress, swingModule);
             callbackInfo.cancel();
             return;
         }
@@ -232,14 +232,14 @@ public abstract class ItemInHandRendererMixin {
         }
     }
 
-    private static void night$applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm humanoidArm, float f, SwingModule swingModule) {
-        int n = humanoidArm == HumanoidArm.RIGHT ? 1 : -1;
-        float f2 = swingModule.rotationY.getValue() ? Mth.sin((double)(f * f * (float)Math.PI)) : 0.0f;
-        poseStack.mulPose((Quaternionfc)Axis.YP.rotationDegrees((float)n * (45.0f + f2 * -20.0f)));
-        float f3 = Mth.sin((double)(Mth.sqrt((float)f) * (float)Math.PI));
-        poseStack.mulPose((Quaternionfc)Axis.ZP.rotationDegrees((float)n * (swingModule.rotationZ.getValue() ? f3 : 0.0f) * -20.0f));
-        poseStack.mulPose((Quaternionfc)Axis.XP.rotationDegrees((swingModule.rotationX.getValue() ? f3 : 0.0f) * -80.0f));
-        poseStack.mulPose((Quaternionfc)Axis.YP.rotationDegrees((float)n * -45.0f));
+    private static void night$applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm humanoidArm, float swingProgress, SwingModule swingModule) {
+        int armSign = humanoidArm == HumanoidArm.RIGHT ? 1 : -1;
+        float rotY = swingModule.rotationY.getValue() ? Mth.sin((double)(swingProgress * swingProgress * (float)Math.PI)) : 0.0f;
+        poseStack.mulPose((Quaternionfc)Axis.YP.rotationDegrees((float)armSign * (45.0f + rotY * -20.0f)));
+        float rotSin = Mth.sin((double)(Mth.sqrt((float)swingProgress) * (float)Math.PI));
+        poseStack.mulPose((Quaternionfc)Axis.ZP.rotationDegrees((float)armSign * (swingModule.rotationZ.getValue() ? rotSin : 0.0f) * -20.0f));
+        poseStack.mulPose((Quaternionfc)Axis.XP.rotationDegrees((swingModule.rotationX.getValue() ? rotSin : 0.0f) * -80.0f));
+        poseStack.mulPose((Quaternionfc)Axis.YP.rotationDegrees((float)armSign * -45.0f));
     }
 }
 

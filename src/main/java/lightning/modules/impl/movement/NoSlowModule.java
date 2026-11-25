@@ -64,21 +64,20 @@ extends Module {
         if (!this.items.getValue() || !NoSlowModule.mc.player.isUsingItem() || NoSlowModule.mc.player.isPassenger() || NoSlowModule.mc.player.isFallFlying()) {
             return;
         }
-        float f = Night.ROTATION_MANAGER.getRotation() != null ? Night.ROTATION_MANAGER.getRotation().getYaw() : NoSlowModule.mc.player.getYRot();
-        float f2 = Night.ROTATION_MANAGER.getRotation() != null ? Night.ROTATION_MANAGER.getRotation().getPitch() : NoSlowModule.mc.player.getXRot();
-        float f3 = f2;
+        float yaw = Night.ROTATION_MANAGER.getRotation() != null ? Night.ROTATION_MANAGER.getRotation().getYaw() : NoSlowModule.mc.player.getYRot();
+        float pitch = Night.ROTATION_MANAGER.getRotation() != null ? Night.ROTATION_MANAGER.getRotation().getPitch() : NoSlowModule.mc.player.getXRot();
         if (this.itemMode.getValue().equals("GrimV2")) {
             if (!NoSlowModule.mc.player.isShiftKeyDown() && (NoSlowModule.mc.player.getUseItem().has(DataComponents.FOOD) || this.canUseItem(NoSlowModule.mc.player.getUseItem()))) {
                 InteractionHand interactionHand = NoSlowModule.mc.player.getUsedItemHand() == InteractionHand.MAIN_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
-                NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(interactionHand, n, f, f2));
+                NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(interactionHand, sequence, yaw, pitch));
             }
         } else if (this.itemMode.getValue().equals("Strict") && !NetworkUtils.isLegacyProtocol()) {
             if (NoSlowModule.mc.player.getUsedItemHand() == InteractionHand.OFF_HAND) {
-                int n2 = NoSlowModule.mc.player.getInventory().getSelectedSlot();
-                mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket((n2 + 1) % 9));
-                mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket(n2));
+                int selectedSlot = NoSlowModule.mc.player.getInventory().getSelectedSlot();
+                mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket((selectedSlot + 1) % 9));
+                mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket(selectedSlot));
             } else {
-                NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.OFF_HAND, n, f, f2));
+                NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.OFF_HAND, sequence, yaw, pitch));
             }
         }
     }

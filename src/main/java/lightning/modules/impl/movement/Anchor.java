@@ -51,32 +51,32 @@ extends Module {
         if (this.checkBurrowed.getValue() && this.isBurrowed()) {
             return;
         }
-        float f = Anchor.mc.player.getXRot();
-        if (f < this.pitch.getValue().floatValue()) {
+        float playerPitch = Anchor.mc.player.getXRot();
+        if (playerPitch < this.pitch.getValue().floatValue()) {
             return;
         }
         BlockPos blockPos = PositionUtils.getFlooredPosition((Entity)Anchor.mc.player);
         if (Anchor.mc.player.isFallFlying()) {
             return;
         }
-        int n = 5;
-        for (int i = 0; i <= n; ++i) {
-            BlockPos blockPos2 = blockPos.below(i + 1);
-            if (Anchor.mc.level.getBlockState(blockPos2).isAir()) {
+        int maxDepth = 5;
+        for (int i = 0; i <= maxDepth; ++i) {
+            BlockPos checkPos = blockPos.below(i + 1);
+            if (Anchor.mc.level.getBlockState(checkPos).isAir()) {
                 return;
             }
-            HoleUtils.Hole hole = HoleUtils.getSingleHole(blockPos2, 1.0);
+            HoleUtils.Hole hole = HoleUtils.getSingleHole(checkPos, 1.0);
             if (hole != null) {
                 if (this.checkTerrainHole.getValue() && this.isTerrainHole(hole)) continue;
                 this.applyAnchorLogic(playerMoveEvent, hole);
                 return;
             }
-            if (this.doubles.getValue() && (hole = HoleUtils.getDoubleHole(blockPos2, 1.0)) != null) {
+            if (this.doubles.getValue() && (hole = HoleUtils.getDoubleHole(checkPos, 1.0)) != null) {
                 if (this.checkTerrainHole.getValue() && this.isTerrainHole(hole)) continue;
                 this.applyAnchorLogic(playerMoveEvent, hole);
                 return;
             }
-            hole = HoleUtils.getQuadHole(blockPos2, 1.0);
+            hole = HoleUtils.getQuadHole(checkPos, 1.0);
             if (hole == null || this.checkTerrainHole.getValue() && this.isTerrainHole(hole)) continue;
             this.applyAnchorLogic(playerMoveEvent, hole);
             return;
@@ -84,27 +84,27 @@ extends Module {
     }
 
     private void applyAnchorLogic(PlayerMoveEvent playerMoveEvent, HoleUtils.Hole hole) {
-        double d;
-        Vec3 vec3;
+        double deltaX;
+        Vec3 velocity;
         if (Anchor.mc.player == null) {
             return;
         }
-        Vec3 vec32 = hole.box().getCenter();
+        Vec3 holeCenter = hole.box().getCenter();
         if (this.stopMotion.getValue()) {
-            vec3 = Anchor.mc.player.getDeltaMovement();
-            if (vec3 != null) {
-                Anchor.mc.player.setDeltaMovement(0.0, vec3.y, 0.0);
+            velocity = Anchor.mc.player.getDeltaMovement();
+            if (velocity != null) {
+                Anchor.mc.player.setDeltaMovement(0.0, velocity.y, 0.0);
             }
             ((ClientInputAccessor)Anchor.mc.player.input).setMoveVector(Vec2.ZERO);
         }
-        if (this.fastFall.getValue() && (vec3 = Anchor.mc.player.getDeltaMovement()) != null && vec3.y > -0.1) {
-            d = this.speed.getValue().doubleValue() / 10.0;
-            Anchor.mc.player.setDeltaMovement(vec3.x, -d, vec3.z);
+        if (this.fastFall.getValue() && (velocity = Anchor.mc.player.getDeltaMovement()) != null && velocity.y > -0.1) {
+            double fallVelocity = this.speed.getValue().doubleValue() / 10.0;
+            Anchor.mc.player.setDeltaMovement(velocity.x, -fallVelocity, velocity.z);
         }
-        d = vec32.x - Anchor.mc.player.getX();
-        double d2 = vec32.z - Anchor.mc.player.getZ();
-        playerMoveEvent.setX(d / 2.0);
-        playerMoveEvent.setZ(d2 / 2.0);
+        deltaX = holeCenter.x - Anchor.mc.player.getX();
+        double deltaZ = holeCenter.z - Anchor.mc.player.getZ();
+        playerMoveEvent.setX(deltaX / 2.0);
+        playerMoveEvent.setZ(deltaZ / 2.0);
     }
 
     private boolean isAlreadyInHole() {
@@ -114,13 +114,13 @@ extends Module {
     private boolean isBurrowed() {
         BlockPos blockPos = PositionUtils.getFlooredPosition((Entity)Anchor.mc.player);
         Direction[] directionArray = new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
-        int n = 0;
+        int solidSides = 0;
         for (Direction direction : directionArray) {
-            BlockPos blockPos2 = blockPos.relative(direction);
-            if (Anchor.mc.level.getBlockState(blockPos2).isAir() || Anchor.mc.level.getBlockState(blockPos2).canBeReplaced()) continue;
-            ++n;
+            BlockPos adjacentPos = blockPos.relative(direction);
+            if (Anchor.mc.level.getBlockState(adjacentPos).isAir() || Anchor.mc.level.getBlockState(adjacentPos).canBeReplaced()) continue;
+            ++solidSides;
         }
-        return n == 4;
+        return solidSides == 4;
     }
 
     private boolean isTerrainHole(HoleUtils.Hole hole) {

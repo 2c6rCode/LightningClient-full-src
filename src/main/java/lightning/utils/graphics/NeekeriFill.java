@@ -64,11 +64,11 @@ public class NeekeriFill {
     private static long lastPhaseUpdateMs;
 
     private static void ensureProcessed() {
-        long l = System.currentTimeMillis();
-        if (l - lastProcessedAtMs < 10L) {
+        long now = System.currentTimeMillis();
+        if (now - lastProcessedAtMs < 10L) {
             return;
         }
-        lastProcessedAtMs = l;
+        lastProcessedAtMs = now;
         PostChain postChain = Minecraft.getInstance().getShaderManager().getPostChain(CHAIN_ID, LevelTargetBundle.MAIN_TARGETS);
         if (postChain != chain) {
             chain = postChain;
@@ -109,19 +109,19 @@ public class NeekeriFill {
                 gpuBuffer.close();
             }
             ClickGuiModule clickGuiModule = Night.MODULE_MANAGER.getModule(ClickGuiModule.class);
-            long l = System.currentTimeMillis();
-            float f = clickGuiModule.neekeriSpeed.getValue().floatValue();
+            long now = System.currentTimeMillis();
+            float speed = clickGuiModule.neekeriSpeed.getValue().floatValue();
             if (lastPhaseUpdateMs >= 0L) {
-                phaseSeconds += (float)(l - lastPhaseUpdateMs) / 1000.0f * f;
+                phaseSeconds += (float)(now - lastPhaseUpdateMs) / 1000.0f * speed;
             }
-            lastPhaseUpdateMs = l;
-            int n = Arrays.asList(EspShader.MODES).indexOf(clickGuiModule.fillMode.getValue());
-            if (n <= 0) {
-                n = EspShader.MODES.length - 1;
+            lastPhaseUpdateMs = now;
+            int modeIndex = Arrays.asList(EspShader.MODES).indexOf(clickGuiModule.fillMode.getValue());
+            if (modeIndex <= 0) {
+                modeIndex = EspShader.MODES.length - 1;
             }
             MemoryStack memoryStack = MemoryStack.stackPush();
             try {
-                ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4(phaseSeconds, (float)n, 0.0f, 0.0f).get();
+                ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4(phaseSeconds, (float)modeIndex, 0.0f, 0.0f).get();
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(uboBuffer.slice(), byteBuffer);
             }
             finally {
@@ -131,14 +131,14 @@ public class NeekeriFill {
         }
     }
 
-    public static void fill(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, int n3, int n4, int n5) {
+    public static void fill(GuiGraphicsExtractor guiGraphicsExtractor, int x, int y, int width, int height, int alpha) {
         NeekeriFill.ensureProcessed();
         if (texture == null) {
             return;
         }
-        int n6 = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-        int n7 = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, n, n2, (float)n, (float)n2, n3, n4, n3, n4, n6, n7, n5 << 24 | 0xFFFFFF);
+        int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, x, y, (float)x, (float)y, width, height, width, height, screenWidth, screenHeight, alpha << 24 | 0xFFFFFF);
     }
 
     static {

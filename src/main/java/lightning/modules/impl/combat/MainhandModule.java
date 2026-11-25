@@ -91,9 +91,9 @@ extends Module {
         return "After Pops".equals(this.refillMode.getValue());
     }
 
-    private void resetAfterPops(String string) {
+    private void resetAfterPops(String reason) {
         if (!this.popCandidates.isEmpty() || this.confirmedPopDebt != 0 || this.pendingRefillTime != 0L || this.refillSource != -1) {
-            Night.LOGGER.info("[Mainhand] RESET reason={}", (Object)string);
+            Night.LOGGER.info("[Mainhand] RESET reason={}", (Object)reason);
         }
         this.popCandidates.clear();
         this.confirmedPopDebt = 0;
@@ -108,11 +108,11 @@ extends Module {
     }
 
     private void observeModeAndSession() {
-        String string = this.refillMode.getValue();
-        if (this.observedMode == null || !this.observedMode.equals(string)) {
+        String currentMode = this.refillMode.getValue();
+        if (this.observedMode == null || !this.observedMode.equals(currentMode)) {
             this.resetAfterPops("mode_change");
-            this.observedMode = string;
-            Night.LOGGER.info("[Mainhand] MODE mode={}", (Object)string);
+            this.observedMode = currentMode;
+            Night.LOGGER.info("[Mainhand] MODE mode={}", (Object)currentMode);
         }
         if (MainhandModule.mc.player == null || MainhandModule.mc.level == null || MainhandModule.mc.player.isDeadOrDying()) {
             this.resetAfterPops("invalid_session");
@@ -154,30 +154,30 @@ extends Module {
                 if (MainhandModule.mc.player.isDeadOrDying()) {
                     return;
                 }
-                int n = MainhandModule.mc.player.getInventory().getSelectedSlot();
-                if (n < 0 || n > 8 || !MainhandModule.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING) || !MainhandModule.mc.player.getInventory().getItem(n).is(Items.TOTEM_OF_UNDYING)) {
+                int selectedSlot = MainhandModule.mc.player.getInventory().getSelectedSlot();
+                if (selectedSlot < 0 || selectedSlot > 8 || !MainhandModule.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING) || !MainhandModule.mc.player.getInventory().getItem(selectedSlot).is(Items.TOTEM_OF_UNDYING)) {
                     Night.LOGGER.info("[Mainhand] POP_REJECTED reason=offhand_or_no_mainhand");
                     return;
                 }
                 if (this.popCandidates.size() == 32) {
                     this.popCandidates.removeFirst();
                 }
-                this.popCandidates.addLast(new PopCandidate(n, this.updateSequence));
-                this.observedTotems[n] = true;
-                Night.LOGGER.info("[Mainhand] POP_CANDIDATE slot={} age=0", (Object)(n + 1));
+                this.popCandidates.addLast(new PopCandidate(selectedSlot, this.updateSequence));
+                this.observedTotems[selectedSlot] = true;
+                Night.LOGGER.info("[Mainhand] POP_CANDIDATE slot={} age=0", (Object)(selectedSlot + 1));
                 return;
             }
-            int n = this.slot.getValue().intValue() - 1;
-            long l = this.delay.getValue().longValue();
-            if (l <= 0L) {
-                this.refill(n);
+            int targetSlot = this.slot.getValue().intValue() - 1;
+            long delayMs = this.delay.getValue().longValue();
+            if (delayMs <= 0L) {
+                this.refill(targetSlot);
             } else {
-                this.pendingRefillTime = System.currentTimeMillis() + l;
+                this.pendingRefillTime = System.currentTimeMillis() + delayMs;
             }
         });
     }
 
-    private void refill(int n) {
+    private void refill(int targetSlot) {
         if (MainhandModule.mc.player == null || MainhandModule.mc.level == null) {
             return;
         }
@@ -188,12 +188,12 @@ extends Module {
         if (screen instanceof AbstractContainerScreen && !(screen instanceof InventoryScreen) && !MainhandModule.mc.player.containerMenu.getCarried().isEmpty()) {
             return;
         }
-        if (MainhandModule.mc.player.getInventory().getItem(n).getItem() == Items.TOTEM_OF_UNDYING) {
+        if (MainhandModule.mc.player.getInventory().getItem(targetSlot).getItem() == Items.TOTEM_OF_UNDYING) {
             return;
         }
-        int n2 = this.findRefillTotem(n);
-        if (n2 != -1) {
-            InventoryUtils.swap("Swap", n2, n);
+        int sourceSlot = this.findRefillTotem(targetSlot);
+        if (sourceSlot != -1) {
+            InventoryUtils.swap("Swap", sourceSlot, targetSlot);
         }
     }
 
@@ -213,9 +213,9 @@ extends Module {
 
     private void observeAfterPops() {
         ++this.updateSequence;
-        boolean[] blArray = new boolean[9];
-        for (int i = 0; i < blArray.length; ++i) {
-            blArray[i] = MainhandModule.mc.player.getInventory().getItem(i).is(Items.TOTEM_OF_UNDYING);
+        boolean[] currentTotems = new boolean[9];
+        for (int i = 0; i < currentTotems.length; ++i) {
+            currentTotems[i] = MainhandModule.mc.player.getInventory().getItem(i).is(Items.TOTEM_OF_UNDYING);
         }
         Iterator<PopCandidate> iterator = this.popCandidates.iterator();
         while (iterator.hasNext()) {
@@ -225,30 +225,30 @@ extends Module {
                 Night.LOGGER.info("[Mainhand] POP_REJECTED reason=timeout slot={}", (Object)(popCandidate.slot + 1));
                 continue;
             }
-            if (!this.observedTotems[popCandidate.slot] || blArray[popCandidate.slot]) continue;
+            if (!this.observedTotems[popCandidate.slot] || currentTotems[popCandidate.slot]) continue;
             iterator.remove();
             ++this.confirmedPopDebt;
             Night.LOGGER.info("[Mainhand] POP_CONFIRMED slot={} debt={} threshold={}", new Object[]{popCandidate.slot + 1, this.confirmedPopDebt, this.popsBeforeRefill.getValue().intValue()});
             this.observedTotems[popCandidate.slot] = false;
         }
-        System.arraycopy(blArray, 0, this.observedTotems, 0, blArray.length);
+        System.arraycopy(currentTotems, 0, this.observedTotems, 0, currentTotems.length);
     }
 
-    private void logPending(String string) {
-        if (!string.equals(this.pendingReason)) {
-            Night.LOGGER.info("[Mainhand] REFILL_PENDING reason={}", (Object)string);
-            this.pendingReason = string;
+    private void logPending(String reason) {
+        if (!reason.equals(this.pendingReason)) {
+            Night.LOGGER.info("[Mainhand] REFILL_PENDING reason={}", (Object)reason);
+            this.pendingReason = reason;
         }
     }
 
-    private void updateAfterPopsRefill(int n, long l) {
-        int n2 = this.popsBeforeRefill.getValue().intValue();
+    private void updateAfterPopsRefill(int targetSlot, long now) {
+        int threshold = this.popsBeforeRefill.getValue().intValue();
         if (this.refillSource != -1) {
-            boolean bl;
-            boolean bl2 = MainhandModule.mc.player.getInventory().getItem(this.refillTarget).is(Items.TOTEM_OF_UNDYING);
-            boolean bl3 = bl = !MainhandModule.mc.player.getInventory().getItem(this.refillSource).is(Items.TOTEM_OF_UNDYING);
-            if (bl2 && bl) {
-                this.confirmedPopDebt = Math.max(0, this.confirmedPopDebt - n2);
+            boolean sourceEmpty;
+            boolean targetHasTotem = MainhandModule.mc.player.getInventory().getItem(this.refillTarget).is(Items.TOTEM_OF_UNDYING);
+            sourceEmpty = !MainhandModule.mc.player.getInventory().getItem(this.refillSource).is(Items.TOTEM_OF_UNDYING);
+            if (targetHasTotem && sourceEmpty) {
+                this.confirmedPopDebt = Math.max(0, this.confirmedPopDebt - threshold);
                 Night.LOGGER.info("[Mainhand] REFILL_SUCCESS sourceSlot={} targetSlot={} remainingDebt={}", new Object[]{this.refillSource, this.refillTarget + 1, this.confirmedPopDebt});
                 this.refillSource = -1;
                 this.refillTarget = -1;
@@ -265,43 +265,43 @@ extends Module {
             this.logPending("swap_not_observed");
             return;
         }
-        if (this.confirmedPopDebt < n2) {
+        if (this.confirmedPopDebt < threshold) {
             this.pendingRefillTime = 0L;
             this.pendingReason = null;
             return;
         }
-        if (MainhandModule.mc.player.getInventory().getItem(n).is(Items.TOTEM_OF_UNDYING)) {
+        if (MainhandModule.mc.player.getInventory().getItem(targetSlot).is(Items.TOTEM_OF_UNDYING)) {
             this.pendingRefillTime = 0L;
             this.logPending("target_still_totem");
             return;
         }
         if (this.pendingRefillTime == 0L) {
-            long l2 = this.delay.getValue().longValue();
-            this.pendingRefillTime = l + Math.max(1L, l2);
-            Night.LOGGER.info("[Mainhand] THRESHOLD_REACHED debt={} threshold={} targetSlot={}", new Object[]{this.confirmedPopDebt, n2, n + 1});
-            if (l2 > 0L) {
-                Night.LOGGER.info("[Mainhand] REFILL_DELAY ms={}", (Object)l2);
+            long delayMs = this.delay.getValue().longValue();
+            this.pendingRefillTime = now + Math.max(1L, delayMs);
+            Night.LOGGER.info("[Mainhand] THRESHOLD_REACHED debt={} threshold={} targetSlot={}", new Object[]{this.confirmedPopDebt, threshold, targetSlot + 1});
+            if (delayMs > 0L) {
+                Night.LOGGER.info("[Mainhand] REFILL_DELAY ms={}", (Object)delayMs);
             }
         }
-        if (l < this.pendingRefillTime || PingBypassFlags.isPingBypassActive()) {
+        if (now < this.pendingRefillTime || PingBypassFlags.isPingBypassActive()) {
             return;
         }
-        int n3 = InventoryUtils.find(Items.TOTEM_OF_UNDYING, InventoryUtils.INVENTORY_START, InventoryUtils.INVENTORY_END);
-        if (n3 == -1) {
+        int sourceSlot = InventoryUtils.find(Items.TOTEM_OF_UNDYING, InventoryUtils.INVENTORY_START, InventoryUtils.INVENTORY_END);
+        if (sourceSlot == -1) {
             this.logPending("no_inventory_totem");
             return;
         }
         this.pendingReason = null;
-        this.refillSource = n3;
-        this.refillTarget = n;
+        this.refillSource = sourceSlot;
+        this.refillTarget = targetSlot;
         this.refillAttemptUpdate = this.updateSequence;
-        InventoryUtils.swap("Swap", n3, n);
+        InventoryUtils.swap("Swap", sourceSlot, targetSlot);
     }
 
     private void updateMainhand() {
-        int n;
-        int n2;
-        int n3;
+        int selectedSlot;
+        boolean hasTargetTotem;
+        int targetSlot;
         if (MainhandModule.mc.player == null || MainhandModule.mc.level == null) {
             return;
         }
@@ -309,15 +309,13 @@ extends Module {
             return;
         }
         Screen screen = MainhandModule.mc.gui.screen();
-        boolean bl = screen instanceof AbstractContainerScreen && !(screen instanceof InventoryScreen);
-        boolean bl2 = bl;
-        if (bl && !MainhandModule.mc.player.containerMenu.getCarried().isEmpty()) {
+        boolean inContainer = screen instanceof AbstractContainerScreen && !(screen instanceof InventoryScreen);
+        if (inContainer && !MainhandModule.mc.player.containerMenu.getCarried().isEmpty()) {
             return;
         }
-        boolean bl3 = MainhandModule.mc.options.keyUse.isDown() || MainhandModule.mc.player.isUsingItem();
-        boolean bl4 = bl3;
+        boolean isUsing = MainhandModule.mc.options.keyUse.isDown() || MainhandModule.mc.player.isUsingItem();
         if (this.eatingHotbar) {
-            if (!bl3) {
+            if (!isUsing) {
                 if (this.previousHotbarSlot != -1) {
                     MainhandModule.mc.player.getInventory().setSelectedSlot(this.previousHotbarSlot);
                     ((ClientPlayerInteractionManagerAccessor)MainhandModule.mc.gameMode).invokeSyncSelectedSlot();
@@ -328,7 +326,7 @@ extends Module {
             return;
         }
         if (this.eatingInventory) {
-            if (!bl3) {
+            if (!isUsing) {
                 if (this.swappedInvSlot != -1 && this.swappedHotbarSlot != -1) {
                     InventoryUtils.swap("Swap", this.swappedInvSlot, this.swappedHotbarSlot);
                 }
@@ -338,59 +336,56 @@ extends Module {
             }
             return;
         }
-        boolean bl5 = !this.needsTotem() || this.lethalOverride.getValue() && !this.hasEnemyInVisualRange();
-        boolean bl6 = bl5;
-        if (this.useGapple.getValue() && MainhandModule.mc.options.keyUse.isDown() && MainhandModule.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING) && bl5) {
-            n3 = this.findGappleHotbar();
-            if (n3 != -1) {
+        boolean canUseGapple = !this.needsTotem() || this.lethalOverride.getValue() && !this.hasEnemyInVisualRange();
+        if (this.useGapple.getValue() && MainhandModule.mc.options.keyUse.isDown() && MainhandModule.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING) && canUseGapple) {
+            int gappleSlot = this.findGappleHotbar();
+            if (gappleSlot != -1) {
                 this.previousHotbarSlot = MainhandModule.mc.player.getInventory().getSelectedSlot();
-                MainhandModule.mc.player.getInventory().setSelectedSlot(n3);
+                MainhandModule.mc.player.getInventory().setSelectedSlot(gappleSlot);
                 ((ClientPlayerInteractionManagerAccessor)MainhandModule.mc.gameMode).invokeSyncSelectedSlot();
                 this.eatingHotbar = true;
                 return;
             }
-            int n4 = this.findGappleInventory();
-            if (n4 != -1) {
-                this.swappedInvSlot = n4;
+            int gappleInvSlot = this.findGappleInventory();
+            if (gappleInvSlot != -1) {
+                this.swappedInvSlot = gappleInvSlot;
                 this.swappedHotbarSlot = MainhandModule.mc.player.getInventory().getSelectedSlot();
-                InventoryUtils.swap("Swap", n4, this.swappedHotbarSlot);
+                InventoryUtils.swap("Swap", gappleInvSlot, this.swappedHotbarSlot);
                 this.eatingInventory = true;
                 return;
             }
         }
-        n3 = this.slot.getValue().intValue() - 1;
-        long l = System.currentTimeMillis();
+        targetSlot = this.slot.getValue().intValue() - 1;
+        long now = System.currentTimeMillis();
         if (this.afterPops()) {
-            this.updateAfterPopsRefill(n3, l);
+            this.updateAfterPopsRefill(targetSlot, now);
         } else if (this.pendingRefillTime > 0L) {
-            if (l >= this.pendingRefillTime) {
+            if (now >= this.pendingRefillTime) {
                 this.pendingRefillTime = 0L;
-                this.refill(n3);
+                this.refill(targetSlot);
             }
         } else {
-            n2 = MainhandModule.mc.player.getInventory().getItem(n3).getItem() != Items.TOTEM_OF_UNDYING ? 1 : 0;
-            n = n2;
-            if (n2 != 0) {
-                long l2 = this.delay.getValue().longValue();
-                if (l2 <= 0L) {
-                    this.refill(n3);
+            boolean needsRefill = MainhandModule.mc.player.getInventory().getItem(targetSlot).getItem() != Items.TOTEM_OF_UNDYING;
+            if (needsRefill) {
+                long delayMs = this.delay.getValue().longValue();
+                if (delayMs <= 0L) {
+                    this.refill(targetSlot);
                 } else {
-                    this.pendingRefillTime = l + l2;
+                    this.pendingRefillTime = now + delayMs;
                 }
             }
         }
         if (this.needsTotem()) {
-            n = MainhandModule.mc.player.getInventory().getSelectedSlot();
-            n2 = MainhandModule.mc.player.getInventory().getItem(n3).getItem() == Items.TOTEM_OF_UNDYING ? 1 : 0;
-            int n5 = n2;
-            if (n != n3 || n2 == 0) {
-                if (n2 != 0) {
-                    MainhandModule.mc.player.getInventory().setSelectedSlot(n3);
+            selectedSlot = MainhandModule.mc.player.getInventory().getSelectedSlot();
+            hasTargetTotem = MainhandModule.mc.player.getInventory().getItem(targetSlot).getItem() == Items.TOTEM_OF_UNDYING;
+            if (selectedSlot != targetSlot || !hasTargetTotem) {
+                if (hasTargetTotem) {
+                    MainhandModule.mc.player.getInventory().setSelectedSlot(targetSlot);
                     ((ClientPlayerInteractionManagerAccessor)MainhandModule.mc.gameMode).invokeSyncSelectedSlot();
                 } else {
-                    int n6 = InventoryUtils.find(Items.TOTEM_OF_UNDYING, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
-                    if (n6 != -1 && n != n6) {
-                        MainhandModule.mc.player.getInventory().setSelectedSlot(n6);
+                    int hotbarTotemSlot = InventoryUtils.find(Items.TOTEM_OF_UNDYING, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
+                    if (hotbarTotemSlot != -1 && selectedSlot != hotbarTotemSlot) {
+                        MainhandModule.mc.player.getInventory().setSelectedSlot(hotbarTotemSlot);
                         ((ClientPlayerInteractionManagerAccessor)MainhandModule.mc.gameMode).invokeSyncSelectedSlot();
                     }
                 }
@@ -398,30 +393,30 @@ extends Module {
         }
     }
 
-    private int findRefillTotem(int n) {
-        int n2 = InventoryUtils.findInventory(Items.TOTEM_OF_UNDYING);
-        if (n2 != -1) {
-            return n2;
+    private int findRefillTotem(int targetSlot) {
+        int invSlot = InventoryUtils.findInventory(Items.TOTEM_OF_UNDYING);
+        if (invSlot != -1) {
+            return invSlot;
         }
         for (int i = InventoryUtils.HOTBAR_START; i <= InventoryUtils.HOTBAR_END; ++i) {
-            if (i == n || MainhandModule.mc.player.getInventory().getItem(i).getItem() != Items.TOTEM_OF_UNDYING) continue;
+            if (i == targetSlot || MainhandModule.mc.player.getInventory().getItem(i).getItem() != Items.TOTEM_OF_UNDYING) continue;
             return i;
         }
         return -1;
     }
 
     private int findGappleHotbar() {
-        int n = InventoryUtils.find(Items.ENCHANTED_GOLDEN_APPLE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
-        if (n != -1) {
-            return n;
+        int egapSlot = InventoryUtils.find(Items.ENCHANTED_GOLDEN_APPLE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
+        if (egapSlot != -1) {
+            return egapSlot;
         }
         return InventoryUtils.find(Items.GOLDEN_APPLE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
     }
 
     private int findGappleInventory() {
-        int n = InventoryUtils.find(Items.ENCHANTED_GOLDEN_APPLE, InventoryUtils.INVENTORY_START, InventoryUtils.INVENTORY_END);
-        if (n != -1) {
-            return n;
+        int egapSlot = InventoryUtils.find(Items.ENCHANTED_GOLDEN_APPLE, InventoryUtils.INVENTORY_START, InventoryUtils.INVENTORY_END);
+        if (egapSlot != -1) {
+            return egapSlot;
         }
         return InventoryUtils.find(Items.GOLDEN_APPLE, InventoryUtils.INVENTORY_START, InventoryUtils.INVENTORY_END);
     }
@@ -497,9 +492,9 @@ extends Module {
         private final int slot;
         private final int createdUpdate;
 
-        private PopCandidate(int n, int n2) {
-            this.slot = n;
-            this.createdUpdate = n2;
+        private PopCandidate(int slot, int createdUpdate) {
+            this.slot = slot;
+            this.createdUpdate = createdUpdate;
         }
     }
 }

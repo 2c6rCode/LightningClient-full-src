@@ -38,13 +38,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value={AtmosphericFogEnvironment.class})
 public class BackgroundRendererMixin {
     @Inject(method={"setupFog"}, at={@At(value="TAIL")})
-    private void night$setupFog(FogData fogData, Camera camera, ClientLevel clientLevel, float f, DeltaTracker deltaTracker, CallbackInfo callbackInfo) {
+    private void night$setupFog(FogData fogData, Camera camera, ClientLevel clientLevel, float viewDistance, DeltaTracker deltaTracker, CallbackInfo callbackInfo) {
         try {
             NoRenderModule noRenderModule = (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class);
             AtmosphereModule atmosphereModule = (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class);
             if (noRenderModule.isToggled() && noRenderModule.fog.getValue()) {
-                fogData.environmentalStart = f * 4.0f;
-                fogData.environmentalEnd = f * 4.25f;
+                fogData.environmentalStart = viewDistance * 4.0f;
+                fogData.environmentalEnd = viewDistance * 4.25f;
             } else if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifyFog.getValue()) {
                 fogData.environmentalStart = atmosphereModule.fogStart.getValue().floatValue();
                 fogData.environmentalEnd = atmosphereModule.fogEnd.getValue().floatValue();
@@ -57,7 +57,7 @@ public class BackgroundRendererMixin {
     }
 
     @Inject(method={"getBaseColor"}, at={@At(value="TAIL")}, cancellable=true)
-    private void night$getBaseColor(ClientLevel clientLevel, Camera camera, int n, float f, CallbackInfoReturnable<Integer> callbackInfoReturnable) {
+    private void night$getBaseColor(ClientLevel clientLevel, Camera camera, int renderDistance, float partialTick, CallbackInfoReturnable<Integer> callbackInfoReturnable) {
         try {
             AtmosphereModule atmosphereModule = (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class);
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifyFog.getValue()) {

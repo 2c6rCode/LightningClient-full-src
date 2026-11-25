@@ -122,9 +122,9 @@ extends Module {
         if (mc.getConnection() != null) {
             mc.getConnection().getConnection().disconnect((Component)Component.literal((String)"PingBypass enabled."));
         }
-        String string = this.ip.getValue();
-        int n = this.port.getValue().intValue();
-        ServerAddress serverAddress = new ServerAddress(string, n);
+        String host = this.ip.getValue();
+        int proxyPort = this.port.getValue().intValue();
+        ServerAddress serverAddress = new ServerAddress(host, proxyPort);
         ServerData serverData = new ServerData("PingBypass Proxy", serverAddress.getHost() + ":" + serverAddress.getPort(), ServerData.Type.OTHER);
         ConnectScreen.startConnecting((Screen)new TitleScreen(), (Minecraft)mc, (ServerAddress)serverAddress, (ServerData)serverData, (boolean)false, null);
     }
@@ -172,8 +172,8 @@ extends Module {
         Setting setting = settingChangeEvent.getSetting();
         for (Module module : Night.MODULE_MANAGER.getModules()) {
             if (!module.isProxyEnhanced() || !module.getSettings().contains(setting)) continue;
-            String string = this.serializeSetting(setting);
-            if (string == null) {
+            String serialized = this.serializeSetting(setting);
+            if (serialized == null) {
                 return;
             }
             Connection connection = this.proxyConnection;
@@ -181,7 +181,7 @@ extends Module {
                 connection = mc.getConnection().getConnection();
             }
             if (connection != null && connection.isConnected()) {
-                connection.send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new C2SSettingChangePacket(module.getName(), setting.getName(), string))));
+                connection.send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new C2SSettingChangePacket(module.getName(), setting.getName(), serialized))));
             }
             return;
         }
@@ -232,8 +232,8 @@ extends Module {
         }
         FriendlyByteBuf friendlyByteBuf = pbCustomPayload.toBuf();
         try {
-            int n = friendlyByteBuf.readVarInt();
-            switch (n) {
+            int packetId = friendlyByteBuf.readVarInt();
+            switch (packetId) {
                 case 1: {
                     this.handlePasswordRequest();
                     return;
@@ -301,31 +301,31 @@ extends Module {
     }
 
     private void sendJoinIfReady(Connection connection) {
-        String string;
+        String targetHost;
         if (this.joinSent) {
             return;
         }
-        String string2 = this.server.getValue();
-        if (string2 == null || string2.isBlank()) {
+        String targetServer = this.server.getValue();
+        if (targetServer == null || targetServer.isBlank()) {
             return;
         }
-        int n = 25565;
-        if (string2.contains(":")) {
-            String[] stringArray = string2.split(":", 2);
-            string = stringArray[0];
+        int targetPort = 25565;
+        if (targetServer.contains(":")) {
+            String[] parts = targetServer.split(":", 2);
+            targetHost = parts[0];
             try {
-                n = Integer.parseInt(stringArray[1]);
+                targetPort = Integer.parseInt(parts[1]);
             }
             catch (NumberFormatException numberFormatException) {
-                Night.LOGGER.warn("[PingBypass] Invalid port in server setting: {}", (Object)string2);
+                Night.LOGGER.warn("[PingBypass] Invalid port in server setting: {}", (Object)targetServer);
                 return;
             }
         } else {
-            string = string2;
+            targetHost = targetServer;
         }
         this.joinSent = true;
-        this.sendRawCustomPayload(connection, new C2SJoinPacket(string, n));
-        Night.LOGGER.info("[PingBypass] Sent join request to proxy: {}:{}", (Object)string, (Object)n);
+        this.sendRawCustomPayload(connection, new C2SJoinPacket(targetHost, targetPort));
+        Night.LOGGER.info("[PingBypass] Sent join request to proxy: {}:{}", (Object)targetHost, (Object)targetPort);
     }
 
     private void sendRawCustomPayload(Connection connection, PbPacket pbPacket) {
@@ -371,8 +371,8 @@ extends Module {
     }
 
     private void handleSettingState(S2CSettingStatePacket s2CSettingStatePacket) {
-        String string = s2CSettingStatePacket.getModuleName() + "." + s2CSettingStatePacket.getSettingName();
-        this.proxySettingValues.put(string, s2CSettingStatePacket.getValue());
+        String key = s2CSettingStatePacket.getModuleName() + "." + s2CSettingStatePacket.getSettingName();
+        this.proxySettingValues.put(key, s2CSettingStatePacket.getValue());
         Night.LOGGER.debug("[PingBypass] Setting {}.{} updated to {}", new Object[]{s2CSettingStatePacket.getModuleName(), s2CSettingStatePacket.getSettingName(), s2CSettingStatePacket.getValue()});
     }
 
@@ -399,18 +399,18 @@ extends Module {
         if (connection == null || !connection.isConnected()) {
             return;
         }
-        int n = 0;
+        int syncedCount = 0;
         for (Module module : Night.MODULE_MANAGER.getModules()) {
             if (!module.isProxyEnhanced()) continue;
             connection.send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new C2SModuleTogglePacket(module.getName(), module.isToggled()))));
             for (Setting setting : module.getSettings()) {
-                String string = this.serializeSetting(setting);
-                if (string == null) continue;
-                connection.send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new C2SSettingChangePacket(module.getName(), setting.getName(), string))));
-                ++n;
+                String serialized = this.serializeSetting(setting);
+                if (serialized == null) continue;
+                connection.send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new C2SSettingChangePacket(module.getName(), setting.getName(), serialized))));
+                ++syncedCount;
             }
         }
-        Night.LOGGER.info("[PingBypass] Synced {} settings to proxy", (Object)n);
+        Night.LOGGER.info("[PingBypass] Synced {} settings to proxy", (Object)syncedCount);
         this.syncFriendsToProxy();
     }
 
@@ -475,12 +475,12 @@ extends Module {
         return this.proxySettingValues;
     }
 
-    public boolean isProxyModuleEnabled(String string) {
-        return this.proxyModuleStates.getOrDefault(string, false);
+    public boolean isProxyModuleEnabled(String moduleName) {
+        return this.proxyModuleStates.getOrDefault(moduleName, false);
     }
 
-    public String getProxySettingValue(String string, String string2) {
-        return this.proxySettingValues.get(string + "." + string2);
+    public String getProxySettingValue(String moduleName, String settingName) {
+        return this.proxySettingValues.get(moduleName + "." + settingName);
     }
 
     private record PendingPayload(PbCustomPayload payload, Connection connection) {

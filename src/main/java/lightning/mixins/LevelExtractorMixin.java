@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value={LevelExtractor.class})
 public abstract class LevelExtractorMixin {
     @Inject(method={"isEntityVisible"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$skipNullEntity(Entity entity, Frustum frustum, double d, double d2, double d3, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
+    private void night$skipNullEntity(Entity entity, Frustum frustum, double camX, double camY, double camZ, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         if (entity == null) {
             callbackInfoReturnable.setReturnValue(false);
         }

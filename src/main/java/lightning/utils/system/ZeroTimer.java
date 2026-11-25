@@ -6,11 +6,11 @@ package lightning.utils.system;
 public class ZeroTimer {
     private long startTime = System.currentTimeMillis();
 
-    public boolean hasTimeElapsed(long l) {
+    public boolean hasTimeElapsed(long delayMs) {
         if (this.startTime == 0L) {
             return true;
         }
-        return System.currentTimeMillis() - this.startTime >= l;
+        return System.currentTimeMillis() - this.startTime >= delayMs;
     }
 
     public void zero() {

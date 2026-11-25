@@ -54,11 +54,11 @@ extends Module {
         ClientboundCommandSuggestionsPacket clientboundCommandSuggestionsPacket;
         Packet<?> packet = packetReceiveEvent.getPacket();
         if (packet instanceof ClientboundCommandSuggestionsPacket && (clientboundCommandSuggestionsPacket = (ClientboundCommandSuggestionsPacket)packet).id() == 1000) {
-            int n = (int)(System.currentTimeMillis() - this.time);
-            if (this.spikeNotifier.getValue() && n - this.latency > this.threshold.getValue().intValue()) {
-                Night.CHAT_MANAGER.message("Your ping has spiked to " + String.valueOf(ChatUtils.getPrimary()) + n + "ms" + String.valueOf(ChatUtils.getSecondary()) + " from " + String.valueOf(ChatUtils.getPrimary()) + this.latency + "ms" + String.valueOf(ChatUtils.getSecondary()) + "!", "module-" + this.getName().toLowerCase() + "-spike");
+            int pingMs = (int)(System.currentTimeMillis() - this.time);
+            if (this.spikeNotifier.getValue() && pingMs - this.latency > this.threshold.getValue().intValue()) {
+                Night.CHAT_MANAGER.message("Your ping has spiked to " + String.valueOf(ChatUtils.getPrimary()) + pingMs + "ms" + String.valueOf(ChatUtils.getSecondary()) + " from " + String.valueOf(ChatUtils.getPrimary()) + this.latency + "ms" + String.valueOf(ChatUtils.getSecondary()) + "!", "module-" + this.getName().toLowerCase() + "-spike");
             }
-            this.latency = n;
+            this.latency = pingMs;
             this.receivedTimer.zero();
         }
     }

@@ -18,23 +18,23 @@ public class WaypointManager
 implements IMinecraft {
     private final ArrayList<Waypoint> waypoints = new ArrayList();
 
-    public boolean contains(String string) {
-        return this.waypoints.stream().anyMatch(waypoint -> waypoint.getName().equalsIgnoreCase(string));
+    public boolean contains(String name) {
+        return this.waypoints.stream().anyMatch(waypoint -> waypoint.getName().equalsIgnoreCase(name));
     }
 
-    public void add(String string, Vec3 vec3) {
-        this.add(string, vec3, WorldUtils.getDimension(), Night.SERVER_MANAGER.getServer());
+    public void add(String name, Vec3 pos) {
+        this.add(name, pos, WorldUtils.getDimension(), Night.SERVER_MANAGER.getServer());
     }
 
-    public void add(String string, Vec3 vec3, String string2, String string3) {
-        if (this.contains(string)) {
+    public void add(String name, Vec3 pos, String dimension, String server) {
+        if (this.contains(name)) {
             return;
         }
-        this.waypoints.add(new Waypoint(string, vec3, string2, string3));
+        this.waypoints.add(new Waypoint(name, pos, dimension, server));
     }
 
-    public void remove(String string) {
-        this.waypoints.removeIf(waypoint -> waypoint.getName().equalsIgnoreCase(string));
+    public void remove(String name) {
+        this.waypoints.removeIf(waypoint -> waypoint.getName().equalsIgnoreCase(name));
     }
 
     public void clear() {
@@ -52,11 +52,11 @@ implements IMinecraft {
         private final String dimension;
         private final String server;
 
-        public Waypoint(String string, Vec3 vec3, String string2, String string3) {
-            this.name = string;
-            this.pos = vec3;
-            this.dimension = string2;
-            this.server = string3;
+        public Waypoint(String name, Vec3 pos, String dimension, String server) {
+            this.name = name;
+            this.pos = pos;
+            this.dimension = dimension;
+            this.server = server;
         }
 
         @Generated

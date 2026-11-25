@@ -42,11 +42,11 @@ public final class AutoShopSync {
         }
     }
 
-    public static void click(int n, int n2, ContainerInput containerInput) {
+    public static void click(int slot, int button, ContainerInput containerInput) {
         lastActive = System.nanoTime();
         try {
             Minecraft minecraft = Minecraft.getInstance();
-            if (n != 23 && minecraft != null && minecraft.player != null && minecraft.player.containerMenu != null) {
+            if (slot != 23 && minecraft != null && minecraft.player != null && minecraft.player.containerMenu != null) {
                 lastMenu = minecraft.player.containerMenu;
                 lastStateId = AutoShopSync.stateId(minecraft.player.containerMenu);
                 armedAt = System.nanoTime();
@@ -58,31 +58,31 @@ public final class AutoShopSync {
         catch (Throwable throwable) {
             armed = false;
         }
-        InventoryUtils.click(n, n2, containerInput);
+        InventoryUtils.click(slot, button, containerInput);
     }
 
     public static int delay(Number number) {
-        int n = number.intValue();
+        int defaultDelay = number.intValue();
         lastActive = System.nanoTime();
         if (!armed) {
-            return n;
+            return defaultDelay;
         }
         try {
             Minecraft minecraft = Minecraft.getInstance();
             if (minecraft == null || minecraft.player == null) {
                 armed = false;
-                return n;
+                return defaultDelay;
             }
             AbstractContainerMenu abstractContainerMenu = minecraft.player.containerMenu;
             if (abstractContainerMenu != lastMenu || abstractContainerMenu != null && AutoShopSync.stateId(abstractContainerMenu) != lastStateId || System.nanoTime() - armedAt > 1000000000L) {
                 armed = false;
-                return n;
+                return defaultDelay;
             }
             return Integer.MAX_VALUE;
         }
         catch (Throwable throwable) {
             armed = false;
-            return n;
+            return defaultDelay;
         }
     }
 

@@ -52,24 +52,24 @@ public class LightmapTextureManagerMixin {
                 lightmapRenderState.needsUpdate = true;
             }
             IAmbienceModule iAmbienceModule = Night.MODULE_MANAGER != null ? (IAmbienceModule)Night.MODULE_MANAGER.getModule("Ambience") : null;
-            IAmbienceModule iAmbienceModule2 = iAmbienceModule;
+            IAmbienceModule unusedAmbienceModule = iAmbienceModule;
             if (iAmbienceModule != null && iAmbienceModule.isToggled()) {
                 Color color = iAmbienceModule.getColor();
-                float f = (float)color.getRed() / 255.0f;
-                float f2 = (float)color.getGreen() / 255.0f;
-                float f3 = (float)color.getBlue() / 255.0f;
-                float f4 = (float)color.getAlpha() / 255.0f;
+                float red = (float)color.getRed() / 255.0f;
+                float green = (float)color.getGreen() / 255.0f;
+                float blue = (float)color.getBlue() / 255.0f;
+                float alpha = (float)color.getAlpha() / 255.0f;
                 if (iAmbienceModule.isLightmapEnabled()) {
-                    Vector3fc vector3fc;
+                    Vector3fc lightColor;
                     if (iAmbienceModule.isSkyEnabled()) {
-                        vector3fc = lightmapRenderState.skyLightColor != null ? lightmapRenderState.skyLightColor : new Vector3f(1.0f, 1.0f, 1.0f);
-                        lightmapRenderState.skyLightColor = new Vector3f(vector3fc.x() * (1.0f - f4) + f * f4, vector3fc.y() * (1.0f - f4) + f2 * f4, vector3fc.z() * (1.0f - f4) + f3 * f4);
-                        Vector3fc vector3fc2 = lightmapRenderState.ambientColor != null ? lightmapRenderState.ambientColor : new Vector3f(0.0f, 0.0f, 0.0f);
-                        lightmapRenderState.ambientColor = new Vector3f(vector3fc2.x() * (1.0f - f4) + f * f4, vector3fc2.y() * (1.0f - f4) + f2 * f4, vector3fc2.z() * (1.0f - f4) + f3 * f4);
+                        lightColor = lightmapRenderState.skyLightColor != null ? lightmapRenderState.skyLightColor : new Vector3f(1.0f, 1.0f, 1.0f);
+                        lightmapRenderState.skyLightColor = new Vector3f(lightColor.x() * (1.0f - alpha) + red * alpha, lightColor.y() * (1.0f - alpha) + green * alpha, lightColor.z() * (1.0f - alpha) + blue * alpha);
+                        Vector3fc ambientColor = lightmapRenderState.ambientColor != null ? lightmapRenderState.ambientColor : new Vector3f(0.0f, 0.0f, 0.0f);
+                        lightmapRenderState.ambientColor = new Vector3f(ambientColor.x() * (1.0f - alpha) + red * alpha, ambientColor.y() * (1.0f - alpha) + green * alpha, ambientColor.z() * (1.0f - alpha) + blue * alpha);
                     }
                     if (iAmbienceModule.isBlocksEnabled()) {
-                        vector3fc = lightmapRenderState.blockLightTint != null ? lightmapRenderState.blockLightTint : new Vector3f(1.0f, 1.0f, 1.0f);
-                        lightmapRenderState.blockLightTint = new Vector3f(vector3fc.x() * (1.0f - f4) + f * f4, vector3fc.y() * (1.0f - f4) + f2 * f4, vector3fc.z() * (1.0f - f4) + f3 * f4);
+                        lightColor = lightmapRenderState.blockLightTint != null ? lightmapRenderState.blockLightTint : new Vector3f(1.0f, 1.0f, 1.0f);
+                        lightmapRenderState.blockLightTint = new Vector3f(lightColor.x() * (1.0f - alpha) + red * alpha, lightColor.y() * (1.0f - alpha) + green * alpha, lightColor.z() * (1.0f - alpha) + blue * alpha);
                     }
                     lightmapRenderState.needsUpdate = true;
                 }

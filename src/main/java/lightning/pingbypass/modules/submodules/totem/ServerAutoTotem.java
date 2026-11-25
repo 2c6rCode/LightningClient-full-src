@@ -85,7 +85,7 @@ implements IMinecraft {
 
     @Override
     public void tick() {
-        int n;
+        int slot;
         if (ServerAutoTotem.mc.player == null || ServerAutoTotem.mc.level == null) {
             return;
         }
@@ -101,71 +101,70 @@ implements IMinecraft {
             if (ServerAutoTotem.mc.player.getOffhandItem().isEmpty()) {
                 return;
             }
-            n = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+            slot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
         } else {
             if (ServerAutoTotem.mc.player.getOffhandItem().getItem() == item) {
                 return;
             }
             if (this.gappleStagedSlot != -1 && item == Items.TOTEM_OF_UNDYING) {
                 if (ServerAutoTotem.mc.player.getInventory().getItem(this.gappleStagedSlot).getItem() == Items.TOTEM_OF_UNDYING) {
-                    n = this.gappleStagedSlot;
+                    slot = this.gappleStagedSlot;
                 } else {
-                    n = InventoryUtils.findInventory(item);
-                    if (n == -1) {
-                        n = InventoryUtils.find(item);
+                    slot = InventoryUtils.findInventory(item);
+                    if (slot == -1) {
+                        slot = InventoryUtils.find(item);
                     }
                 }
                 this.gappleStagedSlot = -1;
             } else if (item == Items.ENCHANTED_GOLDEN_APPLE || item == Items.GOLDEN_APPLE) {
-                n = InventoryUtils.findHotbar(item);
-                if (n == -1) {
-                    n = InventoryUtils.findInventory(item);
+                slot = InventoryUtils.findHotbar(item);
+                if (slot == -1) {
+                    slot = InventoryUtils.findInventory(item);
                 }
-                if (n != -1) {
-                    this.gappleStagedSlot = n;
+                if (slot != -1) {
+                    this.gappleStagedSlot = slot;
                 }
             } else {
-                n = InventoryUtils.findInventory(item);
-                if (n == -1) {
-                    n = InventoryUtils.find(item);
+                slot = InventoryUtils.findInventory(item);
+                if (slot == -1) {
+                    slot = InventoryUtils.find(item);
                 }
             }
-            if (n == -1) {
+            if (slot == -1) {
                 if (item == Items.TOTEM_OF_UNDYING) {
-                    n = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+                    slot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
                 } else {
                     return;
                 }
             }
         }
-        if (n == -1) {
+        if (slot == -1) {
             return;
         }
         if (this.version117.getValue()) {
-            InventoryUtils.swap("Swap", n, 40);
+            InventoryUtils.swap("Swap", slot, 40);
         } else {
-            InventoryUtils.swap("Pickup", n, 45);
+            InventoryUtils.swap("Pickup", slot, 45);
         }
     }
 
     private Item getItem() {
-        boolean bl = this.hasItem(Items.TOTEM_OF_UNDYING);
-        Item item = this.hasItem(Items.ENCHANTED_GOLDEN_APPLE) ? Items.ENCHANTED_GOLDEN_APPLE : (this.hasItem(Items.GOLDEN_APPLE) ? Items.GOLDEN_APPLE : null);
-        boolean bl2 = item != null;
-        boolean bl3 = ServerAutoTotem.mc.player.getMainHandItem().is(ItemTags.SWORDS) || ServerAutoTotem.mc.player.getMainHandItem().getItem() instanceof AxeItem;
-        boolean bl4 = ServerAutoTotem.mc.player.getMainHandItem().is(ItemTags.PICKAXES);
-        boolean bl5 = ServerAutoTotem.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING);
-        boolean bl6 = this.gappleSword.getValue() && bl3 || this.gapplePickaxe.getValue() && bl4 || this.gappleTotem.getValue() && bl5;
-        boolean bl7 = bl6;
-        if (this.useGapple.getValue() && ServerAutoTotem.mc.options.keyUse.isDown() && bl6 && bl2 && (this.lethalOverride.getValue() || !this.needsTotem() || !bl)) {
-            return item;
+        boolean hasTotem = this.hasItem(Items.TOTEM_OF_UNDYING);
+        Item gappleItem = this.hasItem(Items.ENCHANTED_GOLDEN_APPLE) ? Items.ENCHANTED_GOLDEN_APPLE : (this.hasItem(Items.GOLDEN_APPLE) ? Items.GOLDEN_APPLE : null);
+        boolean hasGapple = gappleItem != null;
+        boolean holdingSwordOrAxe = ServerAutoTotem.mc.player.getMainHandItem().is(ItemTags.SWORDS) || ServerAutoTotem.mc.player.getMainHandItem().getItem() instanceof AxeItem;
+        boolean holdingPickaxe = ServerAutoTotem.mc.player.getMainHandItem().is(ItemTags.PICKAXES);
+        boolean holdingTotem = ServerAutoTotem.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING);
+        boolean shouldUseGapple = this.gappleSword.getValue() && holdingSwordOrAxe || this.gapplePickaxe.getValue() && holdingPickaxe || this.gappleTotem.getValue() && holdingTotem;
+        if (this.useGapple.getValue() && ServerAutoTotem.mc.options.keyUse.isDown() && shouldUseGapple && hasGapple && (this.lethalOverride.getValue() || !this.needsTotem() || !hasTotem)) {
+            return gappleItem;
         }
         if (this.hasItem(Items.TOTEM_OF_UNDYING)) {
-            Object object;
+            SpeedMineModule speedMineModule;
             if (this.needsTotem()) {
                 return Items.TOTEM_OF_UNDYING;
             }
-            if (!(!this.item.getValue().equalsIgnoreCase("Crystal") || !this.smartMine.getValue() || ((SpeedMineModule)(object = Night.MODULE_MANAGER.getModule(SpeedMineModule.class))).getPrimary() != null && ((SpeedMineModule)object).getPrimary().isMining() || ((SpeedMineModule)object).getSecondary() != null && ((SpeedMineModule)object).getSecondary().isMining())) {
+            if (!(!this.item.getValue().equalsIgnoreCase("Crystal") || !this.smartMine.getValue() || (speedMineModule = Night.MODULE_MANAGER.getModule(SpeedMineModule.class)).getPrimary() != null && speedMineModule.getPrimary().isMining() || speedMineModule.getSecondary() != null && speedMineModule.getSecondary().isMining())) {
                 return Items.TOTEM_OF_UNDYING;
             }
         }
@@ -177,10 +176,10 @@ implements IMinecraft {
                 return Items.END_CRYSTAL;
             }
             case "Gapple": {
-                if (!bl2) {
+                if (!hasGapple) {
                     return Items.TOTEM_OF_UNDYING;
                 }
-                return item;
+                return gappleItem;
             }
         }
         return Items.TOTEM_OF_UNDYING;

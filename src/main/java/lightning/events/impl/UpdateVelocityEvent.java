@@ -33,14 +33,14 @@ extends Event {
     }
 
     @Generated
-    public void setVelocity(Vec3 vec3) {
-        this.velocity = vec3;
+    public void setVelocity(Vec3 velocity) {
+        this.velocity = velocity;
     }
 
     @Generated
-    public UpdateVelocityEvent(Vec3 vec3, float f) {
-        this.movementInput = vec3;
-        this.speed = f;
+    public UpdateVelocityEvent(Vec3 movementInput, float speed) {
+        this.movementInput = movementInput;
+        this.speed = speed;
     }
 }
 

@@ -36,16 +36,16 @@ extends Module {
         this.lockInitialized = false;
     }
 
-    private float shakeOffset(long l) {
-        if (l < 0L) {
+    private float shakeOffset(long snapTimeMs) {
+        if (snapTimeMs < 0L) {
             return 0.0f;
         }
-        long l2 = System.currentTimeMillis() - l;
-        if (l2 >= 180L) {
+        long elapsedMs = System.currentTimeMillis() - snapTimeMs;
+        if (elapsedMs >= 180L) {
             return 0.0f;
         }
-        float f = (float)l2 / 180.0f;
-        return (float)(Math.sin((double)f * Math.PI * 5.0) * 3.0 * (double)(1.0f - f));
+        float progress = (float)elapsedMs / 180.0f;
+        return (float)(Math.sin((double)progress * Math.PI * 5.0) * 3.0 * (double)(1.0f - progress));
     }
 
     public float getShakeYawOffset() {
@@ -58,47 +58,47 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerUpdate(PlayerUpdateEvent playerUpdateEvent) {
-        float f;
+        float snappedAngle;
         if (RotationLockModule.mc.player == null || !this.custom.getValue()) {
             this.lockInitialized = false;
             return;
         }
-        float f2 = ((EntityAccessor)RotationLockModule.mc.player).getRawYRot();
-        float f3 = ((EntityAccessor)RotationLockModule.mc.player).getRawXRot();
+        float rawYaw = ((EntityAccessor)RotationLockModule.mc.player).getRawYRot();
+        float rawPitch = ((EntityAccessor)RotationLockModule.mc.player).getRawXRot();
         if (!this.lockInitialized) {
-            this.lockedYaw = RotationLockModule.nearest45(f2);
-            this.lockedPitch = RotationLockModule.nearest45(f3);
+            this.lockedYaw = RotationLockModule.nearest45(rawYaw);
+            this.lockedPitch = RotationLockModule.nearest45(rawPitch);
             this.lockInitialized = true;
             return;
         }
-        if (Math.abs(Mth.wrapDegrees((float)(f2 - this.lockedYaw))) >= 45.0f) {
-            f = RotationLockModule.nearest45(f2);
-            if (f != this.lockedYaw) {
+        if (Math.abs(Mth.wrapDegrees((float)(rawYaw - this.lockedYaw))) >= 45.0f) {
+            snappedAngle = RotationLockModule.nearest45(rawYaw);
+            if (snappedAngle != this.lockedYaw) {
                 this.yawSnapAtMs = System.currentTimeMillis();
             }
-            this.lockedYaw = f;
+            this.lockedYaw = snappedAngle;
         }
-        if (Math.abs(Mth.wrapDegrees((float)(f3 - this.lockedPitch))) >= 45.0f) {
-            f = RotationLockModule.nearest45(f3);
-            if (f != this.lockedPitch) {
+        if (Math.abs(Mth.wrapDegrees((float)(rawPitch - this.lockedPitch))) >= 45.0f) {
+            snappedAngle = RotationLockModule.nearest45(rawPitch);
+            if (snappedAngle != this.lockedPitch) {
                 this.pitchSnapAtMs = System.currentTimeMillis();
             }
-            this.lockedPitch = f;
+            this.lockedPitch = snappedAngle;
         }
     }
 
-    private static float nearest45(float f) {
-        return Mth.wrapDegrees((float)((float)Math.round(f / 45.0f) * 45.0f));
+    private static float nearest45(float angle) {
+        return Mth.wrapDegrees((float)((float)Math.round(angle / 45.0f) * 45.0f));
     }
 
-    public float getYawValue(float f) {
+    public float getYawValue(float currentYaw) {
         if (this.custom.getValue()) {
             return this.lockedYaw;
         }
-        return RotationLockModule.nearest45(f);
+        return RotationLockModule.nearest45(currentYaw);
     }
 
-    public float getPitchValue(float f) {
+    public float getPitchValue(float currentPitch) {
         if (this.custom.getValue()) {
             return this.lockedPitch;
         }
@@ -107,9 +107,9 @@ extends Module {
 
     @Override
     public String getMetaData() {
-        String string = this.custom.getValue() ? String.valueOf(this.lockedYaw) : "Auto";
-        String string2 = this.custom.getValue() ? String.valueOf(this.lockedPitch) : String.valueOf(this.pitch.getValue().floatValue());
-        return string + ", " + string2;
+        String yawText = this.custom.getValue() ? String.valueOf(this.lockedYaw) : "Auto";
+        String pitchText = this.custom.getValue() ? String.valueOf(this.lockedPitch) : String.valueOf(this.pitch.getValue().floatValue());
+        return yawText + ", " + pitchText;
     }
 }
 

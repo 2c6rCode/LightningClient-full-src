@@ -21,9 +21,9 @@ extends Connection {
     private final RandomAccessFile raf;
     private final Consumer<Packet> callback;
 
-    WinConnection(String string, Consumer<Packet> consumer) throws IOException {
-        this.raf = new RandomAccessFile(string, "rw");
-        this.callback = consumer;
+    WinConnection(String pipePath, Consumer<Packet> callback) throws IOException {
+        this.raf = new RandomAccessFile(pipePath, "rw");
+        this.callback = callback;
         Thread thread = new Thread(this::run);
         thread.setName("Discord IPC - Read thread");
         thread.start();
@@ -46,11 +46,11 @@ extends Connection {
                 this.readFully(byteBuffer);
                 Opcode opcode = Opcode.valueOf(Integer.reverseBytes(byteBuffer.getInt(0)));
                 this.readFully(byteBuffer);
-                int n = Integer.reverseBytes(byteBuffer.getInt(0));
-                ByteBuffer byteBuffer2 = ByteBuffer.allocate(n);
+                int length = Integer.reverseBytes(byteBuffer.getInt(0));
+                ByteBuffer byteBuffer2 = ByteBuffer.allocate(length);
                 this.readFully(byteBuffer2);
-                String string = Charset.defaultCharset().decode(byteBuffer2.rewind()).toString();
-                this.callback.accept(new Packet(opcode, JsonParser.parseString((String)string).getAsJsonObject()));
+                String payloadJson = Charset.defaultCharset().decode(byteBuffer2.rewind()).toString();
+                this.callback.accept(new Packet(opcode, JsonParser.parseString(payloadJson).getAsJsonObject()));
             }
         }
         catch (Exception exception) {

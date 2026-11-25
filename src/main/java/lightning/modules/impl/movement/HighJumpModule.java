@@ -44,8 +44,8 @@ extends Module {
         EarlyTickHooks.unregister(this.earlyTickCallback);
     }
 
-    private boolean passed(int n) {
-        return System.currentTimeMillis() - (long)n >= this.timestamp;
+    private boolean passed(int delayMs) {
+        return System.currentTimeMillis() - (long)delayMs >= this.timestamp;
     }
 
     private void onEarlyTick() {
@@ -58,8 +58,8 @@ extends Module {
             });
         }
         if (!this.passed(199)) {
-            Vec3 vec3 = HighJumpModule.mc.player.getDeltaMovement();
-            HighJumpModule.mc.player.setDeltaMovement(vec3.x, vec3.y + 0.899, vec3.z);
+            Vec3 velocity = HighJumpModule.mc.player.getDeltaMovement();
+            HighJumpModule.mc.player.setDeltaMovement(velocity.x, velocity.y + 0.899, velocity.z);
         }
     }
 
@@ -71,8 +71,8 @@ extends Module {
         if (((Direction)shulkerBoxBlockEntity.getBlockState().getValue((Property)ShulkerBoxBlock.FACING)).getStepY() == 0) {
             return false;
         }
-        float f = ((ShulkerBoxProgressAccessor)shulkerBoxBlockEntity).night$getCurrentProgress();
-        if (f <= 0.0f) {
+        float progress = ((ShulkerBoxProgressAccessor)shulkerBoxBlockEntity).night$getCurrentProgress();
+        if (progress <= 0.0f) {
             return false;
         }
         return HighJumpModule.mc.player.getBoundingBox().inflate(0.7, 1.0, 0.7).intersects(new AABB(shulkerBoxBlockEntity.getBlockPos()));

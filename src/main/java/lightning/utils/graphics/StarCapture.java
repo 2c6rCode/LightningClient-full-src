@@ -16,13 +16,13 @@ implements IMinecraft {
     private static TextureTarget target;
 
     public static TextureTarget ensure() {
-        int n = mc.getWindow().getWidth();
-        int n2 = mc.getWindow().getHeight();
-        if (target == null || StarCapture.target.width != n || StarCapture.target.height != n2) {
+        int width = mc.getWindow().getWidth();
+        int height = mc.getWindow().getHeight();
+        if (target == null || StarCapture.target.width != width || StarCapture.target.height != height) {
             if (target != null) {
                 target.destroyBuffers();
             }
-            target = new TextureTarget("night_star_capture", n, n2, true, GpuFormat.RGBA8_UNORM);
+            target = new TextureTarget("night_star_capture", width, height, true, GpuFormat.RGBA8_UNORM);
         }
         return target;
     }

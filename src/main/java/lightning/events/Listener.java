@@ -22,26 +22,26 @@ public class Listener {
     private Consumer<Object> consumer;
     private final int priority;
 
-    public Listener(Class<?> clazz, Object object, Method method) {
+    public Listener(Class<?> targetClass, Object target, Method method) {
         this.subscriber = method.getParameters()[0].getType();
         this.priority = method.getAnnotation(SubscribeEvent.class).priority();
         try {
             MethodType methodType = MethodType.methodType(Void.TYPE, method.getParameters()[0].getType());
-            MethodHandle methodHandle = MethodHandles.lookup().findVirtual(clazz, method.getName(), methodType);
-            MethodType methodType2 = MethodType.methodType(Consumer.class, clazz);
-            this.consumer = (Consumer<Object>) LambdaMetafactory.metafactory(MethodHandles.lookup(), "accept", methodType2, MethodType.methodType(Void.TYPE, Object.class), methodHandle, methodType).getTarget().invoke(object);
+            MethodHandle methodHandle = MethodHandles.lookup().findVirtual(targetClass, method.getName(), methodType);
+            MethodType factoryType = MethodType.methodType(Consumer.class, targetClass);
+            this.consumer = (Consumer<Object>) LambdaMetafactory.metafactory(MethodHandles.lookup(), "accept", factoryType, MethodType.methodType(Void.TYPE, Object.class), methodHandle, methodType).getTarget().invoke(target);
         }
         catch (Throwable throwable) {
-            Night.LOGGER.error("Fast event dispatch failed for " + clazz.getName() + "." + method.getName() + ", falling back to reflection", throwable);
-            if (!method.canAccess(object)) {
+            Night.LOGGER.error("Fast event dispatch failed for " + targetClass.getName() + "." + method.getName() + ", falling back to reflection", throwable);
+            if (!method.canAccess(target)) {
                 method.setAccessible(true);
             }
-            this.consumer = new ReflectiveFallbackConsumer(method, object);
+            this.consumer = new ReflectiveFallbackConsumer(method, target);
         }
     }
 
-    public void invoke(Object object) {
-        this.consumer.accept(object);
+    public void invoke(Object event) {
+        this.consumer.accept(event);
     }
 
     @Generated
@@ -64,15 +64,15 @@ public class Listener {
         private final Method method;
         private final Object target;
 
-        private ReflectiveFallbackConsumer(Method method, Object object) {
+        private ReflectiveFallbackConsumer(Method method, Object target) {
             this.method = method;
-            this.target = object;
+            this.target = target;
         }
 
         @Override
-        public void accept(Object object) {
+        public void accept(Object event) {
             try {
-                this.method.invoke(this.target, object);
+                this.method.invoke(this.target, event);
             }
             catch (Exception exception) {
                 Night.LOGGER.error("The Event System threw an exception!", (Throwable)exception);

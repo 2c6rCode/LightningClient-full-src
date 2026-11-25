@@ -254,16 +254,16 @@ implements IMinecraft {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
-        int n = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
-        if (this.lastSelectedSlot != -1 && this.lastSelectedSlot != n) {
+        int selectedSlot = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
+        if (this.lastSelectedSlot != -1 && this.lastSelectedSlot != selectedSlot) {
             this.swapTimer.reset();
         }
-        this.lastSelectedSlot = n;
-        long l = 50L;
-        this.attackedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, l));
-        long l2 = Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, 500L) + (long)((20.0f - this.attackSpeed.getValue().floatValue()) * 50.0f);
-        this.placedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > l2);
-        this.countedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, l));
+        this.lastSelectedSlot = selectedSlot;
+        long minExpireMs = 50L;
+        this.attackedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, minExpireMs));
+        long placeExpireMs = Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, 500L) + (long)((20.0f - this.attackSpeed.getValue().floatValue()) * 50.0f);
+        this.placedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > placeExpireMs);
+        this.countedCrystals.entrySet().removeIf(entry -> System.currentTimeMillis() - (Long)entry.getValue() > Math.max((long)Night.SERVER_MANAGER.getPing() * 2L, minExpireMs));
         this.crystalsPerSecond = this.crystalCounter.getCount();
         Runnable runnable = () -> {
             long startNano = System.nanoTime();
@@ -391,14 +391,13 @@ implements IMinecraft {
         if (blockPos == null) {
             return;
         }
-        int n = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-        int n2 = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
-        boolean bl = false;
-        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && n == -1 && ServerAutoCrystal.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && ServerAutoCrystal.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
+        int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+        int previousSlot = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
+        boolean switched = false;
+        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && crystalSlot == -1 && ServerAutoCrystal.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && ServerAutoCrystal.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
             return;
         }
         PlaceTarget placeTarget = this.mineTarget == null ? null : this.mineTarget.clone();
-        PlaceTarget placeTarget2 = placeTarget;
         if (placeTarget == null || placeTarget.getPosition() != null && !blockPos.equals((Object)placeTarget.getException())) {
             placeTarget = this.calculatePlacements(blockPos);
         }
@@ -406,19 +405,19 @@ implements IMinecraft {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
-        BlockPos blockPos2 = placeTarget.getPosition();
-        if (ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2)) > Mth.square((double)this.placeRange.getValue().doubleValue())) {
+        BlockPos targetPos = placeTarget.getPosition();
+        if (ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)targetPos)) > Mth.square((double)this.placeRange.getValue().doubleValue())) {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
-        Night.RENDER_MANAGER.setRenderPosition(blockPos2);
-        if (!WorldUtils.canSeeBlock(blockPos2) && (this.raytrace.getValue() || ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue()))) {
+        Night.RENDER_MANAGER.setRenderPosition(targetPos);
+        if (!WorldUtils.canSeeBlock(targetPos) && (this.raytrace.getValue() || ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)targetPos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue()))) {
             return;
         }
         EndCrystal endCrystal = null;
-        for (Entity e : ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(blockPos2.above()), entity -> true)) {
-            if (!(e instanceof EndCrystal)) continue;
-            endCrystal = (EndCrystal)e;
+        for (Entity entity : ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(targetPos.above()), candidate -> true)) {
+            if (!(entity instanceof EndCrystal)) continue;
+            endCrystal = (EndCrystal)entity;
             break;
         }
         if (endCrystal != null) {
@@ -436,24 +435,23 @@ implements IMinecraft {
             this.attack(endCrystal);
             return;
         }
-        CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(blockPos2);
-        Vec3 vec3 = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)blockPos2).add(0.0, 0.5, 0.0);
+        CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(targetPos);
+        Vec3 hitVec = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)targetPos).add(0.0, 0.5, 0.0);
         if (!this.rotate.getValue().equalsIgnoreCase("None")) {
-            Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(vec3));
+            Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(hitVec));
         }
         SpeedMineModule speedMine = Night.MODULE_MANAGER.getModule(SpeedMineModule.class);
-        boolean bl2 = speedMine.switchReset.getValue() && (speedMine.switchMode.getValue().equalsIgnoreCase("Normal") || speedMine.switchMode.getValue().equalsIgnoreCase("AltSwap") || speedMine.switchMode.getValue().equalsIgnoreCase("AltPickup"));
-        boolean bl3 = bl2;
+        boolean useAltSwap = speedMine.switchReset.getValue() && (speedMine.switchMode.getValue().equalsIgnoreCase("Normal") || speedMine.switchMode.getValue().equalsIgnoreCase("AltSwap") || speedMine.switchMode.getValue().equalsIgnoreCase("AltPickup"));
         if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && ServerAutoCrystal.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
-            if (!bl2 && this.autoSwitch.getValue().equalsIgnoreCase("Normal") && this.swapBack.getValue() && this.savedSlot == -1) {
-                this.savedSlot = n2;
+            if (!useAltSwap && this.autoSwitch.getValue().equalsIgnoreCase("Normal") && this.swapBack.getValue() && this.savedSlot == -1) {
+                this.savedSlot = previousSlot;
             }
-            InventoryUtils.switchSlot(bl2 ? "AltSwap" : this.autoSwitch.getValue(), n, n2);
-            bl = true;
+            InventoryUtils.switchSlot(useAltSwap ? "AltSwap" : this.autoSwitch.getValue(), crystalSlot, previousSlot);
+            switched = true;
         }
-        this.place(blockPos2);
-        if (bl) {
-            InventoryUtils.switchBack(bl2 ? "AltSwap" : this.autoSwitch.getValue(), n, n2);
+        this.place(targetPos);
+        if (switched) {
+            InventoryUtils.switchBack(useAltSwap ? "AltSwap" : this.autoSwitch.getValue(), crystalSlot, previousSlot);
         }
     }
 
@@ -519,7 +517,6 @@ implements IMinecraft {
     }
 
     private void attackCrystals() {
-        Object object;
         if (this.isDead() || this.shouldPause("Attack")) {
             return;
         }
@@ -529,15 +526,14 @@ implements IMinecraft {
         }
         EndCrystal endCrystal = null;
         PlaceTarget placeTarget = this.placeTarget;
-        boolean bl = placeTarget != null && placeTarget.getPosition() == null && placeTarget.obstructions != null && !placeTarget.obstructions.isEmpty();
-        for (Entity entity2 : bl ? placeTarget.obstructions : ServerAutoCrystal.mc.level.entitiesForRendering()) {
-            if (!(entity2 instanceof EndCrystal crystal) || !crystal.isAlive() || (this.inhibit.getValue() && this.attackedCrystals.containsKey(entity2.getId())) || (!bl && !this.placedCrystals.containsKey(crystal.blockPosition().below())) || crystal.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(crystal.blockPosition()) || (!WorldUtils.canSee((Entity)crystal) && (this.raytrace.getValue() || crystal.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue())))) continue;
+        boolean useObstructions = placeTarget != null && placeTarget.getPosition() == null && placeTarget.obstructions != null && !placeTarget.obstructions.isEmpty();
+        for (Entity entity : useObstructions ? placeTarget.obstructions : ServerAutoCrystal.mc.level.entitiesForRendering()) {
+            if (!(entity instanceof EndCrystal crystal) || !crystal.isAlive() || (this.inhibit.getValue() && this.attackedCrystals.containsKey(entity.getId())) || (!useObstructions && !this.placedCrystals.containsKey(crystal.blockPosition().below())) || crystal.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(crystal.blockPosition()) || (!WorldUtils.canSee((Entity)crystal) && (this.raytrace.getValue() || crystal.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue())))) continue;
             endCrystal = crystal;
             break;
         }
-        EndCrystal endCrystal2 = endCrystal == null ? this.attackTarget : endCrystal;
-        EndCrystal endCrystal3 = endCrystal2;
-        if (endCrystal2 == null) {
+        EndCrystal selectedCrystal = endCrystal == null ? this.attackTarget : endCrystal;
+        if (selectedCrystal == null) {
             return;
         }
         if (this.swapDelay.getValue().intValue() > 0 && !this.swapTimer.hasTimeElapsed(this.swapDelay.getValue().longValue() * 50L)) {
@@ -549,40 +545,39 @@ implements IMinecraft {
             }
             return;
         }
-        Entity entity = ServerAutoCrystal.mc.level.getEntity(endCrystal2.getId());
-        object = null;
-        if (entity == null) {
-            object = "entity-gone";
-        } else if (!(entity instanceof EndCrystal)) {
-            object = "not-end-crystal";
-        } else if (!((EndCrystal)entity).isAlive()) {
-            object = "dead";
-        } else if (this.inhibit.getValue() && this.attackedCrystals.containsKey(entity.getId())) {
-            object = "inhibit";
-        } else if (entity.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue())) {
-            object = "range";
-        } else if (!ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(entity.blockPosition())) {
-            object = "border";
-        } else if (!WorldUtils.canSee(entity) && (this.raytrace.getValue() || entity.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue()))) {
-            object = "cannot-see";
+        Entity worldEntity = ServerAutoCrystal.mc.level.getEntity(selectedCrystal.getId());
+        String skipReason = null;
+        if (worldEntity == null) {
+            skipReason = "entity-gone";
+        } else if (!(worldEntity instanceof EndCrystal)) {
+            skipReason = "not-end-crystal";
+        } else if (!((EndCrystal)worldEntity).isAlive()) {
+            skipReason = "dead";
+        } else if (this.inhibit.getValue() && this.attackedCrystals.containsKey(worldEntity.getId())) {
+            skipReason = "inhibit";
+        } else if (worldEntity.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue())) {
+            skipReason = "range";
+        } else if (!ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(worldEntity.blockPosition())) {
+            skipReason = "border";
+        } else if (!WorldUtils.canSee(worldEntity) && (this.raytrace.getValue() || worldEntity.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue()))) {
+            skipReason = "cannot-see";
         }
-        if (object != null) {
+        if (skipReason != null) {
             return;
         }
         this.attackRunnable = () -> {
             if (!this.rotate.getValue().equalsIgnoreCase("None")) {
-                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)endCrystal2.blockPosition())));
+                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)selectedCrystal.blockPosition())));
             }
-            this.attack(endCrystal2);
+            this.attack(selectedCrystal);
         };
     }
 
-    private void placeCrystals(boolean bl) {
+    private void placeCrystals(boolean sequential) {
         if (this.isDead() || this.shouldPause("Place")) {
             return;
         }
         PlaceTarget placeTarget = this.placeTarget == null ? null : this.placeTarget.clone();
-        PlaceTarget placeTarget2 = placeTarget;
         if (placeTarget == null || placeTarget.getPosition() == null) {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
@@ -593,9 +588,9 @@ implements IMinecraft {
             Night.RENDER_MANAGER.setRenderPosition(null);
             return;
         }
-        int n = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-        int n2 = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
-        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && n == -1 && ServerAutoCrystal.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && ServerAutoCrystal.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
+        int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+        int previousSlot = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
+        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && crystalSlot == -1 && ServerAutoCrystal.mc.player.getMainHandItem().getItem() != Items.END_CRYSTAL && ServerAutoCrystal.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
             return;
         }
         BlockPos blockPos = placeTarget.getPosition();
@@ -625,33 +620,31 @@ implements IMinecraft {
         if (!this.placeTimer.hasTimeElapsed(Float.valueOf(1000.0f - this.placeSpeed.getValue().floatValue() * 50.0f))) {
             return;
         }
-        if (!bl && this.placedSequentially) {
+        if (!sequential && this.placedSequentially) {
             this.placedSequentially = false;
             return;
         }
         this.placeRunnable = () -> {
             boolean switched = false;
             CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(blockPos);
-            Vec3 vec3 = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 0.5, 0.0);
-            Vec3 vec32 = vec3;
+            Vec3 hitVec = placementResult != null && placementResult.hitVec != null ? placementResult.hitVec : Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 0.5, 0.0);
             if (!this.rotate.getValue().equalsIgnoreCase("None")) {
-                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(vec3));
+                Night.ROTATION_MANAGER.wireRotate(this.rotate.getValue(), RotationUtils.getRotations(hitVec));
             }
             if (ServerAutoCrystal.mc.player.getOffhandItem().getItem() != Items.END_CRYSTAL) {
                 if (this.autoSwitch.getValue().equalsIgnoreCase("Normal") && this.swapBack.getValue() && this.savedSlot == -1) {
-                    this.savedSlot = n2;
+                    this.savedSlot = previousSlot;
                 }
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), crystalSlot, previousSlot);
                 switched = true;
             }
             this.place(blockPos);
             if (switched) {
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), crystalSlot, previousSlot);
             }
             if (this.godSync.getValue()) {
-                boolean bl2 = !this.antiKick.getValue() || !(ServerAutoCrystal.mc.player.getMainHandItem().getItem() instanceof ExperienceBottleItem) && !(ServerAutoCrystal.mc.player.getOffhandItem().getItem() instanceof ExperienceBottleItem) && !Night.MODULE_MANAGER.getModule(KeyActionModule.class).isXpActive();
-                boolean bl3 = bl2;
-                if ((!this.antiKick.getValue() || this.kickTicks > this.kickThreshold.getValue().intValue()) && bl2) {
+                boolean canPredict = !this.antiKick.getValue() || !(ServerAutoCrystal.mc.player.getMainHandItem().getItem() instanceof ExperienceBottleItem) && !(ServerAutoCrystal.mc.player.getOffhandItem().getItem() instanceof ExperienceBottleItem) && !Night.MODULE_MANAGER.getModule(KeyActionModule.class).isXpActive();
+                if ((!this.antiKick.getValue() || this.kickTicks > this.kickThreshold.getValue().intValue()) && canPredict) {
                     if (!this.fast.getValue()) {
                         for (Entity entity : ServerAutoCrystal.mc.level.entitiesForRendering()) {
                             if (entity.getId() <= this.highestID) continue;
@@ -659,15 +652,14 @@ implements IMinecraft {
                         }
                     }
                     for (int i = 1 - this.offset.getValue().intValue(); i < this.predictions.getValue().intValue(); ++i) {
-                        Entity entity;
-                        entity = ServerAutoCrystal.mc.level.getEntity(this.highestID);
+                        Entity entity = ServerAutoCrystal.mc.level.getEntity(this.highestID);
                         if (entity != null && !(entity instanceof EndCrystal)) continue;
-                        int n3 = this.highestID + i;
-                        mc.getConnection().send((Packet)new ServerboundAttackPacket(n3));
+                        int predictedId = this.highestID + i;
+                        mc.getConnection().send((Packet)new ServerboundAttackPacket(predictedId));
                         if (this.godSwing.getValue().equals("Strict")) {
                             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                         }
-                        this.attackedCrystals.put(n3, System.currentTimeMillis());
+                        this.attackedCrystals.put(predictedId, System.currentTimeMillis());
                     }
                     if (this.godSwing.getValue().equals("Normal")) {
                         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
@@ -676,7 +668,7 @@ implements IMinecraft {
                 ++this.kickTicks;
             }
         };
-        if (bl) {
+        if (sequential) {
             this.placeRunnable.run();
             this.placeRunnable = null;
             this.placedSequentially = true;
@@ -695,27 +687,27 @@ implements IMinecraft {
             return null;
         }
         EndCrystal endCrystal = null;
-        float f = 0.0f;
+        float bestDamage = 0.0f;
         for (Entity entity : ServerAutoCrystal.mc.level.entitiesForRendering()) {
-            float f2;
-            EndCrystal endCrystal2;
-            if (!(entity instanceof EndCrystal) || !(endCrystal2 = (EndCrystal)entity).isAlive() || this.inhibit.getValue() && this.attackedCrystals.containsKey(entity.getId()) || endCrystal2.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(endCrystal2.blockPosition()) || !WorldUtils.canSee((Entity)endCrystal2) && (this.raytrace.getValue() || endCrystal2.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue())) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f2 = DamageUtils.getCrystalDamage((Entity)ServerAutoCrystal.mc.player, null, endCrystal2, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f2 > ServerAutoCrystal.mc.player.getHealth() + ServerAutoCrystal.mc.player.getAbsorptionAmount())) continue;
-            boolean bl = false;
+            float selfDamage;
+            EndCrystal crystal;
+            if (!(entity instanceof EndCrystal) || !(crystal = (EndCrystal)entity).isAlive() || this.inhibit.getValue() && this.attackedCrystals.containsKey(entity.getId()) || crystal.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(crystal.blockPosition()) || !WorldUtils.canSee((Entity)crystal) && (this.raytrace.getValue() || crystal.getBoundingBox().distanceToSqr(ServerAutoCrystal.mc.player.getEyePosition()) > Mth.square((double)this.attackWallsRange.getValue().doubleValue())) || !Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)ServerAutoCrystal.mc.player, null, crystal, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > ServerAutoCrystal.mc.player.getHealth() + ServerAutoCrystal.mc.player.getAbsorptionAmount())) continue;
+            boolean lethal = false;
             for (Player player : list) {
-                float f3 = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), endCrystal2, this.ignoreTerrain.getValue());
-                if (f3 < this.getMinimumDamage(player, this.minimumDamage.getValue().floatValue()) && f3 < player.getHealth() + player.getAbsorptionAmount() && !(f3 * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player.getHealth() + player.getAbsorptionAmount()) || !(f3 > f) && !(f3 > player.getHealth() + player.getAbsorptionAmount())) continue;
-                endCrystal = endCrystal2;
-                f = f3;
-                if (!(f3 > player.getHealth() + player.getAbsorptionAmount())) continue;
-                bl = true;
+                float targetDamage = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), crystal, this.ignoreTerrain.getValue());
+                if (targetDamage < this.getMinimumDamage(player, this.minimumDamage.getValue().floatValue()) && targetDamage < player.getHealth() + player.getAbsorptionAmount() && !(targetDamage * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player.getHealth() + player.getAbsorptionAmount()) || !(targetDamage > bestDamage) && !(targetDamage > player.getHealth() + player.getAbsorptionAmount())) continue;
+                endCrystal = crystal;
+                bestDamage = targetDamage;
+                if (!(targetDamage > player.getHealth() + player.getAbsorptionAmount())) continue;
+                lethal = true;
                 break;
             }
-            if (!bl) continue;
+            if (!lethal) continue;
         }
         return endCrystal;
     }
 
-    private PlaceTarget calculatePlacements(BlockPos blockPos) {
+    private PlaceTarget calculatePlacements(BlockPos exceptionPos) {
         if (!this.place.getValue()) {
             return null;
         }
@@ -726,59 +718,59 @@ implements IMinecraft {
         if (list.isEmpty()) {
             return null;
         }
-        BlockPos blockPos2 = null;
-        Player player = null;
+        BlockPos bestPos = null;
+        Player bestPlayer = null;
         ArrayList<Entity> arrayList = new ArrayList<Entity>();
-        float f = 0.0f;
-        BlockPos blockPos3 = this.placeTarget == null ? null : this.placeTarget.getPosition();
-        int n = 0;
+        float bestDamage = 0.0f;
+        BlockPos previousPos = this.placeTarget == null ? null : this.placeTarget.getPosition();
+        int calculations = 0;
         for (int i = 0; i < Night.WORLD_MANAGER.getRadius(Math.max(this.placeRange.getValue().doubleValue(), this.placeWallsRange.getValue().doubleValue())); ++i) {
-            float f2;
-            BlockPos blockPos4 = ServerAutoCrystal.mc.player.blockPosition().offset(Night.WORLD_MANAGER.getOffset(i));
-            if (ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos4)) > Mth.square((double)this.placeRange.getValue().doubleValue()) || !ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(blockPos4) || ServerAutoCrystal.mc.level.getBlockState(blockPos4).getBlock() != Blocks.OBSIDIAN && ServerAutoCrystal.mc.level.getBlockState(blockPos4).getBlock() != Blocks.BEDROCK || !ServerAutoCrystal.mc.level.getBlockState(blockPos4.offset(0, 1, 0)).isAir() || this.placements.getValue().equalsIgnoreCase("Protocol") && !ServerAutoCrystal.mc.level.getBlockState(blockPos4.offset(0, 2, 0)).isAir() || !WorldUtils.canSeeBlock(blockPos4) && (this.raytrace.getValue() || ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos4)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue())) || ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(blockPos4.offset(0, 1, 0)), entity -> true).stream().anyMatch(entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal))) continue;
-            List<Entity> list2 = ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(blockPos4.offset(0, 1, 0)), entity -> true).stream().filter(entity -> {
+            float selfDamage;
+            BlockPos candidatePos = ServerAutoCrystal.mc.player.blockPosition().offset(Night.WORLD_MANAGER.getOffset(i));
+            if (ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos)) > Mth.square((double)this.placeRange.getValue().doubleValue()) || !ServerAutoCrystal.mc.level.getWorldBorder().isWithinBounds(candidatePos) || ServerAutoCrystal.mc.level.getBlockState(candidatePos).getBlock() != Blocks.OBSIDIAN && ServerAutoCrystal.mc.level.getBlockState(candidatePos).getBlock() != Blocks.BEDROCK || !ServerAutoCrystal.mc.level.getBlockState(candidatePos.offset(0, 1, 0)).isAir() || this.placements.getValue().equalsIgnoreCase("Protocol") && !ServerAutoCrystal.mc.level.getBlockState(candidatePos.offset(0, 2, 0)).isAir() || !WorldUtils.canSeeBlock(candidatePos) && (this.raytrace.getValue() || ServerAutoCrystal.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)candidatePos)) > Mth.square((double)this.placeWallsRange.getValue().doubleValue())) || ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(candidatePos.offset(0, 1, 0)), entity -> true).stream().anyMatch(entity -> entity.isAlive() && !(entity instanceof ExperienceOrb) && !(entity instanceof EndCrystal))) continue;
+            List<Entity> list2 = ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(candidatePos.offset(0, 1, 0)), entity -> true).stream().filter(entity -> {
                 EndCrystal endCrystal;
                 return entity instanceof EndCrystal && (!this.placedCrystals.containsKey((endCrystal = (EndCrystal)entity).blockPosition().below()) || endCrystal.tickCount >= 20 - this.attackSpeed.getValue().intValue() + 15);
             }).toList();
-            if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((f2 = DamageUtils.getCrystalDamage((Entity)ServerAutoCrystal.mc.player, null, blockPos4, blockPos, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && f2 > ServerAutoCrystal.mc.player.getHealth() + ServerAutoCrystal.mc.player.getAbsorptionAmount())) continue;
-            boolean bl = false;
-            for (Player player2 : list) {
-                ++n;
-                float f3 = DamageUtils.getCrystalDamage((Entity)player2, PositionUtils.extrapolate(player2, this.extrapolation.getValue().intValue()), blockPos4, blockPos, this.ignoreTerrain.getValue());
-                if (f3 < this.getMinimumDamage(player2, this.minimumDamage.getValue().floatValue()) && f3 < player2.getHealth() + player2.getAbsorptionAmount() && !(f3 * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player2.getHealth() + player2.getAbsorptionAmount())) continue;
-                if (blockPos == null && !list2.isEmpty()) {
+            if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled() && ((selfDamage = DamageUtils.getCrystalDamage((Entity)ServerAutoCrystal.mc.player, null, candidatePos, exceptionPos, this.ignoreTerrain.getValue())) > this.maximumSelfDamage.getValue().floatValue() || this.antiSuicide.getValue() && selfDamage > ServerAutoCrystal.mc.player.getHealth() + ServerAutoCrystal.mc.player.getAbsorptionAmount())) continue;
+            boolean lethal = false;
+            for (Player player : list) {
+                ++calculations;
+                float targetDamage = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, this.extrapolation.getValue().intValue()), candidatePos, exceptionPos, this.ignoreTerrain.getValue());
+                if (targetDamage < this.getMinimumDamage(player, this.minimumDamage.getValue().floatValue()) && targetDamage < player.getHealth() + player.getAbsorptionAmount() && !(targetDamage * (1.0f + this.lethalMultiplier.getValue().floatValue()) >= player.getHealth() + player.getAbsorptionAmount())) continue;
+                if (exceptionPos == null && !list2.isEmpty()) {
                     arrayList.add(list2.getFirst());
                     break;
                 }
-                float f4 = f3 + (blockPos4.equals((Object)blockPos3) ? 0.5f : 0.0f);
-                if (!(f4 > f) && !(f3 > player2.getHealth() + player2.getAbsorptionAmount())) continue;
-                blockPos2 = blockPos4;
-                player = player2;
-                f = f4;
-                if (!(f3 > player2.getHealth() + player2.getAbsorptionAmount())) continue;
-                bl = true;
+                float weightedDamage = targetDamage + (candidatePos.equals((Object)previousPos) ? 0.5f : 0.0f);
+                if (!(weightedDamage > bestDamage) && !(targetDamage > player.getHealth() + player.getAbsorptionAmount())) continue;
+                bestPos = candidatePos;
+                bestPlayer = player;
+                bestDamage = weightedDamage;
+                if (!(targetDamage > player.getHealth() + player.getAbsorptionAmount())) continue;
+                lethal = true;
                 break;
             }
-            if (bl) break;
+            if (lethal) break;
         }
-        if (blockPos2 == null) {
-            return new PlaceTarget(null, null, arrayList, null, 0.0f, n);
+        if (bestPos == null) {
+            return new PlaceTarget(null, null, arrayList, null, 0.0f, calculations);
         }
-        return new PlaceTarget(blockPos2, player, arrayList, blockPos, f, n);
+        return new PlaceTarget(bestPos, bestPlayer, arrayList, exceptionPos, bestDamage, calculations);
     }
 
-    private float[] calculateRotations(Vec3 vec3) {
-        float[] fArray = RotationUtils.getRotations(vec3);
+    private float[] calculateRotations(Vec3 target) {
+        float[] rotations = RotationUtils.getRotations(target);
         if (this.yawStep.getValue()) {
-            float f;
-            float f2 = Night.ROTATION_MANAGER.getServerYaw() - fArray[0];
-            if (Math.abs(f2) > 180.0f) {
-                f2 += f2 > 0.0f ? -360.0f : 360.0f;
+            float clampedYaw;
+            float yawDelta = Night.ROTATION_MANAGER.getServerYaw() - rotations[0];
+            if (Math.abs(yawDelta) > 180.0f) {
+                yawDelta += yawDelta > 0.0f ? -360.0f : 360.0f;
             }
-            float f3 = (float)(f2 > 0.0f ? -1 : 1) * this.yawStepThreshold.getValue().floatValue();
-            fArray[0] = f = Math.abs(f2) > this.yawStepThreshold.getValue().floatValue() ? Night.ROTATION_MANAGER.getServerYaw() + f3 : fArray[0];
+            float yawStepAmount = (float)(yawDelta > 0.0f ? -1 : 1) * this.yawStepThreshold.getValue().floatValue();
+            rotations[0] = clampedYaw = Math.abs(yawDelta) > this.yawStepThreshold.getValue().floatValue() ? Night.ROTATION_MANAGER.getServerYaw() + yawStepAmount : rotations[0];
         }
-        return fArray;
+        return rotations;
     }
 
     private boolean isEnemyAtMinePos(BlockPos blockPos) {
@@ -797,37 +789,36 @@ implements IMinecraft {
         if (endCrystal == null || blockPos == null) {
             return false;
         }
-        BlockPos blockPos2 = endCrystal.blockPosition().below();
-        if (Math.abs(blockPos2.getX() - blockPos.getX()) <= 2 && Math.abs(blockPos2.getZ() - blockPos.getZ()) <= 2 && Math.abs(blockPos2.getY() - blockPos.getY()) <= 2) {
+        BlockPos crystalBasePos = endCrystal.blockPosition().below();
+        if (Math.abs(crystalBasePos.getX() - blockPos.getX()) <= 2 && Math.abs(crystalBasePos.getZ() - blockPos.getZ()) <= 2 && Math.abs(crystalBasePos.getY() - blockPos.getY()) <= 2) {
             return true;
         }
         return endCrystal.getBoundingBox().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= 9.0;
     }
 
     private boolean isAtActiveUnbrokenMinePos(EndCrystal endCrystal) {
-        BlockPos blockPos;
-        BlockPos blockPos2;
+        BlockPos secondaryPos;
+        BlockPos primaryPos;
         if (endCrystal == null || ServerAutoCrystal.mc.level == null || ServerAutoCrystal.mc.player == null) {
             return false;
         }
         SpeedMineModule speedMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(SpeedMineModule.class) : null;
-        SpeedMineModule speedMineModule2 = speedMineModule;
         if (speedMineModule == null || !speedMineModule.isToggled()) {
             return false;
         }
         SpeedMineModule.Action action = speedMineModule.getPrimary();
-        if (action != null && action.getPosition() != null && this.isCrystalNearMinePos(endCrystal, blockPos2 = action.getPosition())) {
-            return !this.attack.getValue() || !this.isEnemyAtMinePos(blockPos2);
+        if (action != null && action.getPosition() != null && this.isCrystalNearMinePos(endCrystal, primaryPos = action.getPosition())) {
+            return !this.attack.getValue() || !this.isEnemyAtMinePos(primaryPos);
         }
         SpeedMineModule.Secondary secondary = speedMineModule.getSecondary();
-        if (secondary != null && secondary.getPosition() != null && this.isCrystalNearMinePos(endCrystal, blockPos = secondary.getPosition())) {
-            return !this.attack.getValue() || !this.isEnemyAtMinePos(blockPos);
+        if (secondary != null && secondary.getPosition() != null && this.isCrystalNearMinePos(endCrystal, secondaryPos = secondary.getPosition())) {
+            return !this.attack.getValue() || !this.isEnemyAtMinePos(secondaryPos);
         }
         return false;
     }
 
     private void attack(EndCrystal endCrystal) {
-        int n;
+        int swordSlot;
         if (endCrystal == null || !endCrystal.isAlive() || endCrystal.isRemoved()) {
             return;
         }
@@ -835,24 +826,24 @@ implements IMinecraft {
             return;
         }
         if (!Night.MODULE_MANAGER.getModule(SuicideModule.class).isToggled()) {
-            float f = DamageUtils.getCrystalDamage((Entity)ServerAutoCrystal.mc.player, null, endCrystal, this.ignoreTerrain.getValue());
-            if (f > this.maximumSelfDamage.getValue().floatValue()) {
+            float selfDamage = DamageUtils.getCrystalDamage((Entity)ServerAutoCrystal.mc.player, null, endCrystal, this.ignoreTerrain.getValue());
+            if (selfDamage > this.maximumSelfDamage.getValue().floatValue()) {
                 return;
             }
-            if (this.antiSuicide.getValue() && f > ServerAutoCrystal.mc.player.getHealth() + ServerAutoCrystal.mc.player.getAbsorptionAmount()) {
+            if (this.antiSuicide.getValue() && selfDamage > ServerAutoCrystal.mc.player.getHealth() + ServerAutoCrystal.mc.player.getAbsorptionAmount()) {
                 return;
             }
         }
-        int n2 = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
-        int n3 = -1;
-        if (!this.antiWeakness.getValue().equalsIgnoreCase("None") && ServerAutoCrystal.mc.player.hasEffect(MobEffects.WEAKNESS) && (n = InventoryUtils.findBestSword(InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
-            InventoryUtils.switchSlot(this.antiWeakness.getValue(), n, n2);
-            n3 = n;
+        int previousSlot = ServerAutoCrystal.mc.player.getInventory().getSelectedSlot();
+        int switchedSlot = -1;
+        if (!this.antiWeakness.getValue().equalsIgnoreCase("None") && ServerAutoCrystal.mc.player.hasEffect(MobEffects.WEAKNESS) && (swordSlot = InventoryUtils.findBestSword(InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
+            InventoryUtils.switchSlot(this.antiWeakness.getValue(), swordSlot, previousSlot);
+            switchedSlot = swordSlot;
         }
         mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-        if (n3 != -1) {
-            InventoryUtils.switchBack(this.antiWeakness.getValue(), n3, n2);
+        if (switchedSlot != -1) {
+            InventoryUtils.switchBack(this.antiWeakness.getValue(), switchedSlot, previousSlot);
         }
         this.attackedCrystals.put(endCrystal.getId(), System.currentTimeMillis());
         this.attackTimer.reset();
@@ -862,7 +853,7 @@ implements IMinecraft {
     private void place(BlockPos blockPos) {
         InteractionHand interactionHand = ServerAutoCrystal.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
         CrystalPlacementHelper.PlacementResult placementResult = CrystalPlacementHelper.getVisiblePlacement(blockPos);
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemOnPacket(interactionHand, new BlockHitResult(placementResult.hitVec, placementResult.direction, blockPos, false), n));
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemOnPacket(interactionHand, new BlockHitResult(placementResult.hitVec, placementResult.direction, blockPos, false), sequence));
         switch (this.swing.getValue()) {
             case "Default": {
                 ServerAutoCrystal.mc.player.swing(interactionHand);
@@ -899,9 +890,8 @@ implements IMinecraft {
         }
         for (Player player : ServerAutoCrystal.mc.level.players()) {
             if (player == ServerAutoCrystal.mc.player || EntityUtils.isGhost((Entity)player) || !player.isAlive() || ServerAutoCrystal.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || Night.FRIEND_MANAGER.contains(player.getName().getString())) continue;
-            boolean bl = player.getMainHandItem().getItem() == Items.END_CRYSTAL || player.getOffhandItem().getItem() == Items.END_CRYSTAL;
-            boolean bl2 = bl;
-            if (this.ignoreNaked.getValue() && EntityUtils.isNaked(player) && !bl) continue;
+            boolean holdingCrystal = player.getMainHandItem().getItem() == Items.END_CRYSTAL || player.getOffhandItem().getItem() == Items.END_CRYSTAL;
+            if (this.ignoreNaked.getValue() && EntityUtils.isNaked(player) && !holdingCrystal) continue;
             arrayList.add(player);
         }
         return arrayList;
@@ -912,12 +902,10 @@ implements IMinecraft {
             return false;
         }
         PhaseModule phaseModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(PhaseModule.class) : null;
-        PhaseModule phaseModule2 = phaseModule;
         if (phaseModule != null && phaseModule.isToggled()) {
             return true;
         }
         KeyActionModule keyActionModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(KeyActionModule.class) : null;
-        KeyActionModule keyActionModule2 = keyActionModule;
         if (keyActionModule != null && keyActionModule.isPearlActive()) {
             return true;
         }
@@ -925,9 +913,8 @@ implements IMinecraft {
             return true;
         }
         if (ServerAutoCrystal.mc.player != null) {
-            boolean bl = ServerAutoCrystal.mc.player.getMainHandItem().getItem() == Items.ENDER_PEARL || ServerAutoCrystal.mc.player.getOffhandItem().getItem() == Items.ENDER_PEARL;
-            boolean bl2 = bl;
-            if (bl && (ServerAutoCrystal.mc.options.keyUse.isDown() || ServerAutoCrystal.mc.player.isUsingItem())) {
+            boolean holdingPearl = ServerAutoCrystal.mc.player.getMainHandItem().getItem() == Items.ENDER_PEARL || ServerAutoCrystal.mc.player.getOffhandItem().getItem() == Items.ENDER_PEARL;
+            if (holdingPearl && (ServerAutoCrystal.mc.options.keyUse.isDown() || ServerAutoCrystal.mc.player.isUsingItem())) {
                 return true;
             }
         }
@@ -939,7 +926,6 @@ implements IMinecraft {
             return false;
         }
         KeyActionModule keyActionModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(KeyActionModule.class) : null;
-        KeyActionModule keyActionModule2 = keyActionModule;
         if (keyActionModule != null && keyActionModule.isXpActive()) {
             return true;
         }
@@ -947,29 +933,28 @@ implements IMinecraft {
             return true;
         }
         if (ServerAutoCrystal.mc.player != null) {
-            boolean bl = ServerAutoCrystal.mc.player.getMainHandItem().getItem() == Items.EXPERIENCE_BOTTLE || ServerAutoCrystal.mc.player.getOffhandItem().getItem() == Items.EXPERIENCE_BOTTLE;
-            boolean bl2 = bl;
-            if (bl && (ServerAutoCrystal.mc.options.keyUse.isDown() || ServerAutoCrystal.mc.player.isUsingItem())) {
+            boolean holdingXp = ServerAutoCrystal.mc.player.getMainHandItem().getItem() == Items.EXPERIENCE_BOTTLE || ServerAutoCrystal.mc.player.getOffhandItem().getItem() == Items.EXPERIENCE_BOTTLE;
+            if (holdingXp && (ServerAutoCrystal.mc.options.keyUse.isDown() || ServerAutoCrystal.mc.player.isUsingItem())) {
                 return true;
             }
         }
         return false;
     }
 
-    private boolean shouldPause(String string) {
+    private boolean shouldPause(String action) {
         if (this.isPearlPaused()) {
             return true;
         }
         if (this.isXpPaused()) {
             return true;
         }
-        boolean bl = this.whileEating.getValue().equalsIgnoreCase("None") || string.equalsIgnoreCase("Attack") && this.whileEating.getValue().equalsIgnoreCase("Place") || string.equalsIgnoreCase("Place") && this.whileEating.getValue().equalsIgnoreCase("Attack");
-        return bl && ServerAutoCrystal.mc.player.isUsingItem();
+        boolean disallowedWhileEating = this.whileEating.getValue().equalsIgnoreCase("None") || action.equalsIgnoreCase("Attack") && this.whileEating.getValue().equalsIgnoreCase("Place") || action.equalsIgnoreCase("Place") && this.whileEating.getValue().equalsIgnoreCase("Attack");
+        return disallowedWhileEating && ServerAutoCrystal.mc.player.isUsingItem();
     }
 
-    private float getMinimumDamage(Player player, float f) {
+    private float getMinimumDamage(Player player, float minDamage) {
         if (player == null) {
-            return f;
+            return minDamage;
         }
         if (this.chestBreak.getValue() && ServerAutoCrystal.mc.level.getEntities((Entity)null, new AABB(player.blockPosition()).inflate(1.0), entity -> true).stream().anyMatch(entity -> {
             ItemEntity itemEntity;
@@ -981,24 +966,24 @@ implements IMinecraft {
             return 2.0f;
         }
         if (this.facePlaceMode.getValue().equalsIgnoreCase("None")) {
-            return f;
+            return minDamage;
         }
         if (this.facePlaceSpeed.getValue().equalsIgnoreCase("Normal") || this.facePlaceTimer.hasTimeElapsed(this.facePlaceDelay.getValue().longValue() * 50L)) {
             if (this.facePlaceMode.getValue().equalsIgnoreCase("Always")) {
-                return Math.min(f, 2.0f);
+                return Math.min(minDamage, 2.0f);
             }
             if (this.facePlaceMode.getValue().equalsIgnoreCase("Dynamic") && this.healthPlace.getValue() && player.getHealth() + player.getAbsorptionAmount() <= this.health.getValue().floatValue()) {
-                return Math.min(f, 2.0f);
+                return Math.min(minDamage, 2.0f);
             }
             if (this.facePlaceMode.getValue().equalsIgnoreCase("Dynamic") && this.armorPlace.getValue()) {
                 for (EquipmentSlot equipmentSlot : new EquipmentSlot[]{EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD}) {
                     ItemStack itemStack = player.getItemBySlot(equipmentSlot);
                     if (itemStack.isEmpty() || itemStack.get(DataComponents.EQUIPPABLE) == null || Math.round((double)(itemStack.getMaxDamage() - itemStack.getDamageValue()) * 100.0 / (double)itemStack.getMaxDamage()) > (long)this.percentage.getValue().intValue()) continue;
-                    return Math.min(f, 2.0f);
+                    return Math.min(minDamage, 2.0f);
                 }
             }
         }
-        return f;
+        return minDamage;
     }
 
     @Generated
@@ -1054,13 +1039,13 @@ implements IMinecraft {
         }
 
         @Generated
-        public PlaceTarget(BlockPos blockPos, Player player, List<Entity> list, BlockPos blockPos2, float f, int n) {
-            this.position = blockPos;
+        public PlaceTarget(BlockPos position, Player player, List<Entity> obstructions, BlockPos exception, float damage, int calculations) {
+            this.position = position;
             this.player = player;
-            this.obstructions = list;
-            this.exception = blockPos2;
-            this.damage = f;
-            this.calculations = n;
+            this.obstructions = obstructions;
+            this.exception = exception;
+            this.damage = damage;
+            this.calculations = calculations;
         }
     }
 }

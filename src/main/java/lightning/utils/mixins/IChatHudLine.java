@@ -6,10 +6,10 @@ package lightning.utils.mixins;
 public interface IChatHudLine {
     public boolean night$isClientMessage();
 
-    public void night$setClientMessage(boolean var1);
+    public void night$setClientMessage(boolean clientMessage);
 
     public String night$getClientIdentifier();
 
-    public void night$setClientIdentifier(String var1);
+    public void night$setClientIdentifier(String clientIdentifier);
 }
 

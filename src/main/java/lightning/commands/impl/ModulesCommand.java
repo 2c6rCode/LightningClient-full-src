@@ -18,18 +18,18 @@ import net.minecraft.ChatFormatting;
 public class ModulesCommand
 extends Command {
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 0) {
-            List<Module> list = Night.MODULE_MANAGER.getModules();
-            if (list.isEmpty()) {
+    public void execute(String[] args) {
+        if (args.length == 0) {
+            List<Module> modules = Night.MODULE_MANAGER.getModules();
+            if (modules.isEmpty()) {
                 Night.CHAT_MANAGER.tagged("There are currently no registered modules.", this.getTag(), this.getName());
             } else {
-                StringBuilder stringBuilder = new StringBuilder();
-                int n = 0;
-                for (Module module : list) {
-                    stringBuilder.append(ChatUtils.getSecondary()).append(module.getName()).append(ChatUtils.getPrimary()).append(" [").append(module.isToggled() ? String.valueOf(ChatFormatting.GREEN) + "ON" : String.valueOf(ChatFormatting.RED) + "OFF").append(ChatUtils.getPrimary()).append("]").append(++n == list.size() ? "" : ", ");
+                StringBuilder builder = new StringBuilder();
+                int index = 0;
+                for (Module module : modules) {
+                    builder.append(ChatUtils.getSecondary()).append(module.getName()).append(ChatUtils.getPrimary()).append(" [").append(module.isToggled() ? String.valueOf(ChatFormatting.GREEN) + "ON" : String.valueOf(ChatFormatting.RED) + "OFF").append(ChatUtils.getPrimary()).append("]").append(++index == modules.size() ? "" : ", ");
                 }
-                Night.CHAT_MANAGER.message("Modules " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + list.size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(stringBuilder), this.getName());
+                Night.CHAT_MANAGER.message("Modules " + String.valueOf(ChatUtils.getPrimary()) + "[" + String.valueOf(ChatUtils.getSecondary()) + modules.size() + String.valueOf(ChatUtils.getPrimary()) + "]: " + String.valueOf(ChatUtils.getSecondary()) + String.valueOf(builder), this.getName());
             }
         } else {
             this.messageSyntax();

@@ -38,7 +38,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class CobwebBlockMixin
 implements IMinecraft {
     @Inject(method={"entityInside"}, at={@At(value="HEAD")}, cancellable=true)
-    private void onEntityCollision(BlockState blockState, Level level, BlockPos blockPos, Entity entity, InsideBlockEffectApplier insideBlockEffectApplier, boolean bl, CallbackInfo callbackInfo) {
+    private void onEntityCollision(BlockState blockState, Level level, BlockPos blockPos, Entity entity, InsideBlockEffectApplier insideBlockEffectApplier, boolean isPrecise, CallbackInfo callbackInfo) {
         try {
             if (((FastWebModule)Night.MODULE_MANAGER.getModule(FastWebModule.class)).isToggled()) {
                 if (((FastWebModule)Night.MODULE_MANAGER.getModule(FastWebModule.class)).sneak.getValue() && !CobwebBlockMixin.mc.player.isShiftKeyDown()) {

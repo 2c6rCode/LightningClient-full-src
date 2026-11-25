@@ -49,60 +49,59 @@ extends AbstractPackResources {
         super(new PackLocationInfo(NAMESPACE, (Component)Component.literal((String)"Lightning Resources"), PackSource.BUILT_IN, Optional.empty()));
     }
 
-    public @Nullable IoSupplier<InputStream> getRootResource(String ... stringArray) {
-        String string = String.join((CharSequence)"/", stringArray);
-        if (NightPackResources.class.getClassLoader().getResource(string) != null) {
-            return () -> NightPackResources.class.getClassLoader().getResourceAsStream(string);
+    public @Nullable IoSupplier<InputStream> getRootResource(String ... paths) {
+        String path = String.join((CharSequence)"/", paths);
+        if (NightPackResources.class.getClassLoader().getResource(path) != null) {
+            return () -> NightPackResources.class.getClassLoader().getResourceAsStream(path);
         }
         return null;
     }
 
     public @Nullable IoSupplier<InputStream> getResource(PackType packType, Identifier identifier) {
         File file;
-        String string;
+        String imageName;
         if (packType != PackType.CLIENT_RESOURCES || !NAMESPACE.equals(identifier.getNamespace())) {
             return null;
         }
-        if ((identifier.getPath().equals("textures/effect/custom_image.png") || identifier.getPath().equals("textures/custom_image.png")) && Night.IMAGE_MANAGER != null && (string = Night.IMAGE_MANAGER.getCurrentImageName()) != null && !string.isEmpty() && !string.equalsIgnoreCase("None") && (file = ImageManager.resolveImageFile(string)) != null && file.exists() && file.isFile()) {
+        if ((identifier.getPath().equals("textures/effect/custom_image.png") || identifier.getPath().equals("textures/custom_image.png")) && Night.IMAGE_MANAGER != null && (imageName = Night.IMAGE_MANAGER.getCurrentImageName()) != null && !imageName.isEmpty() && !imageName.equalsIgnoreCase("None") && (file = ImageManager.resolveImageFile(imageName)) != null && file.exists() && file.isFile()) {
             return () -> new FileInputStream(file);
         }
-        String string2 = "assets/lightning/" + identifier.getPath();
-        if (NightPackResources.class.getClassLoader().getResource(string2) != null) {
-            return () -> NightPackResources.class.getClassLoader().getResourceAsStream(string2);
+        String assetPath = "assets/lightning/" + identifier.getPath();
+        if (NightPackResources.class.getClassLoader().getResource(assetPath) != null) {
+            return () -> NightPackResources.class.getClassLoader().getResourceAsStream(assetPath);
         }
         return null;
     }
 
-    public void listResources(PackType packType, String string, String string2, PackResources.ResourceOutput resourceOutput) {
-        Object object;
+    public void listResources(PackType packType, String namespace, String pathPrefix, PackResources.ResourceOutput resourceOutput) {
         InputStream inputStream;
-        String string3;
-        HashSet<String> hashSet;
+        String normalizedPrefix;
+        HashSet<String> seenPaths;
         block16: {
-            if (packType != PackType.CLIENT_RESOURCES || !NAMESPACE.equals(string)) {
+            if (packType != PackType.CLIENT_RESOURCES || !NAMESPACE.equals(namespace)) {
                 return;
             }
-            hashSet = new HashSet<String>();
-            string3 = string2.isEmpty() ? "" : (string2.endsWith("/") ? string2 : string2 + "/");
+            seenPaths = new HashSet<String>();
+            normalizedPrefix = pathPrefix.isEmpty() ? "" : (pathPrefix.endsWith("/") ? pathPrefix : pathPrefix + "/");
             try {
-                URL uRL = NightPackResources.class.getProtectionDomain().getCodeSource().getLocation();
-                if (uRL == null) break block16;
-                String object2 = "assets/lightning/" + string3;
-                inputStream = uRL.openStream();
+                URL codeSourceUrl = NightPackResources.class.getProtectionDomain().getCodeSource().getLocation();
+                if (codeSourceUrl == null) break block16;
+                String jarPrefix = "assets/lightning/" + normalizedPrefix;
+                inputStream = codeSourceUrl.openStream();
                 try {
-                    object = new JarInputStream(inputStream);
+                    JarInputStream jarInputStream = new JarInputStream(inputStream);
                     try {
                         JarEntry jarEntry;
-                        while ((jarEntry = ((JarInputStream)object).getNextJarEntry()) != null) {
+                        while ((jarEntry = jarInputStream.getNextJarEntry()) != null) {
                             Identifier identifier;
-                            String string4;
-                            String string5 = jarEntry.getName();
-                            if (jarEntry.isDirectory() || !string5.startsWith(object2) || !hashSet.add(string4 = string5.substring("assets/lightning/".length())) || (identifier = Identifier.tryBuild((String)NAMESPACE, (String)string4)) == null) continue;
-                            resourceOutput.accept(identifier, () -> NightPackResources.class.getClassLoader().getResourceAsStream(string5));
+                            String relativePath;
+                            String entryName = jarEntry.getName();
+                            if (jarEntry.isDirectory() || !entryName.startsWith(jarPrefix) || !seenPaths.add(relativePath = entryName.substring("assets/lightning/".length())) || (identifier = Identifier.tryBuild((String)NAMESPACE, (String)relativePath)) == null) continue;
+                            resourceOutput.accept(identifier, () -> NightPackResources.class.getClassLoader().getResourceAsStream(entryName));
                         }
                     }
                     finally {
-                        ((ZipInputStream)object).close();
+                        jarInputStream.close();
                     }
                 }
                 finally {
@@ -116,7 +115,7 @@ extends AbstractPackResources {
             }
         }
         for (String fallbackPath : FALLBACK_ASSETS) {
-            if (!fallbackPath.startsWith(string3) || !hashSet.add(fallbackPath)) continue;
+            if (!fallbackPath.startsWith(normalizedPrefix) || !seenPaths.add(fallbackPath)) continue;
             final String resourcePath = "assets/lightning/" + fallbackPath;
             Identifier fallbackId;
             if (NightPackResources.class.getClassLoader().getResource(resourcePath) == null || (fallbackId = Identifier.tryBuild(NAMESPACE, fallbackPath)) == null) continue;

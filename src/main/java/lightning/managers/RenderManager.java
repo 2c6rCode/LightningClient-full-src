@@ -80,19 +80,19 @@ implements IMinecraft {
             return;
         }
         RendersModule rendersModule = Night.MODULE_MANAGER.getModule(RendersModule.class);
-        for (RenderPosition renderPosition2 : this.renderPositions) {
-            float f = renderPosition2.get();
-            AABB aABB = new AABB(renderPosition2.getPos());
+        for (RenderPosition posEntry : this.renderPositions) {
+            float progress = posEntry.get();
+            AABB box = new AABB(posEntry.getPos());
             if (rendersModule.mode.getValue().equals("Shrink")) {
-                aABB = new AABB(renderPosition2.getPos()).deflate(0.5).inflate(Mth.clamp((double)((double)f / 2.0), (double)0.0, (double)0.5));
+                box = new AABB(posEntry.getPos()).deflate(0.5).inflate(Mth.clamp((double)((double)progress / 2.0), (double)0.0, (double)0.5));
             }
             if (rendersModule.renderMode.getValue().equalsIgnoreCase("Fill") || rendersModule.renderMode.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, rendersModule.getColor(rendersModule.mode.getValue(), rendersModule.fillColor.getColor(), f));
+                Renderer3D.renderBox(renderWorldEvent.getMatrices(), box, rendersModule.getColor(rendersModule.mode.getValue(), rendersModule.fillColor.getColor(), progress));
             }
             if (!rendersModule.renderMode.getValue().equalsIgnoreCase("Outline") && !rendersModule.renderMode.getValue().equalsIgnoreCase("Both")) continue;
-            Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, rendersModule.getColor(rendersModule.mode.getValue(), rendersModule.outlineColor.getColor(), f));
+            Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), box, rendersModule.getColor(rendersModule.mode.getValue(), rendersModule.outlineColor.getColor(), progress));
         }
-        this.renderPositions.removeIf(renderPosition -> renderPosition.get() <= 0.0f);
+        this.renderPositions.removeIf(posEntry -> posEntry.get() <= 0.0f);
     }
 
     @SubscribeEvent
@@ -104,10 +104,10 @@ implements IMinecraft {
             return;
         }
         AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER.getModule(AutoCrystalModule.class);
-        float f = this.crystalTarget.getTarget() == 1 ? Easing.ease(Easing.toDelta(this.crystalTarget.getTime(), autoCrystalModule.duration.getValue().intValue()), Easing.Method.EASE_OUT_CUBIC) : 1.0f - Easing.ease(Easing.toDelta(this.crystalTarget.getTime(), autoCrystalModule.duration.getValue().intValue()), Easing.Method.EASE_IN_CUBIC);
-        AABB aABB = new AABB(this.crystalTarget.getPosition());
+        float fadeProgress = this.crystalTarget.getTarget() == 1 ? Easing.ease(Easing.toDelta(this.crystalTarget.getTime(), autoCrystalModule.duration.getValue().intValue()), Easing.Method.EASE_OUT_CUBIC) : 1.0f - Easing.ease(Easing.toDelta(this.crystalTarget.getTime(), autoCrystalModule.duration.getValue().intValue()), Easing.Method.EASE_IN_CUBIC);
+        AABB box = new AABB(this.crystalTarget.getPosition());
         if (autoCrystalModule.mode.getValue().equals("Shrink")) {
-            aABB = new AABB(this.crystalTarget.getPosition()).deflate(0.5).inflate(Mth.clamp((double)((double)f / 2.0), (double)0.0, (double)0.5));
+            box = new AABB(this.crystalTarget.getPosition()).deflate(0.5).inflate(Mth.clamp((double)((double)fadeProgress / 2.0), (double)0.0, (double)0.5));
         }
         if (autoCrystalModule.animationMode.getValue().equals("Slide")) {
             if (this.renderPosition == null) {
@@ -117,32 +117,31 @@ implements IMinecraft {
                 this.animationStart = System.currentTimeMillis();
                 this.prevPosition = this.crystalTarget.getPosition();
             }
-            float f2 = Easing.ease(Easing.toDelta(this.animationStart, (int)(Math.pow(autoCrystalModule.slideSmoothness.getValue().doubleValue(), 1.4) * 1000.0)), Easing.Method.EASE_OUT_QUART);
-            this.renderPosition = this.renderPosition.add(MathUtils.scale(MathUtils.getVec(this.crystalTarget.getPosition()).subtract(this.renderPosition), f2));
-            aABB = MathUtils.getBox(this.renderPosition);
+            float slideFactor = Easing.ease(Easing.toDelta(this.animationStart, (int)(Math.pow(autoCrystalModule.slideSmoothness.getValue().doubleValue(), 1.4) * 1000.0)), Easing.Method.EASE_OUT_QUART);
+            this.renderPosition = this.renderPosition.add(MathUtils.scale(MathUtils.getVec(this.crystalTarget.getPosition()).subtract(this.renderPosition), slideFactor));
+            box = MathUtils.getBox(this.renderPosition);
             if (autoCrystalModule.mode.getValue().equals("Shrink")) {
-                aABB = MathUtils.getBox(this.renderPosition).deflate(0.5).inflate(Mth.clamp((double)((double)f / 2.0), (double)0.0, (double)0.5));
+                box = MathUtils.getBox(this.renderPosition).deflate(0.5).inflate(Mth.clamp((double)((double)fadeProgress / 2.0), (double)0.0, (double)0.5));
             }
         }
         RendersModule rendersModule = Night.MODULE_MANAGER.getModule(RendersModule.class);
-        boolean bl = autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Fill") || autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Both");
-        boolean bl2 = autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Outline") || autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Both");
-        int n = EspShader.modeIndex(autoCrystalModule.shader.getValue());
-        List<Renderer3D.VertexCollection> list = n == 0 ? Renderer3D.QUADS : Renderer3D.SHADER_QUADS;
-        List<Renderer3D.VertexCollection> list2 = n == 0 ? Renderer3D.DEBUG_LINES : Renderer3D.SHADER_DEBUG_LINES;
-        List<Renderer3D.VertexCollection> list3 = list2;
-        if (n != 0) {
-            float f3 = autoCrystalModule.shaderSpeed.getValue().floatValue();
-            float f4 = autoCrystalModule.shaderStep.getValue().floatValue();
-            float f5 = (float)(System.currentTimeMillis() % 2000000L) / 1000.0f * f3 * (n == 1 ? f4 : 1.0f);
-            float f6 = autoCrystalModule.shaderDistanceScaling.getValue() ? (float)Math.sqrt(RenderManager.mc.player.distanceToSqr(aABB.getCenter())) : 1.0f;
-            EspShader.setSettings(new EspShader.Settings(n, f5, f4, autoCrystalModule.shaderOpacity.getValue().floatValue() / 100.0f, f6, n == 7 ? autoCrystalModule.shaderGlowColor.getColor() : autoCrystalModule.shaderColor1.getColor(), autoCrystalModule.shaderColor2.getColor(), autoCrystalModule.shaderColor3.getColor(), autoCrystalModule.shaderColor4.getColor()));
+        boolean renderFill = autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Fill") || autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Both");
+        boolean renderOutline = autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Outline") || autoCrystalModule.renderMode.getValue().equalsIgnoreCase("Both");
+        int shaderMode = EspShader.modeIndex(autoCrystalModule.shader.getValue());
+        List<Renderer3D.VertexCollection> quadBatches = shaderMode == 0 ? Renderer3D.QUADS : Renderer3D.SHADER_QUADS;
+        List<Renderer3D.VertexCollection> lineBatches = shaderMode == 0 ? Renderer3D.DEBUG_LINES : Renderer3D.SHADER_DEBUG_LINES;
+        if (shaderMode != 0) {
+            float speed = autoCrystalModule.shaderSpeed.getValue().floatValue();
+            float step = autoCrystalModule.shaderStep.getValue().floatValue();
+            float time = (float)(System.currentTimeMillis() % 2000000L) / 1000.0f * speed * (shaderMode == 1 ? step : 1.0f);
+            float distanceScale = autoCrystalModule.shaderDistanceScaling.getValue() ? (float)Math.sqrt(RenderManager.mc.player.distanceToSqr(box.getCenter())) : 1.0f;
+            EspShader.setSettings(new EspShader.Settings(shaderMode, time, step, autoCrystalModule.shaderOpacity.getValue().floatValue() / 100.0f, distanceScale, shaderMode == 7 ? autoCrystalModule.shaderGlowColor.getColor() : autoCrystalModule.shaderColor1.getColor(), autoCrystalModule.shaderColor2.getColor(), autoCrystalModule.shaderColor3.getColor(), autoCrystalModule.shaderColor4.getColor()));
         }
-        if (bl) {
-            Renderer3D.renderGradientBox(list, renderWorldEvent.getMatrices(), aABB, rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.fillColorUp.getColor(), f), rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.fillColorDown.getColor(), f));
+        if (renderFill) {
+            Renderer3D.renderGradientBox(quadBatches, renderWorldEvent.getMatrices(), box, rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.fillColorUp.getColor(), fadeProgress), rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.fillColorDown.getColor(), fadeProgress));
         }
-        if (bl2) {
-            Renderer3D.renderGradientBoxOutline(list2, renderWorldEvent.getMatrices(), aABB, rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.outlineColorUp.getColor(), f), rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.outlineColorDown.getColor(), f));
+        if (renderOutline) {
+            Renderer3D.renderGradientBoxOutline(lineBatches, renderWorldEvent.getMatrices(), box, rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.outlineColorUp.getColor(), fadeProgress), rendersModule.getColor(autoCrystalModule.mode.getValue(), autoCrystalModule.outlineColorDown.getColor(), fadeProgress));
         }
     }
 
@@ -159,25 +158,25 @@ implements IMinecraft {
         }
         PoseStack poseStack = post.getMatrices();
         AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER.getModule(AutoCrystalModule.class);
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)this.crystalTarget.getPosition());
-        Vec3 vec32 = new Vec3(vec3.x - RenderManager.mc.gameRenderer.mainCamera().position().x, vec3.y - RenderManager.mc.gameRenderer.mainCamera().position().y, vec3.z - RenderManager.mc.gameRenderer.mainCamera().position().z);
+        Vec3 centerPos = Vec3.atCenterOf((Vec3i)this.crystalTarget.getPosition());
+        Vec3 relativePos = new Vec3(centerPos.x - RenderManager.mc.gameRenderer.mainCamera().position().x, centerPos.y - RenderManager.mc.gameRenderer.mainCamera().position().y, centerPos.z - RenderManager.mc.gameRenderer.mainCamera().position().z);
         if (autoCrystalModule.animationMode.getValue().equals("Slide")) {
-            vec32 = new Vec3(this.renderPosition.x + 0.5 - RenderManager.mc.gameRenderer.mainCamera().position().x, this.renderPosition.y + 0.5 - RenderManager.mc.gameRenderer.mainCamera().position().y, this.renderPosition.z + 0.5 - RenderManager.mc.gameRenderer.mainCamera().position().z);
+            relativePos = new Vec3(this.renderPosition.x + 0.5 - RenderManager.mc.gameRenderer.mainCamera().position().x, this.renderPosition.y + 0.5 - RenderManager.mc.gameRenderer.mainCamera().position().y, this.renderPosition.z + 0.5 - RenderManager.mc.gameRenderer.mainCamera().position().z);
         }
         if (autoCrystalModule.icon.getValue()) {
-            float f = autoCrystalModule.iconScale.getValue().floatValue() / 100.0f;
+            float iconScale = autoCrystalModule.iconScale.getValue().floatValue() / 100.0f;
             poseStack.pushPose();
-            poseStack.translate(vec32.x, vec32.y, vec32.z);
+            poseStack.translate(relativePos.x, relativePos.y, relativePos.z);
             poseStack.mulPose((Quaternionfc)RenderManager.mc.gameRenderer.mainCamera().rotation());
-            poseStack.scale(f, -f, f);
+            poseStack.scale(iconScale, -iconScale, iconScale);
             Renderer2D.renderCircle(poseStack, 0.0f, 0.0f, 12.0f, new Color(0, 0, 0, 100));
             Renderer2D.renderCircle(poseStack, 0.0f, 0.0f, 12.0f - autoCrystalModule.iconRadius.getValue().floatValue(), autoCrystalModule.iconColor.getColor());
             if (autoCrystalModule.renderDamage.getValue()) {
                 Renderer2D.renderTexture(poseStack, -5.5f, -8.5f, 5.5f, 2.5f, Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/crystal.png"), Color.WHITE);
                 poseStack.pushPose();
                 poseStack.scale(0.45f, 0.45f, 0.45f);
-                String string = autoCrystalModule.getCalculationDamage();
-                Night.FONT_MANAGER.drawTextWithShadow(poseStack, string, -Night.FONT_MANAGER.getWidth(string) / 2 - 1, 7, Color.WHITE);
+                String damageText = autoCrystalModule.getCalculationDamage();
+                Night.FONT_MANAGER.drawTextWithShadow(poseStack, damageText, -Night.FONT_MANAGER.getWidth(damageText) / 2 - 1, 7, Color.WHITE);
                 poseStack.popPose();
             } else {
                 Renderer2D.renderTexture(poseStack, -6.5f, -6.5f, 6.5f, 6.5f, Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/crystal.png"), Color.WHITE);
@@ -185,11 +184,11 @@ implements IMinecraft {
             poseStack.popPose();
         } else if (autoCrystalModule.renderDamage.getValue()) {
             poseStack.pushPose();
-            poseStack.translate(vec32.x, vec32.y, vec32.z);
+            poseStack.translate(relativePos.x, relativePos.y, relativePos.z);
             poseStack.mulPose((Quaternionfc)RenderManager.mc.gameRenderer.mainCamera().rotation());
             poseStack.scale(0.025f, -0.025f, 0.025f);
-            String string = autoCrystalModule.getCalculationDamage();
-            Night.FONT_MANAGER.drawTextWithShadow(poseStack, string, -Night.FONT_MANAGER.getWidth(string) / 2, -Night.FONT_MANAGER.getHeight() / 2, Color.WHITE);
+            String damageText = autoCrystalModule.getCalculationDamage();
+            Night.FONT_MANAGER.drawTextWithShadow(poseStack, damageText, -Night.FONT_MANAGER.getWidth(damageText) / 2, -Night.FONT_MANAGER.getHeight() / 2, Color.WHITE);
             poseStack.popPose();
         }
     }
@@ -241,10 +240,10 @@ implements IMinecraft {
         private long time;
 
         @Generated
-        public Target(BlockPos blockPos, int n, long l) {
+        public Target(BlockPos blockPos, int target, long time) {
             this.position = blockPos;
-            this.target = n;
-            this.time = l;
+            this.target = target;
+            this.time = time;
         }
 
         @Generated
@@ -268,13 +267,13 @@ implements IMinecraft {
         }
 
         @Generated
-        public void setTarget(int n) {
-            this.target = n;
+        public void setTarget(int target) {
+            this.target = target;
         }
 
         @Generated
-        public void setTime(long l) {
-            this.time = l;
+        public void setTime(long time) {
+            this.time = time;
         }
     }
 }

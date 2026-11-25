@@ -88,29 +88,29 @@ extends Module {
         if (this.onlyHole.getValue() && !HoleUtils.isPlayerInHole(this.target)) {
             return;
         }
-        int n = this.findItemSlot(this.resolveItem());
-        if (n == -1) {
+        int itemSlot = this.findItemSlot(this.resolveItem());
+        if (itemSlot == -1) {
             return;
         }
-        Set<BlockPos> set = this.footCells(this.target);
-        int n2 = AntiPhaseModule.mc.player.getInventory().getSelectedSlot();
+        Set<BlockPos> footPositions = this.footCells(this.target);
+        int oldSlot = AntiPhaseModule.mc.player.getInventory().getSelectedSlot();
         Night.ROTATION_MANAGER.beginBatchRotation();
         try {
-            if (!InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2)) {
+            if (!InventoryUtils.switchSlot(this.autoSwitch.getValue(), itemSlot, oldSlot)) {
                 return;
             }
-            for (BlockPos blockPos : set) {
+            for (BlockPos blockPos : footPositions) {
                 if (!this.isPlaceable(blockPos, this.target)) continue;
-                boolean bl = false;
+                boolean placed = false;
                 for (Direction direction : WorldUtils.getDirections(blockPos, List.of(), this.strictDirection.getValue())) {
                     if (!WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
-                    bl = true;
+                    placed = true;
                     break;
                 }
-                if (bl) continue;
+                if (placed) continue;
                 WorldUtils.airPlaceBlock(blockPos, InteractionHand.MAIN_HAND, "None", this.render.getValue());
             }
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), itemSlot, oldSlot);
         }
         finally {
             Night.ROTATION_MANAGER.endBatchRotation();
@@ -159,12 +159,12 @@ extends Module {
         if (Night.FRIEND_MANAGER.contains(player.getName().getString())) {
             return false;
         }
-        double d = AntiPhaseModule.mc.player.distanceToSqr((Entity)player);
-        if (d > Mth.square((double)this.range.getValue().doubleValue())) {
+        double distSq = AntiPhaseModule.mc.player.distanceToSqr((Entity)player);
+        if (distSq > Mth.square((double)this.range.getValue().doubleValue())) {
             return false;
         }
-        boolean bl = d > Mth.square((double)this.wallRange.getValue().doubleValue());
-        return !bl || WorldUtils.canSee((Entity)player);
+        boolean needsLineOfSight = distSq > Mth.square((double)this.wallRange.getValue().doubleValue());
+        return !needsLineOfSight || WorldUtils.canSee((Entity)player);
     }
 
     private boolean isPlaceable(BlockPos blockPos, Player player) {
@@ -181,19 +181,19 @@ extends Module {
     }
 
     private Set<BlockPos> footCells(Player player) {
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>();
+        HashSet<BlockPos> positions = new HashSet<BlockPos>();
         AABB aABB = player.getBoundingBox();
-        int n = player.blockPosition().getY();
-        int n2 = (int)Math.floor(aABB.minX);
-        while ((double)n2 < Math.ceil(aABB.maxX)) {
-            int n3 = (int)Math.floor(aABB.minZ);
-            while ((double)n3 < Math.ceil(aABB.maxZ)) {
-                hashSet.add(new BlockPos(n2, n, n3));
-                ++n3;
+        int footY = player.blockPosition().getY();
+        int blockX = (int)Math.floor(aABB.minX);
+        while ((double)blockX < Math.ceil(aABB.maxX)) {
+            int blockZ = (int)Math.floor(aABB.minZ);
+            while ((double)blockZ < Math.ceil(aABB.maxZ)) {
+                positions.add(new BlockPos(blockX, footY, blockZ));
+                ++blockZ;
             }
-            ++n2;
+            ++blockX;
         }
-        return hashSet;
+        return positions;
     }
 }
 

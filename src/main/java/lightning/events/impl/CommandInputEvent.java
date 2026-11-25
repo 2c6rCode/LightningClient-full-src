@@ -19,8 +19,8 @@ extends Event {
     }
 
     @Generated
-    public CommandInputEvent(String string) {
-        this.message = string;
+    public CommandInputEvent(String message) {
+        this.message = message;
     }
 }
 

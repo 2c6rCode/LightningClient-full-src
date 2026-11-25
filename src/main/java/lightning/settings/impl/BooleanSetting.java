@@ -19,45 +19,45 @@ extends Setting {
         return this.openAnim.get(this.value ? 1.0f : 0.0f);
     }
 
-    public BooleanSetting(String string, String string2, boolean bl) {
-        super(string, string, string2, new Setting.Visibility());
-        this.value = bl;
-        this.defaultValue = bl;
-        this.openAnim = BooleanSetting.newOpenAnim(bl);
+    public BooleanSetting(String name, String description, boolean defaultValue) {
+        super(name, name, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.openAnim = BooleanSetting.newOpenAnim(defaultValue);
     }
 
-    public BooleanSetting(String string, String string2, String string3, boolean bl) {
-        super(string, string2, string3, new Setting.Visibility());
-        this.value = bl;
-        this.defaultValue = bl;
-        this.openAnim = BooleanSetting.newOpenAnim(bl);
+    public BooleanSetting(String name, String tag, String description, boolean defaultValue) {
+        super(name, tag, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.openAnim = BooleanSetting.newOpenAnim(defaultValue);
     }
 
-    public BooleanSetting(String string, String string2, Setting.Visibility visibility, boolean bl) {
-        super(string, string, string2, visibility);
-        this.value = bl;
-        this.defaultValue = bl;
-        this.openAnim = BooleanSetting.newOpenAnim(bl);
+    public BooleanSetting(String name, String description, Setting.Visibility visibility, boolean defaultValue) {
+        super(name, name, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.openAnim = BooleanSetting.newOpenAnim(defaultValue);
     }
 
-    public BooleanSetting(String string, String string2, String string3, Setting.Visibility visibility, boolean bl) {
-        super(string, string2, string3, visibility);
-        this.value = bl;
-        this.defaultValue = bl;
-        this.openAnim = BooleanSetting.newOpenAnim(bl);
+    public BooleanSetting(String name, String tag, String description, Setting.Visibility visibility, boolean defaultValue) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.openAnim = BooleanSetting.newOpenAnim(defaultValue);
     }
 
-    private static Animation newOpenAnim(boolean bl) {
-        float f = bl ? 1.0f : 0.0f;
-        return new Animation(f, f, 180, Easing.Method.EASE_OUT_QUAD);
+    private static Animation newOpenAnim(boolean initialValue) {
+        float initialProgress = initialValue ? 1.0f : 0.0f;
+        return new Animation(initialProgress, initialProgress, 180, Easing.Method.EASE_OUT_QUAD);
     }
 
     public boolean getValue() {
         return this.value;
     }
 
-    public void setValue(boolean bl) {
-        this.value = bl;
+    public void setValue(boolean value) {
+        this.value = value;
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }
 
@@ -74,10 +74,10 @@ extends Setting {
         private final BooleanSetting value;
         private final boolean targetValue;
 
-        public Visibility(BooleanSetting booleanSetting, boolean bl) {
+        public Visibility(BooleanSetting booleanSetting, boolean targetValue) {
             super(booleanSetting);
             this.value = booleanSetting;
-            this.targetValue = bl;
+            this.targetValue = targetValue;
         }
 
         @Override
@@ -93,8 +93,8 @@ extends Setting {
         }
 
         public float getOpenAmount() {
-            float f = this.value.getOpenAmount();
-            return this.targetValue ? f : 1.0f - f;
+            float openAmount = this.value.getOpenAmount();
+            return this.targetValue ? openAmount : 1.0f - openAmount;
         }
     }
 }

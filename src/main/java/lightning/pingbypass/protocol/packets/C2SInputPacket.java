@@ -20,10 +20,10 @@ extends PbPacket {
     private final int button;
     private final int action;
 
-    public C2SInputPacket(int n, int n2, int n3) {
-        this.inputType = n;
-        this.button = n2;
-        this.action = n3;
+    public C2SInputPacket(int inputType, int button, int action) {
+        this.inputType = inputType;
+        this.button = button;
+        this.action = action;
     }
 
     public C2SInputPacket(FriendlyByteBuf friendlyByteBuf) {

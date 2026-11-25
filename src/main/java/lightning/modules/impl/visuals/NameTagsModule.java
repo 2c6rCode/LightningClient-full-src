@@ -96,156 +96,153 @@ extends Module {
         }
         PoseStack poseStack = post.getMatrices();
         for (Player player : NameTagsModule.mc.level.players().stream().sorted(Comparator.comparing(abstractClientPlayer -> Float.valueOf(-NameTagsModule.mc.player.distanceTo((Entity)abstractClientPlayer)))).toList()) {
-            Object object;
-            int n;
-            boolean bl = ((IFreecamModule)((Object)Night.MODULE_MANAGER.getModule("Freecam"))).isToggled();
-            if (player == NameTagsModule.mc.player && (!this.self.getValue() || NameTagsModule.mc.options.getCameraType().isFirstPerson() && !bl) || this.antiBot.getValue() && EntityUtils.isBot(player)) continue;
+            boolean isFreecam = ((IFreecamModule)((Object)Night.MODULE_MANAGER.getModule("Freecam"))).isToggled();
+            if (player == NameTagsModule.mc.player && (!this.self.getValue() || NameTagsModule.mc.options.getCameraType().isFirstPerson() && !isFreecam) || this.antiBot.getValue() && EntityUtils.isBot(player)) continue;
             if (player instanceof RemotePlayer) {
                 RemotePlayer remotePlayer = (RemotePlayer)player;
                 if (Night.MODULE_MANAGER.getModule(PopChamsModule.class) != null && Night.MODULE_MANAGER.getModule(PopChamsModule.class).isGhost((Entity)remotePlayer) || Night.MODULE_MANAGER.getModule(LogoutSpotModule.class) != null && Night.MODULE_MANAGER.getModule(LogoutSpotModule.class).isGhost((Entity)remotePlayer)) continue;
             }
             if (!Renderer3D.isFrustumVisible(player.getBoundingBox())) continue;
-            double d = Mth.lerp((double)post.getTickDelta(), (double)player.xo, (double)player.getX());
-            double d2 = Mth.lerp((double)post.getTickDelta(), (double)player.yo, (double)player.getY()) + (double)(player.isShiftKeyDown() ? 1.9f : 2.1f);
-            double d3 = Mth.lerp((double)post.getTickDelta(), (double)player.zo, (double)player.getZ());
-            Vec3 vec3 = new Vec3(d - NameTagsModule.mc.gameRenderer.mainCamera().position().x, d2 - NameTagsModule.mc.gameRenderer.mainCamera().position().y, d3 - NameTagsModule.mc.gameRenderer.mainCamera().position().z);
-            float f = (float)Math.sqrt(NameTagsModule.mc.gameRenderer.mainCamera().position().distanceToSqr(d, d2, d3));
-            float f2 = 0.0018f + (float)this.scale.getValue().intValue() / 10000.0f * f;
-            if ((double)f <= 8.0) {
-                f2 = 0.0245f;
+            double px = Mth.lerp((double)post.getTickDelta(), (double)player.xo, (double)player.getX());
+            double py = Mth.lerp((double)post.getTickDelta(), (double)player.yo, (double)player.getY()) + (double)(player.isShiftKeyDown() ? 1.9f : 2.1f);
+            double pz = Mth.lerp((double)post.getTickDelta(), (double)player.zo, (double)player.getZ());
+            Vec3 relPos = new Vec3(px - NameTagsModule.mc.gameRenderer.mainCamera().position().x, py - NameTagsModule.mc.gameRenderer.mainCamera().position().y, pz - NameTagsModule.mc.gameRenderer.mainCamera().position().z);
+            float distance = (float)Math.sqrt(NameTagsModule.mc.gameRenderer.mainCamera().position().distanceToSqr(px, py, pz));
+            float tagScale = 0.0018f + (float)this.scale.getValue().intValue() / 10000.0f * distance;
+            if ((double)distance <= 8.0) {
+                tagScale = 0.0245f;
             }
             poseStack.pushPose();
-            poseStack.translate(vec3.x, vec3.y, vec3.z);
+            poseStack.translate(relPos.x, relPos.y, relPos.z);
             poseStack.mulPose((Quaternionfc)NameTagsModule.mc.gameRenderer.mainCamera().rotation());
-            poseStack.scale(f2, -f2, f2);
-            boolean bl2 = this.nightCheck.getValue() && Night.NIGHT_USER_MANAGER != null && Night.NIGHT_USER_MANAGER.isNightUser(player);
-            Object object2 = player.getName().getString();
+            poseStack.scale(tagScale, -tagScale, tagScale);
+            boolean isLightningUser = this.nightCheck.getValue() && Night.NIGHT_USER_MANAGER != null && Night.NIGHT_USER_MANAGER.isNightUser(player);
+            String label = player.getName().getString();
             if (this.gameMode.getValue()) {
-                object2 = (String)object2 + " [" + EntityUtils.getGameModeName(EntityUtils.getGameMode(player)) + "]";
+                label = label + " [" + EntityUtils.getGameModeName(EntityUtils.getGameMode(player)) + "]";
             }
             if (this.ping.getValue()) {
-                object2 = (String)object2 + " " + EntityUtils.getLatency(player) + "ms";
+                label = label + " " + EntityUtils.getLatency(player) + "ms";
             }
             if (this.entityId.getValue()) {
-                object2 = (String)object2 + " " + player.getId();
+                label = label + " " + player.getId();
             }
             if (this.health.getValue()) {
-                n = Math.round(player.getHealth() + player.getAbsorptionAmount());
-                object2 = (String)object2 + " " + String.valueOf(ColorUtils.getHealthColor(player.getHealth() + player.getAbsorptionAmount())) + n + String.valueOf(ChatFormatting.RESET);
+                int totalHealth = Math.round(player.getHealth() + player.getAbsorptionAmount());
+                label = label + " " + String.valueOf(ColorUtils.getHealthColor(player.getHealth() + player.getAbsorptionAmount())) + totalHealth + String.valueOf(ChatFormatting.RESET);
             }
-            n = Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(player.getUUID(), 0);
-            if (this.totemPops.getValue() && n > 0) {
-                object2 = (String)object2 + " " + String.valueOf(ColorUtils.getTotemColor(n)) + "-" + n;
+            int poppedTotems = Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(player.getUUID(), 0);
+            if (this.totemPops.getValue() && poppedTotems > 0) {
+                label = label + " " + String.valueOf(ColorUtils.getTotemColor(poppedTotems)) + "-" + poppedTotems;
             }
-            int n2 = Night.FONT_MANAGER.getWidth((String)object2);
-            int n3 = Night.FONT_MANAGER.getHeight();
-            int n4 = bl2 ? n3 - 1 : 0;
-            int n5 = bl2 ? 3 : 0;
-            int n6 = n2 + n4 + n5;
+            int textWidth = Night.FONT_MANAGER.getWidth(label);
+            int textHeight = Night.FONT_MANAGER.getHeight();
+            int logoWidth = isLightningUser ? textHeight - 1 : 0;
+            int logoGap = isLightningUser ? 3 : 0;
+            int totalWidth = textWidth + logoWidth + logoGap;
             if (this.border.getValue().equalsIgnoreCase("Fill") || this.border.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderQuad(poseStack, (float)(-n6) / 2.0f - 2.0f, -n3 - 1, (float)n6 / 2.0f + 2.0f, 1.0f, this.fillColor.getColor());
+                Renderer3D.renderQuad(poseStack, (float)(-totalWidth) / 2.0f - 2.0f, -textHeight - 1, (float)totalWidth / 2.0f + 2.0f, 1.0f, this.fillColor.getColor());
             }
             if (this.border.getValue().equalsIgnoreCase("Outline") || this.border.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderOutline(poseStack, (float)(-n6) / 2.0f - 2.0f, -n3 - 1, (float)n6 / 2.0f + 2.0f, 1.0f, this.outlineColor.getColor());
+                Renderer3D.renderOutline(poseStack, (float)(-totalWidth) / 2.0f - 2.0f, -textHeight - 1, (float)totalWidth / 2.0f + 2.0f, 1.0f, this.outlineColor.getColor());
             }
-            float f3 = (float)(-n6) / 2.0f;
-            if (bl2) {
-                Renderer3D.renderTexture(poseStack, LOGO_ID, f3, (float)(-n3) + 0.5f, f3 + (float)n4, 0.5f, -1);
-                f3 += (float)(n4 + n5);
+            float textX = (float)(-totalWidth) / 2.0f;
+            if (isLightningUser) {
+                Renderer3D.renderTexture(poseStack, LOGO_ID, textX, (float)(-textHeight) + 0.5f, textX + (float)logoWidth, 0.5f, -1);
+                textX += (float)(logoWidth + logoGap);
             }
             Color color = Night.MODULE_MANAGER.getModule(FakePlayerModule.class).isToggled() && Night.MODULE_MANAGER.getModule(FakePlayerModule.class).getPlayer() == player ? new Color(225, 0, 70) : (player.isShiftKeyDown() ? new Color(255, 170, 0) : (Night.FRIEND_MANAGER.contains(player.getName().getString()) ? Night.FRIEND_MANAGER.getDefaultFriendColor() : Color.WHITE));
-            this.drawText(poseStack, (String)object2, (int)f3, -n3, color);
-            float f4 = -n3 - 2;
+            this.drawText(poseStack, label, (int)textX, -textHeight, color);
+            float itemY = -textHeight - 2;
             if (this.items.getValue()) {
                 ItemStack itemStack;
-                int n7;
+                int slotIdx;
                 ItemStack[] playerItems = new ItemStack[6];
-                List<String>[] listArray = (List<String>[]) new List[6];
-                int n8 = 0;
-                boolean bl3 = false;
-                for (n7 = 0; n7 < 6; ++n7) {
-                    ItemStack itemStack2 = this.getItem(player, n7);
-                    playerItems[n7] = itemStack2;
-                    if (itemStack2.isEmpty()) continue;
-                    bl3 = true;
+                List<String>[] enchantLists = (List<String>[]) new List[6];
+                int maxEnchants = 0;
+                boolean hasAnyItem = false;
+                for (slotIdx = 0; slotIdx < 6; ++slotIdx) {
+                    ItemStack stack = this.getItem(player, slotIdx);
+                    playerItems[slotIdx] = stack;
+                    if (stack.isEmpty()) continue;
+                    hasAnyItem = true;
                     if (!this.enchantments.getValue()) continue;
-                    List<String> enchants = this.getCachedEnchantments(itemStack2);
-                    listArray[n7] = enchants;
-                    if (enchants.size() <= n8) continue;
-                    n8 = enchants.size();
+                    List<String> enchants = this.getCachedEnchantments(stack);
+                    enchantLists[slotIdx] = enchants;
+                    if (enchants.size() <= maxEnchants) continue;
+                    maxEnchants = enchants.size();
                 }
-                if (bl3) {
-                    int n9;
-                    float f5;
-                    float f6 = (float)n8 * 4.2f;
-                    float f7 = Math.max(16.0f, f6);
-                    f4 = f5 = (float)(-n3) - 4.0f - f7;
-                    for (n9 = 0; n9 < 6; ++n9) {
-                        itemStack = playerItems[n9];
+                if (hasAnyItem) {
+                    int slot;
+                    float baseItemY;
+                    float enchHeight = (float)maxEnchants * 4.2f;
+                    float itemBlockHeight = Math.max(16.0f, enchHeight);
+                    itemY = baseItemY = (float)(-textHeight) - 4.0f - itemBlockHeight;
+                    for (slot = 0; slot < 6; ++slot) {
+                        itemStack = playerItems[slot];
                         if (itemStack == null || itemStack.isEmpty()) continue;
-                        n7 = -54 + n9 * 18 + 1;
+                        int slotX = -54 + slot * 18 + 1;
                         poseStack.pushPose();
-                        poseStack.translate((float)(n7 + 8), f5 + 8.0f, -0.5f);
+                        poseStack.translate((float)(slotX + 8), baseItemY + 8.0f, -0.5f);
                         poseStack.scale(16.0f, -16.0f, 1.0E-4f);
                         Renderer3D.renderItem(poseStack, itemStack, (ItemOwner)player);
                         poseStack.popPose();
                     }
-                    for (n9 = 0; n9 < 6; ++n9) {
-                        float f8;
-                        itemStack = playerItems[n9];
+                    for (slot = 0; slot < 6; ++slot) {
+                        itemStack = playerItems[slot];
                         if (itemStack == null || itemStack.isEmpty()) continue;
-                        n7 = -54 + n9 * 18 + 1;
+                        int slotX = -54 + slot * 18 + 1;
                         if (this.durability.getValue() && itemStack.isDamageableItem()) {
-                            float f9 = (float)(itemStack.getMaxDamage() - itemStack.getDamageValue()) / (float)itemStack.getMaxDamage();
-                            f8 = 1.0f - f9;
-                            String string = Math.round((float)(itemStack.getMaxDamage() - itemStack.getDamageValue()) * 100.0f / (float)itemStack.getMaxDamage()) + "%";
-                            float f10 = (float)Night.FONT_MANAGER.getWidth(string) * 0.5f;
+                            float durabilityRatio = (float)(itemStack.getMaxDamage() - itemStack.getDamageValue()) / (float)itemStack.getMaxDamage();
+                            float red = 1.0f - durabilityRatio;
+                            String durabilityText = Math.round((float)(itemStack.getMaxDamage() - itemStack.getDamageValue()) * 100.0f / (float)itemStack.getMaxDamage()) + "%";
+                            float durabilityWidth = (float)Night.FONT_MANAGER.getWidth(durabilityText) * 0.5f;
                             poseStack.pushPose();
-                            poseStack.translate((float)(n7 + 8) - f10 / 2.0f, f5 - 5.5f, 1.0f);
+                            poseStack.translate((float)(slotX + 8) - durabilityWidth / 2.0f, baseItemY - 5.5f, 1.0f);
                             poseStack.scale(0.5f, 0.5f, 1.0f);
-                            this.drawText(poseStack, string, 0.0f, 0.0f, new Color(f8, f9, 0.0f));
+                            this.drawText(poseStack, durabilityText, 0.0f, 0.0f, new Color(red, durabilityRatio, 0.0f));
                             poseStack.popPose();
                         }
                         if (itemStack.getItem().equals(Items.ENCHANTED_GOLDEN_APPLE)) {
                             poseStack.pushPose();
-                            poseStack.translate((float)(n7 + 1), f5 + 1.0f, 1.0f);
+                            poseStack.translate((float)(slotX + 1), baseItemY + 1.0f, 1.0f);
                             poseStack.scale(0.5f, 0.5f, 1.0f);
                             this.drawText(poseStack, "God", 0.0f, 0.0f, new Color(255, 125, 255));
                             poseStack.popPose();
                         }
                         if (itemStack.getCount() != 1) {
-                            String string = String.valueOf(itemStack.getCount());
-                            f8 = Night.FONT_MANAGER.getWidth(string);
+                            String countText = String.valueOf(itemStack.getCount());
+                            float countWidth = Night.FONT_MANAGER.getWidth(countText);
                             poseStack.pushPose();
-                            poseStack.translate((float)(n7 + 16) - f8, f5 + 7.0f, 1.0f);
+                            poseStack.translate((float)(slotX + 16) - countWidth, baseItemY + 7.0f, 1.0f);
                             poseStack.scale(1.0f, 1.0f, 1.0f);
-                            this.drawText(poseStack, string, 0.0f, 0.0f, Color.WHITE);
+                            this.drawText(poseStack, countText, 0.0f, 0.0f, Color.WHITE);
                             poseStack.popPose();
                         }
-                        if (!this.enchantments.getValue() || listArray[n9] == null || listArray[n9].isEmpty()) continue;
-                        List list = listArray[n9];
-                        f8 = 4.2f;
-                        for (int i = 0; i < list.size(); ++i) {
-                            String string = (String)list.get(i);
-                            float f11 = f5 + 8.0f + (float)i * f8;
+                        if (!this.enchantments.getValue() || enchantLists[slot] == null || enchantLists[slot].isEmpty()) continue;
+                        List<String> enchants = enchantLists[slot];
+                        float lineStep = 4.2f;
+                        for (int i = 0; i < enchants.size(); ++i) {
+                            String enchantText = enchants.get(i);
+                            float enchantY = baseItemY + 8.0f + (float)i * lineStep;
                             poseStack.pushPose();
-                            poseStack.translate((float)(n7 + 1), f11, 1.0f);
+                            poseStack.translate((float)(slotX + 1), enchantY, 1.0f);
                             poseStack.scale(0.5f, 0.5f, 1.0f);
-                            this.drawText(poseStack, string, 0.0f, 0.0f, Color.WHITE);
+                            this.drawText(poseStack, enchantText, 0.0f, 0.0f, Color.WHITE);
                             poseStack.popPose();
                         }
                     }
                     if (this.durability.getValue()) {
-                        f4 = f5 - 6.0f;
+                        itemY = baseItemY - 6.0f;
                     }
                 }
             }
             if (this.itemName.getValue() && !player.getMainHandItem().isEmpty()) {
                 String itemNameStr = player.getMainHandItem().getHoverName().getString();
-                float f12 = (float)Night.FONT_MANAGER.getWidth(itemNameStr) * 0.5f;
-                float f13 = f4 - (float)n3 * 0.5f - 2.0f;
+                float itemNameWidth = (float)Night.FONT_MANAGER.getWidth(itemNameStr) * 0.5f;
+                float itemNameY = itemY - (float)textHeight * 0.5f - 2.0f;
                 poseStack.pushPose();
-                poseStack.translate(-f12 / 2.0f, f13, 1.0f);
+                poseStack.translate(-itemNameWidth / 2.0f, itemNameY, 1.0f);
                 poseStack.scale(0.5f, 0.5f, 1.0f);
                 this.drawText(poseStack, itemNameStr, 0.0f, 0.0f, Color.WHITE);
                 poseStack.popPose();
@@ -257,41 +254,40 @@ extends Module {
         }
     }
 
-    private void drawText(PoseStack poseStack, String string, float f, float f2, Color color) {
+    private void drawText(PoseStack poseStack, String text, float x, float y, Color color) {
         if (this.glow.getValue()) {
-            Night.FONT_MANAGER.drawText(poseStack, string, f, f2, color, true);
+            Night.FONT_MANAGER.drawText(poseStack, text, x, y, color, true);
         } else {
-            Night.FONT_MANAGER.drawTextWithShadow(poseStack, string, f, f2, color, false);
+            Night.FONT_MANAGER.drawTextWithShadow(poseStack, text, x, y, color, false);
         }
     }
 
     private List<String> getCachedEnchantments(ItemStack itemStack) {
         if (itemStack != null && !itemStack.isEmpty()) {
-            ItemEnchantments itemEnchantments2 = (ItemEnchantments)itemStack.get(DataComponents.ENCHANTMENTS);
-            return itemEnchantments2 != null && !itemEnchantments2.isEmpty() ? ENCHANT_CACHE.computeIfAbsent(itemEnchantments2, itemEnchantments -> {
-                ArrayList<String> arrayList = new ArrayList<String>(itemEnchantments.size());
-                for (Object2IntMap.Entry entry : itemEnchantments.entrySet()) {
-                    String string = NAME_CACHE.computeIfAbsent((Holder<Enchantment>)((Holder)entry.getKey()), NameTagsModule::parseShortName);
-                    int n = entry.getIntValue();
-                    arrayList.add(n > 1 ? string + " " + n : string);
+            ItemEnchantments itemEnchantments = (ItemEnchantments)itemStack.get(DataComponents.ENCHANTMENTS);
+            return itemEnchantments != null && !itemEnchantments.isEmpty() ? ENCHANT_CACHE.computeIfAbsent(itemEnchantments, enchMap -> {
+                ArrayList<String> formatted = new ArrayList<String>(enchMap.size());
+                for (Object2IntMap.Entry entry : enchMap.entrySet()) {
+                    String shortName = NAME_CACHE.computeIfAbsent((Holder<Enchantment>)((Holder)entry.getKey()), NameTagsModule::parseShortName);
+                    int level = entry.getIntValue();
+                    formatted.add(level > 1 ? shortName + " " + level : shortName);
                 }
-                return arrayList;
+                return formatted;
             }) : Collections.emptyList();
         }
         return Collections.emptyList();
     }
 
     private static String parseShortName(Holder<Enchantment> holder) {
-        String string = holder.getRegisteredName();
-        int n = string.indexOf(58);
-        String string2 = n != -1 ? string.substring(n + 1) : string;
-        String string3 = string2;
-        String string4 = string2.startsWith("protection") ? "Pro" : (string2.startsWith("blast_protection") ? "Bla" : (string2.startsWith("fire_protection") ? "Fir" : (string2.startsWith("projectile_protection") ? "Proj" : (string2.startsWith("unbreaking") ? "Unb" : (string2.startsWith("mending") ? "Men" : (string2.startsWith("thorns") ? "Tho" : (string2.startsWith("respiration") ? "Res" : (string2.startsWith("aqua_affinity") ? "Aqu" : (string2.startsWith("depth_strider") ? "Dep" : (string2.startsWith("feather_falling") ? "Fea" : (string2.startsWith("soul_speed") ? "Soul" : (string2.startsWith("swift_sneak") ? "Sne" : (string2.startsWith("sharpness") ? "Sha" : (string2.startsWith("smite") ? "Smi" : (string2.startsWith("bane_of_arthropods") ? "Boa" : (string2.startsWith("knockback") ? "Kb" : (string2.startsWith("fire_aspect") ? "FA" : (string2.startsWith("looting") ? "Loot" : (string2.startsWith("sweeping_edge") ? "Swp" : (string2.startsWith("efficiency") ? "Eff" : (string2.startsWith("silk_touch") ? "Silk" : (string2.startsWith("fortune") ? "Fort" : (string2.startsWith("power") ? "Pow" : (string2.startsWith("punch") ? "Pun" : (string2.startsWith("flame") ? "Fla" : (string2.startsWith("infinity") ? "Inf" : (string2.startsWith("loyalty") ? "Loy" : (string2.startsWith("impaling") ? "Imp" : (string2.startsWith("riptide") ? "Rip" : (string2.startsWith("channeling") ? "Chan" : (string2.startsWith("multishot") ? "Multi" : (string2.startsWith("quick_charge") ? "Quick" : (string2.startsWith("piercing") ? "Pier" : (string2.startsWith("density") ? "Den" : (string2.startsWith("breach") ? "Bre" : (string2.startsWith("wind_burst") ? "Wind" : (string2.startsWith("vanishing_curse") ? "Van" : (string2.startsWith("binding_curse") ? "Bind" : (string2.length() > 3 ? string2.substring(0, 3) : string2)))))))))))))))))))))))))))))))))))))));
-        return string4.substring(0, 1).toUpperCase() + string4.substring(1);
+        String regName = holder.getRegisteredName();
+        int colonIdx = regName.indexOf(58);
+        String name = colonIdx != -1 ? regName.substring(colonIdx + 1) : regName;
+        String abbrev = name.startsWith("protection") ? "Pro" : (name.startsWith("blast_protection") ? "Bla" : (name.startsWith("fire_protection") ? "Fir" : (name.startsWith("projectile_protection") ? "Proj" : (name.startsWith("unbreaking") ? "Unb" : (name.startsWith("mending") ? "Men" : (name.startsWith("thorns") ? "Tho" : (name.startsWith("respiration") ? "Res" : (name.startsWith("aqua_affinity") ? "Aqu" : (name.startsWith("depth_strider") ? "Dep" : (name.startsWith("feather_falling") ? "Fea" : (name.startsWith("soul_speed") ? "Soul" : (name.startsWith("swift_sneak") ? "Sne" : (name.startsWith("sharpness") ? "Sha" : (name.startsWith("smite") ? "Smi" : (name.startsWith("bane_of_arthropods") ? "Boa" : (name.startsWith("knockback") ? "Kb" : (name.startsWith("fire_aspect") ? "FA" : (name.startsWith("looting") ? "Loot" : (name.startsWith("sweeping_edge") ? "Swp" : (name.startsWith("efficiency") ? "Eff" : (name.startsWith("silk_touch") ? "Silk" : (name.startsWith("fortune") ? "Fort" : (name.startsWith("power") ? "Pow" : (name.startsWith("punch") ? "Pun" : (name.startsWith("flame") ? "Fla" : (name.startsWith("infinity") ? "Inf" : (name.startsWith("loyalty") ? "Loy" : (name.startsWith("impaling") ? "Imp" : (name.startsWith("riptide") ? "Rip" : (name.startsWith("channeling") ? "Chan" : (name.startsWith("multishot") ? "Multi" : (name.startsWith("quick_charge") ? "Quick" : (name.startsWith("piercing") ? "Pier" : (name.startsWith("density") ? "Den" : (name.startsWith("breach") ? "Bre" : (name.startsWith("wind_burst") ? "Wind" : (name.startsWith("vanishing_curse") ? "Van" : (name.startsWith("binding_curse") ? "Bind" : (name.length() > 3 ? name.substring(0, 3) : name)))))))))))))))))))))))))))))))))))))));
+        return abbrev.substring(0, 1).toUpperCase() + abbrev.substring(1);
     }
 
-    private ItemStack getItem(Player player, int n) {
-        return switch (n) {
+    private ItemStack getItem(Player player, int slotIndex) {
+        return switch (slotIndex) {
             case 0 -> player.getMainHandItem();
             case 1 -> player.getItemBySlot(EquipmentSlot.HEAD);
             case 2 -> player.getItemBySlot(EquipmentSlot.CHEST);

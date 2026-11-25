@@ -97,19 +97,19 @@ extends Module {
 
     @SubscribeEvent
     public void onPlaced(PacketSendEvent.Post post) {
-        boolean bl;
+        boolean holdingCrystal;
         Packet<?> packet;
         if (!this.isToggled() || CrystalPlacementFXModule.mc.player == null || CrystalPlacementFXModule.mc.level == null || !((packet = post.getPacket()) instanceof ServerboundUseItemOnPacket)) {
             return;
         }
         ServerboundUseItemOnPacket serverboundUseItemOnPacket = (ServerboundUseItemOnPacket)packet;
-        boolean bl2 = bl = serverboundUseItemOnPacket.getHand() == InteractionHand.OFF_HAND ? CrystalPlacementFXModule.mc.player.getOffhandItem().is(Items.END_CRYSTAL) : CrystalPlacementFXModule.mc.player.getInventory().getItem(Night.POSITION_MANAGER.getServerSlot()).is(Items.END_CRYSTAL);
-        if (!bl) {
+        holdingCrystal = serverboundUseItemOnPacket.getHand() == InteractionHand.OFF_HAND ? CrystalPlacementFXModule.mc.player.getOffhandItem().is(Items.END_CRYSTAL) : CrystalPlacementFXModule.mc.player.getInventory().getItem(Night.POSITION_MANAGER.getServerSlot()).is(Items.END_CRYSTAL);
+        if (!holdingCrystal) {
             return;
         }
-        Vec3 vec3 = Vec3.atBottomCenterOf((Vec3i)serverboundUseItemOnPacket.getHitResult().getBlockPos().above());
+        Vec3 placePos = Vec3.atBottomCenterOf((Vec3i)serverboundUseItemOnPacket.getHitResult().getBlockPos().above());
         ClientLevel clientLevel = CrystalPlacementFXModule.mc.level;
-        long l = System.nanoTime();
+        long now = System.nanoTime();
         mc.execute(() -> {
             if (!this.isToggled() || CrystalPlacementFXModule.mc.level != clientLevel) {
                 return;
@@ -118,11 +118,11 @@ extends Module {
                 this.clear();
                 this.effectLevel = clientLevel;
             }
-            this.placements.removeIf(pending -> l - pending.start > 2000000000L);
+            this.placements.removeIf(pending -> now - pending.start > 2000000000L);
             while (this.placements.size() >= 128) {
                 this.placements.removeFirst();
             }
-            this.placements.addLast(new Pending(vec3, l));
+            this.placements.addLast(new Pending(placePos, now));
         });
     }
 
@@ -139,10 +139,10 @@ extends Module {
             return;
         }
         Vec3 pos = endCrystal.position();
-        UUID uUID = endCrystal.getUUID();
+        UUID crystalId = endCrystal.getUUID();
         ClientLevel clientLevel = CrystalPlacementFXModule.mc.level;
-        long l = System.nanoTime();
-        mc.execute(() -> this.handleSpawnEffect(clientLevel, l, pos, uUID));
+        long now = System.nanoTime();
+        mc.execute(() -> this.handleSpawnEffect(clientLevel, now, pos, crystalId));
     }
 
     @SubscribeEvent
@@ -154,110 +154,110 @@ extends Module {
             this.clear();
             return;
         }
-        long l = System.nanoTime();
-        int n = this.duration.getValue().intValue();
-        this.bursts.values().removeIf(burst -> CrystalPlacementMath.progress(l - burst.start, n) >= 1.0);
+        long now = System.nanoTime();
+        int durationMs = this.duration.getValue().intValue();
+        this.bursts.values().removeIf(burst -> CrystalPlacementMath.progress(now - burst.start, durationMs) >= 1.0);
         while (this.bursts.size() > this.maxEffects.getValue().intValue()) {
             this.bursts.remove(this.bursts.keySet().iterator().next());
         }
         if (!Renderer3D.RENDERING) {
             return;
         }
-        double d = this.range.getValue().doubleValue();
-        for (Burst burst2 : this.bursts.values()) {
-            String string;
-            double d2;
-            double d3;
-            double d4;
-            if (CrystalPlacementFXModule.mc.player.position().distanceToSqr(burst2.center) > d * d || !Renderer3D.isFrustumVisible(new AABB(burst2.center.x - (d4 = this.radius.getValue().doubleValue() + this.expansion.getValue().doubleValue() + 0.8), burst2.center.y, burst2.center.z - d4, burst2.center.x + d4, burst2.center.y + this.riseHeight.getValue().doubleValue() + 1.0, burst2.center.z + d4)) || (d3 = CrystalPlacementMath.opacity(d2 = CrystalPlacementMath.progress(l - burst2.start, n))) < 0.001) continue;
-            double d5 = CrystalPlacementMath.radius(this.radius.getValue().doubleValue(), this.expansion.getValue().doubleValue(), d2);
-            double d6 = (double)(l - burst2.start) / 1.0E9 * Math.toRadians(this.rotationSpeed.getValue().doubleValue());
+        double maxRange = this.range.getValue().doubleValue();
+        for (Burst burst : this.bursts.values()) {
+            String activeStyle;
+            double progress;
+            double opacity;
+            double cullRadius;
+            if (CrystalPlacementFXModule.mc.player.position().distanceToSqr(burst.center) > maxRange * maxRange || !Renderer3D.isFrustumVisible(new AABB(burst.center.x - (cullRadius = this.radius.getValue().doubleValue() + this.expansion.getValue().doubleValue() + 0.8), burst.center.y, burst.center.z - cullRadius, burst.center.x + cullRadius, burst.center.y + this.riseHeight.getValue().doubleValue() + 1.0, burst.center.z + cullRadius)) || (opacity = CrystalPlacementMath.opacity(progress = CrystalPlacementMath.progress(now - burst.start, durationMs))) < 0.001) continue;
+            double ringRadius = CrystalPlacementMath.radius(this.radius.getValue().doubleValue(), this.expansion.getValue().doubleValue(), progress);
+            double rotationRad = (double)(now - burst.start) / 1.0E9 * Math.toRadians(this.rotationSpeed.getValue().doubleValue());
             Matrix4f matrix4f = renderWorldEvent.getMatrices().last().pose();
-            Vec3 vec3 = burst2.center.add(0.0, this.heightOffset.getValue().doubleValue(), 0.0).subtract(CrystalPlacementFXModule.mc.gameRenderer.mainCamera().position());
+            Vec3 relPos = burst.center.add(0.0, this.heightOffset.getValue().doubleValue(), 0.0).subtract(CrystalPlacementFXModule.mc.gameRenderer.mainCamera().position());
             if (this.risingRing.getValue()) {
-                double d7 = CrystalPlacementMath.ease(Math.min(1.0, d2 * this.riseSpeed.getValue().doubleValue()));
-                this.ring(matrix4f, vec3.add(0.0, this.riseHeight.getValue().doubleValue() * d7, 0.0), d5 * 0.9, d6, d3, "Pulse");
+                double riseProgress = CrystalPlacementMath.ease(Math.min(1.0, progress * this.riseSpeed.getValue().doubleValue()));
+                this.ring(matrix4f, relPos.add(0.0, this.riseHeight.getValue().doubleValue() * riseProgress, 0.0), ringRadius * 0.9, rotationRad, opacity, "Pulse");
             }
-            if ((string = this.style.getValue()).equals("GroundGlow")) {
-                this.disk(matrix4f, vec3, d5, d3);
+            if ((activeStyle = this.style.getValue()).equals("GroundGlow")) {
+                this.disk(matrix4f, relPos, ringRadius, opacity);
                 continue;
             }
-            this.ring(matrix4f, vec3, d5, d6, d3, string);
-            if (string.equals("Double")) {
-                double d8 = Math.max(0.0, (d2 - 0.12) / 0.88);
-                if (!(d2 > 0.12)) continue;
-                this.ring(matrix4f, vec3, d5 * 0.72, -d6, CrystalPlacementMath.opacity(d8), "Pulse");
+            this.ring(matrix4f, relPos, ringRadius, rotationRad, opacity, activeStyle);
+            if (activeStyle.equals("Double")) {
+                double innerProgress = Math.max(0.0, (progress - 0.12) / 0.88);
+                if (!(progress > 0.12)) continue;
+                this.ring(matrix4f, relPos, ringRadius * 0.72, -rotationRad, CrystalPlacementMath.opacity(innerProgress), "Pulse");
                 continue;
             }
-            if (string.equals("Rune")) {
-                this.ring(matrix4f, vec3, d5 * 0.72, -d6, d3 * 0.7, "Segmented");
+            if (activeStyle.equals("Rune")) {
+                this.ring(matrix4f, relPos, ringRadius * 0.72, -rotationRad, opacity * 0.7, "Segmented");
                 for (int i = 0; i < 12; ++i) {
-                    double d9 = d6 + (double)i * Math.PI / 6.0;
-                    this.stroke(matrix4f, vec3, d5 * 1.08, d5 * 1.2, d9, d9 + 0.035, d3);
+                    double tickAngle = rotationRad + (double)i * Math.PI / 6.0;
+                    this.stroke(matrix4f, relPos, ringRadius * 1.08, ringRadius * 1.2, tickAngle, tickAngle + 0.035, opacity);
                 }
                 continue;
             }
-            if (!string.equals("Orbit")) continue;
+            if (!activeStyle.equals("Orbit")) continue;
             for (int i = 0; i < 3; ++i) {
-                this.arc(matrix4f, vec3, d5 * 1.2, d6 * 1.8 + (double)i * Math.PI * 2.0 / 3.0, 0.42, d3);
+                this.arc(matrix4f, relPos, ringRadius * 1.2, rotationRad * 1.8 + (double)i * Math.PI * 2.0 / 3.0, 0.42, opacity);
             }
         }
     }
 
-    private Color tint(double d, double d2) {
-        Color color = this.color.getColor();
-        Color color2 = this.dualColor.getValue() ? this.secondaryColor.getColor() : color;
-        double d3 = (Math.sin(d) + 1.0) / 2.0;
-        int n = (int)Math.max(0.0, Math.min(255.0, ((double)color.getAlpha() * (1.0 - d3) + (double)color2.getAlpha() * d3) * d2));
-        return new Color((int)((double)color.getRed() * (1.0 - d3) + (double)color2.getRed() * d3), (int)((double)color.getGreen() * (1.0 - d3) + (double)color2.getGreen() * d3), (int)((double)color.getBlue() * (1.0 - d3) + (double)color2.getBlue() * d3), n);
+    private Color tint(double angle, double opacity) {
+        Color primaryColor = this.color.getColor();
+        Color endColor = this.dualColor.getValue() ? this.secondaryColor.getColor() : primaryColor;
+        double blend = (Math.sin(angle) + 1.0) / 2.0;
+        int alpha = (int)Math.max(0.0, Math.min(255.0, ((double)primaryColor.getAlpha() * (1.0 - blend) + (double)endColor.getAlpha() * blend) * opacity));
+        return new Color((int)((double)primaryColor.getRed() * (1.0 - blend) + (double)endColor.getRed() * blend), (int)((double)primaryColor.getGreen() * (1.0 - blend) + (double)endColor.getGreen() * blend), (int)((double)primaryColor.getBlue() * (1.0 - blend) + (double)endColor.getBlue() * blend), alpha);
     }
 
-    private void ring(Matrix4f matrix4f, Vec3 vec3, double d, double d2, double d3, String string) {
-        int n = string.equals("Hexagon") ? 6 : this.quality.getValue().intValue();
-        double d4 = this.thickness.getValue().doubleValue();
-        for (int i = 0; i < n; ++i) {
-            if (string.equals("Segmented") && i % 6 >= 4) continue;
-            double d5 = d2 + (double)i * Math.PI * 2.0 / (double)n;
-            double d6 = d2 + (double)(i + 1) * Math.PI * 2.0 / (double)n;
-            double d7 = d * (string.equals("Petal") ? CrystalPlacementMath.petal(d5 - d2) : 1.0);
-            double d8 = d * (string.equals("Petal") ? CrystalPlacementMath.petal(d6 - d2) : 1.0);
-            this.band(matrix4f, vec3, d7 - d4 / 2.0, d8 - d4 / 2.0, d7 + d4 / 2.0, d8 + d4 / 2.0, d5, d6, d3, d3, false);
+    private void ring(Matrix4f matrix4f, Vec3 center, double radius, double rotationRad, double opacity, String styleName) {
+        int segments = styleName.equals("Hexagon") ? 6 : this.quality.getValue().intValue();
+        double bandThickness = this.thickness.getValue().doubleValue();
+        for (int i = 0; i < segments; ++i) {
+            if (styleName.equals("Segmented") && i % 6 >= 4) continue;
+            double angleStart = rotationRad + (double)i * Math.PI * 2.0 / (double)segments;
+            double angleEnd = rotationRad + (double)(i + 1) * Math.PI * 2.0 / (double)segments;
+            double radiusStart = radius * (styleName.equals("Petal") ? CrystalPlacementMath.petal(angleStart - rotationRad) : 1.0);
+            double radiusEnd = radius * (styleName.equals("Petal") ? CrystalPlacementMath.petal(angleEnd - rotationRad) : 1.0);
+            this.band(matrix4f, center, radiusStart - bandThickness / 2.0, radiusEnd - bandThickness / 2.0, radiusStart + bandThickness / 2.0, radiusEnd + bandThickness / 2.0, angleStart, angleEnd, opacity, opacity, false);
             if (!this.glow.getValue()) continue;
-            double d9 = d3 * this.glowStrength.getValue().doubleValue() * 0.45;
-            this.band(matrix4f, vec3, d7 - d4 * 3.0, d8 - d4 * 3.0, d7 - d4 / 2.0, d8 - d4 / 2.0, d5, d6, 0.0, d9, true);
-            this.band(matrix4f, vec3, d7 + d4 / 2.0, d8 + d4 / 2.0, d7 + d4 * 3.0, d8 + d4 * 3.0, d5, d6, d9, 0.0, true);
+            double glowOpacity = opacity * this.glowStrength.getValue().doubleValue() * 0.45;
+            this.band(matrix4f, center, radiusStart - bandThickness * 3.0, radiusEnd - bandThickness * 3.0, radiusStart - bandThickness / 2.0, radiusEnd - bandThickness / 2.0, angleStart, angleEnd, 0.0, glowOpacity, true);
+            this.band(matrix4f, center, radiusStart + bandThickness / 2.0, radiusEnd + bandThickness / 2.0, radiusStart + bandThickness * 3.0, radiusEnd + bandThickness * 3.0, angleStart, angleEnd, glowOpacity, 0.0, true);
         }
     }
 
-    private void arc(Matrix4f matrix4f, Vec3 vec3, double d, double d2, double d3, double d4) {
+    private void arc(Matrix4f matrix4f, Vec3 center, double radius, double startAngle, double arcSpan, double opacity) {
         for (int i = 0; i < 8; ++i) {
-            this.stroke(matrix4f, vec3, d - 0.025, d + 0.025, d2 + d3 * (double)i / 8.0, d2 + d3 * (double)(i + 1) / 8.0, d4 * (0.35 + 0.65 * (double)i / 8.0));
+            this.stroke(matrix4f, center, radius - 0.025, radius + 0.025, startAngle + arcSpan * (double)i / 8.0, startAngle + arcSpan * (double)(i + 1) / 8.0, opacity * (0.35 + 0.65 * (double)i / 8.0));
         }
     }
 
-    private void stroke(Matrix4f matrix4f, Vec3 vec3, double d, double d2, double d3, double d4, double d5) {
-        this.band(matrix4f, vec3, d, d, d2, d2, d3, d4, d5, d5, false);
+    private void stroke(Matrix4f matrix4f, Vec3 center, double innerRadius, double outerRadius, double startAngle, double endAngle, double opacity) {
+        this.band(matrix4f, center, innerRadius, innerRadius, outerRadius, outerRadius, startAngle, endAngle, opacity, opacity, false);
     }
 
-    private void disk(Matrix4f matrix4f, Vec3 vec3, double d, double d2) {
-        int n = this.quality.getValue().intValue();
-        for (int i = 0; i < n; ++i) {
-            double d3 = (double)i * Math.PI * 2.0 / (double)n;
-            double d4 = (double)(i + 1) * Math.PI * 2.0 / (double)n;
-            this.band(matrix4f, vec3, 0.0, 0.0, d, d, d3, d4, d2 * 0.65, 0.0, this.glow.getValue());
+    private void disk(Matrix4f matrix4f, Vec3 center, double radius, double opacity) {
+        int segments = this.quality.getValue().intValue();
+        for (int i = 0; i < segments; ++i) {
+            double angleStart = (double)i * Math.PI * 2.0 / (double)segments;
+            double angleEnd = (double)(i + 1) * Math.PI * 2.0 / (double)segments;
+            this.band(matrix4f, center, 0.0, 0.0, radius, radius, angleStart, angleEnd, opacity * 0.65, 0.0, this.glow.getValue());
         }
     }
 
-    private Renderer3D.Vertex vertex(Matrix4f matrix4f, Vec3 vec3, double d, double d2, double d3) {
-        return new Renderer3D.Vertex(matrix4f, (float)(vec3.x + Math.cos(d2) * Math.max(0.0, d)), (float)vec3.y, (float)(vec3.z + Math.sin(d2) * Math.max(0.0, d)), this.tint(d2, d3).getRGB());
+    private Renderer3D.Vertex vertex(Matrix4f matrix4f, Vec3 center, double radius, double angle, double opacity) {
+        return new Renderer3D.Vertex(matrix4f, (float)(center.x + Math.cos(angle) * Math.max(0.0, radius)), (float)center.y, (float)(center.z + Math.sin(angle) * Math.max(0.0, radius)), this.tint(angle, opacity).getRGB());
     }
 
-    private void band(Matrix4f matrix4f, Vec3 vec3, double d, double d2, double d3, double d4, double d5, double d6, double d7, double d8, boolean bl) {
-        List<Renderer3D.VertexCollection> list = bl ? Renderer3D.SHINE_QUADS : Renderer3D.QUADS;
-        list.add(new Renderer3D.VertexCollection(this.vertex(matrix4f, vec3, d, d5, d7), this.vertex(matrix4f, vec3, d2, d6, d7), this.vertex(matrix4f, vec3, d4, d6, d8), this.vertex(matrix4f, vec3, d3, d5, d8)));
+    private void band(Matrix4f matrix4f, Vec3 center, double innerStart, double innerEnd, double outerStart, double outerEnd, double angleStart, double angleEnd, double innerOpacity, double outerOpacity, boolean isGlow) {
+        List<Renderer3D.VertexCollection> targetQuads = isGlow ? Renderer3D.SHINE_QUADS : Renderer3D.QUADS;
+        targetQuads.add(new Renderer3D.VertexCollection(this.vertex(matrix4f, center, innerStart, angleStart, innerOpacity), this.vertex(matrix4f, center, innerEnd, angleEnd, innerOpacity), this.vertex(matrix4f, center, outerEnd, angleEnd, outerOpacity), this.vertex(matrix4f, center, outerStart, angleStart, outerOpacity)));
     }
 
-    private void handleSpawnEffect(ClientLevel clientLevel, long l, Vec3 vec3, UUID uUID) {
+    private void handleSpawnEffect(ClientLevel clientLevel, long now, Vec3 pos, UUID crystalId) {
         if (!this.isToggled() || CrystalPlacementFXModule.mc.level != clientLevel || CrystalPlacementFXModule.mc.player == null) {
             return;
         }
@@ -265,25 +265,25 @@ extends Module {
             this.clear();
             this.effectLevel = clientLevel;
         }
-        this.placements.removeIf(pending -> l - pending.start > 2000000000L);
-        Pending pending2 = null;
-        for (Pending pending3 : this.placements) {
-            if (!(pending3.center.distanceToSqr(vec3) < 0.04)) continue;
-            pending2 = pending3;
+        this.placements.removeIf(pending -> now - pending.start > 2000000000L);
+        Pending matchedPending = null;
+        for (Pending candidate : this.placements) {
+            if (!(candidate.center.distanceToSqr(pos) < 0.04)) continue;
+            matchedPending = candidate;
             break;
         }
-        if (pending2 == null) {
+        if (matchedPending == null) {
             return;
         }
-        this.placements.remove(pending2);
-        double d = this.range.getValue().doubleValue();
-        if (CrystalPlacementFXModule.mc.player.position().distanceToSqr(vec3) > d * d || this.bursts.containsKey(uUID)) {
+        this.placements.remove(matchedPending);
+        double maxRange = this.range.getValue().doubleValue();
+        if (CrystalPlacementFXModule.mc.player.position().distanceToSqr(pos) > maxRange * maxRange || this.bursts.containsKey(crystalId)) {
             return;
         }
         while (this.bursts.size() >= this.maxEffects.getValue().intValue()) {
             this.bursts.remove(this.bursts.keySet().iterator().next());
         }
-        this.bursts.put(uUID, new Burst(vec3, l));
+        this.bursts.put(crystalId, new Burst(pos, now));
     }
 
     private record Burst(Vec3 center, long start) {

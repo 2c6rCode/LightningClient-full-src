@@ -106,7 +106,6 @@ extends Module {
             return true;
         }
         FakePlayerModule fakePlayerModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FakePlayerModule.class) : null;
-        FakePlayerModule fakePlayerModule2 = fakePlayerModule;
         return fakePlayerModule != null && fakePlayerModule.isToggled() && player == fakePlayerModule.getPlayer();
     }
 
@@ -153,46 +152,46 @@ extends Module {
             return;
         }
         this.updateFrostEffect();
-        HashSet<UUID> hashSet = new HashSet<UUID>();
-        for (Player object : DeathEffectsModule.mc.level.players()) {
-            if (this.isInvalidTarget(object)) continue;
-            hashSet.add(object.getUUID());
-            this.lastPlayerPositions.put(object.getUUID(), new Vec3(object.getX(), object.getY(), object.getZ()));
+        HashSet<UUID> currentPlayers = new HashSet<UUID>();
+        for (Player player : DeathEffectsModule.mc.level.players()) {
+            if (this.isInvalidTarget(player)) continue;
+            currentPlayers.add(player.getUUID());
+            this.lastPlayerPositions.put(player.getUUID(), new Vec3(player.getX(), player.getY(), player.getZ()));
         }
-        for (UUID uUID : new HashSet<UUID>(this.trackedPlayers)) {
-            if (hashSet.contains(uUID) || !this.lastPlayerPositions.containsKey(uUID)) continue;
-            Vec3 vec3 = this.lastPlayerPositions.get(uUID);
-            double d = Math.sqrt(Math.pow(DeathEffectsModule.mc.player.getX() - vec3.x, 2.0) + Math.pow(DeathEffectsModule.mc.player.getY() - vec3.y, 2.0) + Math.pow(DeathEffectsModule.mc.player.getZ() - vec3.z, 2.0));
-            if (d <= this.disconnectRange.getValue().doubleValue()) {
+        for (UUID playerId : new HashSet<UUID>(this.trackedPlayers)) {
+            if (currentPlayers.contains(playerId) || !this.lastPlayerPositions.containsKey(playerId)) continue;
+            Vec3 lastPos = this.lastPlayerPositions.get(playerId);
+            double distance = Math.sqrt(Math.pow(DeathEffectsModule.mc.player.getX() - lastPos.x, 2.0) + Math.pow(DeathEffectsModule.mc.player.getY() - lastPos.y, 2.0) + Math.pow(DeathEffectsModule.mc.player.getZ() - lastPos.z, 2.0));
+            if (distance <= this.disconnectRange.getValue().doubleValue()) {
                 if ((this.mode.getValue().equals("Meme") || this.mode.getValue().equals("Both")) && this.memeOnDisconnect.getValue()) {
-                    this.spawnMeme(vec3.add(0.0, 0.9, 0.0));
+                    this.spawnMeme(lastPos.add(0.0, 0.9, 0.0));
                 }
                 if ((this.mode.getValue().equals("Lightning") || this.mode.getValue().equals("Both")) && this.lightningOnDisconnect.getValue()) {
-                    this.spawnLightning(vec3);
+                    this.spawnLightning(lastPos);
                 }
                 if (this.mode.getValue().equals("Overlay") && this.overlayOnDisconnect.getValue()) {
                     this.startOverlay();
                 }
             }
-            this.lastPlayerPositions.remove(uUID);
+            this.lastPlayerPositions.remove(playerId);
         }
         this.trackedPlayers.clear();
-        this.trackedPlayers.addAll(hashSet);
+        this.trackedPlayers.addAll(currentPlayers);
     }
 
     private void updateFrostEffect() {
         if (this.frostActive && DeathEffectsModule.mc.player != null) {
-            long l = System.currentTimeMillis();
-            long l2 = l - (this.freezeEndTime - this.overlayDuration.getValue().longValue() - this.overlayFadeDuration.getValue().longValue());
-            long l3 = this.overlayDuration.getValue().longValue() + this.overlayFadeDuration.getValue().longValue();
-            if (l2 < this.overlayDuration.getValue().longValue()) {
-                int n = (int)(140.0 * (this.overlayAlpha.getValue().doubleValue() / 255.0));
-                DeathEffectsModule.mc.player.setTicksFrozen(n);
-            } else if (l2 < l3) {
-                long l4 = l2 - this.overlayDuration.getValue().longValue();
-                double d = 1.0 - (double)l4 / (double)this.overlayFadeDuration.getValue().longValue();
-                int n = (int)(140.0 * (this.overlayAlpha.getValue().doubleValue() / 255.0) * d);
-                DeathEffectsModule.mc.player.setTicksFrozen(n);
+            long now = System.currentTimeMillis();
+            long elapsed = now - (this.freezeEndTime - this.overlayDuration.getValue().longValue() - this.overlayFadeDuration.getValue().longValue());
+            long totalDuration = this.overlayDuration.getValue().longValue() + this.overlayFadeDuration.getValue().longValue();
+            if (elapsed < this.overlayDuration.getValue().longValue()) {
+                int ticksFrozen = (int)(140.0 * (this.overlayAlpha.getValue().doubleValue() / 255.0));
+                DeathEffectsModule.mc.player.setTicksFrozen(ticksFrozen);
+            } else if (elapsed < totalDuration) {
+                long fadeElapsed = elapsed - this.overlayDuration.getValue().longValue();
+                double fadeFactor = 1.0 - (double)fadeElapsed / (double)this.overlayFadeDuration.getValue().longValue();
+                int ticksFrozen = (int)(140.0 * (this.overlayAlpha.getValue().doubleValue() / 255.0) * fadeFactor);
+                DeathEffectsModule.mc.player.setTicksFrozen(ticksFrozen);
             } else {
                 this.frostActive = false;
                 this.freezeEndTime = 0L;
@@ -208,25 +207,25 @@ extends Module {
         this.freezeEndTime = System.currentTimeMillis();
     }
 
-    private void spawnLightning(Vec3 vec3) {
+    private void spawnLightning(Vec3 pos) {
         if (DeathEffectsModule.mc.level == null) {
             return;
         }
         if (!mc.isSameThread()) {
-            mc.execute(() -> this.spawnLightning(vec3));
+            mc.execute(() -> this.spawnLightning(pos));
             return;
         }
-        int n = this.lightningAmount.getValue().intValue();
-        for (int i = 0; i < n; ++i) {
+        int count = this.lightningAmount.getValue().intValue();
+        for (int i = 0; i < count; ++i) {
             LightningBolt lightningBolt = new LightningBolt(EntityTypes.LIGHTNING_BOLT, (Level)DeathEffectsModule.mc.level);
-            lightningBolt.setPos(vec3.x, vec3.y, vec3.z);
+            lightningBolt.setPos(pos.x, pos.y, pos.z);
             lightningBolt.setId(this.nextLightningId--);
             DeathEffectsModule.mc.level.addEntity((Entity)lightningBolt);
         }
     }
 
-    private void spawnMeme(Vec3 vec3) {
-        KillEffectMemeRenderer.INSTANCE.spawn(new Vector3f((float)vec3.x, (float)vec3.y, (float)vec3.z), this.memeSize.getValue().floatValue());
+    private void spawnMeme(Vec3 pos) {
+        KillEffectMemeRenderer.INSTANCE.spawn(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), this.memeSize.getValue().floatValue());
         if (mc.getSoundManager() != null) {
             mc.getSoundManager().play((SoundInstance)SimpleSoundInstance.forUI((SoundEvent)VINE_SOUND, (float)1.0f, (float)1.0f));
         }

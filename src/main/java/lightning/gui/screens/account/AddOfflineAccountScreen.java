@@ -31,59 +31,59 @@ extends Screen {
     private EditBox usernameField;
     private String error = "";
 
-    public AddOfflineAccountScreen(Screen screen) {
+    public AddOfflineAccountScreen(Screen parent) {
         super((Component)Component.literal((String)"Add Offline Account"));
-        this.parent = screen;
+        this.parent = parent;
     }
 
     protected void init() {
-        int n = this.width / 2;
-        int n2 = this.height / 2;
-        int n3 = 175;
-        int n4 = n2 - n3 / 2;
-        this.usernameField = new EditBox(this.font, n - 115, n4 + 42, 230, 20, (Component)Component.literal((String)"Username"));
+        int centerX = this.width / 2;
+        int centerY = this.height / 2;
+        int panelHeight = 175;
+        int panelTop = centerY - panelHeight / 2;
+        this.usernameField = new EditBox(this.font, centerX - 115, panelTop + 42, 230, 20, (Component)Component.literal((String)"Username"));
         this.usernameField.setMaxLength(16);
         this.usernameField.setHint((Component)Component.literal((String)"Enter username..."));
         this.addRenderableWidget(this.usernameField);
         this.setInitialFocus((GuiEventListener)this.usernameField);
         this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Add & Login"), button -> {
-            String string = this.usernameField.getValue().trim();
-            if (string.isEmpty()) {
+            String username = this.usernameField.getValue().trim();
+            if (username.isEmpty()) {
                 this.error = "Username cannot be empty!";
                 return;
             }
-            Account account = Night.ACCOUNT_MANAGER.loginOffline(string);
+            Account account = Night.ACCOUNT_MANAGER.loginOffline(username);
             if (account != null) {
                 Minecraft.getInstance().gui.setScreen(this.parent);
             }
-        }).bounds(n - 115, n4 + 68, 230, 20).build());
+        }).bounds(centerX - 115, panelTop + 68, 230, 20).build());
         this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Random Name"), button -> {
-            String[] stringArray = new String[]{"Shadow", "Lightning", "Ghost", "Viper", "Phantom", "Raven", "Frost", "Nova", "Dark", "Storm"};
-            String string = stringArray[new Random().nextInt(stringArray.length)] + "_" + (100 + new Random().nextInt(900));
-            this.usernameField.setValue(string);
-        }).bounds(n - 115, n4 + 94, 230, 20).build());
-        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Cancel"), button -> this.onClose()).bounds(n - 115, n4 + 120, 230, 20).build());
+            String[] prefixes = new String[]{"Shadow", "Lightning", "Ghost", "Viper", "Phantom", "Raven", "Frost", "Nova", "Dark", "Storm"};
+            String randomName = prefixes[new Random().nextInt(prefixes.length)] + "_" + (100 + new Random().nextInt(900));
+            this.usernameField.setValue(randomName);
+        }).bounds(centerX - 115, panelTop + 94, 230, 20).build());
+        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Cancel"), button -> this.onClose()).bounds(centerX - 115, panelTop + 120, 230, 20).build());
     }
 
-    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         Renderer2D.renderGradient(guiGraphicsExtractor, 0.0f, 0.0f, this.width, this.height, new Color(18, 14, 30), new Color(8, 6, 14));
     }
 
-    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        int n3 = this.width / 2;
-        int n4 = this.height / 2;
-        int n5 = 270;
-        int n6 = 175;
-        int n7 = n3 - n5 / 2;
-        int n8 = n4 - n6 / 2;
-        Renderer2D.renderQuad(guiGraphicsExtractor, n7, n8, n7 + n5, n8 + n6, new Color(28, 28, 28, 245));
-        Renderer2D.renderOutline(guiGraphicsExtractor, n7, n8, n7 + n5, n8 + n6, new Color(70, 70, 70, 200));
-        String string = "Add Offline / Cracked Account";
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n3 - Night.FONT_MANAGER.getWidth(string) / 2, n8 + 12, Color.WHITE);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        int centerX = this.width / 2;
+        int centerY = this.height / 2;
+        int panelWidth = 270;
+        int panelHeight = 175;
+        int panelX = centerX - panelWidth / 2;
+        int panelY = centerY - panelHeight / 2;
+        Renderer2D.renderQuad(guiGraphicsExtractor, panelX, panelY, panelX + panelWidth, panelY + panelHeight, new Color(28, 28, 28, 245));
+        Renderer2D.renderOutline(guiGraphicsExtractor, panelX, panelY, panelX + panelWidth, panelY + panelHeight, new Color(70, 70, 70, 200));
+        String title = "Add Offline / Cracked Account";
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, title, centerX - Night.FONT_MANAGER.getWidth(title) / 2, panelY + 12, Color.WHITE);
         if (!this.error.isEmpty()) {
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "\u00a7c" + this.error, n3 - Night.FONT_MANAGER.getWidth(this.error) / 2, n8 + 28, Color.RED);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "\u00a7c" + this.error, centerX - Night.FONT_MANAGER.getWidth(this.error) / 2, panelY + 28, Color.RED);
         }
-        super.extractRenderState(guiGraphicsExtractor, n, n2, f);
+        super.extractRenderState(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
     }
 
     public void onClose() {

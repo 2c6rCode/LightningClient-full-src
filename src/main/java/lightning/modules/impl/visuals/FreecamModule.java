@@ -57,11 +57,11 @@ implements IFreecamModule {
     }
 
     @Override
-    public void onMouseTurn(double d, double d2) {
-        float f = (float)d2 * 0.15f;
-        float f2 = (float)d * 0.15f;
-        this.freePitch = Mth.clamp((float)(this.freePitch + f), (float)-90.0f, (float)90.0f);
-        this.freeYaw += f2;
+    public void onMouseTurn(double deltaX, double deltaY) {
+        float pitchDelta = (float)deltaY * 0.15f;
+        float yawDelta = (float)deltaX * 0.15f;
+        this.freePitch = Mth.clamp((float)(this.freePitch + pitchDelta), (float)-90.0f, (float)90.0f);
+        this.freeYaw += yawDelta;
     }
 
     @SubscribeEvent
@@ -72,21 +72,21 @@ implements IFreecamModule {
         this.prevFreeX = this.freeX;
         this.prevFreeY = this.freeY;
         this.prevFreeZ = this.freeZ;
-        float f = keyboardTickEvent.getMovementForward();
-        float f2 = keyboardTickEvent.getMovementSideways();
-        double d = this.horizontalSpeed.getValue().doubleValue();
-        if (f != 0.0f || f2 != 0.0f) {
-            float f3 = (float)Math.sqrt(f * f + f2 * f2);
-            if (f3 > 1.0E-4f && Math.abs(f3 - 1.0f) > 1.0E-4f) {
-                f /= f3;
-                f2 /= f3;
+        float forward = keyboardTickEvent.getMovementForward();
+        float strafe = keyboardTickEvent.getMovementSideways();
+        double speed = this.horizontalSpeed.getValue().doubleValue();
+        if (forward != 0.0f || strafe != 0.0f) {
+            float length = (float)Math.sqrt(forward * forward + strafe * strafe);
+            if (length > 1.0E-4f && Math.abs(length - 1.0f) > 1.0E-4f) {
+                forward /= length;
+                strafe /= length;
             }
-            double d2 = Math.cos(Math.toRadians(this.freeYaw + 90.0f));
-            double d3 = Math.sin(Math.toRadians(this.freeYaw + 90.0f));
-            double d4 = (double)f * d * d2 + (double)f2 * d * d3;
-            double d5 = (double)f * d * d3 - (double)f2 * d * d2;
-            this.freeX += d4;
-            this.freeZ += d5;
+            double cosYaw = Math.cos(Math.toRadians(this.freeYaw + 90.0f));
+            double sinYaw = Math.sin(Math.toRadians(this.freeYaw + 90.0f));
+            double moveX = (double)forward * speed * cosYaw + (double)strafe * speed * sinYaw;
+            double moveZ = (double)forward * speed * sinYaw - (double)strafe * speed * cosYaw;
+            this.freeX += moveX;
+            this.freeZ += moveZ;
         }
         if (FreecamModule.mc.options.keyJump.isDown()) {
             this.freeY += this.verticalSpeed.getValue().doubleValue();
@@ -240,53 +240,53 @@ implements IFreecamModule {
     }
 
     @Generated
-    public void setFreeYaw(float f) {
-        this.freeYaw = f;
+    public void setFreeYaw(float freeYaw) {
+        this.freeYaw = freeYaw;
     }
 
     @Generated
-    public void setFreePitch(float f) {
-        this.freePitch = f;
+    public void setFreePitch(float freePitch) {
+        this.freePitch = freePitch;
     }
 
     @Generated
-    public void setPrevFreeYaw(float f) {
-        this.prevFreeYaw = f;
+    public void setPrevFreeYaw(float prevFreeYaw) {
+        this.prevFreeYaw = prevFreeYaw;
     }
 
     @Generated
-    public void setPrevFreePitch(float f) {
-        this.prevFreePitch = f;
+    public void setPrevFreePitch(float prevFreePitch) {
+        this.prevFreePitch = prevFreePitch;
     }
 
     @Generated
-    public void setFreeX(double d) {
-        this.freeX = d;
+    public void setFreeX(double freeX) {
+        this.freeX = freeX;
     }
 
     @Generated
-    public void setFreeY(double d) {
-        this.freeY = d;
+    public void setFreeY(double freeY) {
+        this.freeY = freeY;
     }
 
     @Generated
-    public void setFreeZ(double d) {
-        this.freeZ = d;
+    public void setFreeZ(double freeZ) {
+        this.freeZ = freeZ;
     }
 
     @Generated
-    public void setPrevFreeX(double d) {
-        this.prevFreeX = d;
+    public void setPrevFreeX(double prevFreeX) {
+        this.prevFreeX = prevFreeX;
     }
 
     @Generated
-    public void setPrevFreeY(double d) {
-        this.prevFreeY = d;
+    public void setPrevFreeY(double prevFreeY) {
+        this.prevFreeY = prevFreeY;
     }
 
     @Generated
-    public void setPrevFreeZ(double d) {
-        this.prevFreeZ = d;
+    public void setPrevFreeZ(double prevFreeZ) {
+        this.prevFreeZ = prevFreeZ;
     }
 
     @Generated

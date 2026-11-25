@@ -29,150 +29,149 @@ public class ColorUtils {
         return ColorUtils.getGlobalColor(255, 0L);
     }
 
-    public static Color getGlobalColor(int n) {
-        return ColorUtils.getGlobalColor(n, 0L);
+    public static Color getGlobalColor(int alpha) {
+        return ColorUtils.getGlobalColor(alpha, 0L);
     }
 
-    public static Color getGlobalColor(int n, long l) {
+    public static Color getGlobalColor(int alpha, long offset) {
         ColorModule colorModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ColorModule.class) : null;
-        ColorModule colorModule2 = colorModule;
         if (colorModule == null) {
-            return new Color(160, 120, 255, n);
+            return new Color(160, 120, 255, alpha);
         }
         if (colorModule.color.isRainbow()) {
-            return ColorUtils.getRainbow(colorModule.rainbowSpeed.getValue().longValue(), colorModule.rainbowSaturation.getValue().floatValue() / 100.0f, colorModule.rainbowBrightness.getValue().floatValue() / 100.0f, n, l);
+            return ColorUtils.getRainbow(colorModule.rainbowSpeed.getValue().longValue(), colorModule.rainbowSaturation.getValue().floatValue() / 100.0f, colorModule.rainbowBrightness.getValue().floatValue() / 100.0f, alpha, offset);
         }
-        return ColorUtils.getColor(colorModule.color.getValue().getColor(), n);
+        return ColorUtils.getColor(colorModule.color.getValue().getColor(), alpha);
     }
 
-    public static Color getColor(Color color, int n) {
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(), n);
+    public static Color getColor(Color color, int alpha) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 
     public static Color getRainbow() {
         return ColorUtils.getRainbow(255);
     }
 
-    public static Color getOffsetRainbow(long l) {
-        return ColorUtils.getOffsetRainbow(255, l);
+    public static Color getOffsetRainbow(long offset) {
+        return ColorUtils.getOffsetRainbow(255, offset);
     }
 
-    public static Color getRainbow(int n) {
-        return ColorUtils.getOffsetRainbow(n, 0L);
+    public static Color getRainbow(int alpha) {
+        return ColorUtils.getOffsetRainbow(alpha, 0L);
     }
 
-    public static Color getOffsetRainbow(int n, long l) {
+    public static Color getOffsetRainbow(int alpha, long offset) {
         ColorModule colorModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ColorModule.class) : null;
-        long l2 = colorModule != null ? colorModule.rainbowSpeed.getValue().longValue() : 6L;
-        float f = colorModule != null ? colorModule.rainbowSaturation.getValue().floatValue() / 100.0f : 1.0f;
-        float f2 = colorModule != null ? colorModule.rainbowBrightness.getValue().floatValue() / 100.0f : 1.0f;
-        float f3 = colorModule != null && colorModule.rainbowScale != null ? colorModule.rainbowScale.getValue().floatValue() / 100.0f : 1.0f;
-        return ColorUtils.getRainbow(l2, f, f2, n, (long)((float)l * f3));
+        long speed = colorModule != null ? colorModule.rainbowSpeed.getValue().longValue() : 6L;
+        float saturation = colorModule != null ? colorModule.rainbowSaturation.getValue().floatValue() / 100.0f : 1.0f;
+        float brightness = colorModule != null ? colorModule.rainbowBrightness.getValue().floatValue() / 100.0f : 1.0f;
+        float scale = colorModule != null && colorModule.rainbowScale != null ? colorModule.rainbowScale.getValue().floatValue() / 100.0f : 1.0f;
+        return ColorUtils.getRainbow(speed, saturation, brightness, alpha, (long)((float)offset * scale));
     }
 
-    public static Color getRainbow(long l, float f, float f2, int n) {
-        return ColorUtils.getRainbow(l, f, f2, n, 0L);
+    public static Color getRainbow(long speed, float saturation, float brightness, int alpha) {
+        return ColorUtils.getRainbow(speed, saturation, brightness, alpha, 0L);
     }
 
-    public static Color getRainbow(long l, float f, float f2, int n, long l2) {
-        double d;
-        l = Math.clamp(l, 1, 20);
-        double d2 = 10500.0 - 500.0 * (double)l;
-        double d3 = (double)(System.currentTimeMillis() % (long)d2) / d2;
-        float f3 = (float)((d3 + (d = (double)l2 * 0.0035)) % 1.0);
-        if (f3 < 0.0f) {
-            f3 += 1.0f;
+    public static Color getRainbow(long speed, float saturation, float brightness, int alpha, long offset) {
+        speed = Math.clamp(speed, 1, 20);
+        double cycleMs = 10500.0 - 500.0 * (double)speed;
+        double baseHue = (double)(System.currentTimeMillis() % (long)cycleMs) / cycleMs;
+        double offsetHue = (double)offset * 0.0035;
+        float hue = (float)((baseHue + offsetHue) % 1.0);
+        if (hue < 0.0f) {
+            hue += 1.0f;
         }
-        Color color = new Color(Color.HSBtoRGB(Math.clamp(f3, 0.0f, 1.0f), Math.clamp(f, 0.0f, 1.0f), Math.clamp(f2, 0.0f, 1.0f)));
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(), n);
+        Color color = new Color(Color.HSBtoRGB(Math.clamp(hue, 0.0f, 1.0f), Math.clamp(saturation, 0.0f, 1.0f), Math.clamp(brightness, 0.0f, 1.0f)));
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 
-    public static Color getOffsetWave(Color color, long l) {
+    public static Color getOffsetWave(Color color, long offset) {
         ColorModule colorModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ColorModule.class) : null;
-        long l2 = colorModule != null ? colorModule.rainbowSpeed.getValue().longValue() : 6L;
-        return ColorUtils.getWave(color, l2, 255, l);
+        long speed = colorModule != null ? colorModule.rainbowSpeed.getValue().longValue() : 6L;
+        return ColorUtils.getWave(color, speed, 255, offset);
     }
 
-    public static Color getWave(Color color, long l, int n, long l2) {
-        l = Math.max(1L, Math.min(l, 20L));
-        float[] fArray = new float[3];
-        Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), fArray);
-        double d = 10500.0 - 500.0 * (double)l;
-        double d2 = (double)(System.currentTimeMillis() % (long)d) / d;
-        double d3 = (double)l2 * 0.0035;
-        double d4 = (d2 + d3) % 1.0;
-        if (d4 < 0.0) {
-            d4 += 1.0;
+    public static Color getWave(Color color, long speed, int alpha, long offset) {
+        speed = Math.max(1L, Math.min(speed, 20L));
+        float[] hsb = new float[3];
+        Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), hsb);
+        double cycleMs = 10500.0 - 500.0 * (double)speed;
+        double basePhase = (double)(System.currentTimeMillis() % (long)cycleMs) / cycleMs;
+        double offsetPhase = (double)offset * 0.0035;
+        double phase = (basePhase + offsetPhase) % 1.0;
+        if (phase < 0.0) {
+            phase += 1.0;
         }
-        float f = (float)Math.abs(d4 * 2.0 % 2.0 - 1.0);
-        fArray[2] = 0.5f + 0.5f * f;
-        Color color2 = new Color(Color.HSBtoRGB(fArray[0], fArray[1], fArray[2]));
-        return new Color(color2.getRed(), color2.getGreen(), color2.getBlue(), n);
+        float wave = (float)Math.abs(phase * 2.0 % 2.0 - 1.0);
+        hsb[2] = 0.5f + 0.5f * wave;
+        Color waveColor = new Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]));
+        return new Color(waveColor.getRed(), waveColor.getGreen(), waveColor.getBlue(), alpha);
     }
 
     public static Color getPulse(Color color) {
         return ColorUtils.getPulse(color, 15L);
     }
 
-    public static Color getPulse(Color color, long l) {
-        l = Math.max(1L, Math.min(l, 20L));
-        double d = Math.sin(Math.PI * 2 * (double)((float)l / 20.0f) * (double)((float)(System.currentTimeMillis() - Night.UPTIME) / 1000.0f));
-        double d2 = (d + 1.0) / 2.0;
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)((double)color.getAlpha() * d2));
+    public static Color getPulse(Color color, long speed) {
+        speed = Math.max(1L, Math.min(speed, 20L));
+        double wave = Math.sin(Math.PI * 2 * (double)((float)speed / 20.0f) * (double)((float)(System.currentTimeMillis() - Night.UPTIME) / 1000.0f));
+        double factor = (wave + 1.0) / 2.0;
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)((double)color.getAlpha() * factor));
     }
 
-    public static Color getHashColor(String string) {
-        int n = string.hashCode();
-        return new Color((n & 0xFF0000) >> 16, (n & 0xFF00) >> 8, n & 0xFF);
+    public static Color getHashColor(String input) {
+        int hash = input.hashCode();
+        return new Color((hash & 0xFF0000) >> 16, (hash & 0xFF00) >> 8, hash & 0xFF);
     }
 
-    public static boolean isValidColorCode(String string) {
-        if (string.startsWith("#")) {
-            string = string.substring(1);
+    public static boolean isValidColorCode(String code) {
+        if (code.startsWith("#")) {
+            code = code.substring(1);
         }
-        if (string.length() != 3 && string.length() != 6) {
+        if (code.length() != 3 && code.length() != 6) {
             return false;
         }
-        for (int i = 0; i < string.length(); ++i) {
-            if (string.charAt(i) >= '0' && string.charAt(i) <= '\t' || string.charAt(i) >= 'a' && string.charAt(i) <= 'f' || string.charAt(i) >= 'A' || string.charAt(i) <= 'F') continue;
+        for (int i = 0; i < code.length(); ++i) {
+            if (code.charAt(i) >= '0' && code.charAt(i) <= '\t' || code.charAt(i) >= 'a' && code.charAt(i) <= 'f' || code.charAt(i) >= 'A' || code.charAt(i) <= 'F') continue;
             return false;
         }
         return true;
     }
 
-    public static ChatFormatting getHealthColor(double d) {
-        if (d > 18.0) {
+    public static ChatFormatting getHealthColor(double health) {
+        if (health > 18.0) {
             return ChatFormatting.GREEN;
         }
-        if (d > 16.0) {
+        if (health > 16.0) {
             return ChatFormatting.DARK_GREEN;
         }
-        if (d > 12.0) {
+        if (health > 12.0) {
             return ChatFormatting.YELLOW;
         }
-        if (d > 8.0) {
+        if (health > 8.0) {
             return ChatFormatting.GOLD;
         }
-        if (d > 5.0) {
+        if (health > 5.0) {
             return ChatFormatting.RED;
         }
         return ChatFormatting.DARK_RED;
     }
 
-    public static ChatFormatting getTotemColor(int n) {
-        if (n == 1) {
+    public static ChatFormatting getTotemColor(int count) {
+        if (count == 1) {
             return ChatFormatting.GREEN;
         }
-        if (n == 2) {
+        if (count == 2) {
             return ChatFormatting.DARK_GREEN;
         }
-        if (n == 3) {
+        if (count == 3) {
             return ChatFormatting.YELLOW;
         }
-        if (n == 4) {
+        if (count == 4) {
             return ChatFormatting.GOLD;
         }
-        if (n == 5) {
+        if (count == 5) {
             return ChatFormatting.RED;
         }
         return ChatFormatting.DARK_RED;

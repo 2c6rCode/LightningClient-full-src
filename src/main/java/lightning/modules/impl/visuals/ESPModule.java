@@ -94,12 +94,12 @@ extends Module {
         }
     }
 
-    private static long chunkKey(int n, int n2) {
-        return (long)n & 0xFFFFFFFFL | (long)n2 << 32;
+    private static long chunkKey(int chunkX, int chunkZ) {
+        return (long)chunkX & 0xFFFFFFFFL | (long)chunkZ << 32;
     }
 
-    private void queueChunk(int n, int n2) {
-        this.pendingChunks.putIfAbsent(ESPModule.chunkKey(n, n2), 5);
+    private void queueChunk(int chunkX, int chunkZ) {
+        this.pendingChunks.putIfAbsent(ESPModule.chunkKey(chunkX, chunkZ), 5);
     }
 
     @Override
@@ -132,15 +132,15 @@ extends Module {
         if (ESPModule.mc.player == null || ESPModule.mc.level == null) {
             return;
         }
-        int n = ESPModule.mc.player.blockPosition().getX() >> 4;
-        int n2 = ESPModule.mc.player.blockPosition().getZ() >> 4;
-        int n3 = ESPModule.mc.options.getEffectiveRenderDistance();
-        for (int i = -n3; i <= n3; ++i) {
-            for (int j = -n3; j <= n3; ++j) {
-                int n4 = n + i;
-                int n5 = n2 + j;
-                if (!ESPModule.mc.level.hasChunk(n4, n5)) continue;
-                this.queueChunk(n4, n5);
+        int playerChunkX = ESPModule.mc.player.blockPosition().getX() >> 4;
+        int playerChunkZ = ESPModule.mc.player.blockPosition().getZ() >> 4;
+        int renderDistance = ESPModule.mc.options.getEffectiveRenderDistance();
+        for (int i = -renderDistance; i <= renderDistance; ++i) {
+            for (int j = -renderDistance; j <= renderDistance; ++j) {
+                int chunkX = playerChunkX + i;
+                int chunkZ = playerChunkZ + j;
+                if (!ESPModule.mc.level.hasChunk(chunkX, chunkZ)) continue;
+                this.queueChunk(chunkX, chunkZ);
             }
         }
     }
@@ -170,56 +170,56 @@ extends Module {
         if (this.pendingChunks.isEmpty()) {
             return;
         }
-        int n = 2;
+        int evalBudget = 2;
         Iterator<Map.Entry<Long, Integer>> iterator = this.pendingChunks.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<Long, Integer> entry = iterator.next();
-            int n2 = entry.getValue() - 1;
-            if (n2 > 0) {
-                entry.setValue(n2);
+            int remainingTicks = entry.getValue() - 1;
+            if (remainingTicks > 0) {
+                entry.setValue(remainingTicks);
                 continue;
             }
-            if (n == 0) {
+            if (evalBudget == 0) {
                 entry.setValue(1);
                 continue;
             }
-            --n;
+            --evalBudget;
             iterator.remove();
-            long l = entry.getKey();
-            int n3 = (int)l;
-            int n4 = (int)(l >>> 32);
-            this.evaluateChunk(n3, n4, l);
+            long key = entry.getKey();
+            int chunkX = (int)key;
+            int chunkZ = (int)(key >>> 32);
+            this.evaluateChunk(chunkX, chunkZ, key);
         }
     }
 
-    private void evaluateChunk(int n, int n2, long l) {
-        if (ESPModule.mc.level == null || !ESPModule.mc.level.hasChunk(n, n2)) {
+    private void evaluateChunk(int chunkX, int chunkZ, long chunkKey) {
+        if (ESPModule.mc.level == null || !ESPModule.mc.level.hasChunk(chunkX, chunkZ)) {
             return;
         }
-        LevelChunk levelChunk = ESPModule.mc.level.getChunk(n, n2);
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
+        LevelChunk levelChunk = ESPModule.mc.level.getChunk(chunkX, chunkZ);
+        ArrayList<BlockPos> foundPositions = new ArrayList<BlockPos>();
         LevelChunkSection[] levelChunkSectionArray = levelChunk.getSections();
-        int n3 = ESPModule.mc.level.getMinSectionY();
+        int minSectionY = ESPModule.mc.level.getMinSectionY();
         for (int i = 0; i < levelChunkSectionArray.length; ++i) {
             LevelChunkSection levelChunkSection = levelChunkSectionArray[i];
             if (levelChunkSection == null || levelChunkSection.hasOnlyAir() || !levelChunkSection.maybeHas(this.blockPredicate)) continue;
-            int n4 = n3 + i << 4;
-            int n5 = n << 4;
-            int n6 = n2 << 4;
-            for (int j = 0; j < 16; ++j) {
-                for (int k = 0; k < 16; ++k) {
-                    for (int i2 = 0; i2 < 16; ++i2) {
-                        BlockState blockState = levelChunkSection.getBlockState(j, k, i2);
+            int baseY = minSectionY + i << 4;
+            int baseX = chunkX << 4;
+            int baseZ = chunkZ << 4;
+            for (int localX = 0; localX < 16; ++localX) {
+                for (int localY = 0; localY < 16; ++localY) {
+                    for (int localZ = 0; localZ < 16; ++localZ) {
+                        BlockState blockState = levelChunkSection.getBlockState(localX, localY, localZ);
                         if (!this.blockPredicate.test(blockState)) continue;
-                        arrayList.add(new BlockPos(n5 + j, n4 + k, n6 + i2));
+                        foundPositions.add(new BlockPos(baseX + localX, baseY + localY, baseZ + localZ));
                     }
                 }
             }
         }
-        if (arrayList.isEmpty()) {
-            this.matchedBlocks.remove(l);
+        if (foundPositions.isEmpty()) {
+            this.matchedBlocks.remove(chunkKey);
         } else {
-            this.matchedBlocks.put(l, arrayList);
+            this.matchedBlocks.put(chunkKey, foundPositions);
         }
     }
 
@@ -228,12 +228,12 @@ extends Module {
         if (ESPModule.mc.level == null) {
             return;
         }
-        ArrayList<Entity> arrayList = new ArrayList<Entity>();
+        ArrayList<Entity> entities = new ArrayList<Entity>();
         for (Entity entity : ESPModule.mc.level.entitiesForRendering()) {
             if (entity == ESPModule.mc.player || !this.isValidEntity(entity)) continue;
-            arrayList.add(entity);
+            entities.add(entity);
         }
-        this.targetEntities = arrayList;
+        this.targetEntities = entities;
     }
 
     @SubscribeEvent
@@ -243,8 +243,8 @@ extends Module {
         }
         if (!this.targetEntities.isEmpty()) {
             for (Entity entity : this.targetEntities) {
-                Vec3 vec3 = EntityUtils.getRenderPos(entity, renderWorldEvent.getTickDelta());
-                AABB aABB = new AABB(vec3.x - entity.getBoundingBox().getXsize() / 2.0, vec3.y, vec3.z - entity.getBoundingBox().getZsize() / 2.0, vec3.x + entity.getBoundingBox().getXsize() / 2.0, vec3.y + entity.getBoundingBox().getYsize(), vec3.z + entity.getBoundingBox().getZsize() / 2.0);
+                Vec3 renderPos = EntityUtils.getRenderPos(entity, renderWorldEvent.getTickDelta());
+                AABB aABB = new AABB(renderPos.x - entity.getBoundingBox().getXsize() / 2.0, renderPos.y, renderPos.z - entity.getBoundingBox().getZsize() / 2.0, renderPos.x + entity.getBoundingBox().getXsize() / 2.0, renderPos.y + entity.getBoundingBox().getYsize(), renderPos.z + entity.getBoundingBox().getZsize() / 2.0);
                 if (this.mode.getValue().equalsIgnoreCase("Fill") || this.mode.getValue().equalsIgnoreCase("Both")) {
                     Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, this.fillColor.getColor());
                 }
@@ -262,24 +262,23 @@ extends Module {
         if (this.mode.getValue().equalsIgnoreCase("None")) {
             return;
         }
-        boolean bl = this.mode.getValue().equalsIgnoreCase("Fill") || this.mode.getValue().equalsIgnoreCase("Both");
-        boolean bl2 = this.mode.getValue().equalsIgnoreCase("Outline") || this.mode.getValue().equalsIgnoreCase("Both");
-        boolean bl3 = bl2;
-        if (!bl && !bl2) {
+        boolean renderFill = this.mode.getValue().equalsIgnoreCase("Fill") || this.mode.getValue().equalsIgnoreCase("Both");
+        boolean renderOutline = this.mode.getValue().equalsIgnoreCase("Outline") || this.mode.getValue().equalsIgnoreCase("Both");
+        if (!renderFill && !renderOutline) {
             return;
         }
-        for (List<BlockPos> list : this.matchedBlocks.values()) {
-            for (BlockPos blockPos : list) {
+        for (List<BlockPos> positions : this.matchedBlocks.values()) {
+            for (BlockPos blockPos : positions) {
                 BlockState blockState = ESPModule.mc.level.getBlockState(blockPos);
                 if (!this.blockPredicate.test(blockState)) continue;
                 VoxelShape voxelShape = blockState.getShape((BlockGetter)ESPModule.mc.level, blockPos);
-                List<AABB> list2 = voxelShape.isEmpty() ? List.of(new AABB(blockPos)) : voxelShape.toAabbs().stream().map(aABB -> aABB.move(blockPos)).toList();
-                for (AABB aABB2 : list2) {
-                    if (bl) {
-                        Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB2, this.fillColor.getColor());
+                List<AABB> boxes = voxelShape.isEmpty() ? List.of(new AABB(blockPos)) : voxelShape.toAabbs().stream().map(aABB -> aABB.move(blockPos)).toList();
+                for (AABB box : boxes) {
+                    if (renderFill) {
+                        Renderer3D.renderBox(renderWorldEvent.getMatrices(), box, this.fillColor.getColor());
                     }
-                    if (!bl2) continue;
-                    Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB2, this.outlineColor.getColor());
+                    if (!renderOutline) continue;
+                    Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), box, this.outlineColor.getColor());
                 }
             }
         }
@@ -314,7 +313,6 @@ extends Module {
         static void register() {
             ClientChunkEvents.CHUNK_LOAD.register((clientLevel, levelChunk) -> {
                 ESPModule eSPModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ESPModule.class) : null;
-                ESPModule eSPModule2 = eSPModule;
                 if (eSPModule == null || !eSPModule.isToggled() || !eSPModule.blocks.getValue()) {
                     return;
                 }
@@ -325,13 +323,12 @@ extends Module {
             });
             ClientChunkEvents.CHUNK_UNLOAD.register((clientLevel, levelChunk) -> {
                 ESPModule eSPModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ESPModule.class) : null;
-                ESPModule eSPModule2 = eSPModule;
                 if (eSPModule == null) {
                     return;
                 }
-                long l = ESPModule.chunkKey(levelChunk.getPos().x(), levelChunk.getPos().z());
-                eSPModule.matchedBlocks.remove(l);
-                eSPModule.pendingChunks.remove(l);
+                long chunkKey = ESPModule.chunkKey(levelChunk.getPos().x(), levelChunk.getPos().z());
+                eSPModule.matchedBlocks.remove(chunkKey);
+                eSPModule.pendingChunks.remove(chunkKey);
             });
         }
     }

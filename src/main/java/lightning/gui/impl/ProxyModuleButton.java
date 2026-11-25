@@ -29,9 +29,9 @@ public class ProxyModuleButton
 extends Button {
     private final String moduleName;
 
-    public ProxyModuleButton(String string, Frame frame, int n) {
-        super(frame, n, "PingBypass proxy module: " + string);
-        this.moduleName = string;
+    public ProxyModuleButton(String moduleName, Frame frame, int height) {
+        super(frame, height, "PingBypass proxy module: " + moduleName);
+        this.moduleName = moduleName;
     }
 
     public String getModuleName() {
@@ -47,41 +47,39 @@ extends Button {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        Object object;
-        boolean bl;
-        if (this.isHovering(n, n2) && Night.CLICK_GUI.getDescriptionFrame().getDescription().isEmpty()) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        boolean enabled;
+        if (this.isHovering(mouseX, mouseY) && Night.CLICK_GUI.getDescriptionFrame().getDescription().isEmpty()) {
             Night.CLICK_GUI.getDescriptionFrame().setDescription(this.getDescription());
         }
-        Color color = this.isHovering(n, n2) ? new Color(255, 255, 255, 15) : new Color(0, 0, 0, 0);
-        Color color2 = color;
-        if (color.getAlpha() > 0) {
-            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding(), this.getY(), this.getX() + this.getWidth() - this.getPadding(), this.getY() + this.getHeight() - 1, color);
+        Color hoverBg = this.isHovering(mouseX, mouseY) ? new Color(255, 255, 255, 15) : new Color(0, 0, 0, 0);
+        if (hoverBg.getAlpha() > 0) {
+            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding(), this.getY(), this.getX() + this.getWidth() - this.getPadding(), this.getY() + this.getHeight() - 1, hoverBg);
         }
-        if (bl = this.isEnabled()) {
-            object = ClickGuiScreen.getButtonColor(this.getY(), 255);
-            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding(), this.getY() + 1, this.getX() + this.getPadding() + 2, this.getY() + this.getHeight() - 2, (Color)object);
+        if (enabled = this.isEnabled()) {
+            Color accentColor = ClickGuiScreen.getButtonColor(this.getY(), 255);
+            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding(), this.getY() + 1, this.getX() + this.getPadding() + 2, this.getY() + this.getHeight() - 2, accentColor);
         }
-        object = this.moduleName;
-        int n3 = this.getX() + this.getTextPadding() + (bl ? 1 : 0);
-        int n4 = this.getY() + 2;
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, String.valueOf(bl ? "" : ChatFormatting.GRAY) + (String)object, n3, n4, Color.WHITE);
+        String label = this.moduleName;
+        int textX = this.getX() + this.getTextPadding() + (enabled ? 1 : 0);
+        int textY = this.getY() + 2;
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, String.valueOf(enabled ? "" : ChatFormatting.GRAY) + label, textX, textY, Color.WHITE);
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        if (this.isHovering(d, d2) && n == 0) {
-            boolean bl = !this.isEnabled();
-            this.sendModuleToggle(bl);
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.isHovering(mouseX, mouseY) && button == 0) {
+            boolean nextState = !this.isEnabled();
+            this.sendModuleToggle(nextState);
             this.playClickSound();
         }
     }
 
-    private void sendModuleToggle(boolean bl) {
+    private void sendModuleToggle(boolean enabled) {
         if (mc.getConnection() == null) {
             return;
         }
-        C2SModuleTogglePacket c2SModuleTogglePacket = new C2SModuleTogglePacket(this.moduleName, bl);
+        C2SModuleTogglePacket c2SModuleTogglePacket = new C2SModuleTogglePacket(this.moduleName, enabled);
         mc.getConnection().getConnection().send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(c2SModuleTogglePacket)));
     }
 }

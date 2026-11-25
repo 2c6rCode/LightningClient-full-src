@@ -180,127 +180,124 @@ extends Module {
             if (autoCrystalModule != null && autoCrystalModule.isToggled() && autoCrystalModule.getTarget() != null) {
                 this.releaseSilentHold();
             } else {
-                boolean bl;
-                boolean bl2 = bl = KillAuraModule.mc.options.keyUse.isDown() || KillAuraModule.mc.player.isUsingItem() || KillAuraModule.mc.player.getUseItemRemainingTicks() > 0;
-                if (this.pauseOnEat.getValue() && bl) {
+                boolean isUsingItem = KillAuraModule.mc.options.keyUse.isDown() || KillAuraModule.mc.player.isUsingItem() || KillAuraModule.mc.player.getUseItemRemainingTicks() > 0;
+                if (this.pauseOnEat.getValue() && isUsingItem) {
                     this.target = null;
                     this.releaseSilentHold();
-                } else if (!this.multiTask.getValue() && bl) {
+                } else if (!this.multiTask.getValue() && isUsingItem) {
                     this.target = null;
                     this.releaseSilentHold();
                 } else {
-                    Entity entity;
-                    boolean bl3;
+                    Entity bestTarget;
                     ItemStack itemStack = KillAuraModule.mc.player.getMainHandItem();
                     if (this.swap.getValue().equalsIgnoreCase("Silent")) {
-                        boolean bl4 = this.onlyGapHold.getValue();
-                        bl3 = this.onlyTotemHold.getValue();
-                        if (bl4 || bl3) {
-                            boolean bl5;
-                            boolean bl6 = itemStack.is(Items.GOLDEN_APPLE) || itemStack.is(Items.ENCHANTED_GOLDEN_APPLE);
-                            boolean bl7 = itemStack.is(Items.TOTEM_OF_UNDYING);
-                            boolean bl8 = bl5 = bl4 && bl6 || bl3 && bl7;
-                            if (!bl5) {
+                        boolean onlyGapple = this.onlyGapHold.getValue();
+                        boolean onlyTotem = this.onlyTotemHold.getValue();
+                        if (onlyGapple || onlyTotem) {
+                            boolean holdingGapple = itemStack.is(Items.GOLDEN_APPLE) || itemStack.is(Items.ENCHANTED_GOLDEN_APPLE);
+                            boolean holdingTotem = itemStack.is(Items.TOTEM_OF_UNDYING);
+                            boolean validHold = onlyGapple && holdingGapple || onlyTotem && holdingTotem;
+                            if (!validHold) {
                                 this.target = null;
                                 this.releaseSilentHold();
                                 return;
                             }
                         }
                     }
-                    if ((entity = this.findOptimalTarget()) != null && (!this.swap.getValue().equalsIgnoreCase("Require") || KillAuraModule.isItemAWeapon(itemStack))) {
-                        double d;
-                        this.target = entity;
-                        bl3 = false;
+                    if ((bestTarget = this.findOptimalTarget()) != null && (!this.swap.getValue().equalsIgnoreCase("Require") || KillAuraModule.isItemAWeapon(itemStack))) {
+                        double preRotateWindowMs;
+                        this.target = bestTarget;
+                        boolean instantKill = false;
                         if (!(this.target instanceof ShulkerBullet) && !(this.target instanceof LargeFireball)) {
                             LivingEntity livingEntity;
-                            float f = this.calculatePlayerAttackDamage();
-                            Entity entity2 = this.target;
-                            if (entity2 instanceof LivingEntity && (livingEntity = (LivingEntity)entity2).getMaxHealth() <= f) {
-                                bl3 = true;
+                            float playerDamage = this.calculatePlayerAttackDamage();
+                            Entity targetEntity = this.target;
+                            if (targetEntity instanceof LivingEntity && (livingEntity = (LivingEntity)targetEntity).getMaxHealth() <= playerDamage) {
+                                instantKill = true;
                             }
                         } else {
-                            bl3 = true;
+                            instantKill = true;
                         }
-                        int n = this.getBestWeaponSlot();
-                        double d2 = this.getCooldownMs(n);
-                        long l = System.currentTimeMillis();
-                        boolean bl9 = bl3 || (double)(l - this.lastAttackTime) >= d2;
+                        int bestWeaponSlot = this.getBestWeaponSlot();
+                        double cooldownMs = this.getCooldownMs(bestWeaponSlot);
+                        long now = System.currentTimeMillis();
+                        boolean readyToAttack = instantKill || (double)(now - this.lastAttackTime) >= cooldownMs;
                         switch (this.rotate.getValue()) {
                             case "Hold": {
-                                d = 1000.0;
+                                preRotateWindowMs = 1000.0;
                                 break;
                             }
                             case "Normal": {
-                                d = 100.0;
+                                preRotateWindowMs = 100.0;
                                 break;
                             }
                             default: {
-                                d = 0.0;
+                                preRotateWindowMs = 0.0;
                                 break;
                             }
                         }
-                        if (bl3 || bl9 || d2 - (double)(l - this.lastAttackTime) <= d) {
-                            int n2;
+                        if (instantKill || readyToAttack || cooldownMs - (double)(now - this.lastAttackTime) <= preRotateWindowMs) {
+                            boolean canAttack;
                             Vec3 eyePos = KillAuraModule.mc.player.getEyePosition(1.0f);
                             if (this.stanceAbuse.getValue()) {
-                                double d4 = Double.MAX_VALUE;
+                                double bestEyeDist = Double.MAX_VALUE;
                                 for (Vec3 pos : GrimUtils.getPossibleEyePositions((Player)KillAuraModule.mc.player)) {
                                     Vec3 closest = RotationUtils.getClampClosestPoint(pos, this.target.getBoundingBox());
-                                    double d5 = pos.distanceTo(closest);
-                                    if (!(d5 < d4)) continue;
-                                    d4 = d5;
+                                    double dist = pos.distanceTo(closest);
+                                    if (!(dist < bestEyeDist)) continue;
+                                    bestEyeDist = dist;
                                     eyePos = pos;
                                 }
                             }
-                            Vec3 vec3 = this.target.getBoundingBox().getCenter();
-                            Entity entity4 = this.target;
-                            if (entity4 instanceof LivingEntity) {
-                                LivingEntity livingEntity = (LivingEntity)entity4;
+                            Vec3 aimPoint = this.target.getBoundingBox().getCenter();
+                            Entity aimEntity = this.target;
+                            if (aimEntity instanceof LivingEntity) {
+                                LivingEntity livingEntity = (LivingEntity)aimEntity;
                                 if (this.target.getBoundingBox().getYsize() >= 0.8) {
-                                    vec3 = new Vec3(this.target.getX(), this.target.getY() + (double)livingEntity.getEyeHeight() * 0.75, this.target.getZ());
+                                    aimPoint = new Vec3(this.target.getX(), this.target.getY() + (double)livingEntity.getEyeHeight() * 0.75, this.target.getZ());
                                 }
                             }
-                            float f = RotationUtils.getYRotToVec(eyePos, vec3);
-                            float f2 = RotationUtils.getXRotToVec(eyePos, vec3);
-                            int n3 = this.target.getBoundingBox().contains(eyePos) ? 1 : 0;
+                            float yaw = RotationUtils.getYRotToVec(eyePos, aimPoint);
+                            float pitch = RotationUtils.getXRotToVec(eyePos, aimPoint);
+                            boolean eyeInsideBox = this.target.getBoundingBox().contains(eyePos);
                             if (this.getTargetDistance(eyePos, this.target) > this.range.getValue().doubleValue()) {
                                 this.target = null;
                                 this.releaseSilentHold();
                                 return;
                             }
-                            int n4 = n2 = this.rotate.getValue().equalsIgnoreCase("None") || n3 != 0 ? 1 : 0;
+                            canAttack = this.rotate.getValue().equalsIgnoreCase("None") || eyeInsideBox;
                             if (!this.rotate.getValue().equalsIgnoreCase("None")) {
                                 if (this.rotate.getValue().equalsIgnoreCase("Silent")) {
-                                    Night.ROTATION_MANAGER.silentRotate(f, f2);
-                                    n2 = 1;
+                                    Night.ROTATION_MANAGER.silentRotate(yaw, pitch);
+                                    canAttack = true;
                                 } else {
-                                    Night.ROTATION_MANAGER.legacyRotate(f, f2, this, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+                                    Night.ROTATION_MANAGER.legacyRotate(yaw, pitch, this, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
                                     boolean raycastHit = RotationUtils.raycastTarget(eyePos, this.target, this.range.getValue().doubleValue(), Night.ROTATION_MANAGER.getServerYaw(), Night.ROTATION_MANAGER.getServerPitch()) != null;
-                                    int n5 = n2 = raycastHit || n3 != 0 ? 1 : 0;
+                                    canAttack = raycastHit || eyeInsideBox;
                                 }
                             }
-                            if (n2 == 0) {
+                            if (!canAttack) {
                                 return;
                             }
                         }
-                        if (bl9) {
-                            boolean bl10 = false;
+                        if (readyToAttack) {
+                            boolean stoppedSprinting = false;
                             if (this.stopSprinting.getValue().equalsIgnoreCase("Packet") && KillAuraModule.mc.player.isSprinting() && !KillAuraModule.mc.player.isShiftKeyDown()) {
                                 mc.getConnection().send((Packet)new ServerboundPlayerCommandPacket((Entity)KillAuraModule.mc.player, ServerboundPlayerCommandPacket.Action.STOP_SPRINTING));
-                                bl10 = true;
+                                stoppedSprinting = true;
                             }
-                            int n6 = KillAuraModule.mc.player.getInventory().getSelectedSlot();
-                            if (this.swap.getValue().equalsIgnoreCase("Normal") && n != -1) {
-                                if (this.originalSlot == -1 && n6 != n) {
-                                    this.originalSlot = n6;
+                            int currentSlot = KillAuraModule.mc.player.getInventory().getSelectedSlot();
+                            if (this.swap.getValue().equalsIgnoreCase("Normal") && bestWeaponSlot != -1) {
+                                if (this.originalSlot == -1 && currentSlot != bestWeaponSlot) {
+                                    this.originalSlot = currentSlot;
                                 }
-                                InventoryUtils.switchSlot("Normal", n, n6);
-                            } else if (this.swap.getValue().equalsIgnoreCase("Silent") && n != -1 && this.silentHeldWeaponSlot != n) {
+                                InventoryUtils.switchSlot("Normal", bestWeaponSlot, currentSlot);
+                            } else if (this.swap.getValue().equalsIgnoreCase("Silent") && bestWeaponSlot != -1 && this.silentHeldWeaponSlot != bestWeaponSlot) {
                                 this.releaseSilentHold();
-                                InventoryUtils.switchSlot("Silent", n, n6);
-                                InventoryUtils.markLongHold(n);
-                                this.silentHeldWeaponSlot = n;
-                                this.silentHeldReturnSlot = n6;
+                                InventoryUtils.switchSlot("Silent", bestWeaponSlot, currentSlot);
+                                InventoryUtils.markLongHold(bestWeaponSlot);
+                                this.silentHeldWeaponSlot = bestWeaponSlot;
+                                this.silentHeldReturnSlot = currentSlot;
                             }
                             mc.getConnection().send((Packet)new ServerboundAttackPacket(this.target.getId()));
                             KillAuraModule.mc.player.resetAttackStrengthTicker();
@@ -308,7 +305,7 @@ extends Module {
                                 KillAuraModule.mc.player.swing(InteractionHand.MAIN_HAND);
                                 mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                             }
-                            if (bl10) {
+                            if (stoppedSprinting) {
                                 mc.getConnection().send((Packet)new ServerboundPlayerCommandPacket((Entity)KillAuraModule.mc.player, ServerboundPlayerCommandPacket.Action.START_SPRINTING));
                             }
                             this.lastAttackTime = System.currentTimeMillis();
@@ -342,97 +339,97 @@ extends Module {
         if (!this.render.getValue() || KillAuraModule.mc.player == null || KillAuraModule.mc.player.isDeadOrDying()) {
             return;
         }
-        Entity entity = this.target;
-        float f = 1.0f;
-        if (entity != null) {
-            this.lastTarget = entity;
+        Entity renderTarget = this.target;
+        float alphaFactor = 1.0f;
+        if (renderTarget != null) {
+            this.lastTarget = renderTarget;
             this.lastTargetTime = System.currentTimeMillis();
         } else if (this.lastTarget != null) {
-            long l = System.currentTimeMillis() - this.lastTargetTime;
-            if (l < 300L) {
-                entity = this.lastTarget;
-                f = 1.0f - (float)l / 300.0f;
+            long elapsedMs = System.currentTimeMillis() - this.lastTargetTime;
+            if (elapsedMs < 300L) {
+                renderTarget = this.lastTarget;
+                alphaFactor = 1.0f - (float)elapsedMs / 300.0f;
             } else {
                 this.lastTarget = null;
             }
         }
-        if (entity == null) {
+        if (renderTarget == null) {
             return;
         }
-        Color color = ColorUtils.getColor(this.boxColor.getColor(), (int)((float)this.boxColor.getColor().getAlpha() * f));
+        Color color = ColorUtils.getColor(this.boxColor.getColor(), (int)((float)this.boxColor.getColor().getAlpha() * alphaFactor));
         if (this.renderMode.getValue().equalsIgnoreCase("Box") || this.renderMode.getValue().equalsIgnoreCase("Both")) {
-            Vec3 vec3 = EntityUtils.getRenderPos(entity, renderWorldEvent.getTickDelta());
-            AABB aABB = entity.getBoundingBox().move(vec3.x - entity.getX(), vec3.y - entity.getY(), vec3.z - entity.getZ());
+            Vec3 renderPos = EntityUtils.getRenderPos(renderTarget, renderWorldEvent.getTickDelta());
+            AABB aABB = renderTarget.getBoundingBox().move(renderPos.x - renderTarget.getX(), renderPos.y - renderTarget.getY(), renderPos.z - renderTarget.getZ());
             Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, color);
             Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, color);
         }
         if (this.renderMode.getValue().equalsIgnoreCase("Circle") || this.renderMode.getValue().equalsIgnoreCase("Both")) {
-            Renderer3D.renderTargetCircle(renderWorldEvent.getMatrices(), entity, renderWorldEvent.getTickDelta(), color);
+            Renderer3D.renderTargetCircle(renderWorldEvent.getMatrices(), renderTarget, renderWorldEvent.getTickDelta(), color);
         }
     }
 
-    public double getTargetDistance(Vec3 vec3, Entity entity) {
+    public double getTargetDistance(Vec3 eyePos, Entity entity) {
         if (KillAuraModule.mc.player == null || entity == null) {
             return Double.MAX_VALUE;
         }
         if (this.stanceAbuse.getValue()) {
-            double d = Double.MAX_VALUE;
-            for (Vec3 vec32 : GrimUtils.getPossibleEyePositions((Player)KillAuraModule.mc.player)) {
-                double d2 = vec32.distanceTo(RotationUtils.getClampClosestPoint(vec32, entity.getBoundingBox()));
-                if (!(d2 < d)) continue;
-                d = d2;
+            double bestDist = Double.MAX_VALUE;
+            for (Vec3 pos : GrimUtils.getPossibleEyePositions((Player)KillAuraModule.mc.player)) {
+                double dist = pos.distanceTo(RotationUtils.getClampClosestPoint(pos, entity.getBoundingBox()));
+                if (!(dist < bestDist)) continue;
+                bestDist = dist;
             }
-            return d;
+            return bestDist;
         }
-        return vec3.distanceTo(RotationUtils.getClampClosestPoint(vec3, entity.getBoundingBox()));
+        return eyePos.distanceTo(RotationUtils.getClampClosestPoint(eyePos, entity.getBoundingBox()));
     }
 
     private Entity findOptimalTarget() {
         if (KillAuraModule.mc.player == null || KillAuraModule.mc.level == null) {
             return null;
         }
-        ArrayList<Entity> arrayList = new ArrayList<Entity>();
-        Vec3 vec3 = KillAuraModule.mc.player.getEyePosition(1.0f);
-        double d = this.range.getValue().doubleValue();
+        ArrayList<Entity> candidates = new ArrayList<Entity>();
+        Vec3 eyePos = KillAuraModule.mc.player.getEyePosition(1.0f);
+        double maxRange = this.range.getValue().doubleValue();
         for (Entity entity : KillAuraModule.mc.level.entitiesForRendering()) {
             if (entity == KillAuraModule.mc.player || !entity.isAlive() || EntityUtils.isGhost(entity)) continue;
-            double dist = this.getTargetDistance(vec3, entity);
-            if (dist > d) continue;
+            double dist = this.getTargetDistance(eyePos, entity);
+            if (dist > maxRange) continue;
             if (entity instanceof Player) {
                 Player player = (Player)entity;
                 if (!this.players.getValue() || !this.friends.getValue() && Night.FRIEND_MANAGER.contains(player.getName().getString()) || this.ignoreNaked.getValue() && EntityUtils.isNaked(player)) continue;
-                arrayList.add(entity);
+                candidates.add(entity);
                 continue;
             }
             if (this.projectiles.getValue() && (entity instanceof ShulkerBullet || entity instanceof LargeFireball)) {
-                arrayList.add(entity);
+                candidates.add(entity);
                 continue;
             }
             if (EntityUtils.isNeutral(entity)) {
                 if (!this.neutrals.getValue() && !EntityUtils.isAngry(entity)) continue;
-                arrayList.add(entity);
+                candidates.add(entity);
                 continue;
             }
             if (this.hostiles.getValue() && EntityUtils.isHostile(entity)) {
-                arrayList.add(entity);
+                candidates.add(entity);
                 continue;
             }
             if (!this.animals.getValue() || !EntityUtils.isAnimal(entity)) continue;
-            arrayList.add(entity);
+            candidates.add(entity);
         }
-        List<Entity> list = arrayList.stream().filter(entity -> entity instanceof Player).sorted(Comparator.comparingDouble(entity -> this.getTargetDistance(vec3, entity))).toList();
-        if (!list.isEmpty()) {
-            return list.get(0);
+        List<Entity> players = candidates.stream().filter(entity -> entity instanceof Player).sorted(Comparator.comparingDouble(entity -> this.getTargetDistance(eyePos, entity))).toList();
+        if (!players.isEmpty()) {
+            return players.get(0);
         }
-        List<Entity> creepers = arrayList.stream().filter(entity -> entity instanceof Creeper && this.getTargetDistance(vec3, entity) <= 3.0).sorted(Comparator.comparingDouble(entity -> this.getTargetDistance(vec3, entity))).toList();
+        List<Entity> creepers = candidates.stream().filter(entity -> entity instanceof Creeper && this.getTargetDistance(eyePos, entity) <= 3.0).sorted(Comparator.comparingDouble(entity -> this.getTargetDistance(eyePos, entity))).toList();
         if (!creepers.isEmpty()) {
             return creepers.get(0);
         }
-        List<Entity> list2 = arrayList.stream().filter(entity -> entity instanceof ShulkerBullet || entity instanceof LargeFireball).sorted(Comparator.comparingDouble(entity -> this.getTargetDistance(vec3, entity))).toList();
-        if (!list2.isEmpty()) {
-            return list2.get(0);
+        List<Entity> projectiles = candidates.stream().filter(entity -> entity instanceof ShulkerBullet || entity instanceof LargeFireball).sorted(Comparator.comparingDouble(entity -> this.getTargetDistance(eyePos, entity))).toList();
+        if (!projectiles.isEmpty()) {
+            return projectiles.get(0);
         }
-        return arrayList.stream().min(Comparator.comparingDouble(entity -> this.getTargetDistance(vec3, entity))).orElse(null);
+        return candidates.stream().min(Comparator.comparingDouble(entity -> this.getTargetDistance(eyePos, entity))).orElse(null);
     }
 
     private float getTps() {
@@ -442,83 +439,83 @@ extends Module {
         return Night.SERVER_MANAGER.getTickRate();
     }
 
-    private double getCooldownMs(int n) {
+    private double getCooldownMs(int weaponSlot) {
         ItemAttributeModifiers itemAttributeModifiers;
-        double d;
+        double baseAttackSpeed;
         if (KillAuraModule.mc.player == null) {
             return 500.0;
         }
-        int n2 = n == -1 ? KillAuraModule.mc.player.getInventory().getSelectedSlot() : n;
-        ItemStack itemStack = KillAuraModule.mc.player.getInventory().getItem(n2);
-        double d2 = d = KillAuraModule.mc.player.getAttributeBaseValue(Attributes.ATTACK_SPEED);
+        int slot = weaponSlot == -1 ? KillAuraModule.mc.player.getInventory().getSelectedSlot() : weaponSlot;
+        ItemStack itemStack = KillAuraModule.mc.player.getInventory().getItem(slot);
+        double attackSpeed = baseAttackSpeed = KillAuraModule.mc.player.getAttributeBaseValue(Attributes.ATTACK_SPEED);
         if (itemStack.has(DataComponents.ATTRIBUTE_MODIFIERS) && (itemAttributeModifiers = (ItemAttributeModifiers)itemStack.get(DataComponents.ATTRIBUTE_MODIFIERS)) != null) {
             for (ItemAttributeModifiers.Entry entry : itemAttributeModifiers.modifiers()) {
                 if (!entry.attribute().is(Attributes.ATTACK_SPEED)) continue;
-                d2 += entry.modifier().amount();
+                attackSpeed += entry.modifier().amount();
             }
         }
-        double d3 = 1.0 / Math.max(0.1, d2) * 20.0;
-        double d4 = d3 * 50.0 * this.delay.getValue().doubleValue();
+        double cooldownTicks = 1.0 / Math.max(0.1, attackSpeed) * 20.0;
+        double cooldownMs = cooldownTicks * 50.0 * this.delay.getValue().doubleValue();
         if (this.tpsMode.getValue().equalsIgnoreCase("Average")) {
-            float f = Math.max(1.0f, Night.SERVER_MANAGER.getTickRate());
-            d4 *= (double)(20.0f / f);
+            float tickRate = Math.max(1.0f, Night.SERVER_MANAGER.getTickRate());
+            cooldownMs *= (double)(20.0f / tickRate);
         }
-        return d4;
+        return cooldownMs;
     }
 
     public int getBestWeaponSlot() {
         if (KillAuraModule.mc.player == null) {
             return -1;
         }
-        int n = -1;
-        float f = -1.0f;
-        boolean bl = !KillAuraModule.mc.player.getAbilities().flying && !KillAuraModule.mc.player.onGround();
+        int bestSlot = -1;
+        float bestScore = -1.0f;
+        boolean isFalling = !KillAuraModule.mc.player.getAbilities().flying && !KillAuraModule.mc.player.onGround();
         for (int i = 0; i < 9; ++i) {
-            int n2;
-            int n3;
-            int n4;
+            int baneLevel;
+            int smiteLevel;
+            int sharpnessLevel;
             ItemAttributeModifiers itemAttributeModifiers;
             ItemStack itemStack = KillAuraModule.mc.player.getInventory().getItem(i);
             if (itemStack.isEmpty()) continue;
-            boolean bl2 = itemStack.is(ItemTags.SWORDS);
-            boolean bl3 = itemStack.is(ItemTags.AXES);
-            boolean bl4 = itemStack.getItem() instanceof TridentItem;
-            boolean bl5 = itemStack.getItem() instanceof MaceItem;
-            if (!bl2 && !bl3 && !bl4 && !bl5) continue;
-            if (bl5 && bl) {
+            boolean isSword = itemStack.is(ItemTags.SWORDS);
+            boolean isAxe = itemStack.is(ItemTags.AXES);
+            boolean isTrident = itemStack.getItem() instanceof TridentItem;
+            boolean isMace = itemStack.getItem() instanceof MaceItem;
+            if (!isSword && !isAxe && !isTrident && !isMace) continue;
+            if (isMace && isFalling) {
                 return i;
             }
-            float f2 = 0.0f;
+            float score = 0.0f;
             if (itemStack.has(DataComponents.ATTRIBUTE_MODIFIERS) && (itemAttributeModifiers = (ItemAttributeModifiers)itemStack.get(DataComponents.ATTRIBUTE_MODIFIERS)) != null) {
                 for (ItemAttributeModifiers.Entry entry : itemAttributeModifiers.modifiers()) {
                     if (!entry.attribute().is(Attributes.ATTACK_DAMAGE)) continue;
-                    f2 += (float)entry.modifier().amount();
+                    score += (float)entry.modifier().amount();
                 }
             }
-            if (bl2) {
-                f2 += 5.0f;
+            if (isSword) {
+                score += 5.0f;
             }
-            if (!((f2 += (float)(n4 = EnchantmentUtils.getEnchantmentLevel(itemStack, (ResourceKey<Enchantment>)Enchantments.SHARPNESS)) * 1.25f + (float)(n3 = EnchantmentUtils.getEnchantmentLevel(itemStack, (ResourceKey<Enchantment>)Enchantments.SMITE)) * 2.5f + (float)(n2 = EnchantmentUtils.getEnchantmentLevel(itemStack, (ResourceKey<Enchantment>)Enchantments.BANE_OF_ARTHROPODS)) * 2.5f) > f)) continue;
-            f = f2;
-            n = i;
+            if (!((score += (float)(sharpnessLevel = EnchantmentUtils.getEnchantmentLevel(itemStack, (ResourceKey<Enchantment>)Enchantments.SHARPNESS)) * 1.25f + (float)(smiteLevel = EnchantmentUtils.getEnchantmentLevel(itemStack, (ResourceKey<Enchantment>)Enchantments.SMITE)) * 2.5f + (float)(baneLevel = EnchantmentUtils.getEnchantmentLevel(itemStack, (ResourceKey<Enchantment>)Enchantments.BANE_OF_ARTHROPODS)) * 2.5f) > bestScore)) continue;
+            bestScore = score;
+            bestSlot = i;
         }
-        return n;
+        return bestSlot;
     }
 
     private float calculatePlayerAttackDamage() {
-        MobEffectInstance mobEffectInstance;
-        MobEffectInstance mobEffectInstance2;
+        MobEffectInstance weakness;
+        MobEffectInstance strength;
         if (KillAuraModule.mc.player == null) {
             return 1.0f;
         }
-        float f = 1.0f;
-        if (KillAuraModule.mc.player.hasEffect(MobEffects.STRENGTH) && (mobEffectInstance2 = KillAuraModule.mc.player.getEffect(MobEffects.STRENGTH)) != null) {
-            f += 3.0f * (float)(mobEffectInstance2.getAmplifier() + 1);
+        float damage = 1.0f;
+        if (KillAuraModule.mc.player.hasEffect(MobEffects.STRENGTH) && (strength = KillAuraModule.mc.player.getEffect(MobEffects.STRENGTH)) != null) {
+            damage += 3.0f * (float)(strength.getAmplifier() + 1);
         }
-        if (KillAuraModule.mc.player.hasEffect(MobEffects.WEAKNESS) && (mobEffectInstance = KillAuraModule.mc.player.getEffect(MobEffects.WEAKNESS)) != null) {
-            f -= 4.0f * (float)(mobEffectInstance.getAmplifier() + 1);
+        if (KillAuraModule.mc.player.hasEffect(MobEffects.WEAKNESS) && (weakness = KillAuraModule.mc.player.getEffect(MobEffects.WEAKNESS)) != null) {
+            damage -= 4.0f * (float)(weakness.getAmplifier() + 1);
         }
-        return Math.max(f, 0.0f);
+        return Math.max(damage, 0.0f);
     }
 
     public static boolean isItemAWeapon(ItemStack itemStack) {

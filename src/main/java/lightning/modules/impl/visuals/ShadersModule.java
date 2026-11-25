@@ -156,8 +156,8 @@ extends Module {
         return this.color.getColor();
     }
 
-    public static int getBloomFillModeIndex(String string) {
-        return switch (string) {
+    public static int getBloomFillModeIndex(String modeName) {
+        return switch (modeName) {
             case "Gradient" -> 1;
             case "Rainbow" -> 4;
             default -> 0;
@@ -177,9 +177,9 @@ extends Module {
         }
         PopChamsModule popChamsModule = Night.MODULE_MANAGER.getModule(PopChamsModule.class);
         if (popChamsModule.isToggled()) {
-            boolean bl = popChamsModule.mode.getValue().equalsIgnoreCase("Fill") || popChamsModule.mode.getValue().equalsIgnoreCase("Both");
-            boolean bl2 = popChamsModule.mode.getValue().equalsIgnoreCase("Outline") || popChamsModule.mode.getValue().equalsIgnoreCase("Both");
-            return ShadersModule.pickVariant(bl, bl2, popChamsModule.fillColor.getColor().getAlpha());
+            boolean fill = popChamsModule.mode.getValue().equalsIgnoreCase("Fill") || popChamsModule.mode.getValue().equalsIgnoreCase("Both");
+            boolean outline = popChamsModule.mode.getValue().equalsIgnoreCase("Outline") || popChamsModule.mode.getValue().equalsIgnoreCase("Both");
+            return ShadersModule.pickVariant(fill, outline, popChamsModule.fillColor.getColor().getAlpha());
         }
         return null;
     }
@@ -189,21 +189,21 @@ extends Module {
         if (shadersModule == null || !shadersModule.isToggled()) {
             return new EspShader.Settings(0, 0.0f, 1.0f, 1.0f, 1.0f, Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE);
         }
-        int n = EspShader.modeIndex(shadersModule.shader.getValue());
-        float f = (float)shadersModule.color.getColor().getAlpha() / 255.0f;
-        float f2 = shadersModule.shaderOpacity.getValue().floatValue() / 100.0f;
+        int modeIndex = EspShader.modeIndex(shadersModule.shader.getValue());
+        float baseAlpha = (float)shadersModule.color.getColor().getAlpha() / 255.0f;
+        float shaderAlpha = shadersModule.shaderOpacity.getValue().floatValue() / 100.0f;
         ColorModule colorModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ColorModule.class) : null;
-        float f3 = colorModule != null ? colorModule.rainbowSpeed.getValue().floatValue() : 6.0f;
-        float f4 = colorModule != null ? colorModule.rainbowBrightness.getValue().floatValue() / 100.0f : 1.0f;
-        float f5 = colorModule != null && colorModule.rainbowScale != null ? colorModule.rainbowScale.getValue().floatValue() / 100.0f : 1.0f;
-        float f6 = n == 1 ? shadersModule.shaderStep.getValue().floatValue() : f5;
-        float f7 = (float)(1000.0 / Math.max(200.0, 10500.0 - 500.0 * (double)f3));
-        float f8 = n != 0 && n != 2 && n != 10 ? shadersModule.shaderSpeed.getValue().floatValue() : f7 * (n == 2 ? shadersModule.shaderSpeed.getValue().floatValue() : 1.0f);
-        float f9 = (float)((double)(System.currentTimeMillis() % 20000000L) / 1000.0) * f8 * (n == 1 ? f6 : 1.0f);
-        if (n != 0) {
-            return new EspShader.Settings(n, f9, f6, f2, f4, n == 7 ? shadersModule.shaderGlowColor.getColor() : shadersModule.color.getColor(), shadersModule.shaderColor2.getColor(), shadersModule.shaderColor3.getColor(), shadersModule.shaderColor4.getColor());
+        float rainbowSpeed = colorModule != null ? colorModule.rainbowSpeed.getValue().floatValue() : 6.0f;
+        float rainbowBrightness = colorModule != null ? colorModule.rainbowBrightness.getValue().floatValue() / 100.0f : 1.0f;
+        float rainbowScale = colorModule != null && colorModule.rainbowScale != null ? colorModule.rainbowScale.getValue().floatValue() / 100.0f : 1.0f;
+        float stepScale = modeIndex == 1 ? shadersModule.shaderStep.getValue().floatValue() : rainbowScale;
+        float rainbowRate = (float)(1000.0 / Math.max(200.0, 10500.0 - 500.0 * (double)rainbowSpeed));
+        float animSpeed = modeIndex != 0 && modeIndex != 2 && modeIndex != 10 ? shadersModule.shaderSpeed.getValue().floatValue() : rainbowRate * (modeIndex == 2 ? shadersModule.shaderSpeed.getValue().floatValue() : 1.0f);
+        float shaderTime = (float)((double)(System.currentTimeMillis() % 20000000L) / 1000.0) * animSpeed * (modeIndex == 1 ? stepScale : 1.0f);
+        if (modeIndex != 0) {
+            return new EspShader.Settings(modeIndex, shaderTime, stepScale, shaderAlpha, rainbowBrightness, modeIndex == 7 ? shadersModule.shaderGlowColor.getColor() : shadersModule.color.getColor(), shadersModule.shaderColor2.getColor(), shadersModule.shaderColor3.getColor(), shadersModule.shaderColor4.getColor());
         }
-        return new EspShader.Settings(0, f9, f6, f, f4, shadersModule.color.getColor(), Color.WHITE, Color.WHITE, Color.WHITE);
+        return new EspShader.Settings(0, shaderTime, stepScale, baseAlpha, rainbowBrightness, shadersModule.color.getColor(), Color.WHITE, Color.WHITE, Color.WHITE);
     }
 
     public static float glowIntensity() {
@@ -214,13 +214,13 @@ extends Module {
         return shadersModule.glowIntensity.getValue().floatValue() / 100.0f;
     }
 
-    public static Identifier pickVariant(boolean bl, boolean bl2, int n) {
-        if (bl2 && !bl) {
+    public static Identifier pickVariant(boolean fill, boolean outline, int alpha) {
+        if (outline && !fill) {
             return Identifier.fromNamespaceAndPath((String)"lightning", (String)"outline_outline");
         }
-        int n2 = Math.max(20, Math.min(100, (int)Math.round((double)n / 255.0 * 5.0) * 20));
-        String string = bl && bl2 ? "outline_both_" : "outline_fill_";
-        return Identifier.fromNamespaceAndPath((String)"lightning", (String)(string + n2));
+        int alphaBucket = Math.max(20, Math.min(100, (int)Math.round((double)alpha / 255.0 * 5.0) * 20));
+        String prefix = fill && outline ? "outline_both_" : "outline_fill_";
+        return Identifier.fromNamespaceAndPath((String)"lightning", (String)(prefix + alphaBucket));
     }
 }
 

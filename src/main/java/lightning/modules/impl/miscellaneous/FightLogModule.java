@@ -113,34 +113,33 @@ extends Module {
         opponent = null;
     }
 
-    private static Object call(Object o, String m) {
+    private static Object call(Object target, String methodName) {
         try {
-            if (o == null) {
+            if (target == null) {
                 return null;
             }
-            return o.getClass().getMethod(m, new Class[0]).invoke(o, new Object[0]);
+            return target.getClass().getMethod(methodName, new Class[0]).invoke(target, new Object[0]);
         }
         catch (Throwable t) {
             return null;
         }
     }
 
-    private static boolean isPlayer(Object o) {
-        Class<?> c;
-        Class<?> clazz = c = o == null ? null : o.getClass();
-        while (c != null) {
-            if (c.getName().equals("net.minecraft.world.entity.player.Player")) {
+    private static boolean isPlayer(Object obj) {
+        Class<?> currentClass = obj == null ? null : obj.getClass();
+        while (currentClass != null) {
+            if (currentClass.getName().equals("net.minecraft.world.entity.player.Player")) {
                 return true;
             }
-            c = c.getSuperclass();
+            currentClass = currentClass.getSuperclass();
         }
         return false;
     }
 
-    private static String nameOf(Object o) {
-        Object comp = FightLogModule.call(o, "getName");
-        Object s = FightLogModule.call(comp, "getString");
-        return s == null ? null : String.valueOf(s);
+    private static String nameOf(Object entity) {
+        Object nameComponent = FightLogModule.call(entity, "getName");
+        Object nameString = FightLogModule.call(nameComponent, "getString");
+        return nameString == null ? null : String.valueOf(nameString);
     }
 
     private static Object selfObj() {
@@ -153,50 +152,50 @@ extends Module {
         }
     }
 
-    private static boolean isSelf(Object o) {
-        if (o == null) {
+    private static boolean isSelf(Object obj) {
+        if (obj == null) {
             return false;
         }
-        Object me = FightLogModule.selfObj();
-        if (me == null) {
+        Object self = FightLogModule.selfObj();
+        if (self == null) {
             return false;
         }
-        if (o == me) {
+        if (obj == self) {
             return true;
         }
-        Object a = FightLogModule.call(o, "getUUID");
-        Object b = FightLogModule.call(me, "getUUID");
-        if (a != null && a.equals(b)) {
+        Object objUuid = FightLogModule.call(obj, "getUUID");
+        Object selfUuid = FightLogModule.call(self, "getUUID");
+        if (objUuid != null && objUuid.equals(selfUuid)) {
             return true;
         }
-        String n1 = FightLogModule.nameOf(o);
-        String n2 = FightLogModule.nameOf(me);
-        return n1 != null && n1.equals(n2);
+        String objName = FightLogModule.nameOf(obj);
+        String selfName = FightLogModule.nameOf(self);
+        return objName != null && objName.equals(selfName);
     }
 
     private static String selfName() {
-        String string = FightLogModule.nameOf(FightLogModule.selfObj());
-        if (string != null && !string.isEmpty()) {
-            return string;
+        String name = FightLogModule.nameOf(FightLogModule.selfObj());
+        if (name != null && !name.isEmpty()) {
+            return name;
         }
         return "?";
     }
 
-    private static boolean isMe(Object object) {
-        if (object == null) {
+    private static boolean isMe(Object obj) {
+        if (obj == null) {
             return false;
         }
-        Object object2 = FightLogModule.selfObj();
-        if (object2 == null) {
+        Object self = FightLogModule.selfObj();
+        if (self == null) {
             return false;
         }
-        if (object == object2) {
+        if (obj == self) {
             return true;
         }
-        Object object3 = FightLogModule.call(object, "getUUID");
-        Object object4 = FightLogModule.call(object2, "getUUID");
-        if (object3 != null) {
-            return object3.equals(object4);
+        Object objUuid = FightLogModule.call(obj, "getUUID");
+        Object selfUuid = FightLogModule.call(self, "getUUID");
+        if (objUuid != null) {
+            return objUuid.equals(selfUuid);
         }
         return false;
     }
@@ -208,47 +207,46 @@ extends Module {
             if (!FightLogModule.isPlayer(target) || FightLogModule.isSelf(target)) {
                 return;
             }
-            String n = FightLogModule.nameOf(target);
-            if (n == null || n.isEmpty()) {
+            String targetName = FightLogModule.nameOf(target);
+            if (targetName == null || targetName.isEmpty()) {
                 return;
             }
-            opponent = n;
+            opponent = targetName;
             opponentTime = System.currentTimeMillis();
         }
 
         @SubscribeEvent
         public void onPlayerPop(PlayerPopEvent event) {
-            Player p = event.getPlayer();
-            if (FightLogModule.isMe(p)) {
+            Player player = event.getPlayer();
+            if (FightLogModule.isMe(player)) {
                 ++totemsLost;
             }
         }
 
         @SubscribeEvent
         public void onPlayerDeath(PlayerDeathEvent event) {
-            boolean recent;
-            Player p = event.getPlayer();
+            Player player = event.getPlayer();
             long now = System.currentTimeMillis();
-            boolean bl = recent = opponent != null && now - opponentTime <= 25000L;
-            if (FightLogModule.isSelf(p)) {
+            boolean recent = opponent != null && now - opponentTime <= 25000L;
+            if (FightLogModule.isSelf(player)) {
                 FightLogModule.record(false, recent ? opponent : FightLogModule.selfName());
                 return;
             }
-            String n = FightLogModule.nameOf(p);
-            if (recent && n != null && n.equals(opponent)) {
-                FightLogModule.record(true, n);
+            String playerName = FightLogModule.nameOf(player);
+            if (recent && playerName != null && playerName.equals(opponent)) {
+                FightLogModule.record(true, playerName);
             }
         }
 
         @SubscribeEvent
         public void onTargetDeath(TargetDeathEvent event) {
-            Player p = event.getPlayer();
-            if (FightLogModule.isSelf(p)) {
+            Player player = event.getPlayer();
+            if (FightLogModule.isSelf(player)) {
                 return;
             }
-            String n = FightLogModule.nameOf(p);
-            if (n != null && !n.isEmpty()) {
-                FightLogModule.record(true, n);
+            String playerName = FightLogModule.nameOf(player);
+            if (playerName != null && !playerName.isEmpty()) {
+                FightLogModule.record(true, playerName);
             }
         }
 

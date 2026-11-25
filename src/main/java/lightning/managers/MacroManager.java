@@ -29,24 +29,23 @@ implements IMinecraft {
         if (MacroManager.mc.player == null || MacroManager.mc.level == null || MacroManager.mc.gui != null && MacroManager.mc.gui.screen() != null) {
             return;
         }
-        for (String string : this.macros.keySet()) {
-            String[] stringArray;
-            int n = this.macros.get(string);
-            if (keyInputEvent.getKey() != n) continue;
-            if (string == null) {
-                Night.CHAT_MANAGER.error("An error happened while executing the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(n) + String.valueOf(ChatUtils.getSecondary()) + " macro.");
+        for (String macroScript : this.macros.keySet()) {
+            int keyCode = this.macros.get(macroScript);
+            if (keyInputEvent.getKey() != keyCode) continue;
+            if (macroScript == null) {
+                Night.CHAT_MANAGER.error("An error happened while executing the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(keyCode) + String.valueOf(ChatUtils.getSecondary()) + " macro.");
                 continue;
             }
-            for (String string2 : stringArray = string.split(";")) {
-                if (string2.startsWith("/")) {
-                    MacroManager.mc.player.connection.sendCommand(string2.substring(1));
+            for (String commandText : macroScript.split(";")) {
+                if (commandText.startsWith("/")) {
+                    MacroManager.mc.player.connection.sendCommand(commandText.substring(1));
                     continue;
                 }
-                if (string2.startsWith(Night.COMMAND_MANAGER.getPrefix())) {
-                    Night.COMMAND_MANAGER.execute(string2);
+                if (commandText.startsWith(Night.COMMAND_MANAGER.getPrefix())) {
+                    Night.COMMAND_MANAGER.execute(commandText);
                     continue;
                 }
-                MacroManager.mc.player.connection.sendChat(string2);
+                MacroManager.mc.player.connection.sendChat(commandText);
             }
         }
     }
@@ -56,47 +55,47 @@ implements IMinecraft {
         if (MacroManager.mc.player == null || MacroManager.mc.level == null || MacroManager.mc.gui != null && MacroManager.mc.gui.screen() != null) {
             return;
         }
-        for (String string : this.macros.keySet()) {
-            int n = this.macros.get(string);
-            if (n != -mouseInputEvent.getButton() - 1) continue;
-            if (string == null) {
-                Night.CHAT_MANAGER.error("An error happened while executing the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(n) + String.valueOf(ChatUtils.getSecondary()) + " macro.");
+        for (String macroText : this.macros.keySet()) {
+            int keyCode = this.macros.get(macroText);
+            if (keyCode != -mouseInputEvent.getButton() - 1) continue;
+            if (macroText == null) {
+                Night.CHAT_MANAGER.error("An error happened while executing the " + String.valueOf(ChatUtils.getPrimary()) + KeyboardUtils.getKeyName(keyCode) + String.valueOf(ChatUtils.getSecondary()) + " macro.");
                 continue;
             }
-            if (string.startsWith("/")) {
-                MacroManager.mc.player.connection.sendCommand(string.substring(1));
+            if (macroText.startsWith("/")) {
+                MacroManager.mc.player.connection.sendCommand(macroText.substring(1));
                 continue;
             }
-            MacroManager.mc.player.connection.sendChat(string);
+            MacroManager.mc.player.connection.sendChat(macroText);
         }
     }
 
-    public String getKey(int n) {
-        for (String string : this.macros.keySet()) {
-            if (n != this.macros.get(string)) continue;
-            return string;
+    public String getKey(int keyCode) {
+        for (String macroText : this.macros.keySet()) {
+            if (keyCode != this.macros.get(macroText)) continue;
+            return macroText;
         }
         return null;
     }
 
-    public int getValue(String string) {
-        return this.macros.get(string);
+    public int getValue(String macroText) {
+        return this.macros.get(macroText);
     }
 
-    public boolean containsKey(String string) {
-        return this.macros.containsKey(string);
+    public boolean containsKey(String macroText) {
+        return this.macros.containsKey(macroText);
     }
 
-    public boolean containsValue(int n) {
-        return this.macros.containsValue(n);
+    public boolean containsValue(int keyCode) {
+        return this.macros.containsValue(keyCode);
     }
 
-    public void add(String string, int n) {
-        this.macros.put(string, n);
+    public void add(String macroText, int keyCode) {
+        this.macros.put(macroText, keyCode);
     }
 
-    public void remove(String string) {
-        this.macros.remove(string);
+    public void remove(String macroText) {
+        this.macros.remove(macroText);
     }
 
     public void clear() {

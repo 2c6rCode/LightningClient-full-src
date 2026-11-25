@@ -63,13 +63,13 @@ extends Module {
         if (!this.isTrapped()) {
             return;
         }
-        int n = InventoryUtils.findHotbar(Items.CHORUS_FRUIT);
-        if (n == -1) {
+        int chorusSlot = InventoryUtils.findHotbar(Items.CHORUS_FRUIT);
+        if (chorusSlot == -1) {
             return;
         }
         this.previousSlot = AutoEscapeModule.mc.player.getInventory().getSelectedSlot();
-        if (n != this.previousSlot) {
-            InventoryUtils.switchSlot("Normal", n, this.previousSlot);
+        if (chorusSlot != this.previousSlot) {
+            InventoryUtils.switchSlot("Normal", chorusSlot, this.previousSlot);
         }
         AutoEscapeModule.mc.gameMode.useItem((Player)AutoEscapeModule.mc.player, InteractionHand.MAIN_HAND);
         this.eating = true;

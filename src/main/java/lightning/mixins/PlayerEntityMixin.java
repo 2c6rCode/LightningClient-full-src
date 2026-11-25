@@ -63,32 +63,32 @@ implements IMinecraft {
     }
 
     @ModifyReturnValue(method={"isPushedByFluid"}, at={@At(value="RETURN")})
-    private boolean isPushedByFluids(boolean bl) {
+    private boolean isPushedByFluids(boolean pushedByFluids) {
         try {
             if ((Object)this == PlayerEntityMixin.mc.player && ((VelocityModule)Night.MODULE_MANAGER.getModule(VelocityModule.class)).isToggled() && ((VelocityModule)Night.MODULE_MANAGER.getModule(VelocityModule.class)).antiLiquidPush.getValue()) {
                 return false;
             }
-            return bl;
+            return pushedByFluids;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return pushedByFluids;
         }
     }
 
     @Redirect(method={"causeExtraKnockback"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/player/Player;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V")})
-    private void grimAttackVelocity$setDeltaMovement(Player player, Vec3 vec3) {
+    private void grimAttackVelocity$setDeltaMovement(Player player, Vec3 deltaMovement) {
         if ((Object)this == PlayerEntityMixin.mc.player && ((IPatchModule)Night.MODULE_MANAGER.getModule("Patch")).isGrimAttackVelocity()) {
             return;
         }
-        player.setDeltaMovement(vec3);
+        player.setDeltaMovement(deltaMovement);
     }
 
     @Redirect(method={"causeExtraKnockback"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/player/Player;setSprinting(Z)V")})
-    private void grimAttackVelocity$setSprinting(Player player, boolean bl) {
+    private void grimAttackVelocity$setSprinting(Player player, boolean sprinting) {
         if ((Object)this == PlayerEntityMixin.mc.player && ((IPatchModule)Night.MODULE_MANAGER.getModule("Patch")).isGrimAttackVelocity()) {
             return;
         }
-        player.setSprinting(bl);
+        player.setSprinting(sprinting);
     }
 
     @Inject(method={"travel"}, at={@At(value="HEAD")}, cancellable=true)

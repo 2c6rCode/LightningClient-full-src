@@ -56,21 +56,21 @@ extends Module {
     public void onPlayerMine(PlayerMineEvent playerMineEvent) {
         Block block;
         if (!this.getNull() && playerMineEvent.getActorID() != BreakHighlightModule.mc.player.getId() && BreakHighlightModule.mc.level != null && !(block = BreakHighlightModule.mc.level.getBlockState(playerMineEvent.getPosition()).getBlock()).equals(Blocks.AIR)) {
-            String string;
+            String playerName;
             Entity entity = BreakHighlightModule.mc.level.getEntity(playerMineEvent.getActorID());
             if (entity instanceof Player player) {
-                string = player.getName().getString();
+                playerName = player.getName().getString();
             } else {
-                string = "Player";
+                playerName = "Player";
             }
-            float f;
+            float computedBreakTime;
             if (entity instanceof Player player) {
-                f = WorldUtils.getBreakTime(player, BreakHighlightModule.mc.level.getBlockState(playerMineEvent.getPosition()));
+                computedBreakTime = WorldUtils.getBreakTime(player, BreakHighlightModule.mc.level.getBlockState(playerMineEvent.getPosition()));
             } else {
-                f = 1000.0f;
+                computedBreakTime = 1000.0f;
             }
-            float f2 = f;
-            Mine mine = new Mine(playerMineEvent.getPosition(), block, f2, System.currentTimeMillis(), string);
+            float breakTime = computedBreakTime;
+            Mine mine = new Mine(playerMineEvent.getPosition(), block, breakTime, System.currentTimeMillis(), playerName);
             if (!this.mineMap.containsKey(playerMineEvent.getActorID())) {
                 this.mineMap.put(playerMineEvent.getActorID(), mine);
             } else if (!this.mineMap.get(playerMineEvent.getActorID()).pos.equals(playerMineEvent.getPosition())) {
@@ -85,9 +85,9 @@ extends Module {
             return;
         }
         this.mineMap.entrySet().removeIf(entry -> this.clearMine((Integer)entry.getKey(), (Mine)entry.getValue()));
-        this.mineMap.forEach((n, mine) -> {
-            float f = Easing.toDelta(mine.time, (int)mine.breakTime);
-            AABB aABB = new AABB(mine.pos).deflate(0.5).inflate((double)f / 2.0);
+        this.mineMap.forEach((actorId, mine) -> {
+            float progress = Easing.toDelta(mine.time, (int)mine.breakTime);
+            AABB aABB = new AABB(mine.pos).deflate(0.5).inflate((double)progress / 2.0);
             if (this.mode.getValue().equalsIgnoreCase("Fill") || this.mode.getValue().equalsIgnoreCase("Both")) {
                 Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, this.fillColor.getColor());
             }
@@ -95,15 +95,15 @@ extends Module {
                 Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, this.outlineColor.getColor());
             }
             if (this.name.getValue() && mine.playerName != null) {
-                Vec3 vec3 = Vec3.atCenterOf((Vec3i)mine.pos);
-                int n2 = Math.min(100, Math.max(0, (int)(f * 100.0f)));
-                String string = mine.playerName + "\n" + n2 + "%";
-                Renderer3D.renderCenteredScaledText(renderWorldEvent.getMatrices(), string, vec3.x, vec3.y, vec3.z, this.scale.getValue().intValue(), false, this.nameColor.getColor(), this.glow.getValue());
+                Vec3 center = Vec3.atCenterOf((Vec3i)mine.pos);
+                int percent = Math.min(100, Math.max(0, (int)(progress * 100.0f)));
+                String label = mine.playerName + "\n" + percent + "%";
+                Renderer3D.renderCenteredScaledText(renderWorldEvent.getMatrices(), label, center.x, center.y, center.z, this.scale.getValue().intValue(), false, this.nameColor.getColor(), this.glow.getValue());
             }
         });
     }
 
-    private boolean clearMine(int n, Mine mine) {
+    private boolean clearMine(int actorId, Mine mine) {
         if (BreakHighlightModule.mc.level == null) {
             return true;
         }
@@ -113,7 +113,7 @@ extends Module {
         if ((float)(System.currentTimeMillis() - mine.time) > mine.breakTime + 3000.0f) {
             return true;
         }
-        Entity entity = BreakHighlightModule.mc.level.getEntity(n);
+        Entity entity = BreakHighlightModule.mc.level.getEntity(actorId);
         return entity != null && Math.sqrt(entity.distanceToSqr(Vec3.atCenterOf((Vec3i)mine.pos))) > 8.0;
     }
 
@@ -125,12 +125,12 @@ extends Module {
         private final String playerName;
 
         @Generated
-        public Mine(BlockPos blockPos, Block block, float f, long l, String string) {
+        public Mine(BlockPos blockPos, Block block, float breakTime, long time, String playerName) {
             this.pos = blockPos;
             this.block = block;
-            this.breakTime = f;
-            this.time = l;
-            this.playerName = string;
+            this.breakTime = breakTime;
+            this.time = time;
+            this.playerName = playerName;
         }
     }
 }

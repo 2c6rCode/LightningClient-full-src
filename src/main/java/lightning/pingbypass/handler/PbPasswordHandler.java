@@ -202,14 +202,14 @@ TickablePacketListener {
     }
 
     public void tick() {
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         if (!this.lobbyWorldSent) {
             this.lobbyWorldSent = true;
             LobbyWorldSender.sendLobbyWorld(this.connection, this.registryManager);
         }
-        if (l - this.lastKeepAliveTime >= 15000L) {
-            this.lastKeepAliveTime = l;
-            this.connection.send((Packet)new ClientboundKeepAlivePacket(l));
+        if (now - this.lastKeepAliveTime >= 15000L) {
+            this.lastKeepAliveTime = now;
+            this.connection.send((Packet)new ClientboundKeepAlivePacket(now));
         }
         if (!this.passwordRequestSent && this.clientInPlayState) {
             this.passwordRequestSent = true;
@@ -232,11 +232,11 @@ TickablePacketListener {
         PbCustomPayload pbCustomPayload = (PbCustomPayload)customPacketPayload;
         FriendlyByteBuf friendlyByteBuf = pbCustomPayload.toBuf();
         try {
-            int n = friendlyByteBuf.readVarInt();
-            if (n == 2) {
+            int packetId = friendlyByteBuf.readVarInt();
+            if (packetId == 2) {
                 this.handlePassword(friendlyByteBuf.readUtf());
             } else {
-                LOGGER.warn("Unexpected packet ID {} from {} during password verification", (Object)n, (Object)this.profile.name());
+                LOGGER.warn("Unexpected packet ID {} from {} during password verification", (Object)packetId, (Object)this.profile.name());
             }
         }
         finally {
@@ -244,9 +244,9 @@ TickablePacketListener {
         }
     }
 
-    private void handlePassword(String string) {
-        String string2 = Night.PINGBYPASS_CONFIG.getPassword();
-        if (string2.equals(string)) {
+    private void handlePassword(String password) {
+        String configuredPassword = Night.PINGBYPASS_CONFIG.getPassword();
+        if (configuredPassword.equals(password)) {
             LOGGER.info("Password accepted for {}", (Object)this.profile.name());
             this.connection.setupInboundProtocol(GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator((RegistryAccess)RegistryAccess.EMPTY), () -> false), new PbWaitingHandler(this.proxyServer, this.connection, this.profile, this.registryManager));
         } else {

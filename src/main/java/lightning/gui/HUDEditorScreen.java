@@ -63,125 +63,124 @@ extends Screen {
 
     public HUDEditorScreen() {
         super((Component)Component.literal((String)"night-hud-editor"));
-        List<Setting> list;
-        int n = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-        int n2 = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-        int n3 = Math.round((float)n * 0.23f);
-        int n4 = Math.round((float)n2 * 0.14f);
-        this.elementsFrame = new Frame("HUD", List.of(), n3, n4, 110, 13);
+        List<Setting> childSettings;
+        int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+        int frameX = Math.round((float)screenWidth * 0.23f);
+        int frameY = Math.round((float)screenHeight * 0.14f);
+        this.elementsFrame = new Frame("HUD", List.of(), frameX, frameY, 110, 13);
         HUDModule hUDModule = Night.MODULE_MANAGER.getModule(HUDModule.class);
-        List<Setting> list2 = hUDModule.getSettings();
-        HashSet<CategorySetting> hashSet = new HashSet<CategorySetting>();
-        HashSet<BooleanSetting> hashSet2 = new HashSet<BooleanSetting>();
-        for (HudElementRegistry.Element object : HudElementRegistry.getElements().values()) {
-            if (object.category() != null) {
-                hashSet.add(object.category());
+        List<Setting> settings = hUDModule.getSettings();
+        HashSet<CategorySetting> usedCategories = new HashSet<CategorySetting>();
+        HashSet<BooleanSetting> usedEnabledSettings = new HashSet<BooleanSetting>();
+        for (HudElementRegistry.Element element : HudElementRegistry.getElements().values()) {
+            if (element.category() != null) {
+                usedCategories.add(element.category());
             }
-            if (object.enabled() != null) {
-                hashSet2.add(object.enabled());
+            if (element.enabled() != null) {
+                usedEnabledSettings.add(element.enabled());
             }
-            list = new ArrayList<Setting>();
-            if (object.category() != null) {
-                list.addAll(list2.stream().filter(setting -> {
+            childSettings = new ArrayList<Setting>();
+            if (element.category() != null) {
+                childSettings.addAll(settings.stream().filter(setting -> {
                     CategorySetting.Visibility visibility;
                     Setting.Visibility visibility2 = setting.getVisibility();
-                    return visibility2 instanceof CategorySetting.Visibility && (visibility = (CategorySetting.Visibility)visibility2).getValue() == object.category();
+                    return visibility2 instanceof CategorySetting.Visibility && (visibility = (CategorySetting.Visibility)visibility2).getValue() == element.category();
                 }).filter(setting -> !(setting instanceof BooleanSetting) || !setting.getTag().equals("Enabled")).toList());
             }
-            if (object.enabled() != null) {
-                list.addAll(list2.stream().filter(setting -> {
+            if (element.enabled() != null) {
+                childSettings.addAll(settings.stream().filter(setting -> {
                     BooleanSetting.Visibility visibility;
                     Setting.Visibility visibility2 = setting.getVisibility();
-                    return visibility2 instanceof BooleanSetting.Visibility && (visibility = (BooleanSetting.Visibility)visibility2).getSetting() == object.enabled();
+                    return visibility2 instanceof BooleanSetting.Visibility && (visibility = (BooleanSetting.Visibility)visibility2).getSetting() == element.enabled();
                 }).toList());
             }
-            this.elementsFrame.getButtons().add(new HudElementButton(object, list, this.elementsFrame, 13));
+            this.elementsFrame.getButtons().add(new HudElementButton(element, childSettings, this.elementsFrame, 13));
         }
-        for (Setting setting2 : list2) {
+        for (Setting setting2 : settings) {
             CategorySetting categorySetting;
-            if (!(setting2 instanceof CategorySetting) || hashSet.contains(categorySetting = (CategorySetting)setting2) || (list = list2.stream().filter(setting -> {
+            if (!(setting2 instanceof CategorySetting) || usedCategories.contains(categorySetting = (CategorySetting)setting2) || (childSettings = settings.stream().filter(setting -> {
                 CategorySetting.Visibility visibility;
                 Setting.Visibility visibility2 = setting.getVisibility();
                 return visibility2 instanceof CategorySetting.Visibility && (visibility = (CategorySetting.Visibility)visibility2).getValue() == categorySetting;
-            }).filter(setting -> !hashSet2.contains(setting)).toList()).isEmpty()) continue;
-            this.elementsFrame.getButtons().add(new CustomCategoryButton(categorySetting, list, this.elementsFrame, 13));
+            }).filter(setting -> !usedEnabledSettings.contains(setting)).toList()).isEmpty()) continue;
+            this.elementsFrame.getButtons().add(new CustomCategoryButton(categorySetting, childSettings, this.elementsFrame, 13));
         }
     }
 
-    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         FontManager.setHudRendering(true);
         try {
             for (Map.Entry<String, HudElementRegistry.Element> entry : HudElementRegistry.getElements().entrySet()) {
-                String string = entry.getKey();
+                String name = entry.getKey();
                 HudElementRegistry.Element element = entry.getValue();
-                float[] fArray = HudElementRegistry.getBounds(string);
-                if (fArray == null) {
-                    float f2 = element.offset().getX();
-                    float f3 = element.offset().getY();
-                    fArray = new float[]{f2, f3, f2 + 60.0f, f3 + 15.0f};
+                float[] bounds = HudElementRegistry.getBounds(name);
+                if (bounds == null) {
+                    float bx = element.offset().getX();
+                    float by = element.offset().getY();
+                    bounds = new float[]{bx, by, bx + 60.0f, by + 15.0f};
                 }
-                boolean bl = (float)n >= fArray[0] && (float)n <= fArray[2] && (float)n2 >= fArray[1] && (float)n2 <= fArray[3];
-                boolean bl2 = element.enabled().getValue();
-                boolean bl3 = string.equals(this.draggingElement);
-                Color color = bl2 ? ColorUtils.getGlobalColor() : new Color(150, 150, 150);
-                Color color2 = color;
-                int n3 = bl3 ? 70 : (bl ? 45 : 25);
-                Renderer2D.renderQuad(guiGraphicsExtractor, fArray[0] - 1.0f, fArray[1] - 1.0f, fArray[2] + 1.0f, fArray[3] + 1.0f, new Color(color.getRed(), color.getGreen(), color.getBlue(), n3));
-                Renderer2D.renderOutline(guiGraphicsExtractor, fArray[0] - 1.0f, fArray[1] - 1.0f, fArray[2] + 1.0f, fArray[3] + 1.0f, new Color(color.getRed(), color.getGreen(), color.getBlue(), bl2 ? 220 : 120));
-                if (!bl && !bl3) continue;
-                String string2 = string + (bl2 ? "" : " (disabled)");
-                float f4 = fArray[0];
-                float f5 = fArray[1] - (float)Night.FONT_MANAGER.getHeight() - 2.0f;
-                Renderer2D.renderQuad(guiGraphicsExtractor, f4 - 1.0f, f5 - 1.0f, f4 + (float)Night.FONT_MANAGER.getWidth(string2) + 1.0f, f5 + (float)Night.FONT_MANAGER.getHeight(), new Color(0, 0, 0, 180));
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string2, (int)f4, (int)f5, color);
+                boolean hovered = (float)mouseX >= bounds[0] && (float)mouseX <= bounds[2] && (float)mouseY >= bounds[1] && (float)mouseY <= bounds[3];
+                boolean enabled = element.enabled().getValue();
+                boolean dragging = name.equals(this.draggingElement);
+                Color accentColor = enabled ? ColorUtils.getGlobalColor() : new Color(150, 150, 150);
+                int bgAlpha = dragging ? 70 : (hovered ? 45 : 25);
+                Renderer2D.renderQuad(guiGraphicsExtractor, bounds[0] - 1.0f, bounds[1] - 1.0f, bounds[2] + 1.0f, bounds[3] + 1.0f, new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), bgAlpha));
+                Renderer2D.renderOutline(guiGraphicsExtractor, bounds[0] - 1.0f, bounds[1] - 1.0f, bounds[2] + 1.0f, bounds[3] + 1.0f, new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), enabled ? 220 : 120));
+                if (!hovered && !dragging) continue;
+                String tooltip = name + (enabled ? "" : " (disabled)");
+                float tipX = bounds[0];
+                float tipY = bounds[1] - (float)Night.FONT_MANAGER.getHeight() - 2.0f;
+                Renderer2D.renderQuad(guiGraphicsExtractor, tipX - 1.0f, tipY - 1.0f, tipX + (float)Night.FONT_MANAGER.getWidth(tooltip) + 1.0f, tipY + (float)Night.FONT_MANAGER.getHeight(), new Color(0, 0, 0, 180));
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, tooltip, (int)tipX, (int)tipY, accentColor);
             }
-            this.elementsFrame.render(guiGraphicsExtractor, n, n2, f);
+            this.elementsFrame.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
         }
         finally {
             FontManager.setHudRendering(false);
         }
     }
 
-    private boolean insideElementsFrame(double d, double d2) {
-        return d >= (double)this.elementsFrame.getX() && d <= (double)(this.elementsFrame.getX() + this.elementsFrame.getWidth()) && d2 >= (double)this.elementsFrame.getY() && d2 <= (double)(this.elementsFrame.getY() + this.elementsFrame.getTotalHeight() + 4);
+    private boolean insideElementsFrame(double mouseX, double mouseY) {
+        return mouseX >= (double)this.elementsFrame.getX() && mouseX <= (double)(this.elementsFrame.getX() + this.elementsFrame.getWidth()) && mouseY >= (double)this.elementsFrame.getY() && mouseY <= (double)(this.elementsFrame.getY() + this.elementsFrame.getTotalHeight() + 4);
     }
 
-    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean bl) {
-        double d;
-        double d2 = mouseButtonEvent.x();
-        if (this.insideElementsFrame(d2, d = mouseButtonEvent.y())) {
-            this.elementsFrame.mouseClicked(d2, d, mouseButtonEvent.button());
+    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean doubleClick) {
+        double mouseY;
+        double mouseX = mouseButtonEvent.x();
+        if (this.insideElementsFrame(mouseX, mouseY = mouseButtonEvent.y())) {
+            this.elementsFrame.mouseClicked(mouseX, mouseY, mouseButtonEvent.button());
             return true;
         }
         for (Map.Entry<String, HudElementRegistry.Element> entry : HudElementRegistry.getElements().entrySet()) {
-            String string = entry.getKey();
+            String name = entry.getKey();
             HudElementRegistry.Element element = entry.getValue();
-            float[] fArray = HudElementRegistry.getBounds(string);
-            if (fArray == null) {
-                float f = element.offset().getX();
-                float f2 = element.offset().getY();
-                fArray = new float[]{f, f2, f + 60.0f, f2 + 15.0f};
+            float[] bounds = HudElementRegistry.getBounds(name);
+            if (bounds == null) {
+                float bx = element.offset().getX();
+                float by = element.offset().getY();
+                bounds = new float[]{bx, by, bx + 60.0f, by + 15.0f};
             }
-            if (d2 < (double)fArray[0] || d2 > (double)fArray[2] || d < (double)fArray[1] || d > (double)fArray[3]) continue;
+            if (mouseX < (double)bounds[0] || mouseX > (double)bounds[2] || mouseY < (double)bounds[1] || mouseY > (double)bounds[3]) continue;
             if (mouseButtonEvent.button() == 1) {
                 element.enabled().setValue(!element.enabled().getValue());
             } else if (mouseButtonEvent.button() == 0) {
-                this.draggingElement = string;
-                this.dragOffsetX = (float)d2 - element.offset().getX();
-                this.dragOffsetY = (float)d - element.offset().getY();
+                this.draggingElement = name;
+                this.dragOffsetX = (float)mouseX - element.offset().getX();
+                this.dragOffsetY = (float)mouseY - element.offset().getY();
             }
             return true;
         }
-        return super.mouseClicked(mouseButtonEvent, bl);
+        return super.mouseClicked(mouseButtonEvent, doubleClick);
     }
 
-    public boolean mouseDragged(MouseButtonEvent mouseButtonEvent, double d, double d2) {
+    public boolean mouseDragged(MouseButtonEvent mouseButtonEvent, double deltaX, double deltaY) {
         if (this.draggingElement != null) {
             HudElementRegistry.Element element = HudElementRegistry.getElements().get(this.draggingElement);
             if (element != null) {
@@ -191,8 +190,8 @@ extends Screen {
             }
             return true;
         }
-        this.elementsFrame.mouseDragged(mouseButtonEvent.x(), mouseButtonEvent.y(), mouseButtonEvent.button(), d, d2);
-        return super.mouseDragged(mouseButtonEvent, d, d2);
+        this.elementsFrame.mouseDragged(mouseButtonEvent.x(), mouseButtonEvent.y(), mouseButtonEvent.button(), deltaX, deltaY);
+        return super.mouseDragged(mouseButtonEvent, deltaX, deltaY);
     }
 
     public boolean mouseReleased(MouseButtonEvent mouseButtonEvent) {
@@ -201,33 +200,33 @@ extends Screen {
         return super.mouseReleased(mouseButtonEvent);
     }
 
-    public boolean mouseScrolled(double d, double d2, double d3, double d4) {
-        if (this.insideElementsFrame(d, d2)) {
-            this.elementsFrame.mouseScrolled(d, d2, d3, d4);
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (this.insideElementsFrame(mouseX, mouseY)) {
+            this.elementsFrame.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
             return true;
         }
-        return super.mouseScrolled(d, d2, d3, d4);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     public boolean keyPressed(KeyEvent keyEvent) {
-        int n = keyEvent.key();
-        int n2 = keyEvent.scancode();
-        int n3 = keyEvent.modifiers();
-        this.elementsFrame.keyPressed(n, n2, n3);
-        if (n == 256 && !BindButton.isAnyListening()) {
+        int keyCode = keyEvent.key();
+        int scanCode = keyEvent.scancode();
+        int modifiers = keyEvent.modifiers();
+        this.elementsFrame.keyPressed(keyCode, scanCode, modifiers);
+        if (keyCode == 256 && !BindButton.isAnyListening()) {
             this.onClose();
             return true;
         }
-        if (n == 256) {
+        if (keyCode == 256) {
             return true;
         }
         return super.keyPressed(keyEvent);
     }
 
     public boolean charTyped(CharacterEvent characterEvent) {
-        char c = (char)characterEvent.codepoint();
-        int n = 0;
-        this.elementsFrame.charTyped(c, n);
+        char ch = (char)characterEvent.codepoint();
+        int modifiers = 0;
+        this.elementsFrame.charTyped(ch, modifiers);
         return super.charTyped(characterEvent);
     }
 
@@ -247,49 +246,49 @@ extends Screen {
         private final CategorySetting category;
         private int revealHeight = 0;
 
-        public CustomCategoryButton(CategorySetting categorySetting, List<Setting> list, Frame frame, int n) {
-            super(categorySetting, null, frame, n);
+        public CustomCategoryButton(CategorySetting categorySetting, List<Setting> settings, Frame frame, int height) {
+            super(categorySetting, null, frame, height);
             this.category = categorySetting;
-            for (Setting setting : list) {
-                Setting setting2;
+            for (Setting setting : settings) {
+                Setting typedSetting;
                 if (setting instanceof BooleanSetting) {
-                    setting2 = (BooleanSetting)setting;
-                    this.childButtons.add(new BooleanButton((BooleanSetting)setting2, frame, n));
+                    typedSetting = (BooleanSetting)setting;
+                    this.childButtons.add(new BooleanButton((BooleanSetting)typedSetting, frame, height));
                     continue;
                 }
                 if (setting instanceof NumberSetting) {
-                    setting2 = (NumberSetting)setting;
-                    this.childButtons.add(new NumberButton((NumberSetting)setting2, frame, n));
+                    typedSetting = (NumberSetting)setting;
+                    this.childButtons.add(new NumberButton((NumberSetting)typedSetting, frame, height));
                     continue;
                 }
                 if (setting instanceof CategorySetting) {
-                    setting2 = (CategorySetting)setting;
-                    this.childButtons.add(new CategoryButton((CategorySetting)setting2, null, frame, n));
+                    typedSetting = (CategorySetting)setting;
+                    this.childButtons.add(new CategoryButton((CategorySetting)typedSetting, null, frame, height));
                     continue;
                 }
                 if (setting instanceof BindSetting) {
-                    setting2 = (BindSetting)setting;
-                    this.childButtons.add(new BindButton((BindSetting)setting2, frame, n));
+                    typedSetting = (BindSetting)setting;
+                    this.childButtons.add(new BindButton((BindSetting)typedSetting, frame, height));
                     continue;
                 }
                 if (setting instanceof ModeSetting) {
-                    setting2 = (ModeSetting)setting;
-                    this.childButtons.add(new ModeButton((ModeSetting)setting2, frame, n));
+                    typedSetting = (ModeSetting)setting;
+                    this.childButtons.add(new ModeButton((ModeSetting)typedSetting, frame, height));
                     continue;
                 }
                 if (setting instanceof WhitelistSetting) {
-                    setting2 = (WhitelistSetting)setting;
-                    this.childButtons.add(new WhitelistButton((WhitelistSetting)setting2, frame, n));
+                    typedSetting = (WhitelistSetting)setting;
+                    this.childButtons.add(new WhitelistButton((WhitelistSetting)typedSetting, frame, height));
                     continue;
                 }
                 if (setting instanceof StringSetting) {
-                    setting2 = (StringSetting)setting;
-                    this.childButtons.add(new StringButton((StringSetting)setting2, frame, n));
+                    typedSetting = (StringSetting)setting;
+                    this.childButtons.add(new StringButton((StringSetting)typedSetting, frame, height));
                     continue;
                 }
                 if (!(setting instanceof ColorSetting)) continue;
-                setting2 = (ColorSetting)setting;
-                this.childButtons.add(new ColorButton((ColorSetting)setting2, frame, n));
+                typedSetting = (ColorSetting)setting;
+                this.childButtons.add(new ColorButton((ColorSetting)typedSetting, frame, height));
             }
         }
 
@@ -314,79 +313,79 @@ extends Screen {
         }
 
         @Override
-        public void setRevealHeight(int n) {
-            this.revealHeight = n;
+        public void setRevealHeight(int revealHeight) {
+            this.revealHeight = revealHeight;
         }
 
         @Override
-        public void setSearchQuery(String string) {
+        public void setSearchQuery(String query) {
         }
 
         @Override
-        public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-            super.render(guiGraphicsExtractor, n, n2, f);
+        public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+            super.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
             if (this.revealHeight > 0) {
-                int n3 = this.getY() + this.getHeight();
-                guiGraphicsExtractor.enableScissor(this.getX(), n3, this.getX() + this.getWidth(), n3 + this.revealHeight);
+                int listTop = this.getY() + this.getHeight();
+                guiGraphicsExtractor.enableScissor(this.getX(), listTop, this.getX() + this.getWidth(), listTop + this.revealHeight);
                 for (Button button : this.childButtons) {
                     if (!button.isVisible()) continue;
-                    button.render(guiGraphicsExtractor, n, n2, f);
+                    button.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
                 }
                 guiGraphicsExtractor.disableScissor();
             }
         }
 
         @Override
-        public void mouseClicked(double d, double d2, int n) {
-            super.mouseClicked(d, d2, n);
+        public void mouseClicked(double mouseX, double mouseY, int button) {
+            super.mouseClicked(mouseX, mouseY, button);
             if (this.category.isOpen()) {
-                for (Button button : this.childButtons) {
-                    if (!button.isVisible()) continue;
-                    button.mouseClicked(d, d2, n);
+                for (Button child : this.childButtons) {
+                    if (!child.isVisible()) continue;
+                    child.mouseClicked(mouseX, mouseY, button);
                 }
             }
         }
 
         @Override
-        public void mouseReleased(double d, double d2, int n) {
-            super.mouseReleased(d, d2, n);
+        public void mouseReleased(double mouseX, double mouseY, int button) {
+            super.mouseReleased(mouseX, mouseY, button);
             if (this.category.isOpen()) {
-                for (Button button : this.childButtons) {
-                    if (!button.isVisible()) continue;
-                    button.mouseReleased(d, d2, n);
+                for (Button child : this.childButtons) {
+                    if (!child.isVisible()) continue;
+                    child.mouseReleased(mouseX, mouseY, button);
                 }
             }
         }
 
         @Override
-        public void mouseDragged(double d, double d2, int n, double d3, double d4) {
-            super.mouseDragged(d, d2, n, d3, d4);
+        public void mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+            super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
             if (this.category.isOpen()) {
-                for (Button button : this.childButtons) {
-                    if (!button.isVisible()) continue;
-                    button.mouseDragged(d, d2, n, d3, d4);
+                for (Button child : this.childButtons) {
+                    if (!child.isVisible()) continue;
+                    child.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
                 }
             }
         }
 
         @Override
-        public void keyPressed(int n, int n2, int n3) {
-            super.keyPressed(n, n2, n3);
+        public void keyPressed(int keyCode, int scanCode, int modifiers) {
+            super.keyPressed(keyCode, scanCode, modifiers);
             if (this.category.isOpen()) {
-                for (Button button : this.childButtons) {
-                    if (!button.isVisible()) continue;
-                    button.keyPressed(n, n2, n3);
+                for (Button child : this.childButtons) {
+                    if (!child.isVisible()) continue;
+                    child.keyPressed(keyCode, scanCode, modifiers);
                 }
             }
         }
 
         @Override
-        public void charTyped(char c, int n) {
-            super.charTyped(c, n);
+        public void charTyped(char ch, int modifiers) {
+            super.charTyped(ch, modifiers);
             if (this.category.isOpen()) {
-                for (Button button : this.childButtons) {
-                    if (!button.isVisible()) continue;
-                    button.charTyped(c, n);
+                for (Button child : this.childButtons) {
+                    if (!child.isVisible()) continue;
+                    child.charTyped(ch, modifiers);
                 }
             }
         }

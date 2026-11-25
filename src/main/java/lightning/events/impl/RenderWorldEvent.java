@@ -27,9 +27,9 @@ extends Event {
     }
 
     @Generated
-    public RenderWorldEvent(PoseStack poseStack, float f) {
-        this.matrices = poseStack;
-        this.tickDelta = f;
+    public RenderWorldEvent(PoseStack matrices, float tickDelta) {
+        this.matrices = matrices;
+        this.tickDelta = tickDelta;
     }
 
     public static class Post
@@ -48,9 +48,9 @@ extends Event {
         }
 
         @Generated
-        public Post(PoseStack poseStack, float f) {
-            this.matrices = poseStack;
-            this.tickDelta = f;
+        public Post(PoseStack matrices, float tickDelta) {
+            this.matrices = matrices;
+            this.tickDelta = tickDelta;
         }
     }
 }

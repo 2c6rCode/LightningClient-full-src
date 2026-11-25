@@ -31,10 +31,10 @@ extends Event {
     }
 
     @Generated
-    public UnfilteredMouseInputEvent(int n, int n2, int n3) {
-        this.button = n;
-        this.action = n2;
-        this.mods = n3;
+    public UnfilteredMouseInputEvent(int button, int action, int mods) {
+        this.button = button;
+        this.action = action;
+        this.mods = mods;
     }
 }
 

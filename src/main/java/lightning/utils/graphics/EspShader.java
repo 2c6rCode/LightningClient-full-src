@@ -115,8 +115,8 @@ implements IMinecraft {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public static void writeStarGlowSettings(PostChain postChain, float f) {
-        float f2 = Math.min(4.0f + f * 0.05f, 14.0f);
+    public static void writeStarGlowSettings(PostChain postChain, float radius) {
+        float sigma = Math.min(4.0f + radius * 0.05f, 14.0f);
         for (PostPass postPass : ((PostEffectProcessorAccessor)postChain).getPasses()) {
             ByteBuffer byteBuffer;
             MemoryStack memoryStack;
@@ -128,7 +128,7 @@ implements IMinecraft {
                 }
                 memoryStack = MemoryStack.stackPush();
                 try {
-                    byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)STAR_GLOW_UBO_SIZE).putVec4(f, f2, 1.0f, 0.0f).get();
+                    byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)STAR_GLOW_UBO_SIZE).putVec4(radius, sigma, 1.0f, 0.0f).get();
                     RenderSystem.getDevice().createCommandEncoder().writeToBuffer(starGlowUboBuffer.slice(), byteBuffer);
                 }
                 finally {
@@ -143,7 +143,7 @@ implements IMinecraft {
             }
             memoryStack = MemoryStack.stackPush();
             try {
-                byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)STAR_GLOW_UBO_SIZE).putVec4(f, f2, 0.0f, 1.0f).get();
+                byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)STAR_GLOW_UBO_SIZE).putVec4(radius, sigma, 0.0f, 1.0f).get();
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(starGlowUboBufferV.slice(), byteBuffer);
             }
             finally {
@@ -153,9 +153,9 @@ implements IMinecraft {
         }
     }
 
-    public static int modeIndex(String string) {
+    public static int modeIndex(String mode) {
         for (int i = 0; i < MODES.length; ++i) {
-            if (!MODES[i].equalsIgnoreCase(string)) continue;
+            if (!MODES[i].equalsIgnoreCase(mode)) continue;
             return i;
         }
         return 0;
@@ -168,12 +168,11 @@ implements IMinecraft {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public static void writeOutlineSettings(PostChain postChain, Settings settings, float f) {
-        float f2 = Math.min(6.0f + f * 18.0f, 24.0f);
+    public static void writeOutlineSettings(PostChain postChain, Settings settings, float glowRadius) {
+        float glowSigma = Math.min(6.0f + glowRadius * 18.0f, 24.0f);
         for (PostPass postPass : ((PostEffectProcessorAccessor)postChain).getPasses()) {
             GpuBuffer gpuBuffer;
             ByteBuffer byteBuffer;
-            Object object;
             ShadersModule shadersModule;
             GpuBuffer gpuBuffer2;
             Map<String, GpuBuffer> map = ((PostPassAccessor)postPass).night$getCustomUniforms();
@@ -182,18 +181,18 @@ implements IMinecraft {
                     gpuBuffer2.close();
                 }
                 shadersModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ShadersModule.class) : null;
-                float f3 = shadersModule != null ? shadersModule.bloomWidth.getValue().floatValue() : 3.0f;
-                float f4 = shadersModule != null && shadersModule.bloomGlowInside.getValue() ? 1.0f : 0.0f;
-                float f5 = shadersModule != null ? shadersModule.bloomGlowQuality.getValue().floatValue() : 1.0f;
-                float f6 = shadersModule != null ? shadersModule.bloomGlowMultiplier.getValue().floatValue() : 1.0f;
-                float f7 = shadersModule != null ? shadersModule.bloomFillAlpha.getValue().floatValue() / 100.0f : 1.0f;
-                float f8 = shadersModule != null ? shadersModule.bloomOutlineAlpha.getValue().floatValue() / 100.0f : 1.0f;
-                float f9 = shadersModule != null ? (float)ShadersModule.getBloomFillModeIndex(shadersModule.bloomFillMode.getValue()) : 0.0f;
-                float f10 = shadersModule != null ? shadersModule.bloomGradientFactor.getValue().floatValue() : 200.0f;
+                float bloomWidth = shadersModule != null ? shadersModule.bloomWidth.getValue().floatValue() : 3.0f;
+                float bloomGlowInside = shadersModule != null && shadersModule.bloomGlowInside.getValue() ? 1.0f : 0.0f;
+                float bloomGlowQuality = shadersModule != null ? shadersModule.bloomGlowQuality.getValue().floatValue() : 1.0f;
+                float bloomGlowMultiplier = shadersModule != null ? shadersModule.bloomGlowMultiplier.getValue().floatValue() : 1.0f;
+                float bloomFillAlpha = shadersModule != null ? shadersModule.bloomFillAlpha.getValue().floatValue() / 100.0f : 1.0f;
+                float bloomOutlineAlpha = shadersModule != null ? shadersModule.bloomOutlineAlpha.getValue().floatValue() / 100.0f : 1.0f;
+                float bloomFillMode = shadersModule != null ? (float)ShadersModule.getBloomFillModeIndex(shadersModule.bloomFillMode.getValue()) : 0.0f;
+                float bloomGradientFactor = shadersModule != null ? shadersModule.bloomGradientFactor.getValue().floatValue() : 200.0f;
                 Color color = shadersModule != null ? shadersModule.bloomGradientColor.getColor() : Color.RED;
-                float f11 = System.currentTimeMillis() % 2000000L;
+                float timeMs = System.currentTimeMillis() % 2000000L;
                 try (MemoryStack memoryStack = MemoryStack.stackPush();){
-                    ByteBuffer byteBuffer2 = Std140Builder.onStack((MemoryStack)memoryStack, (int)BLOOM_UBO_SIZE).putVec4(f3, f4, f5, f6).putVec4(f7, f8, f9, f10).putVec4((float)color.getRed() / 255.0f, (float)color.getGreen() / 255.0f, (float)color.getBlue() / 255.0f, (float)color.getAlpha() / 255.0f).putVec4(f11, 0.0f, (float)mc.getWindow().getWidth(), (float)mc.getWindow().getHeight()).get();
+                    ByteBuffer byteBuffer2 = Std140Builder.onStack((MemoryStack)memoryStack, (int)BLOOM_UBO_SIZE).putVec4(bloomWidth, bloomGlowInside, bloomGlowQuality, bloomGlowMultiplier).putVec4(bloomFillAlpha, bloomOutlineAlpha, bloomFillMode, bloomGradientFactor).putVec4((float)color.getRed() / 255.0f, (float)color.getGreen() / 255.0f, (float)color.getBlue() / 255.0f, (float)color.getAlpha() / 255.0f).putVec4(timeMs, 0.0f, (float)mc.getWindow().getWidth(), (float)mc.getWindow().getHeight()).get();
                     RenderSystem.getDevice().createCommandEncoder().writeToBuffer(bloomUboBuffer.slice(), byteBuffer2);
                 }
             }
@@ -202,24 +201,23 @@ implements IMinecraft {
                     gpuBuffer2.close();
                 }
                 shadersModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ShadersModule.class) : null;
-                object = shadersModule != null && shadersModule.glowColor != null ? shadersModule.glowColor.getColor() : Color.MAGENTA;
+                Color glowColor = shadersModule != null && shadersModule.glowColor != null ? shadersModule.glowColor.getColor() : Color.MAGENTA;
                 try (MemoryStack memoryStack = MemoryStack.stackPush();){
-                    ByteBuffer byteBuffer3 = Std140Builder.onStack((MemoryStack)memoryStack, (int)OUTLINE_GLOW_UBO_SIZE).putVec4(f, f2, 1.0f, 0.0f).putVec4((float)((Color)object).getRed() / 255.0f, (float)((Color)object).getGreen() / 255.0f, (float)((Color)object).getBlue() / 255.0f, (float)((Color)object).getAlpha() / 255.0f).get();
+                    ByteBuffer byteBuffer3 = Std140Builder.onStack((MemoryStack)memoryStack, (int)OUTLINE_GLOW_UBO_SIZE).putVec4(glowRadius, glowSigma, 1.0f, 0.0f).putVec4((float)glowColor.getRed() / 255.0f, (float)glowColor.getGreen() / 255.0f, (float)glowColor.getBlue() / 255.0f, (float)glowColor.getAlpha() / 255.0f).get();
                     RenderSystem.getDevice().createCommandEncoder().writeToBuffer(outlineGlowUboBuffer.slice(), byteBuffer3);
                 }
             }
             shadersModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ShadersModule.class) : null;
             ColorModule colorModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ColorModule.class) : null;
-            object = colorModule;
             if (map.containsKey(OUTLINE_GLOW_UNIFORM_V)) {
                 GpuBuffer gpuBuffer3;
                 if ((outlineGlowUboBufferV == null || map.get(OUTLINE_GLOW_UNIFORM_V) != outlineGlowUboBufferV) && (gpuBuffer3 = map.put(OUTLINE_GLOW_UNIFORM_V, outlineGlowUboBufferV = RenderSystem.getDevice().createBuffer(() -> "Lightning outline glow V UBO", 136, (long)OUTLINE_GLOW_UBO_SIZE))) != null) {
                     gpuBuffer3.close();
                 }
                 Color color = shadersModule != null && shadersModule.glowColor != null ? shadersModule.glowColor.getColor() : Color.MAGENTA;
-                boolean bl = shadersModule != null && shadersModule.glowColor != null && (shadersModule.glowColor.isRainbow() || shadersModule.glowColor.isSync() && colorModule != null && colorModule.color.isRainbow());
+                boolean rainbow = shadersModule != null && shadersModule.glowColor != null && (shadersModule.glowColor.isRainbow() || shadersModule.glowColor.isSync() && colorModule != null && colorModule.color.isRainbow());
                 try (MemoryStack memoryStack = MemoryStack.stackPush();){
-                    byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)OUTLINE_GLOW_UBO_SIZE).putVec4(f, f2, bl ? 1.0f : 0.0f, 1.0f).putVec4((float)color.getRed() / 255.0f, (float)color.getGreen() / 255.0f, (float)color.getBlue() / 255.0f, (float)color.getAlpha() / 255.0f).get();
+                    byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)OUTLINE_GLOW_UBO_SIZE).putVec4(glowRadius, glowSigma, rainbow ? 1.0f : 0.0f, 1.0f).putVec4((float)color.getRed() / 255.0f, (float)color.getGreen() / 255.0f, (float)color.getBlue() / 255.0f, (float)color.getAlpha() / 255.0f).get();
                     RenderSystem.getDevice().createCommandEncoder().writeToBuffer(outlineGlowUboBufferV.slice(), byteBuffer);
                 }
             }
@@ -227,11 +225,11 @@ implements IMinecraft {
             if ((outlineUboBuffer == null || map.get(OUTLINE_UNIFORM) != outlineUboBuffer) && (gpuBuffer = map.put(OUTLINE_UNIFORM, outlineUboBuffer = RenderSystem.getDevice().createBuffer(() -> "Lightning outline shader UBO", 136, (long)OUTLINE_UBO_SIZE))) != null) {
                 gpuBuffer.close();
             }
-            boolean bl = shadersModule != null && shadersModule.color != null && (shadersModule.color.isRainbow() || shadersModule.color.isSync() && colorModule != null && colorModule.color.isRainbow());
-            float f12 = colorModule != null ? colorModule.rainbowSaturation.getValue().floatValue() / 100.0f : 1.0f;
+            boolean rainbow = shadersModule != null && shadersModule.color != null && (shadersModule.color.isRainbow() || shadersModule.color.isSync() && colorModule != null && colorModule.color.isRainbow());
+            float rainbowSaturation = colorModule != null ? colorModule.rainbowSaturation.getValue().floatValue() / 100.0f : 1.0f;
             MemoryStack memoryStack = MemoryStack.stackPush();
             try {
-                byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)OUTLINE_UBO_SIZE).putVec4((Vector4fc)settings.color0).putVec4((Vector4fc)settings.color1).putVec4((Vector4fc)settings.color2).putVec4((Vector4fc)settings.color3).putVec4(settings.time, settings.step, settings.distance, (float)settings.effect).putVec4(settings.alpha, f, bl ? 1.0f : 0.0f, f12).get();
+                byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)OUTLINE_UBO_SIZE).putVec4((Vector4fc)settings.color0).putVec4((Vector4fc)settings.color1).putVec4((Vector4fc)settings.color2).putVec4((Vector4fc)settings.color3).putVec4(settings.time, settings.step, settings.distance, (float)settings.effect).putVec4(settings.alpha, glowRadius, rainbow ? 1.0f : 0.0f, rainbowSaturation).get();
                 RenderSystem.getDevice().createCommandEncoder().writeToBuffer(outlineUboBuffer.slice(), byteBuffer);
             }
             finally {
@@ -241,33 +239,33 @@ implements IMinecraft {
         }
     }
 
-    public static Settings createSettings(String string, float f, float f2, float f3, Color color, Color color2, Color color3, Color color4, Color color5, Vec3 vec3) {
-        return EspShader.createSettings(string, f, f2, f3, color, color2, color3, color4, color5, vec3, new Vector2f(0.0f, 0.0f));
+    public static Settings createSettings(String mode, float alphaPercent, float speed, float step, Color color0, Color color1, Color color2, Color color3, Color glowColor, Vec3 targetPos) {
+        return EspShader.createSettings(mode, alphaPercent, speed, step, color0, color1, color2, color3, glowColor, targetPos, new Vector2f(0.0f, 0.0f));
     }
 
-    public static Settings createSettings(String string, float f, float f2, float f3, Color color, Color color2, Color color3, Color color4, Color color5, Vec3 vec3, Vector2f vector2f) {
-        int n = EspShader.modeIndex(string);
-        if (n == 0) {
+    public static Settings createSettings(String mode, float alphaPercent, float speed, float step, Color color0, Color color1, Color color2, Color color3, Color glowColor, Vec3 targetPos, Vector2f offset) {
+        int effectIndex = EspShader.modeIndex(mode);
+        if (effectIndex == 0) {
             return null;
         }
-        float f4 = (float)(System.currentTimeMillis() % 2000000L) / 1000.0f * f2 * (n == 1 ? f3 : 1.0f);
-        float f5 = vec3 != null && EspShader.mc.player != null ? (float)Math.sqrt(EspShader.mc.player.distanceToSqr(vec3)) : 1.0f;
-        return new Settings(n, f4, f3, f / 100.0f, f5, n == 7 ? color5 : color, color2, color3, color4, vector2f);
+        float time = (float)(System.currentTimeMillis() % 2000000L) / 1000.0f * speed * (effectIndex == 1 ? step : 1.0f);
+        float distance = targetPos != null && EspShader.mc.player != null ? (float)Math.sqrt(EspShader.mc.player.distanceToSqr(targetPos)) : 1.0f;
+        return new Settings(effectIndex, time, step, alphaPercent / 100.0f, distance, effectIndex == 7 ? glowColor : color0, color1, color2, color3, offset);
     }
 
-    public static void draw(List<Renderer3D.VertexCollection> list, List<Renderer3D.VertexCollection> list2) {
-        EspShader.draw(list, list2, settings);
+    public static void draw(List<Renderer3D.VertexCollection> quads, List<Renderer3D.VertexCollection> lines) {
+        EspShader.draw(quads, lines, settings);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public static void draw(List<Renderer3D.VertexCollection> list, List<Renderer3D.VertexCollection> list2, Settings settings) {
+    public static void draw(List<Renderer3D.VertexCollection> quads, List<Renderer3D.VertexCollection> lines, Settings settings) {
         BufferBuilder bufferBuilder;
         ByteBufferBuilder byteBufferBuilder;
-        if (settings == null || list.isEmpty() && list2.isEmpty()) {
-            list.clear();
-            list2.clear();
+        if (settings == null || quads.isEmpty() && lines.isEmpty()) {
+            quads.clear();
+            lines.clear();
             return;
         }
         GpuBuffer gpuBuffer = RenderSystem.getDevice().createBuffer(() -> "Lightning ESP shader UBO", 136, (long)UBO_SIZE);
@@ -275,12 +273,12 @@ implements IMinecraft {
             ByteBuffer byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4((Vector4fc)settings.color0).putVec4((Vector4fc)settings.color1).putVec4((Vector4fc)settings.color2).putVec4((Vector4fc)settings.color3).putVec2((float)mc.getWindow().getWidth(), (float)mc.getWindow().getHeight()).putFloat(settings.time).putFloat(settings.step).putFloat(settings.alpha).putFloat(settings.distance).putInt(settings.effect).putVec2(settings.offset.x, settings.offset.y).get();
             RenderSystem.getDevice().createCommandEncoder().writeToBuffer(gpuBuffer.slice(), byteBuffer);
         }
-        if (!list.isEmpty()) {
-            int n = Renderer3D.vertexCount(list);
-            byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(n * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));
+        if (!quads.isEmpty()) {
+            int vertexCount = Renderer3D.vertexCount(quads);
+            byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(vertexCount * DefaultVertexFormat.POSITION_COLOR.getVertexSize()));
             try {
                 bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);
-                for (Renderer3D.VertexCollection vertexCollection : list) {
+                for (Renderer3D.VertexCollection vertexCollection : quads) {
                     vertexCollection.quad(bufferBuilder);
                 }
                 EspShader.submit(QUADS_PIPELINE, bufferBuilder.build(), gpuBuffer);
@@ -291,12 +289,12 @@ implements IMinecraft {
                 }
             }
         }
-        if (!list2.isEmpty()) {
-            int n = Renderer3D.vertexCount(list2) * 2;
-            byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(n * DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH.getVertexSize()));
+        if (!lines.isEmpty()) {
+            int vertexCount = Renderer3D.vertexCount(lines) * 2;
+            byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(vertexCount * DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH.getVertexSize()));
             try {
                 bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH);
-                Renderer3D.buildLines(bufferBuilder, list2);
+                Renderer3D.buildLines(bufferBuilder, lines);
                 EspShader.submit(LINES_PIPELINE, bufferBuilder.build(), gpuBuffer);
             }
             finally {
@@ -306,8 +304,8 @@ implements IMinecraft {
             }
         }
         gpuBuffer.close();
-        list.clear();
-        list2.clear();
+        quads.clear();
+        lines.clear();
     }
 
     private static void submit(RenderPipeline renderPipeline, MeshData meshData, GpuBuffer gpuBuffer) {
@@ -367,21 +365,21 @@ implements IMinecraft {
         public final Vector4f color3;
         public final Vector2f offset;
 
-        public Settings(int n, float f, float f2, float f3, float f4, Color color, Color color2, Color color3, Color color4) {
-            this(n, f, f2, f3, f4, color, color2, color3, color4, new Vector2f(0.0f, 0.0f));
+        public Settings(int effect, float time, float step, float alpha, float distance, Color color0, Color color1, Color color2, Color color3) {
+            this(effect, time, step, alpha, distance, color0, color1, color2, color3, new Vector2f(0.0f, 0.0f));
         }
 
-        public Settings(int n, float f, float f2, float f3, float f4, Color color, Color color2, Color color3, Color color4, Vector2f vector2f) {
-            this.effect = n;
-            this.time = f;
-            this.step = f2;
-            this.alpha = f3;
-            this.distance = f4;
-            this.color0 = Settings.toVector(color);
-            this.color1 = Settings.toVector(color2);
-            this.color2 = Settings.toVector(color3);
-            this.color3 = Settings.toVector(color4);
-            this.offset = vector2f != null ? vector2f : new Vector2f(0.0f, 0.0f);
+        public Settings(int effect, float time, float step, float alpha, float distance, Color color0, Color color1, Color color2, Color color3, Vector2f offset) {
+            this.effect = effect;
+            this.time = time;
+            this.step = step;
+            this.alpha = alpha;
+            this.distance = distance;
+            this.color0 = Settings.toVector(color0);
+            this.color1 = Settings.toVector(color1);
+            this.color2 = Settings.toVector(color2);
+            this.color3 = Settings.toVector(color3);
+            this.offset = offset != null ? offset : new Vector2f(0.0f, 0.0f);
         }
 
         private static Vector4f toVector(Color color) {

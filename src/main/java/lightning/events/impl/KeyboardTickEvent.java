@@ -15,9 +15,9 @@ extends Event {
     private float movementSideways;
 
     @Generated
-    public KeyboardTickEvent(float f, float f2) {
-        this.movementForward = f;
-        this.movementSideways = f2;
+    public KeyboardTickEvent(float movementForward, float movementSideways) {
+        this.movementForward = movementForward;
+        this.movementSideways = movementSideways;
     }
 
     @Generated
@@ -31,13 +31,13 @@ extends Event {
     }
 
     @Generated
-    public void setMovementForward(float f) {
-        this.movementForward = f;
+    public void setMovementForward(float movementForward) {
+        this.movementForward = movementForward;
     }
 
     @Generated
-    public void setMovementSideways(float f) {
-        this.movementSideways = f;
+    public void setMovementSideways(float movementSideways) {
+        this.movementSideways = movementSideways;
     }
 }
 

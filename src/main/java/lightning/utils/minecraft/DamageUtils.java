@@ -71,21 +71,21 @@ implements IMinecraft {
         }
     };
 
-    public static float getCrystalDamage(Entity entity, AABB aABB, EndCrystal endCrystal, boolean bl) {
+    public static float getCrystalDamage(Entity entity, AABB box, EndCrystal endCrystal, boolean ignoreTerrain) {
         if (endCrystal == null) {
             return 0.0f;
         }
-        return DamageUtils.getDamage(entity, aABB, endCrystal.position(), 6.0f, null, bl);
+        return DamageUtils.getDamage(entity, box, endCrystal.position(), 6.0f, null, ignoreTerrain);
     }
 
-    public static float getCrystalDamage(Entity entity, AABB aABB, BlockPos blockPos, BlockPos blockPos2, boolean bl) {
+    public static float getCrystalDamage(Entity entity, AABB box, BlockPos blockPos, BlockPos exceptionPos, boolean ignoreTerrain) {
         if (blockPos == null) {
             return 0.0f;
         }
-        return DamageUtils.getDamage(entity, aABB, new Vec3((double)blockPos.getX() + 0.5, (double)(blockPos.getY() + 1), (double)blockPos.getZ() + 0.5), 6.0f, blockPos2, bl);
+        return DamageUtils.getDamage(entity, box, new Vec3((double)blockPos.getX() + 0.5, (double)(blockPos.getY() + 1), (double)blockPos.getZ() + 0.5), 6.0f, exceptionPos, ignoreTerrain);
     }
 
-    public static float getDamage(Entity entity, AABB aABB, Vec3 vec3, float f, BlockPos blockPos, boolean bl) {
+    public static float getDamage(Entity entity, AABB box, Vec3 explosionPos, float power, BlockPos exceptionPos, boolean ignoreTerrain) {
         Player player;
         if (DamageUtils.mc.level.getDifficulty() == Difficulty.PEACEFUL) {
             return 0.0f;
@@ -93,83 +93,83 @@ implements IMinecraft {
         if (!(entity instanceof RemotePlayer) && entity instanceof Player && EntityUtils.getGameMode(player = (Player)entity) == GameType.CREATIVE) {
             return 0.0f;
         }
-        float f2 = f * 2.0f;
-        AABB aABB2 = aABB != null ? aABB : entity.getBoundingBox();
-        Vec3 vec32 = new Vec3(aABB2.getCenter().x, aABB2.minY, aABB2.getCenter().z);
-        double d = Math.sqrt(vec32.distanceToSqr(vec3)) / (double)f2;
-        if (d > 1.0) {
+        float doublePower = power * 2.0f;
+        AABB targetBox = box != null ? box : entity.getBoundingBox();
+        Vec3 centerBottom = new Vec3(targetBox.getCenter().x, targetBox.minY, targetBox.getCenter().z);
+        double distanceRatio = Math.sqrt(centerBottom.distanceToSqr(explosionPos)) / (double)doublePower;
+        if (distanceRatio > 1.0) {
             return 0.0f;
         }
-        boolean bl2 = entity == DamageUtils.mc.player ? false : bl;
-        double d2 = (1.0 - d) * (double)DamageUtils.getExposure(vec3, aABB2, blockPos, bl2);
-        float f3 = (int)((d2 * d2 + d2) / 2.0 * 7.0 * (double)f2 + 1.0);
-        if (f3 <= 0.0f) {
+        boolean shouldIgnoreTerrain = entity == DamageUtils.mc.player ? false : ignoreTerrain;
+        double impact = (1.0 - distanceRatio) * (double)DamageUtils.getExposure(explosionPos, targetBox, exceptionPos, shouldIgnoreTerrain);
+        float damage = (int)((impact * impact + impact) / 2.0 * 7.0 * (double)doublePower + 1.0);
+        if (damage <= 0.0f) {
             return 0.0f;
         }
         if (entity instanceof LivingEntity) {
             LivingEntity livingEntity = (LivingEntity)entity;
-            f3 = DamageUtils.mc.level.getDifficulty() == Difficulty.EASY ? Math.min(f3 / 2.0f + 1.0f, f3) : (DamageUtils.mc.level.getDifficulty() == Difficulty.HARD ? f3 * 3.0f / 2.0f : f3);
-            f3 = CombatRules.getDamageAfterAbsorb((LivingEntity)livingEntity, (float)f3, (DamageSource)DamageUtils.mc.level.damageSources().explosion(null), (float)livingEntity.getArmorValue(), (float)((float)livingEntity.getAttribute(Attributes.ARMOR_TOUGHNESS).getValue()));
-            f3 = (float)((double)f3 * (livingEntity.hasEffect(MobEffects.RESISTANCE) ? 1.0 - (double)(livingEntity.getEffect(MobEffects.RESISTANCE).getAmplifier() + 1) * 0.2 : 1.0));
-            f3 = CombatRules.getDamageAfterMagicAbsorb((float)f3, (float)DamageUtils.getProtectionAmount(List.of(livingEntity.getItemBySlot(EquipmentSlot.FEET), livingEntity.getItemBySlot(EquipmentSlot.LEGS), livingEntity.getItemBySlot(EquipmentSlot.CHEST), livingEntity.getItemBySlot(EquipmentSlot.HEAD))));
+            damage = DamageUtils.mc.level.getDifficulty() == Difficulty.EASY ? Math.min(damage / 2.0f + 1.0f, damage) : (DamageUtils.mc.level.getDifficulty() == Difficulty.HARD ? damage * 3.0f / 2.0f : damage);
+            damage = CombatRules.getDamageAfterAbsorb((LivingEntity)livingEntity, (float)damage, (DamageSource)DamageUtils.mc.level.damageSources().explosion(null), (float)livingEntity.getArmorValue(), (float)((float)livingEntity.getAttribute(Attributes.ARMOR_TOUGHNESS).getValue()));
+            damage = (float)((double)damage * (livingEntity.hasEffect(MobEffects.RESISTANCE) ? 1.0 - (double)(livingEntity.getEffect(MobEffects.RESISTANCE).getAmplifier() + 1) * 0.2 : 1.0));
+            damage = CombatRules.getDamageAfterMagicAbsorb((float)damage, (float)DamageUtils.getProtectionAmount(List.of(livingEntity.getItemBySlot(EquipmentSlot.FEET), livingEntity.getItemBySlot(EquipmentSlot.LEGS), livingEntity.getItemBySlot(EquipmentSlot.CHEST), livingEntity.getItemBySlot(EquipmentSlot.HEAD))));
         }
-        return Math.max(f3, 0.0f);
+        return Math.max(damage, 0.0f);
     }
 
-    public static int getProtectionAmount(Iterable<ItemStack> iterable) {
-        int n = 0;
-        for (ItemStack itemStack : iterable) {
-            n += DamageUtils.getProtectionAmount(itemStack);
+    public static int getProtectionAmount(Iterable<ItemStack> armorItems) {
+        int totalProtection = 0;
+        for (ItemStack itemStack : armorItems) {
+            totalProtection += DamageUtils.getProtectionAmount(itemStack);
         }
-        return n;
+        return totalProtection;
     }
 
     public static int getProtectionAmount(ItemStack itemStack) {
-        int n = 0;
+        int protection = 0;
         ItemEnchantments itemEnchantments = itemStack.getEnchantments();
         for (Holder holder : itemEnchantments.keySet()) {
-            String string = holder.getRegisteredName().replace("minecraft:", "");
-            if (!PROTECTION_MAP.containsKey(string)) continue;
-            n += itemEnchantments.getLevel(holder) * PROTECTION_MAP.get(string);
+            String enchantName = holder.getRegisteredName().replace("minecraft:", "");
+            if (!PROTECTION_MAP.containsKey(enchantName)) continue;
+            protection += itemEnchantments.getLevel(holder) * PROTECTION_MAP.get(enchantName);
             break;
         }
-        return n;
+        return protection;
     }
 
-    private static float getExposure(Vec3 vec3, AABB aABB, BlockPos blockPos, boolean bl) {
-        int n = 0;
-        int n2 = 0;
-        for (double d = 0.0; d <= 1.0; d += 0.4545454446934474) {
-            for (double d2 = 0.0; d2 <= 1.0; d2 += 0.21739130885479366) {
-                for (double d3 = 0.0; d3 <= 1.0; d3 += 0.4545454446934474) {
-                    Vec3 vec32 = new Vec3(Mth.lerp((double)d, (double)aABB.minX, (double)aABB.maxX) + 0.045454555306552624, Mth.lerp((double)d2, (double)aABB.minY, (double)aABB.maxY), Mth.lerp((double)d3, (double)aABB.minZ, (double)aABB.maxZ) + 0.045454555306552624);
-                    if (DamageUtils.raycast(vec32, vec3, blockPos, bl) == HitResult.Type.MISS) {
-                        ++n;
+    private static float getExposure(Vec3 explosionPos, AABB box, BlockPos exceptionPos, boolean ignoreTerrain) {
+        int misses = 0;
+        int totalRays = 0;
+        for (double xStep = 0.0; xStep <= 1.0; xStep += 0.4545454446934474) {
+            for (double yStep = 0.0; yStep <= 1.0; yStep += 0.21739130885479366) {
+                for (double zStep = 0.0; zStep <= 1.0; zStep += 0.4545454446934474) {
+                    Vec3 samplePoint = new Vec3(Mth.lerp((double)xStep, (double)box.minX, (double)box.maxX) + 0.045454555306552624, Mth.lerp((double)yStep, (double)box.minY, (double)box.maxY), Mth.lerp((double)zStep, (double)box.minZ, (double)box.maxZ) + 0.045454555306552624);
+                    if (DamageUtils.raycast(samplePoint, explosionPos, exceptionPos, ignoreTerrain) == HitResult.Type.MISS) {
+                        ++misses;
                     }
-                    ++n2;
+                    ++totalRays;
                 }
             }
         }
-        return (float)n / (float)n2;
+        return (float)misses / (float)totalRays;
     }
 
-    private static HitResult.Type raycast(Vec3 vec3, Vec3 vec32, BlockPos blockPos, boolean bl) {
+    private static HitResult.Type raycast(Vec3 start, Vec3 end, BlockPos exceptionPos, boolean ignoreTerrain) {
         if (DamageUtils.mc.level == null) {
             return HitResult.Type.MISS;
         }
-        return (HitResult.Type)BlockGetter.traverseBlocks((Vec3)vec3, (Vec3)vec32, null, (object, blockPos2) -> {
+        return (HitResult.Type)BlockGetter.traverseBlocks((Vec3)start, (Vec3)end, null, (context, pos) -> {
             BlockState blockState;
-            if (blockPos2.equals((Object)blockPos)) {
+            if (pos.equals((Object)exceptionPos)) {
                 blockState = Blocks.AIR.defaultBlockState();
             } else {
-                blockState = DamageUtils.mc.level.getBlockState(blockPos2);
-                if (blockState.getBlock().getExplosionResistance() < 600.0f && bl) {
+                blockState = DamageUtils.mc.level.getBlockState(pos);
+                if (blockState.getBlock().getExplosionResistance() < 600.0f && ignoreTerrain) {
                     blockState = Blocks.AIR.defaultBlockState();
                 }
             }
-            BlockHitResult blockHitResult = blockState.getCollisionShape((BlockGetter)DamageUtils.mc.level, blockPos2).clip(vec3, vec32, blockPos2);
+            BlockHitResult blockHitResult = blockState.getCollisionShape((BlockGetter)DamageUtils.mc.level, pos).clip(start, end, pos);
             return blockHitResult == null ? null : blockHitResult.getType();
-        }, object -> HitResult.Type.MISS);
+        }, context -> HitResult.Type.MISS);
     }
 }
 

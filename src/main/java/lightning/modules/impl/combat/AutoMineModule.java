@@ -154,7 +154,7 @@ extends Module {
     }
 
     private BlockPos getGrimBedrockHeadTarget(Player player, SpeedMineModule speedMineModule) {
-        BlockPos blockPos2;
+        BlockPos topPos;
         if (player == null || AutoMineModule.mc.level == null) {
             return null;
         }
@@ -164,36 +164,36 @@ extends Module {
         if (!this.isTargetPhasedInBedrock(player)) {
             return null;
         }
-        int n = Mth.floor((double)player.getY());
-        int n2 = player.isVisuallyCrawling() || player.getBoundingBox().getYsize() <= 1.0 ? n + 1 : n + 2;
+        int floorY = Mth.floor((double)player.getY());
+        int headY = player.isVisuallyCrawling() || player.getBoundingBox().getYsize() <= 1.0 ? floorY + 1 : floorY + 2;
         SpeedMineModule.Action action = speedMineModule.getPrimary();
-        if (action != null && action.isInstantMine() && action.getPosition().getY() == n2 && speedMineModule.isTargetSurroundPosition(action.getPosition(), player)) {
+        if (action != null && action.isInstantMine() && action.getPosition().getY() == headY && speedMineModule.isTargetSurroundPosition(action.getPosition(), player)) {
             return action.getPosition();
         }
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-        for (BlockPos object : HoleUtils.getInsidePositions((Entity)player)) {
-            BlockPos blockPos3 = new BlockPos(object.getX(), n2, object.getZ());
-            if (arrayList.contains(blockPos3)) continue;
-            arrayList.add(blockPos3);
+        ArrayList<BlockPos> candidates = new ArrayList<BlockPos>();
+        for (BlockPos insidePos : HoleUtils.getInsidePositions((Entity)player)) {
+            BlockPos headPos = new BlockPos(insidePos.getX(), headY, insidePos.getZ());
+            if (candidates.contains(headPos)) continue;
+            candidates.add(headPos);
         }
-        BlockPos blockPos4 = player.blockPosition().above(n2 - n);
-        if (!arrayList.contains(blockPos4)) {
-            arrayList.add(blockPos4);
+        BlockPos abovePos = player.blockPosition().above(headY - floorY);
+        if (!candidates.contains(abovePos)) {
+            candidates.add(abovePos);
         }
-        if (!arrayList.contains(blockPos2 = BlockPos.containing((double)player.getX(), (double)(player.getBoundingBox().maxY + 0.2), (double)player.getZ()))) {
-            arrayList.add(blockPos2);
+        if (!candidates.contains(topPos = BlockPos.containing((double)player.getX(), (double)(player.getBoundingBox().maxY + 0.2), (double)player.getZ()))) {
+            candidates.add(topPos);
         }
-        arrayList.sort(Comparator.comparingDouble(blockPos -> {
-            double d = AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos));
+        candidates.sort(Comparator.comparingDouble(blockPos -> {
+            double distSq = AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos));
             if (this.isRaytrace() && WorldUtils.canSeeBlock(blockPos)) {
-                d -= 1000.0;
+                distSq -= 1000.0;
             }
-            return d;
+            return distSq;
         }));
-        for (BlockPos blockPos3 : arrayList) {
+        for (BlockPos headPos : candidates) {
             BlockState blockState;
-            if (speedMineModule.isOutOfRange(blockPos3) || this.isRaytrace() && !WorldUtils.canSeeBlock(blockPos3) || (blockState = AutoMineModule.mc.level.getBlockState(blockPos3)).canBeReplaced() || !WorldUtils.canBreak(blockPos3) || blockState.is(Blocks.COBWEB) || !speedMineModule.isValid(blockPos3)) continue;
-            return blockPos3;
+            if (speedMineModule.isOutOfRange(headPos) || this.isRaytrace() && !WorldUtils.canSeeBlock(headPos) || (blockState = AutoMineModule.mc.level.getBlockState(headPos)).canBeReplaced() || !WorldUtils.canBreak(headPos) || blockState.is(Blocks.COBWEB) || !speedMineModule.isValid(headPos)) continue;
+            return headPos;
         }
         return null;
     }
@@ -205,13 +205,13 @@ extends Module {
         if (AutoMineModule.mc.player.isVisuallyCrawling()) {
             return null;
         }
-        BlockPos blockPos = BlockPos.containing((Position)AutoMineModule.mc.player.getEyePosition());
-        if (WorldUtils.canBreak(blockPos) && !WorldUtils.isReplaceable(blockPos)) {
-            return blockPos;
+        BlockPos eyeBlockPos = BlockPos.containing((Position)AutoMineModule.mc.player.getEyePosition());
+        if (WorldUtils.canBreak(eyeBlockPos) && !WorldUtils.isReplaceable(eyeBlockPos)) {
+            return eyeBlockPos;
         }
-        BlockPos blockPos2 = AutoMineModule.mc.player.blockPosition().above();
-        if (WorldUtils.canBreak(blockPos2) && !WorldUtils.isReplaceable(blockPos2)) {
-            return blockPos2;
+        BlockPos headBlockPos = AutoMineModule.mc.player.blockPosition().above();
+        if (WorldUtils.canBreak(headBlockPos) && !WorldUtils.isReplaceable(headBlockPos)) {
+            return headBlockPos;
         }
         return null;
     }
@@ -221,22 +221,22 @@ extends Module {
     }
 
     private boolean allSidesTerraformed(Player player, SpeedMineModule speedMineModule) {
-        BlockPos blockPos = player.blockPosition();
-        boolean bl = false;
+        BlockPos playerPos = player.blockPosition();
+        boolean hasValidSide = false;
         for (Direction direction : Direction.Plane.HORIZONTAL) {
-            boolean bl2;
-            BlockPos blockPos2 = blockPos.relative(direction);
-            BlockPos blockPos3 = blockPos2.below();
-            if (speedMineModule.isOutOfRange(blockPos2) || speedMineModule.isOutOfRange(blockPos3)) continue;
-            BlockState blockState2 = AutoMineModule.mc.level.getBlockState(blockPos2);
-            if (blockState2.getBlock().defaultDestroyTime() < 0.0f && (!speedMineModule.sixB.getValue() || blockState2.getBlock() != Blocks.BEDROCK)) continue;
-            bl = true;
-            BlockState blockState3 = AutoMineModule.mc.level.getBlockState(blockPos3);
-            boolean bl3 = bl2 = blockState3.getBlock() == Blocks.OBSIDIAN || blockState3.getBlock() == Blocks.BEDROCK;
-            if (bl2) continue;
+            boolean hasBase;
+            BlockPos surroundPos = playerPos.relative(direction);
+            BlockPos basePos = surroundPos.below();
+            if (speedMineModule.isOutOfRange(surroundPos) || speedMineModule.isOutOfRange(basePos)) continue;
+            BlockState surroundState = AutoMineModule.mc.level.getBlockState(surroundPos);
+            if (surroundState.getBlock().defaultDestroyTime() < 0.0f && (!speedMineModule.sixB.getValue() || surroundState.getBlock() != Blocks.BEDROCK)) continue;
+            hasValidSide = true;
+            BlockState baseState = AutoMineModule.mc.level.getBlockState(basePos);
+            hasBase = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
+            if (hasBase) continue;
             return false;
         }
-        return bl;
+        return hasValidSide;
     }
 
     public TerrainPair getBestTerrainPair(Player player) {
@@ -251,67 +251,66 @@ extends Module {
             this.activeTerrainTarget = null;
             return null;
         }
-        UUID uUID = player.getUUID();
-        BlockPos blockPos = HoleUtils.getTargetFeetPosition(player);
-        if (this.activeTerrainPair != null && uUID.equals(this.activeTerrainTarget)) {
+        UUID targetUuid = player.getUUID();
+        BlockPos targetFeetPos = HoleUtils.getTargetFeetPosition(player);
+        if (this.activeTerrainPair != null && targetUuid.equals(this.activeTerrainTarget)) {
             BlockPos surroundPos = this.activeTerrainPair.surroundPos();
             BlockPos basePos = this.activeTerrainPair.basePos();
-            boolean bl2 = !speedMineModule.isOutOfRange(surroundPos) && !speedMineModule.isOutOfRange(basePos);
-            boolean bl3 = blockPos.distManhattan((Vec3i)surroundPos) <= 2;
+            boolean inRange = !speedMineModule.isOutOfRange(surroundPos) && !speedMineModule.isOutOfRange(basePos);
+            boolean nearTarget = targetFeetPos.distManhattan((Vec3i)surroundPos) <= 2;
             BlockState surroundState = AutoMineModule.mc.level.getBlockState(surroundPos);
             BlockState baseState = AutoMineModule.mc.level.getBlockState(basePos);
-            boolean bl = surroundState.getBlock().defaultDestroyTime() >= 0.0f || speedMineModule.sixB.getValue() && surroundState.getBlock() == Blocks.BEDROCK || speedMineModule.isMining(surroundPos);
-            boolean bl4 = baseState.getBlock().defaultDestroyTime() >= 0.0f || baseState.getBlock() == Blocks.BEDROCK || baseState.getBlock() == Blocks.OBSIDIAN || this.pendingTerrainPlacements.contains(basePos);
-            if (bl2 && bl3 && bl && bl4) {
+            boolean surroundValid = surroundState.getBlock().defaultDestroyTime() >= 0.0f || speedMineModule.sixB.getValue() && surroundState.getBlock() == Blocks.BEDROCK || speedMineModule.isMining(surroundPos);
+            boolean baseValid = baseState.getBlock().defaultDestroyTime() >= 0.0f || baseState.getBlock() == Blocks.BEDROCK || baseState.getBlock() == Blocks.OBSIDIAN || this.pendingTerrainPlacements.contains(basePos);
+            if (inRange && nearTarget && surroundValid && baseValid) {
                 return this.activeTerrainPair;
             }
         }
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>();
+        HashSet<BlockPos> avoidPositions = new HashSet<BlockPos>();
         if (this.avoidSharing.getValue()) {
-            hashSet.addAll(HoleUtils.getFeetPositions((Player)AutoMineModule.mc.player, true, false, true));
-            for (BlockPos blockPos2 : HoleUtils.getInsidePositions((Entity)AutoMineModule.mc.player)) {
+            avoidPositions.addAll(HoleUtils.getFeetPositions((Player)AutoMineModule.mc.player, true, false, true));
+            for (BlockPos insidePos : HoleUtils.getInsidePositions((Entity)AutoMineModule.mc.player)) {
                 for (Direction direction : Direction.Plane.HORIZONTAL) {
-                    hashSet.add(blockPos2.relative(direction));
+                    avoidPositions.add(insidePos.relative(direction));
                 }
             }
         }
         TerrainPair bestPair = null;
-        double d = Double.MAX_VALUE;
+        double bestScore = Double.MAX_VALUE;
         for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos blockPos3 = blockPos.relative(direction);
-            BlockPos blockPos4 = blockPos3.below();
-            if (speedMineModule.isOutOfRange(blockPos3) || speedMineModule.isOutOfRange(blockPos4)) continue;
-            BlockState blockState = AutoMineModule.mc.level.getBlockState(blockPos3);
-            BlockState blockState2 = AutoMineModule.mc.level.getBlockState(blockPos4);
-            if (blockState.getBlock().defaultDestroyTime() < 0.0f && !speedMineModule.isMining(blockPos3) || blockState2.getBlock().defaultDestroyTime() < 0.0f && blockState2.getBlock() != Blocks.BEDROCK && blockState2.getBlock() != Blocks.OBSIDIAN && !this.pendingTerrainPlacements.contains(blockPos4)) continue;
-            double d2 = 0.0;
-            if (this.avoidSharing.getValue() && (hashSet.contains(blockPos3) || hashSet.contains(blockPos4))) {
-                d2 += 100000.0;
+            BlockPos surroundPos = targetFeetPos.relative(direction);
+            BlockPos basePos = surroundPos.below();
+            if (speedMineModule.isOutOfRange(surroundPos) || speedMineModule.isOutOfRange(basePos)) continue;
+            BlockState surroundState = AutoMineModule.mc.level.getBlockState(surroundPos);
+            BlockState baseState = AutoMineModule.mc.level.getBlockState(basePos);
+            if (surroundState.getBlock().defaultDestroyTime() < 0.0f && !speedMineModule.isMining(surroundPos) || baseState.getBlock().defaultDestroyTime() < 0.0f && baseState.getBlock() != Blocks.BEDROCK && baseState.getBlock() != Blocks.OBSIDIAN && !this.pendingTerrainPlacements.contains(basePos)) continue;
+            double score = 0.0;
+            if (this.avoidSharing.getValue() && (avoidPositions.contains(surroundPos) || avoidPositions.contains(basePos))) {
+                score += 100000.0;
             }
-            boolean bl = blockState2.getBlock() == Blocks.OBSIDIAN || blockState2.getBlock() == Blocks.BEDROCK;
-            if (bl) {
-                d2 -= 20000.0;
-            } else if (!blockState2.canBeReplaced()) {
-                d2 += (double)blockState2.getBlock().defaultDestroyTime() * 10.0;
+            boolean isHardBase = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
+            if (isHardBase) {
+                score -= 20000.0;
+            } else if (!baseState.canBeReplaced()) {
+                score += (double)baseState.getBlock().defaultDestroyTime() * 10.0;
             }
-            if (!blockState.canBeReplaced()) {
-                d2 -= 10000.0;
+            if (!surroundState.canBeReplaced()) {
+                score -= 10000.0;
             }
-            boolean bl7 = speedMineModule.isMining(blockPos3) || speedMineModule.isMining(blockPos4);
-            if (bl7) {
-                d2 -= 50000.0;
+            boolean currentlyMining = speedMineModule.isMining(surroundPos) || speedMineModule.isMining(basePos);
+            if (currentlyMining) {
+                score -= 50000.0;
             }
-            if (!((d2 += AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos3))) < d)) continue;
-            d = d2;
-            bestPair = new TerrainPair(direction, blockPos3, blockPos4, d2);
+            if (!((score += AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)surroundPos))) < bestScore)) continue;
+            bestScore = score;
+            bestPair = new TerrainPair(direction, surroundPos, basePos, score);
         }
         this.activeTerrainPair = bestPair;
-        this.activeTerrainTarget = bestPair != null ? uUID : null;
+        this.activeTerrainTarget = bestPair != null ? targetUuid : null;
         return bestPair;
     }
 
     public void placePendingTerrain() {
-        int n;
         if (!this.terrainPlace.getValue() || this.pendingTerrainPlacements.isEmpty()) {
             return;
         }
@@ -332,17 +331,17 @@ extends Module {
         if (blockSlot == -1) {
             return;
         }
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
+        ArrayList<BlockPos> completedPositions = new ArrayList<BlockPos>();
         for (BlockPos blockPos : new ArrayList<BlockPos>(this.pendingTerrainPlacements)) {
             if (speedMineModule.isOutOfRange(blockPos)) {
-                arrayList.add(blockPos);
+                completedPositions.add(blockPos);
                 continue;
             }
             BlockState blockState = AutoMineModule.mc.level.getBlockState(blockPos);
             if (blockState.getBlock() == Blocks.OBSIDIAN) {
-                arrayList.add(blockPos);
-                speedMineModule.dropPrimaryIfInvalid(blockPos2 -> !blockPos2.equals((Object)blockPos));
-                speedMineModule.dropSecondaryIfInvalid(blockPos2 -> !blockPos2.equals((Object)blockPos));
+                completedPositions.add(blockPos);
+                speedMineModule.dropPrimaryIfInvalid(pos -> !pos.equals((Object)blockPos));
+                speedMineModule.dropSecondaryIfInvalid(pos -> !pos.equals((Object)blockPos));
                 continue;
             }
             if (!blockState.canBeReplaced() || !WorldUtils.isPlaceable(blockPos)) continue;
@@ -356,11 +355,11 @@ extends Module {
             boolean placed = WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, speedMineModule.rotate.getValue().equalsIgnoreCase("Packet") || speedMineModule.rotate.getValue().equalsIgnoreCase("Normal") || speedMineModule.rotate.getValue().equalsIgnoreCase("Silent"), true, speedMineModule.render.getValue().equalsIgnoreCase("Both") || speedMineModule.render.getValue().equalsIgnoreCase("Fill"));
             InventoryUtils.switchBack(speedMineModule.switchMode.getValue(), blockSlot, selectedSlot);
             if (!placed) continue;
-            arrayList.add(blockPos);
-            speedMineModule.dropPrimaryIfInvalid(blockPos2 -> !blockPos2.equals((Object)blockPos));
-            speedMineModule.dropSecondaryIfInvalid(blockPos2 -> !blockPos2.equals((Object)blockPos));
+            completedPositions.add(blockPos);
+            speedMineModule.dropPrimaryIfInvalid(pos -> !pos.equals((Object)blockPos));
+            speedMineModule.dropSecondaryIfInvalid(pos -> !pos.equals((Object)blockPos));
         }
-        arrayList.forEach(this.pendingTerrainPlacements::remove);
+        completedPositions.forEach(this.pendingTerrainPlacements::remove);
     }
 
     @SubscribeEvent
@@ -401,45 +400,45 @@ extends Module {
                     secondaryAction = null;
                 }
                 SpeedMineModule.Target rawTarget = speedMineModule.getTarget();
-                SpeedMineModule.Target target2 = rawTarget == null || (this.ignoreNaked.getValue() && EntityUtils.isNaked(rawTarget.player())) ? null : rawTarget;
+                SpeedMineModule.Target target = rawTarget == null || (this.ignoreNaked.getValue() && EntityUtils.isNaked(rawTarget.player())) ? null : rawTarget;
                 BlockPos secondaryBlockPos = secondaryAction != null ? secondaryAction.getPosition() : null;
                 int secPriority = secondaryAction != null ? secondaryAction.getPriority() : 0;
-                if (!(primaryAction != null && primaryAction.getPriority() > 0 && !WorldUtils.isReplaceable(primaryAction.getPosition()) || secondaryBlockPos != null && secPriority > 0 && !WorldUtils.isReplaceable(secondaryBlockPos) || primaryAction != null && primaryAction.getPriority() == 0 && speedMineModule.sixB.getValue() && primaryAction.getState().getBlock() == Blocks.BEDROCK && target2 != null && speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target2.player()))) {
+                if (!(primaryAction != null && primaryAction.getPriority() > 0 && !WorldUtils.isReplaceable(primaryAction.getPosition()) || secondaryBlockPos != null && secPriority > 0 && !WorldUtils.isReplaceable(secondaryBlockPos) || primaryAction != null && primaryAction.getPriority() == 0 && speedMineModule.sixB.getValue() && primaryAction.getState().getBlock() == Blocks.BEDROCK && target != null && speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target.player()))) {
                     if (speedMineModule.doubleMine.getValue()) {
                         if (!speedMineModule.isMineTimerReady()) {
                             return;
                         }
-                        if (target2 == null) {
+                        if (target == null) {
                             speedMineModule.setDoubleEngaged(false);
                         }
-                        if (target2 != null) {
-                            ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-                            List<BlockPos> insideList = HoleUtils.getInsidePositions((Entity)target2.player());
-                            arrayList.addAll(insideList);
-                            HashSet<BlockPos> feetPositions = HoleUtils.getFeetPositions(target2.player(), true, false, true);
-                            arrayList.addAll(feetPositions);
+                        if (target != null) {
+                            ArrayList<BlockPos> validPositions = new ArrayList<BlockPos>();
+                            List<BlockPos> insideList = HoleUtils.getInsidePositions((Entity)target.player());
+                            validPositions.addAll(insideList);
+                            HashSet<BlockPos> feetPositions = HoleUtils.getFeetPositions(target.player(), true, false, true);
+                            validPositions.addAll(feetPositions);
                             for (BlockPos feetBp : feetPositions) {
-                                arrayList.add(feetBp.below());
+                                validPositions.add(feetBp.below());
                                 for (Direction direction : Direction.Plane.HORIZONTAL) {
-                                    arrayList.add(feetBp.relative(direction).below());
+                                    validPositions.add(feetBp.relative(direction).below());
                                 }
                             }
                             for (BlockPos insideBp : insideList) {
                                 for (Direction direction : Direction.Plane.HORIZONTAL) {
-                                    arrayList.add(insideBp.relative(direction));
-                                    arrayList.add(insideBp.relative(direction).below());
+                                    validPositions.add(insideBp.relative(direction));
+                                    validPositions.add(insideBp.relative(direction).below());
                                 }
-                                arrayList.add(insideBp.above());
-                                arrayList.add(insideBp.below());
+                                validPositions.add(insideBp.above());
+                                validPositions.add(insideBp.below());
                             }
-                            TerrainPair terrainPair = this.terrain.getValue() ? this.getBestTerrainPair(target2.player()) : null;
+                            TerrainPair terrainPair = this.terrain.getValue() ? this.getBestTerrainPair(target.player()) : null;
                             if (terrainPair != null) {
-                                arrayList.add(terrainPair.surroundPos());
-                                arrayList.add(terrainPair.basePos());
+                                validPositions.add(terrainPair.surroundPos());
+                                validPositions.add(terrainPair.basePos());
                             }
-                            BlockPos grimHeadTarget = this.logic.getValue().equalsIgnoreCase("Grim") ? this.getGrimBedrockHeadTarget(target2.player(), speedMineModule) : null;
+                            BlockPos grimHeadTarget = this.logic.getValue().equalsIgnoreCase("Grim") ? this.getGrimBedrockHeadTarget(target.player(), speedMineModule) : null;
                             if (grimHeadTarget != null) {
-                                arrayList.add(grimHeadTarget);
+                                validPositions.add(grimHeadTarget);
                             }
                             if (primaryAction != null && primaryAction.isTerrainBase() && this.isRealTerrainBase(primaryAction.getPosition())) {
                                 speedMineModule.dropPrimary();
@@ -447,14 +446,14 @@ extends Module {
                             }
                             speedMineModule.setDoubleEngaged(true);
                             if (primaryAction != null && primaryAction.getPriority() == 0 && !primaryAction.isTerrainBase()) {
-                                boolean bl = speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target2.player());
-                                if (!bl) {
+                                boolean isTargetSurround = speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target.player());
+                                if (!isTargetSurround) {
                                     speedMineModule.dropPrimary();
                                     primaryAction = null;
                                 } else if (!primaryAction.isInstantMine()) {
                                     BlockPos primPos = primaryAction.getPosition();
-                                    boolean bl2 = HoleUtils.getInsidePositions((Entity)target2.player()).contains(primPos) && AutoMineModule.mc.level.getBlockState(primPos).canBeReplaced();
-                                    if (!arrayList.contains(primPos) || bl2) {
+                                    boolean insideBroken = HoleUtils.getInsidePositions((Entity)target.player()).contains(primPos) && AutoMineModule.mc.level.getBlockState(primPos).canBeReplaced();
+                                    if (!validPositions.contains(primPos) || insideBroken) {
                                         speedMineModule.dropPrimary();
                                         primaryAction = null;
                                     }
@@ -462,43 +461,43 @@ extends Module {
                             }
                             if (secondaryAction != null && secondaryAction.getPriority() == 0 && !secondaryAction.isHolding()) {
                                 BlockPos secPos = secondaryAction.getPosition();
-                                boolean bl = HoleUtils.getInsidePositions((Entity)target2.player()).contains(secPos) && AutoMineModule.mc.level.getBlockState(secPos).canBeReplaced();
-                                if (!arrayList.contains(secPos) || bl) {
+                                boolean insideBroken = HoleUtils.getInsidePositions((Entity)target.player()).contains(secPos) && AutoMineModule.mc.level.getBlockState(secPos).canBeReplaced();
+                                if (!validPositions.contains(secPos) || insideBroken) {
                                     speedMineModule.dropSecondary();
                                     secondaryAction = null;
                                 }
                             }
                             TerrainPair finalTerrainPair = terrainPair;
-                            Runnable runnable2 = () -> {
+                            Runnable terrainRunnable = () -> {
                                 if (this.terrain.getValue() && finalTerrainPair != null) {
                                     BlockPos terrainBase = finalTerrainPair.basePos();
                                     BlockPos terrainSurround = finalTerrainPair.surroundPos();
                                     BlockState baseState = AutoMineModule.mc.level.getBlockState(terrainBase);
                                     BlockState surroundState = AutoMineModule.mc.level.getBlockState(terrainSurround);
-                                    boolean bl = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
-                                    if (!bl && this.terrainPlace.getValue() && !this.pendingTerrainPlacements.contains(terrainBase)) {
+                                    boolean hasHardBase = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
+                                    if (!hasHardBase && this.terrainPlace.getValue() && !this.pendingTerrainPlacements.contains(terrainBase)) {
                                         this.pendingTerrainPlacements.add(terrainBase);
                                     }
-                                    if (this.isPhased(target2.player())) {
+                                    if (this.isPhased(target.player())) {
                                         if (speedMineModule.primaryCamping()) {
                                             BlockPos campPos = speedMineModule.getPrimary().getPosition();
                                             if (!campPos.equals(terrainBase) && !campPos.equals(terrainSurround)) {
                                                 return;
                                             }
                                         }
-                                        boolean bl3 = speedMineModule.getPrimary() == null || speedMineModule.getSecondary() == null;
-                                        if (!bl && !baseState.canBeReplaced()) {
-                                            if (!speedMineModule.isMining(terrainBase) && bl3) {
+                                        boolean hasFreeSlot = speedMineModule.getPrimary() == null || speedMineModule.getSecondary() == null;
+                                        if (!hasHardBase && !baseState.canBeReplaced()) {
+                                            if (!speedMineModule.isMining(terrainBase) && hasFreeSlot) {
                                                 speedMineModule.handle(terrainBase, 0);
                                                 SpeedMineModule.Action action = speedMineModule.getPrimary();
                                                 if (action != null && action.getPosition().equals(terrainBase)) {
                                                     action.setTerrainBase(true);
                                                 }
                                             }
-                                        } else if (bl && !surroundState.canBeReplaced()) {
+                                        } else if (hasHardBase && !surroundState.canBeReplaced()) {
                                             SpeedMineModule.Action action = speedMineModule.getPrimary();
-                                            boolean bl5 = action != null && action.getPosition().equals(terrainSurround);
-                                            if (!bl5) {
+                                            boolean alreadyTargetingSurround = action != null && action.getPosition().equals(terrainSurround);
+                                            if (!alreadyTargetingSurround) {
                                                 speedMineModule.handle(terrainSurround, 0);
                                                 SpeedMineModule.Action action2 = speedMineModule.getPrimary();
                                                 if (action2 != null && action2.getPosition().equals(terrainSurround)) {
@@ -507,16 +506,16 @@ extends Module {
                                             }
                                         }
                                     } else {
-                                        if (!(bl || baseState.canBeReplaced() || speedMineModule.isMining(terrainBase))) {
+                                        if (!(hasHardBase || baseState.canBeReplaced() || speedMineModule.isMining(terrainBase))) {
                                             speedMineModule.handle(terrainBase, 0);
                                         }
                                         if (!surroundState.canBeReplaced() && !speedMineModule.isMining(terrainSurround)) {
-                                            if (bl && speedMineModule.doubleMine.getValue()) {
-                                                BlockPos candidate = HoleUtils.getFeetPositions(target2.player(), true, false, true).stream()
-                                                    .filter(p -> !p.equals(terrainSurround))
-                                                    .filter(p -> !AutoMineModule.mc.level.getBlockState(p).canBeReplaced())
-                                                    .filter(p -> !speedMineModule.isMining(p) && !speedMineModule.isInvalid(p) && !speedMineModule.isOutOfRange(p))
-                                                    .min(Comparator.comparingDouble(p -> AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)p))))
+                                            if (hasHardBase && speedMineModule.doubleMine.getValue()) {
+                                                BlockPos candidate = HoleUtils.getFeetPositions(target.player(), true, false, true).stream()
+                                                    .filter(bp -> !bp.equals(terrainSurround))
+                                                    .filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced())
+                                                    .filter(bp -> !speedMineModule.isMining(bp) && !speedMineModule.isInvalid(bp) && !speedMineModule.isOutOfRange(bp))
+                                                    .min(Comparator.comparingDouble(bp -> AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)bp))))
                                                     .orElse(null);
                                                 if (candidate != null) {
                                                     speedMineModule.handle(candidate, 0);
@@ -531,15 +530,15 @@ extends Module {
                                     }
                                 }
                             };
-                            Runnable runnable3 = () -> {
+                            Runnable feetRunnable = () -> {
                                 block13: {
                                     SpeedMineModule.Action action = speedMineModule.getPrimary();
-                                    boolean bl = action != null && speedMineModule.primaryCamping() && HoleUtils.getInsidePositions((Entity)target2.player()).contains(action.getPosition());
-                                    if (speedMineModule.primaryCamping() && !bl || action != null && speedMineModule.sixB.getValue() && action.getState().getBlock() == Blocks.BEDROCK || HoleUtils.getInsidePositions((Entity)target2.player()).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).toList().size() >= 2 || (this.terrain.getValue() && action != null && action.isTerrainSurround() && !action.isStarted())) break block13;
+                                    boolean campingInside = action != null && speedMineModule.primaryCamping() && HoleUtils.getInsidePositions((Entity)target.player()).contains(action.getPosition());
+                                    if (speedMineModule.primaryCamping() && !campingInside || action != null && speedMineModule.sixB.getValue() && action.getState().getBlock() == Blocks.BEDROCK || HoleUtils.getInsidePositions((Entity)target.player()).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).toList().size() >= 2 || (this.terrain.getValue() && action != null && action.isTerrainSurround() && !action.isStarted())) break block13;
                                     if (this.terrain.getValue() && finalTerrainPair != null) {
                                         BlockState baseState = AutoMineModule.mc.level.getBlockState(finalTerrainPair.basePos());
-                                        boolean bl3 = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
-                                        if (!bl3) {
+                                        boolean hasHardBase = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
+                                        if (!hasHardBase) {
                                             return;
                                         }
                                         if ((speedMineModule.isMining(finalTerrainPair.basePos()) || speedMineModule.isMining(finalTerrainPair.surroundPos())) && speedMineModule.slotsFull()) {
@@ -547,7 +546,7 @@ extends Module {
                                         }
                                     }
                                     if (this.logic.getValue().equals("NCP")) {
-                                        for (BlockPos feetPosCandidate : HoleUtils.getFeetPositions(target2.player(), true, false, true).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).toList()) {
+                                        for (BlockPos feetPosCandidate : HoleUtils.getFeetPositions(target.player(), true, false, true).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).toList()) {
                                             if (!speedMineModule.slotsFull()) {
                                                 if (speedMineModule.isMining(feetPosCandidate) || speedMineModule.isInvalid(feetPosCandidate) || speedMineModule.isOutOfRange(feetPosCandidate)) continue;
                                                 speedMineModule.handle(feetPosCandidate, 0);
@@ -565,27 +564,27 @@ extends Module {
                                                 }
                                             }
                                         }
-                                        List<BlockPos> list2 = HoleUtils.getFeetPositions(target2.player(), true, false, true).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).sorted(Comparator.comparingDouble(arg_0 -> this.scoreFeetBlockPos(shareAvoid, speedMineModule, finalTerrainPair, arg_0))).toList();
-                                        boolean bl5 = bl;
-                                        for (BlockPos targetFeetPos : list2) {
-                                            if (!bl5 && speedMineModule.slotsFull()) break;
+                                        List<BlockPos> sortedFeet = HoleUtils.getFeetPositions(target.player(), true, false, true).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).sorted(Comparator.comparingDouble(pos -> this.scoreFeetBlockPos(shareAvoid, speedMineModule, finalTerrainPair, pos))).toList();
+                                        boolean bypassSlotCheck = campingInside;
+                                        for (BlockPos targetFeetPos : sortedFeet) {
+                                            if (!bypassSlotCheck && speedMineModule.slotsFull()) break;
                                             if (!speedMineModule.isMining(targetFeetPos)) {
                                                 if (speedMineModule.isInvalid(targetFeetPos) || speedMineModule.isOutOfRange(targetFeetPos)) continue;
-                                                boolean bl6 = speedMineModule.sixB.getValue() && AutoMineModule.mc.level.getBlockState(targetFeetPos).getBlock() == Blocks.BEDROCK;
-                                                if (bl6 && speedMineModule.doubleMine.getValue() && speedMineModule.getPrimary() == null) {
-                                                    BlockPos secondFeet = list2.stream()
-                                                        .filter(p -> !p.equals(targetFeetPos))
-                                                        .filter(p -> AutoMineModule.mc.level.getBlockState(p).getBlock() != Blocks.BEDROCK)
-                                                        .filter(p -> !speedMineModule.isMining(p) && !speedMineModule.isInvalid(p) && !speedMineModule.isOutOfRange(p))
+                                                boolean isBedrock = speedMineModule.sixB.getValue() && AutoMineModule.mc.level.getBlockState(targetFeetPos).getBlock() == Blocks.BEDROCK;
+                                                if (isBedrock && speedMineModule.doubleMine.getValue() && speedMineModule.getPrimary() == null) {
+                                                    BlockPos secondFeet = sortedFeet.stream()
+                                                        .filter(bp -> !bp.equals(targetFeetPos))
+                                                        .filter(bp -> AutoMineModule.mc.level.getBlockState(bp).getBlock() != Blocks.BEDROCK)
+                                                        .filter(bp -> !speedMineModule.isMining(bp) && !speedMineModule.isInvalid(bp) && !speedMineModule.isOutOfRange(bp))
                                                         .findFirst().orElse(null);
                                                     if (secondFeet != null) {
                                                         speedMineModule.handle(secondFeet, 0);
                                                     }
                                                 }
                                                 speedMineModule.handle(targetFeetPos, 0);
-                                                bl5 = false;
+                                                bypassSlotCheck = false;
                                             }
-                                            if (bl5 || !speedMineModule.slotsFull()) continue;
+                                            if (bypassSlotCheck || !speedMineModule.slotsFull()) continue;
                                             break;
                                         }
                                     }
@@ -594,8 +593,8 @@ extends Module {
                             Runnable phaseRunnable = () -> {
                                 SpeedMineModule.Action action = speedMineModule.getPrimary();
                                 if (!this.terrain.getValue() || action == null || !action.isTerrainSurround() || action.isStarted()) {
-                                    int targetFloorY = Mth.floor((double)target2.player().getY());
-                                    for (BlockPos phaseInsidePos : HoleUtils.getInsidePositions((Entity)target2.player()).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).sorted(Comparator.comparingDouble(bp -> bp.getY() > targetFloorY ? 1.0 : 0.0)).toList()) {
+                                    int targetFloorY = Mth.floor((double)target.player().getY());
+                                    for (BlockPos phaseInsidePos : HoleUtils.getInsidePositions((Entity)target.player()).stream().filter(bp -> !AutoMineModule.mc.level.getBlockState(bp).canBeReplaced()).filter(bp -> !this.isRaytrace() || WorldUtils.canSeeBlock(bp)).sorted(Comparator.comparingDouble(bp -> bp.getY() > targetFloorY ? 1.0 : 0.0)).toList()) {
                                         if (speedMineModule.isInvalid(phaseInsidePos) || speedMineModule.isOutOfRange(phaseInsidePos)) continue;
                                         if (speedMineModule.phaseSlotsFull()) break;
                                         speedMineModule.handle(phaseInsidePos, 0);
@@ -606,10 +605,10 @@ extends Module {
                             };
                             BlockPos headTarget = null;
                             if (this.priority.getValue().equalsIgnoreCase("Head")) {
-                                headTarget = this.getHeadTarget(target2.player(), speedMineModule);
+                                headTarget = this.getHeadTarget(target.player(), speedMineModule);
                             }
                             if (headTarget == null && this.logic.getValue().equalsIgnoreCase("Grim")) {
-                                headTarget = this.getGrimBedrockHeadTarget(target2.player(), speedMineModule);
+                                headTarget = this.getGrimBedrockHeadTarget(target.player(), speedMineModule);
                             }
                             if (headTarget != null && !speedMineModule.isMining(headTarget)) {
                                 speedMineModule.handle(headTarget, 0);
@@ -618,29 +617,29 @@ extends Module {
                                 phaseRunnable.run();
                             }
                             if (headTarget == null && this.terrain.getValue()) {
-                                runnable2.run();
+                                terrainRunnable.run();
                             }
                             if (headTarget == null) {
-                                runnable3.run();
+                                feetRunnable.run();
                             }
                         }
                     } else {
                         SpeedMineModule.Action action;
                         TerrainPair terrainPair;
-                        BlockPos blockPos10 = null;
-                        BlockPos blockPos11 = null;
-                        boolean bl = false;
-                        if (target2 == null) {
+                        BlockPos minePos = null;
+                        BlockPos grimHeadPos = null;
+                        boolean isTerrainBase = false;
+                        if (target == null) {
                             return;
                         }
                         if (primaryAction != null && primaryAction.getPriority() == 0 && !primaryAction.isTerrainBase()) {
-                            boolean bl5;
-                            boolean bl6 = speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target2.player());
-                            boolean bl7 = bl5 = HoleUtils.getInsidePositions((Entity)target2.player()).contains(primaryAction.getPosition()) && AutoMineModule.mc.level.getBlockState(primaryAction.getPosition()).canBeReplaced();
-                            if (!bl6) {
+                            boolean insideBroken;
+                            boolean isTargetSurround = speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target.player());
+                            insideBroken = HoleUtils.getInsidePositions((Entity)target.player()).contains(primaryAction.getPosition()) && AutoMineModule.mc.level.getBlockState(primaryAction.getPosition()).canBeReplaced();
+                            if (!isTargetSurround) {
                                 speedMineModule.dropPrimary();
                                 primaryAction = null;
-                            } else if (bl5) {
+                            } else if (insideBroken) {
                                 speedMineModule.dropPrimary();
                                 primaryAction = null;
                             } else if (speedMineModule.sixB.getValue() && primaryAction.getState().getBlock() == Blocks.BEDROCK) {
@@ -648,45 +647,45 @@ extends Module {
                             }
                         }
                         if (this.priority.getValue().equalsIgnoreCase("Head")) {
-                            blockPos10 = this.getHeadTarget(target2.player(), speedMineModule);
+                            minePos = this.getHeadTarget(target.player(), speedMineModule);
                         }
-                        if (blockPos10 == null && this.logic.getValue().equalsIgnoreCase("Grim")) {
-                            blockPos10 = blockPos11 = this.getGrimBedrockHeadTarget(target2.player(), speedMineModule);
+                        if (minePos == null && this.logic.getValue().equalsIgnoreCase("Grim")) {
+                            minePos = grimHeadPos = this.getGrimBedrockHeadTarget(target.player(), speedMineModule);
                         }
-                        if (blockPos10 == null && this.terrain.getValue() && (terrainPair = this.getBestTerrainPair(target2.player())) != null) {
-                            boolean bl8;
-                            BlockState blockState = AutoMineModule.mc.level.getBlockState(terrainPair.basePos());
-                            BlockState blockState2 = AutoMineModule.mc.level.getBlockState(terrainPair.surroundPos());
-                            boolean bl9 = bl8 = blockState.getBlock() == Blocks.OBSIDIAN || blockState.getBlock() == Blocks.BEDROCK;
-                            if (!bl8 && !blockState.canBeReplaced()) {
-                                blockPos10 = terrainPair.basePos();
-                                bl = true;
-                                if (this.terrainPlace.getValue() && !this.pendingTerrainPlacements.contains(blockPos10)) {
-                                    this.pendingTerrainPlacements.add(blockPos10);
+                        if (minePos == null && this.terrain.getValue() && (terrainPair = this.getBestTerrainPair(target.player())) != null) {
+                            boolean hasHardBase;
+                            BlockState baseState = AutoMineModule.mc.level.getBlockState(terrainPair.basePos());
+                            BlockState surroundState = AutoMineModule.mc.level.getBlockState(terrainPair.surroundPos());
+                            hasHardBase = baseState.getBlock() == Blocks.OBSIDIAN || baseState.getBlock() == Blocks.BEDROCK;
+                            if (!hasHardBase && !baseState.canBeReplaced()) {
+                                minePos = terrainPair.basePos();
+                                isTerrainBase = true;
+                                if (this.terrainPlace.getValue() && !this.pendingTerrainPlacements.contains(minePos)) {
+                                    this.pendingTerrainPlacements.add(minePos);
                                 }
-                            } else if (!blockState2.canBeReplaced()) {
-                                blockPos10 = terrainPair.surroundPos();
+                            } else if (!surroundState.canBeReplaced()) {
+                                minePos = terrainPair.surroundPos();
                             }
                         }
-                        if (blockPos10 == null) {
-                            int n3 = Mth.floor((double)target2.player().getY());
-                            List<BlockPos> list = HoleUtils.getInsidePositions((Entity)target2.player()).stream().filter(blockPos -> blockPos.getY() <= n3).filter(blockPos -> !AutoMineModule.mc.level.getBlockState(blockPos).canBeReplaced()).filter(blockPos -> !this.isRaytrace() || WorldUtils.canSeeBlock(blockPos)).toList();
-                            BlockPos blockPos12 = blockPos10 = !list.isEmpty() ? list.get(0) : target2.position();
-                            if (blockPos10 != null && this.isRaytrace() && !WorldUtils.canSeeBlock(blockPos10)) {
-                                blockPos10 = null;
+                        if (minePos == null) {
+                            int targetFloorY = Mth.floor((double)target.player().getY());
+                            List<BlockPos> insideCandidates = HoleUtils.getInsidePositions((Entity)target.player()).stream().filter(blockPos -> blockPos.getY() <= targetFloorY).filter(blockPos -> !AutoMineModule.mc.level.getBlockState(blockPos).canBeReplaced()).filter(blockPos -> !this.isRaytrace() || WorldUtils.canSeeBlock(blockPos)).toList();
+                            minePos = !insideCandidates.isEmpty() ? insideCandidates.get(0) : target.position();
+                            if (minePos != null && this.isRaytrace() && !WorldUtils.canSeeBlock(minePos)) {
+                                minePos = null;
                             }
                         }
-                        if (blockPos10 == null) {
+                        if (minePos == null) {
                             return;
                         }
-                        if (primaryAction != null && blockPos10.equals(primaryAction.getPosition())) {
+                        if (primaryAction != null && minePos.equals(primaryAction.getPosition())) {
                             return;
                         }
-                        if (!(primaryAction == null || primaryAction.getPriority() != 0 || primaryAction.isTerrainBase() || !speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target2.player()) || (blockPos11 != null && blockPos10.equals(blockPos11)))) {
+                        if (!(primaryAction == null || primaryAction.getPriority() != 0 || primaryAction.isTerrainBase() || !speedMineModule.isTargetSurroundPosition(primaryAction.getPosition(), target.player()) || (grimHeadPos != null && minePos.equals(grimHeadPos)))) {
                             return;
                         }
-                        speedMineModule.handle(blockPos10, 0);
-                        if (bl && (action = speedMineModule.getPrimary()) != null && action.getPosition().equals(blockPos10)) {
+                        speedMineModule.handle(minePos, 0);
+                        if (isTerrainBase && (action = speedMineModule.getPrimary()) != null && action.getPosition().equals(minePos)) {
                             action.setTerrainBase(true);
                         }
                     }
@@ -699,16 +698,16 @@ extends Module {
         if (player == null || AutoMineModule.mc.level == null) {
             return null;
         }
-        int n = Mth.floor((double)player.getY());
-        int n2 = n + 2;
+        int floorY = Mth.floor((double)player.getY());
+        int headY = floorY + 2;
         SpeedMineModule.Action action = speedMineModule.getPrimary();
-        if (action != null && action.isInstantMine() && action.getPosition().getY() == n2 && speedMineModule.isTargetSurroundPosition(action.getPosition(), player)) {
+        if (action != null && action.isInstantMine() && action.getPosition().getY() == headY && speedMineModule.isTargetSurroundPosition(action.getPosition(), player)) {
             return action.getPosition();
         }
         for (BlockPos blockPos : HoleUtils.getInsidePositions((Entity)player)) {
-            BlockPos blockPos2 = new BlockPos(blockPos.getX(), n2, blockPos.getZ());
-            if (!speedMineModule.isValid(blockPos2) || speedMineModule.isOutOfRange(blockPos2) || this.isRaytrace() && !WorldUtils.canSeeBlock(blockPos2) || AutoMineModule.mc.level.getBlockState(blockPos2).canBeReplaced()) continue;
-            return blockPos2;
+            BlockPos headPos = new BlockPos(blockPos.getX(), headY, blockPos.getZ());
+            if (!speedMineModule.isValid(headPos) || speedMineModule.isOutOfRange(headPos) || this.isRaytrace() && !WorldUtils.canSeeBlock(headPos) || AutoMineModule.mc.level.getBlockState(headPos).canBeReplaced()) continue;
+            return headPos;
         }
         BlockPos blockPos = player.blockPosition().above(2);
         if (!(!speedMineModule.isValid(blockPos) || speedMineModule.isOutOfRange(blockPos) || this.isRaytrace() && !WorldUtils.canSeeBlock(blockPos) || AutoMineModule.mc.level.getBlockState(blockPos).canBeReplaced())) {
@@ -723,48 +722,47 @@ extends Module {
             return false;
         }
         SpeedMineModule.Target target = speedMineModule.getTarget();
-        Player player = target != null ? target.player() : null;
-        Player player2 = player;
-        if (player == null || EntityUtils.isGhost((Entity)player)) {
+        Player targetPlayer = target != null ? target.player() : null;
+        if (targetPlayer == null || EntityUtils.isGhost((Entity)targetPlayer)) {
             this.resetUpCombo();
             return false;
         }
-        if (!HoleUtils.isPlayerInHole(player)) {
+        if (!HoleUtils.isPlayerInHole(targetPlayer)) {
             this.resetUpCombo();
             return false;
         }
-        HashSet<BlockPos> hashSet = HoleUtils.getFeetPositions(player, true, false, true);
+        HashSet<BlockPos> feetPositions = HoleUtils.getFeetPositions(targetPlayer, true, false, true);
         if (this.upComboPos != null) {
-            if (!hashSet.contains(this.upComboPos.below())) {
+            if (!feetPositions.contains(this.upComboPos.below())) {
                 this.resetUpCombo();
             } else {
-                if (this.isPhased(player) || this.elsewhereDealsMoreDamage(speedMineModule, player, this.upComboPos)) {
+                if (this.isPhased(targetPlayer) || this.elsewhereDealsMoreDamage(speedMineModule, targetPlayer, this.upComboPos)) {
                     this.resetUpCombo();
                     return false;
                 }
                 return this.tickUpComboCycle(speedMineModule, this.upComboPos);
             }
         }
-        boolean bl = hashSet.stream().anyMatch(blockPos -> !AutoMineModule.mc.level.getBlockState(blockPos).canBeReplaced());
-        boolean bl2 = hashSet.stream().anyMatch(blockPos -> this.isMinableLegCandidate((BlockPos)blockPos, speedMineModule) && WorldUtils.canSeeBlock(blockPos));
-        if (!bl || bl2) {
+        boolean hasSolidLeg = feetPositions.stream().anyMatch(blockPos -> !AutoMineModule.mc.level.getBlockState(blockPos).canBeReplaced());
+        boolean hasVisibleLeg = feetPositions.stream().anyMatch(blockPos -> this.isMinableLegCandidate((BlockPos)blockPos, speedMineModule) && WorldUtils.canSeeBlock(blockPos));
+        if (!hasSolidLeg || hasVisibleLeg) {
             return false;
         }
-        if (this.isPhased(player)) {
+        if (this.isPhased(targetPlayer)) {
             return false;
         }
-        BlockPos blockPos2 = null;
-        for (BlockPos blockPos3 : hashSet) {
-            BlockPos blockPos4 = blockPos3.above();
-            if (speedMineModule.isOutOfRange(blockPos4) || !WorldUtils.canSeeBlock(blockPos4)) continue;
-            blockPos2 = blockPos4;
+        BlockPos selectedUpPos = null;
+        for (BlockPos feetPos : feetPositions) {
+            BlockPos abovePos = feetPos.above();
+            if (speedMineModule.isOutOfRange(abovePos) || !WorldUtils.canSeeBlock(abovePos)) continue;
+            selectedUpPos = abovePos;
             break;
         }
-        if (blockPos2 == null) {
+        if (selectedUpPos == null) {
             return false;
         }
-        this.upComboPos = blockPos2;
-        return this.tickUpComboCycle(speedMineModule, blockPos2);
+        this.upComboPos = selectedUpPos;
+        return this.tickUpComboCycle(speedMineModule, selectedUpPos);
     }
 
     private boolean elsewhereDealsMoreDamage(SpeedMineModule speedMineModule, Player player, BlockPos blockPos) {
@@ -772,13 +770,13 @@ extends Module {
         if (autoCrystalModule == null) {
             return false;
         }
-        float f = autoCrystalModule.getBestPlaceDamage();
-        if (f <= 0.0f) {
+        float bestPlaceDamage = autoCrystalModule.getBestPlaceDamage();
+        if (bestPlaceDamage <= 0.0f) {
             return false;
         }
-        BlockPos blockPos2 = blockPos.above();
-        float f2 = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, autoCrystalModule.extrapolation.getValue().intValue()), blockPos2, blockPos, autoCrystalModule.ignoreTerrain.getValue());
-        return f > f2;
+        BlockPos crystalBasePos = blockPos.above();
+        float comboDamage = DamageUtils.getCrystalDamage((Entity)player, PositionUtils.extrapolate(player, autoCrystalModule.extrapolation.getValue().intValue()), crystalBasePos, blockPos, autoCrystalModule.ignoreTerrain.getValue());
+        return bestPlaceDamage > comboDamage;
     }
 
     private boolean tickUpComboCycle(SpeedMineModule speedMineModule, BlockPos blockPos) {
@@ -797,13 +795,13 @@ extends Module {
             return;
         }
         AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER.getModule(AutoCrystalModule.class);
-        String string = autoCrystalModule != null ? autoCrystalModule.autoSwitch.getValue() : "Silent";
-        boolean bl = string.equalsIgnoreCase("AltSwap");
-        int n = InventoryUtils.find(Items.OBSIDIAN, 0, bl ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END);
-        if (n == -1) {
-            n = InventoryUtils.findHardestBlock(0, 8);
+        String switchMode = autoCrystalModule != null ? autoCrystalModule.autoSwitch.getValue() : "Silent";
+        boolean altSwap = switchMode.equalsIgnoreCase("AltSwap");
+        int blockSlot = InventoryUtils.find(Items.OBSIDIAN, 0, altSwap ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END);
+        if (blockSlot == -1) {
+            blockSlot = InventoryUtils.findHardestBlock(0, 8);
         }
-        if (n == -1) {
+        if (blockSlot == -1) {
             return;
         }
         Direction direction = WorldUtils.getDirection(blockPos, false);
@@ -813,39 +811,38 @@ extends Module {
         if (direction == null) {
             return;
         }
-        int n2 = AutoMineModule.mc.player.getInventory().getSelectedSlot();
-        InventoryUtils.switchSlot(string, n, n2);
+        int oldSlot = AutoMineModule.mc.player.getInventory().getSelectedSlot();
+        InventoryUtils.switchSlot(switchMode, blockSlot, oldSlot);
         WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.upFallbackRotate.getValue(), true, speedMineModule.render.getValue().equalsIgnoreCase("Both") || speedMineModule.render.getValue().equalsIgnoreCase("Fill"));
-        InventoryUtils.switchBack(string, n, n2);
+        InventoryUtils.switchBack(switchMode, blockSlot, oldSlot);
     }
 
-    private double scoreFeetBlockPos(Set set, SpeedMineModule speedMineModule, TerrainPair terrainPair, BlockPos blockPos) {
-        double d;
-        double d2 = d = this.avoidSharing.getValue() && set.contains(blockPos) ? 100000.0 : 0.0;
+    private double scoreFeetBlockPos(Set<BlockPos> avoidPositions, SpeedMineModule speedMineModule, TerrainPair terrainPair, BlockPos blockPos) {
+        double score = this.avoidSharing.getValue() && avoidPositions.contains(blockPos) ? 100000.0 : 0.0;
         if (this.isRaytrace() && !WorldUtils.canSeeBlock(blockPos)) {
-            d += 500000.0;
+            score += 500000.0;
         } else if (WorldUtils.canSeeBlock(blockPos)) {
-            d -= 50000.0;
+            score -= 50000.0;
         }
         if (speedMineModule.sixB.getValue() && AutoMineModule.mc.level.getBlockState(blockPos).getBlock() == Blocks.BEDROCK) {
-            d -= 200000.0;
+            score -= 200000.0;
         }
         if (this.terrain.getValue() && terrainPair != null && blockPos.equals((Object)terrainPair.surroundPos())) {
-            d -= 100000.0;
+            score -= 100000.0;
         } else {
-            BlockPos blockPos2 = blockPos.below();
-            BlockState blockState = AutoMineModule.mc.level.getBlockState(blockPos2);
-            boolean bl = blockState.getBlock() == Blocks.OBSIDIAN || blockState.getBlock() == Blocks.BEDROCK;
-            boolean bl2 = speedMineModule.isMining(blockPos2);
-            if (bl2) {
-                d -= 50000.0;
-            } else if (bl) {
-                d -= 20000.0;
+            BlockPos belowPos = blockPos.below();
+            BlockState belowState = AutoMineModule.mc.level.getBlockState(belowPos);
+            boolean hasHardBase = belowState.getBlock() == Blocks.OBSIDIAN || belowState.getBlock() == Blocks.BEDROCK;
+            boolean miningBase = speedMineModule.isMining(belowPos);
+            if (miningBase) {
+                score -= 50000.0;
+            } else if (hasHardBase) {
+                score -= 20000.0;
             } else if (this.terrain.getValue()) {
-                d += 50000.0;
+                score += 50000.0;
             }
         }
-        return d + AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos));
+        return score + AutoMineModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos));
     }
 
     public record TerrainPair(Direction direction, BlockPos surroundPos, BlockPos basePos, double score) {

@@ -281,9 +281,9 @@ extends Module {
         if (this.crystalPos == null || !canPlaceCryst) {
             if (this.breakCrystal.getValue() && now - this.breakTimerMs >= this.delay.getValue().longValue() * 50L) {
                 for (int y = -1; y <= 4; ++y) {
-                    BlockPos p = this.target.blockPosition().above(y);
-                    if (!PistonHelper.hasCrystal(p) || (this.crystalPos != null && this.crystalPos.equals(p))) continue;
-                    this.attackCrystalAt(p);
+                    BlockPos checkPos = this.target.blockPosition().above(y);
+                    if (!PistonHelper.hasCrystal(checkPos) || (this.crystalPos != null && this.crystalPos.equals(checkPos))) continue;
+                    this.attackCrystalAt(checkPos);
                     this.lastActionMs = now;
                     this.breakTimerMs = now;
                     this.resetState();
@@ -296,26 +296,26 @@ extends Module {
             if (this.autoBreak.getValue() && !digging && !justActed) {
                 Iterator<BlockPos> it = this.placedRedstone.iterator();
                 while (it.hasNext()) {
-                    BlockPos b = it.next();
-                    if (!this.isRedstone(b)) {
+                    BlockPos redstoneBlock = it.next();
+                    if (!this.isRedstone(redstoneBlock)) {
                         it.remove();
                         continue;
                     }
-                    if (b.equals(this.redstonePos) || !this.inRange(b, this.placeRange.getValue().floatValue())) continue;
-                    this.breakBlock(b);
+                    if (redstoneBlock.equals(this.redstonePos) || !this.inRange(redstoneBlock, this.placeRange.getValue().floatValue())) continue;
+                    this.breakBlock(redstoneBlock);
                     it.remove();
                     this.lastActionMs = now;
                     return;
                 }
                 Iterator<BlockPos> pit = this.placedPistons.iterator();
                 while (pit.hasNext()) {
-                    BlockPos b = pit.next();
-                    if (!(mc.level.getBlockState(b).getBlock() instanceof PistonBaseBlock)) {
+                    BlockPos pistonBlock = pit.next();
+                    if (!(mc.level.getBlockState(pistonBlock).getBlock() instanceof PistonBaseBlock)) {
                         pit.remove();
                         continue;
                     }
-                    if (b.equals(this.pistonPos) || !this.inRange(b, this.placeRange.getValue().floatValue())) continue;
-                    this.breakBlock(b);
+                    if (pistonBlock.equals(this.pistonPos) || !this.inRange(pistonBlock, this.placeRange.getValue().floatValue())) continue;
+                    this.breakBlock(pistonBlock);
                     pit.remove();
                     this.lastActionMs = now;
                     return;
@@ -325,10 +325,10 @@ extends Module {
             if (this.autoBreak.getValue() && !digging && now - this.lastActionMs >= breakTimeout) {
                 Iterator<BlockPos> it = this.placedRedstone.iterator();
                 while (it.hasNext()) {
-                    BlockPos b = it.next();
-                    if (this.isRedstone(b)) {
-                        if (!this.inRange(b, this.placeRange.getValue().floatValue())) continue;
-                        this.breakBlock(b);
+                    BlockPos redstoneBlock = it.next();
+                    if (this.isRedstone(redstoneBlock)) {
+                        if (!this.inRange(redstoneBlock, this.placeRange.getValue().floatValue())) continue;
+                        this.breakBlock(redstoneBlock);
                         it.remove();
                         this.lastActionMs = now;
                         this.resetState();
@@ -338,10 +338,10 @@ extends Module {
                 }
                 Iterator<BlockPos> pit = this.placedPistons.iterator();
                 while (pit.hasNext()) {
-                    BlockPos b = pit.next();
-                    if (mc.level.getBlockState(b).getBlock() instanceof PistonBaseBlock) {
-                        if (!this.inRange(b, this.placeRange.getValue().floatValue())) continue;
-                        this.breakBlock(b);
+                    BlockPos pistonBlock = pit.next();
+                    if (mc.level.getBlockState(pistonBlock).getBlock() instanceof PistonBaseBlock) {
+                        if (!this.inRange(pistonBlock, this.placeRange.getValue().floatValue())) continue;
+                        this.breakBlock(pistonBlock);
                         pit.remove();
                         this.lastActionMs = now;
                         this.resetState();
@@ -358,140 +358,113 @@ extends Module {
     }
 
     private void doPistonCrystal(Player player) {
-        int[] nArray;
-        int n;
+        int[] rawHeightOrder;
+        int openHeight;
         if (this.isTargetPhased(player)) {
             return;
         }
-        int n2 = this.extrapolationTicks.getValue().intValue();
-        double d = (player.getX() - player.xOld) * (double)n2;
-        double d2 = (player.getY() - player.yOld) * (double)n2 * 0.3;
-        double d3 = (player.getZ() - player.zOld) * (double)n2;
-        double d4 = player.getX() + d;
-        double d5 = player.getY() + d2;
-        double d6 = player.getZ() + d3;
-        BlockPos blockPos = PistonCrystalModule.getEntityFeetPos((Entity)player, d4, d5, d6);
-        AABB aABB = player.getBoundingBox().move(d, d2, d3);
-        AABB aABB2 = this.selfExtrapolate.getValue() ? PistonCrystalModule.mc.player.getBoundingBox().move((PistonCrystalModule.mc.player.getX() - PistonCrystalModule.mc.player.xOld) * (double)n2, (PistonCrystalModule.mc.player.getY() - PistonCrystalModule.mc.player.yOld) * (double)n2 * 0.3, (PistonCrystalModule.mc.player.getZ() - PistonCrystalModule.mc.player.zOld) * (double)n2) : PistonCrystalModule.mc.player.getBoundingBox();
-        boolean bl = player.getPose() == Pose.SWIMMING || player.isVisuallyCrawling() || player.getEyeHeight() <= 1.0f || player.getBoundingBox().getYsize() <= 1.0;
-        for (n = 0; n <= 4 && !this.hasHorizontalOpening(blockPos.above(n)); ++n) {
+        int extrapTicks = this.extrapolationTicks.getValue().intValue();
+        double deltaX = (player.getX() - player.xOld) * (double)extrapTicks;
+        double deltaY = (player.getY() - player.yOld) * (double)extrapTicks * 0.3;
+        double deltaZ = (player.getZ() - player.zOld) * (double)extrapTicks;
+        double extrapX = player.getX() + deltaX;
+        double extrapY = player.getY() + deltaY;
+        double extrapZ = player.getZ() + deltaZ;
+        BlockPos blockPos = PistonCrystalModule.getEntityFeetPos((Entity)player, extrapX, extrapY, extrapZ);
+        AABB targetBox = player.getBoundingBox().move(deltaX, deltaY, deltaZ);
+        AABB selfBox = this.selfExtrapolate.getValue() ? PistonCrystalModule.mc.player.getBoundingBox().move((PistonCrystalModule.mc.player.getX() - PistonCrystalModule.mc.player.xOld) * (double)extrapTicks, (PistonCrystalModule.mc.player.getY() - PistonCrystalModule.mc.player.yOld) * (double)extrapTicks * 0.3, (PistonCrystalModule.mc.player.getZ() - PistonCrystalModule.mc.player.zOld) * (double)extrapTicks) : PistonCrystalModule.mc.player.getBoundingBox();
+        boolean isCrawling = player.getPose() == Pose.SWIMMING || player.isVisuallyCrawling() || player.getEyeHeight() <= 1.0f || player.getBoundingBox().getYsize() <= 1.0;
+        for (openHeight = 0; openHeight <= 4 && !this.hasHorizontalOpening(blockPos.above(openHeight)); ++openHeight) {
         }
-        boolean bl2 = bl && PistonCrystalModule.mc.level != null && !PistonCrystalModule.mc.level.getBlockState(blockPos.above(1)).isAir() && !this.hasHorizontalOpening(blockPos.above(0));
-        boolean bl3 = !bl && PistonCrystalModule.mc.level != null && !PistonCrystalModule.mc.level.getBlockState(blockPos.above(2)).isAir() && !this.hasHorizontalOpening(blockPos.above(1));
-        boolean bl4 = !bl && n >= 2;
-        boolean bl5 = !PistonCrystalModule.mc.level.getBlockState(blockPos.above(2)).isAir();
-        boolean bl6 = !this.hasHorizontalOpening(blockPos.above(2));
-        boolean bl7 = !bl && PistonCrystalModule.mc.level != null && (bl5 || bl6) && this.hasHorizontalOpening(blockPos.above(1));
-        boolean bl8 = bl7;
-        if (bl2) {
-            int[] nArray2 = new int[3];
-            nArray2[0] = 1;
-            nArray2[1] = 0;
-            nArray = nArray2;
-            nArray2[2] = 2;
-        } else if (n >= 3) {
-            int[] nArray3 = new int[5];
-            nArray3[0] = n;
-            nArray3[1] = n - 1;
-            nArray3[2] = 2;
-            nArray3[3] = 1;
-            nArray = nArray3;
-            nArray3[4] = 0;
-        } else if (bl3 || n == 2) {
-            int[] nArray4 = new int[4];
-            nArray4[0] = 2;
-            nArray4[1] = 1;
-            nArray4[2] = 0;
-            nArray = nArray4;
-            nArray4[3] = 3;
-        } else if (bl7) {
-            int[] nArray5 = new int[4];
-            nArray5[0] = 1;
-            nArray5[1] = 0;
-            nArray5[2] = 2;
-            nArray = nArray5;
-            nArray5[3] = 3;
+        boolean crawlHeadCovered = isCrawling && PistonCrystalModule.mc.level != null && !PistonCrystalModule.mc.level.getBlockState(blockPos.above(1)).isAir() && !this.hasHorizontalOpening(blockPos.above(0));
+        boolean headCovered = !isCrawling && PistonCrystalModule.mc.level != null && !PistonCrystalModule.mc.level.getBlockState(blockPos.above(2)).isAir() && !this.hasHorizontalOpening(blockPos.above(1));
+        boolean tallCover = !isCrawling && openHeight >= 2;
+        boolean headBlockSolid = !PistonCrystalModule.mc.level.getBlockState(blockPos.above(2)).isAir();
+        boolean headNotOpen = !this.hasHorizontalOpening(blockPos.above(2));
+        boolean midOpenUnderHead = !isCrawling && PistonCrystalModule.mc.level != null && (headBlockSolid || headNotOpen) && this.hasHorizontalOpening(blockPos.above(1));
+        if (crawlHeadCovered) {
+            rawHeightOrder = new int[]{1, 0, 2};
+        } else if (openHeight >= 3) {
+            rawHeightOrder = new int[]{openHeight, openHeight - 1, 2, 1, 0};
+        } else if (headCovered || openHeight == 2) {
+            rawHeightOrder = new int[]{2, 1, 0, 3};
+        } else if (midOpenUnderHead) {
+            rawHeightOrder = new int[]{1, 0, 2, 3};
         } else {
-            int[] nArray6 = new int[4];
-            nArray6[0] = 0;
-            nArray6[1] = 1;
-            nArray6[2] = 2;
-            nArray = nArray6;
-            nArray6[3] = 3;
+            rawHeightOrder = new int[]{0, 1, 2, 3};
         }
-        int[] nArray7 = nArray;
-        boolean bl9 = false;
-        for (int n3 : nArray7) {
-            if (n3 != this.preferredHeight) continue;
-            bl9 = true;
+        int[] heightOrder = rawHeightOrder;
+        boolean hasPreferred = false;
+        for (int candidateHeight : heightOrder) {
+            if (candidateHeight != this.preferredHeight) continue;
+            hasPreferred = true;
             break;
         }
-        if (this.preferredHeight != -1 && bl9 && this.preferredHeight != nArray7[0]) {
-            int[] nArray8 = new int[nArray7.length];
-            nArray8[0] = this.preferredHeight;
-            int n4 = 1;
-            for (int n5 : nArray7) {
-                if (n5 == this.preferredHeight) continue;
-                nArray8[n4++] = n5;
+        if (this.preferredHeight != -1 && hasPreferred && this.preferredHeight != heightOrder[0]) {
+            int[] reordered = new int[heightOrder.length];
+            reordered[0] = this.preferredHeight;
+            int idx = 1;
+            for (int height : heightOrder) {
+                if (height == this.preferredHeight) continue;
+                reordered[idx++] = height;
             }
-            nArray7 = nArray8;
+            heightOrder = reordered;
         }
-        for (int n3 : nArray7) {
-            BlockPos blockPos2 = blockPos.above(n3);
-            BlockPos blockPos3 = bl2 && n3 == 1 || bl7 && n3 == 1 ? blockPos.above(1) : (!(!bl3 && !bl4 || n3 != 2 && n3 != n) ? blockPos.above(n3) : null);
-            float f = DamageUtils.getCrystalDamage((Entity)player, aABB, blockPos2, blockPos3, this.blockDestruction.getValue());
-            float f2 = DamageUtils.getCrystalDamage((Entity)PistonCrystalModule.mc.player, aABB2, blockPos2, null, this.blockDestruction.getValue());
-            int n6 = n3 == 1 && bl2 || n3 == 1 && bl7 || n3 == 2 && bl3 || n3 == n && bl4 ? 1 : 0;
-            int n7 = n6;
-            if (n6 != 0) {
-                if (f <= this.minDamage.getValue().floatValue() || f2 > this.maxLocalDamage.getValue().floatValue() || this.safety.getValue() && f2 >= PistonCrystalModule.mc.player.getHealth() + PistonCrystalModule.mc.player.getAbsorptionAmount()) continue;
-                if (!this.trySearch(blockPos, n3, true)) {
-                    this.tryPreBuildCrystalSupport(blockPos, n3);
+        for (int heightOffset : heightOrder) {
+            BlockPos crystalTargetPos = blockPos.above(heightOffset);
+            BlockPos ignoredPos = crawlHeadCovered && heightOffset == 1 || midOpenUnderHead && heightOffset == 1 ? blockPos.above(1) : (!(!headCovered && !tallCover || heightOffset != 2 && heightOffset != openHeight) ? blockPos.above(heightOffset) : null);
+            float targetDamage = DamageUtils.getCrystalDamage((Entity)player, targetBox, crystalTargetPos, ignoredPos, this.blockDestruction.getValue());
+            float selfDamage = DamageUtils.getCrystalDamage((Entity)PistonCrystalModule.mc.player, selfBox, crystalTargetPos, null, this.blockDestruction.getValue());
+            boolean forcePush = heightOffset == 1 && crawlHeadCovered || heightOffset == 1 && midOpenUnderHead || heightOffset == 2 && headCovered || heightOffset == openHeight && tallCover;
+            if (forcePush) {
+                if (targetDamage <= this.minDamage.getValue().floatValue() || selfDamage > this.maxLocalDamage.getValue().floatValue() || this.safety.getValue() && selfDamage >= PistonCrystalModule.mc.player.getHealth() + PistonCrystalModule.mc.player.getAbsorptionAmount()) continue;
+                if (!this.trySearch(blockPos, heightOffset, true)) {
+                    this.tryPreBuildCrystalSupport(blockPos, heightOffset);
                     continue;
                 }
-                this.preferredHeight = n3;
+                this.preferredHeight = heightOffset;
                 return;
             }
-            if (f <= this.minDamage.getValue().floatValue() || f2 > this.maxLocalDamage.getValue().floatValue() || this.safety.getValue() && f2 >= PistonCrystalModule.mc.player.getHealth() + PistonCrystalModule.mc.player.getAbsorptionAmount()) continue;
-            if (!this.trySearch(blockPos, n3, bl3 || bl2 || bl4)) {
-                if (!this.tryPreBuildCrystalSupport(blockPos, n3)) continue;
+            if (targetDamage <= this.minDamage.getValue().floatValue() || selfDamage > this.maxLocalDamage.getValue().floatValue() || this.safety.getValue() && selfDamage >= PistonCrystalModule.mc.player.getHealth() + PistonCrystalModule.mc.player.getAbsorptionAmount()) continue;
+            if (!this.trySearch(blockPos, heightOffset, headCovered || crawlHeadCovered || tallCover)) {
+                if (!this.tryPreBuildCrystalSupport(blockPos, heightOffset)) continue;
                 return;
             }
-            this.preferredHeight = n3;
+            this.preferredHeight = heightOffset;
             return;
         }
     }
 
-    private boolean tryPreBuildCrystalSupport(BlockPos blockPos, int n) {
+    private boolean tryPreBuildCrystalSupport(BlockPos blockPos, int heightOffset) {
         if (!this.autoSupport.getValue()) {
             return false;
         }
         for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos blockPos2;
-            BlockPos blockPos3 = blockPos.relative(direction).above(n);
-            if (!this.inRange(blockPos3, this.placeRange.getValue().floatValue()) || (PistonHelper.canPlaceCrystal(blockPos3, false) ? !this.inRange(blockPos2 = blockPos3.relative(direction).below(), this.placeRange.getValue().floatValue()) || !PistonHelper.canPlace(blockPos2, null, false, true) : this.isObsidian(blockPos2 = blockPos3.below()) || !this.canSupportCrystal(blockPos3, blockPos2))) continue;
-            int n2 = this.findSupportBlock();
-            if (n2 == -1) {
+            BlockPos supportPos;
+            BlockPos crystalBasePos = blockPos.relative(direction).above(heightOffset);
+            if (!this.inRange(crystalBasePos, this.placeRange.getValue().floatValue()) || (PistonHelper.canPlaceCrystal(crystalBasePos, false) ? !this.inRange(supportPos = crystalBasePos.relative(direction).below(), this.placeRange.getValue().floatValue()) || !PistonHelper.canPlace(supportPos, null, false, true) : this.isObsidian(supportPos = crystalBasePos.below()) || !this.canSupportCrystal(crystalBasePos, supportPos))) continue;
+            int supportSlot = this.findSupportBlock();
+            if (supportSlot == -1) {
                 return false;
             }
-            this.placeBlock(n2, blockPos2, null);
+            this.placeBlock(supportSlot, supportPos, null);
             this.lastActionMs = System.currentTimeMillis();
             return true;
         }
         return false;
     }
 
-    public static BlockPos getEntityFeetPos(Entity entity, double d, double d2, double d3) {
+    public static BlockPos getEntityFeetPos(Entity entity, double x, double y, double z) {
         VoxelShape voxelShape;
         if (PistonCrystalModule.mc.level == null) {
-            return new BlockPos(Mth.floor((double)d), Mth.floor((double)d2), Mth.floor((double)d3));
+            return new BlockPos(Mth.floor((double)x), Mth.floor((double)y), Mth.floor((double)z));
         }
-        int n = Mth.floor((double)d2);
-        BlockPos blockPos = new BlockPos(Mth.floor((double)d), n, Mth.floor((double)d3));
+        int floorY = Mth.floor((double)y);
+        BlockPos blockPos = new BlockPos(Mth.floor((double)x), floorY, Mth.floor((double)z));
         BlockState blockState = PistonCrystalModule.mc.level.getBlockState(blockPos);
         if (!(blockState.isAir() || blockState.canBeReplaced() || (voxelShape = blockState.getCollisionShape((BlockGetter)PistonCrystalModule.mc.level, blockPos)).isEmpty())) {
-            double d5 = (double)blockPos.getY() + voxelShape.max(Direction.Axis.Y);
-            if (d2 >= d5 - 0.05) {
+            double topY = (double)blockPos.getY() + voxelShape.max(Direction.Axis.Y);
+            if (y >= topY - 0.05) {
                 return blockPos.above();
             }
         }
@@ -538,182 +511,182 @@ extends Module {
         return blockState.isSolid() && blockState.blocksMotion();
     }
 
-    private boolean trySearch(BlockPos blockPos, int n, boolean bl) {
-        ArrayList<Direction> arrayList = new ArrayList<Direction>();
-        Direction direction = PistonCrystalModule.mc.player.getDirection();
-        arrayList.add(direction);
+    private boolean trySearch(BlockPos blockPos, int heightOffset, boolean forcePush) {
+        ArrayList<Direction> pushDirections = new ArrayList<Direction>();
+        Direction playerFacing = PistonCrystalModule.mc.player.getDirection();
+        pushDirections.add(playerFacing);
         for (Direction dir : Direction.Plane.HORIZONTAL) {
-            if (dir == direction) continue;
-            arrayList.add(dir);
+            if (dir == playerFacing) continue;
+            pushDirections.add(dir);
         }
-        boolean bl2 = this.airPlace.getValue();
-        for (Direction direction2 : arrayList) {
-            ArrayList<Direction> arrayList2;
-            BlockPos blockPos2;
-            BlockPos blockPos3 = blockPos.relative(direction2).above(n);
-            if (!this.inRange(blockPos3, this.placeRange.getValue().floatValue()) || this.strictDirection.getValue() && !WorldUtils.canSeeBlock(blockPos3)) continue;
-            BlockPos blockPos4 = null;
-            if (!(PistonHelper.canPlaceCrystal(blockPos3, bl2) || bl && PistonHelper.canPlaceCrystalIgnoreHeadroom(blockPos3, bl2))) {
-                if (bl2 || !this.autoSupport.getValue() || !this.canSupportCrystal(blockPos3, blockPos2 = blockPos3.below())) continue;
-                blockPos4 = blockPos2;
+        boolean allowAirPlace = this.airPlace.getValue();
+        for (Direction pushDir : pushDirections) {
+            ArrayList<Direction> pistonOffsets;
+            BlockPos selectedPistonPos;
+            BlockPos crystalCandidate = blockPos.relative(pushDir).above(heightOffset);
+            if (!this.inRange(crystalCandidate, this.placeRange.getValue().floatValue()) || this.strictDirection.getValue() && !WorldUtils.canSeeBlock(crystalCandidate)) continue;
+            BlockPos candidateCrystalSupport = null;
+            if (!(PistonHelper.canPlaceCrystal(crystalCandidate, allowAirPlace) || forcePush && PistonHelper.canPlaceCrystalIgnoreHeadroom(crystalCandidate, allowAirPlace))) {
+                BlockPos belowCrystal;
+                if (allowAirPlace || !this.autoSupport.getValue() || !this.canSupportCrystal(crystalCandidate, belowCrystal = crystalCandidate.below())) continue;
+                candidateCrystalSupport = belowCrystal;
             }
-            blockPos2 = null;
-            BlockPos blockPos5 = null;
-            BlockPos blockPos6 = null;
-            if (bl) {
-                arrayList2 = new ArrayList<Direction>(4);
-                arrayList2.add(direction2);
-                arrayList2.add(direction2.getClockWise());
-                arrayList2.add(direction2.getCounterClockWise());
-                for (Direction direction3 : Direction.Plane.HORIZONTAL) {
-                    if (direction3 == direction2.getOpposite() || arrayList2.contains(direction3)) continue;
-                    arrayList2.add(direction3);
+            selectedPistonPos = null;
+            BlockPos selectedRedstonePos = null;
+            BlockPos selectedPistonSupportPos = null;
+            if (forcePush) {
+                pistonOffsets = new ArrayList<Direction>(4);
+                pistonOffsets.add(pushDir);
+                pistonOffsets.add(pushDir.getClockWise());
+                pistonOffsets.add(pushDir.getCounterClockWise());
+                for (Direction dir : Direction.Plane.HORIZONTAL) {
+                    if (dir == pushDir.getOpposite() || pistonOffsets.contains(dir)) continue;
+                    pistonOffsets.add(dir);
                 }
             } else {
-                arrayList2 = new ArrayList<Direction>(3);
-                for (Direction direction3 : Direction.Plane.HORIZONTAL) {
-                    if (direction3 == direction2.getOpposite()) continue;
-                    arrayList2.add(direction3);
+                pistonOffsets = new ArrayList<Direction>(3);
+                for (Direction dir : Direction.Plane.HORIZONTAL) {
+                    if (dir == pushDir.getOpposite()) continue;
+                    pistonOffsets.add(dir);
                 }
             }
-            block4: for (Direction direction3 : arrayList2) {
-                BlockPos blockPos7;
-                boolean bl3;
-                BlockPos blockPos8;
-                BlockPos blockPos9 = blockPos3.relative(direction2).relative(direction3);
-                if ((!bl || direction3 == direction2) && !PistonCrystalModule.mc.level.getBlockState(blockPos8 = blockPos9.relative(direction2.getOpposite())).isAir() && !PistonCrystalModule.mc.level.getBlockState(blockPos8).canBeReplaced() || !(bl3 = PistonCrystalModule.mc.level.getBlockState(blockPos9).getBlock() instanceof PistonBaseBlock) && this.strictDirection.getValue() && !WorldUtils.canSeeBlock(blockPos9)) continue;
-                blockPos6 = null;
-                boolean bl4 = PistonHelper.canPlace(blockPos9, null, bl2, true) || bl3;
-                boolean bl5 = !bl2 && blockPos4 != null && blockPos9.distManhattan((Vec3i)blockPos4) == 1;
-                boolean bl6 = bl5;
-                if (!bl4 && !bl5) {
-                    if (bl2 || !this.autoSupport.getValue() || (blockPos7 = this.findSupportForPiston(blockPos9, direction2, direction3, blockPos4)) == null) continue;
-                    blockPos6 = blockPos7;
+            block4: for (Direction pistonOffsetDir : pistonOffsets) {
+                BlockPos supportForPiston;
+                boolean pistonAlreadyPresent;
+                BlockPos pistonFrontPos;
+                BlockPos pistonCandidate = crystalCandidate.relative(pushDir).relative(pistonOffsetDir);
+                if ((!forcePush || pistonOffsetDir == pushDir) && !PistonCrystalModule.mc.level.getBlockState(pistonFrontPos = pistonCandidate.relative(pushDir.getOpposite())).isAir() && !PistonCrystalModule.mc.level.getBlockState(pistonFrontPos).canBeReplaced() || !(pistonAlreadyPresent = PistonCrystalModule.mc.level.getBlockState(pistonCandidate).getBlock() instanceof PistonBaseBlock) && this.strictDirection.getValue() && !WorldUtils.canSeeBlock(pistonCandidate)) continue;
+                selectedPistonSupportPos = null;
+                boolean canPlacePiston = PistonHelper.canPlace(pistonCandidate, null, allowAirPlace, true) || pistonAlreadyPresent;
+                boolean supportedByCrystalBase = !allowAirPlace && candidateCrystalSupport != null && pistonCandidate.distManhattan((Vec3i)candidateCrystalSupport) == 1;
+                if (!canPlacePiston && !supportedByCrystalBase) {
+                    if (allowAirPlace || !this.autoSupport.getValue() || (supportForPiston = this.findSupportForPiston(pistonCandidate, pushDir, pistonOffsetDir, candidateCrystalSupport)) == null) continue;
+                    selectedPistonSupportPos = supportForPiston;
                 }
-                if (!this.inRange(blockPos9, this.placeRange.getValue().floatValue())) continue;
-                blockPos2 = blockPos9;
+                if (!this.inRange(pistonCandidate, this.placeRange.getValue().floatValue())) continue;
+                selectedPistonPos = pistonCandidate;
                 for (Direction redstoneDir : Direction.values()) {
-                    if (redstoneDir == direction2.getOpposite()) continue;
-                    BlockPos redstonePosCandidate = blockPos9.relative(redstoneDir);
-                    if (blockPos6 != null && redstonePosCandidate.equals(blockPos6) || blockPos4 != null && redstonePosCandidate.equals(blockPos4)) continue;
+                    if (redstoneDir == pushDir.getOpposite()) continue;
+                    BlockPos redstonePosCandidate = pistonCandidate.relative(redstoneDir);
+                    if (selectedPistonSupportPos != null && redstonePosCandidate.equals(selectedPistonSupportPos) || candidateCrystalSupport != null && redstonePosCandidate.equals(candidateCrystalSupport)) continue;
                     if (PistonCrystalModule.mc.level.getBlockState(redstonePosCandidate).getBlock() == Blocks.REDSTONE_BLOCK || PistonCrystalModule.mc.level.getBlockState(redstonePosCandidate).getBlock() == Blocks.REDSTONE_TORCH) {
-                        blockPos5 = redstonePosCandidate;
+                        selectedRedstonePos = redstonePosCandidate;
                         break block4;
                     }
-                    if (!PistonHelper.canPlace(redstonePosCandidate, null, bl2, true) || !this.inRange(redstonePosCandidate, this.placeRange.getValue().floatValue()) || this.strictDirection.getValue() && !WorldUtils.canSeeBlock(redstonePosCandidate)) continue;
-                    blockPos5 = redstonePosCandidate;
+                    if (!PistonHelper.canPlace(redstonePosCandidate, null, allowAirPlace, true) || !this.inRange(redstonePosCandidate, this.placeRange.getValue().floatValue()) || this.strictDirection.getValue() && !WorldUtils.canSeeBlock(redstonePosCandidate)) continue;
+                    selectedRedstonePos = redstonePosCandidate;
                     break block4;
                 }
             }
-            if (blockPos2 == null || blockPos5 == null) continue;
-            this.face = direction2;
-            this.crystalPos = blockPos3;
-            this.crystalForcedPush = bl;
-            this.pistonPos = blockPos2;
-            this.redstonePos = blockPos5;
-            this.crystalSupportPos = blockPos4;
-            this.pistonSupportPos = blockPos6;
+            if (selectedPistonPos == null || selectedRedstonePos == null) continue;
+            this.face = pushDir;
+            this.crystalPos = crystalCandidate;
+            this.crystalForcedPush = forcePush;
+            this.pistonPos = selectedPistonPos;
+            this.redstonePos = selectedRedstonePos;
+            this.crystalSupportPos = candidateCrystalSupport;
+            this.pistonSupportPos = selectedPistonSupportPos;
             return true;
         }
         return false;
     }
 
-    private boolean placeBlock(int n, BlockPos blockPos, Direction direction2) {
-        Direction direction3;
-        if (n == -1) {
+    private boolean placeBlock(int slot, BlockPos blockPos, Direction facing) {
+        Direction placeSide;
+        if (slot == -1) {
             return false;
         }
-        if (direction2 != null) {
+        if (facing != null) {
             if (this.strictDirection.getValue()) {
-                List<Direction> list = WorldUtils.getDirections(blockPos, null, true);
-                direction3 = list.contains(direction2) ? direction2 : (list.isEmpty() ? null : list.get(0));
-                if (direction3 == null && !this.airPlace.getValue()) {
+                List<Direction> validDirs = WorldUtils.getDirections(blockPos, null, true);
+                placeSide = validDirs.contains(facing) ? facing : (validDirs.isEmpty() ? null : validDirs.get(0));
+                if (placeSide == null && !this.airPlace.getValue()) {
                     return false;
                 }
             } else {
-                direction3 = PistonHelper.getPlaceSide(blockPos, direction -> true);
-                if (direction3 == null && !this.airPlace.getValue()) {
+                placeSide = PistonHelper.getPlaceSide(blockPos, direction -> true);
+                if (placeSide == null && !this.airPlace.getValue()) {
                     return false;
                 }
             }
-        } else if (this.strictDirection.getValue() ? (direction3 = WorldUtils.getDirection(blockPos, true)) == null : (direction3 = PistonHelper.getPlaceSide(blockPos, direction -> true)) == null && !this.airPlace.getValue()) {
+        } else if (this.strictDirection.getValue() ? (placeSide = WorldUtils.getDirection(blockPos, true)) == null : (placeSide = PistonHelper.getPlaceSide(blockPos, direction -> true)) == null && !this.airPlace.getValue()) {
             return false;
         }
-        int n2 = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
-        this.doSwap(n, n2);
+        int prevSlot = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
+        this.doSwap(slot, prevSlot);
         if (this.shouldRotate()) {
-            if (direction2 != null) {
-                this.pistonFacingSnap(direction2);
+            if (facing != null) {
+                this.pistonFacingSnap(facing);
             } else {
-                Direction direction4 = direction3 != null ? direction3 : Direction.UP;
-                this.doRotate(blockPos, direction4);
+                Direction rotateSide = placeSide != null ? placeSide : Direction.UP;
+                this.doRotate(blockPos, rotateSide);
             }
         }
-        if (direction3 != null) {
-            PistonHelper.placeBlock(blockPos, direction3, false);
+        if (placeSide != null) {
+            PistonHelper.placeBlock(blockPos, placeSide, false);
         } else {
             PistonHelper.clickBlock(blockPos, Direction.UP, false);
         }
-        this.restoreSlot(n, n2);
+        this.restoreSlot(slot, prevSlot);
         Night.RENDER_MANAGER.getRenderPositions().removeIf(renderPosition -> renderPosition.getPos().equals((Object)blockPos));
         Night.RENDER_MANAGER.getRenderPositions().add(new RenderPosition(blockPos));
         return true;
     }
 
-    private void placeCrystal(int n, BlockPos blockPos) {
-        BlockPos blockPos2 = blockPos.below();
-        Direction direction = PistonHelper.getClickSide(blockPos2);
+    private void placeCrystal(int slot, BlockPos blockPos) {
+        BlockPos basePos = blockPos.below();
+        Direction direction = PistonHelper.getClickSide(basePos);
         if (direction == null) {
             if (this.airPlace.getValue()) {
-                blockPos2 = blockPos;
+                basePos = blockPos;
                 direction = Direction.UP;
             } else {
                 direction = Direction.UP;
             }
         }
-        if (n == -1) {
+        if (slot == -1) {
             return;
         }
-        int n2 = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
-        this.doSwap(n, n2);
+        int prevSlot = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
+        this.doSwap(slot, prevSlot);
         if (this.shouldRotate()) {
-            this.doRotate(blockPos2, direction);
+            this.doRotate(basePos, direction);
         }
-        PistonHelper.clickBlock(blockPos2, direction, false);
-        this.restoreSlot(n, n2);
+        PistonHelper.clickBlock(basePos, direction, false);
+        this.restoreSlot(slot, prevSlot);
         Night.RENDER_MANAGER.getRenderPositions().removeIf(renderPosition -> renderPosition.getPos().equals((Object)blockPos));
         Night.RENDER_MANAGER.getRenderPositions().add(new RenderPosition(blockPos));
     }
 
-    private void placeTorch(int n, BlockPos blockPos) {
-        if (!PistonHelper.canPlace(blockPos, null, this.airPlace.getValue(), true) || n == -1) {
+    private void placeTorch(int slot, BlockPos blockPos) {
+        if (!PistonHelper.canPlace(blockPos, null, this.airPlace.getValue(), true) || slot == -1) {
             return;
         }
-        List<Direction> list = PistonHelper.getPlaceSides(blockPos, null);
-        if (list.isEmpty()) {
+        List<Direction> placeSides = PistonHelper.getPlaceSides(blockPos, null);
+        if (placeSides.isEmpty()) {
             if (this.airPlace.getValue()) {
-                int n2 = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
-                this.doSwap(n, n2);
+                int prevSlot = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
+                this.doSwap(slot, prevSlot);
                 if (this.shouldRotate()) {
                     this.doRotate(blockPos, Direction.UP);
                 }
                 PistonHelper.clickBlock(blockPos, Direction.UP, false);
-                this.restoreSlot(n, n2);
+                this.restoreSlot(slot, prevSlot);
                 Night.RENDER_MANAGER.getRenderPositions().removeIf(renderPosition -> renderPosition.getPos().equals((Object)blockPos));
                 Night.RENDER_MANAGER.getRenderPositions().add(new RenderPosition(blockPos));
                 return;
             }
             return;
         }
-        int n3 = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
-        for (Direction direction : list) {
+        int prevSlot = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
+        for (Direction direction : placeSides) {
             if (PistonCrystalModule.mc.level.getBlockState(blockPos.relative(direction)).getBlock() instanceof PistonBaseBlock || direction == Direction.UP) continue;
-            this.doSwap(n, n3);
+            this.doSwap(slot, prevSlot);
             if (this.shouldRotate()) {
                 this.doRotate(blockPos, direction);
             }
             PistonHelper.placeBlock(blockPos, direction, false);
-            this.restoreSlot(n, n3);
+            this.restoreSlot(slot, prevSlot);
             Night.RENDER_MANAGER.getRenderPositions().removeIf(renderPosition -> renderPosition.getPos().equals((Object)blockPos));
             Night.RENDER_MANAGER.getRenderPositions().add(new RenderPosition(blockPos));
             return;
@@ -721,17 +694,17 @@ extends Module {
     }
 
     private void attackCrystalAt(BlockPos blockPos) {
-        List<EndCrystal> list = PistonCrystalModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(blockPos).inflate(1.0), endCrystal -> endCrystal.isAlive());
-        if (!list.isEmpty()) {
-            double d = this.breakRange.getValue().floatValue() * this.breakRange.getValue().floatValue();
-            EndCrystal endCrystal2 = list.stream().filter(endCrystal -> PistonCrystalModule.mc.player.distanceToSqr((Entity)endCrystal) <= d).min(Comparator.comparingDouble(endCrystal -> PistonCrystalModule.mc.player.distanceToSqr((Entity)endCrystal))).orElse(null);
-            if (endCrystal2 != null) {
+        List<EndCrystal> crystals = PistonCrystalModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(blockPos).inflate(1.0), endCrystal -> endCrystal.isAlive());
+        if (!crystals.isEmpty()) {
+            double maxRangeSq = this.breakRange.getValue().floatValue() * this.breakRange.getValue().floatValue();
+            EndCrystal nearestCrystal = crystals.stream().filter(endCrystal -> PistonCrystalModule.mc.player.distanceToSqr((Entity)endCrystal) <= maxRangeSq).min(Comparator.comparingDouble(endCrystal -> PistonCrystalModule.mc.player.distanceToSqr((Entity)endCrystal))).orElse(null);
+            if (nearestCrystal != null) {
                 if (this.shouldRotate()) {
-                    Vec3 vec3 = endCrystal2.position().add(0.0, 0.5, 0.0);
-                    float[] fArray = RotationUtils.getRotations(vec3);
-                    Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
+                    Vec3 targetVec = nearestCrystal.position().add(0.0, 0.5, 0.0);
+                    float[] rotations = RotationUtils.getRotations(targetVec);
+                    Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
                 }
-                mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal2.getId()));
+                mc.getConnection().send((Packet)new ServerboundAttackPacket(nearestCrystal.getId()));
                 mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             }
         }
@@ -745,35 +718,35 @@ extends Module {
         if (direction == null) {
             direction = Direction.UP;
         }
-        int n2 = this.findPickaxe();
-        int n3 = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
-        if (n2 != -1) {
-            this.doSwap(n2, n3);
+        int pickaxeSlot = this.findPickaxe();
+        int prevSlot = PistonCrystalModule.mc.player.getInventory().getSelectedSlot();
+        if (pickaxeSlot != -1) {
+            this.doSwap(pickaxeSlot, prevSlot);
         }
         if (this.shouldRotate()) {
             this.doRotate(blockPos, direction);
         }
-        Direction direction2 = direction;
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, direction2, n));
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, blockPos, direction2, n));
+        Direction clickSide = direction;
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, clickSide, sequence));
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, blockPos, clickSide, sequence));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-        if (n2 != -1) {
-            this.restoreSlot(n2, n3);
+        if (pickaxeSlot != -1) {
+            this.restoreSlot(pickaxeSlot, prevSlot);
         }
     }
 
     private int findPickaxe() {
-        int n = this.findItem(Items.NETHERITE_PICKAXE);
-        if (n != -1) {
-            return n;
+        int slot = this.findItem(Items.NETHERITE_PICKAXE);
+        if (slot != -1) {
+            return slot;
         }
-        n = this.findItem(Items.DIAMOND_PICKAXE);
-        if (n != -1) {
-            return n;
+        slot = this.findItem(Items.DIAMOND_PICKAXE);
+        if (slot != -1) {
+            return slot;
         }
-        n = this.findItem(Items.IRON_PICKAXE);
-        if (n != -1) {
-            return n;
+        slot = this.findItem(Items.IRON_PICKAXE);
+        if (slot != -1) {
+            return slot;
         }
         return -1;
     }
@@ -783,9 +756,9 @@ extends Module {
     }
 
     private void doRotate(BlockPos blockPos, Direction direction) {
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)blockPos).add((double)direction.getStepX() * 0.5, (double)direction.getStepY() * 0.5, (double)direction.getStepZ() * 0.5);
-        float[] fArray = RotationUtils.getRotations(vec3);
-        Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
+        Vec3 hitVec = Vec3.atCenterOf((Vec3i)blockPos).add((double)direction.getStepX() * 0.5, (double)direction.getStepY() * 0.5, (double)direction.getStepZ() * 0.5);
+        float[] rotations = RotationUtils.getRotations(hitVec);
+        Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
     }
 
     private void pistonFacingSnap(Direction direction) {
@@ -800,12 +773,12 @@ extends Module {
         }
     }
 
-    private void doSwap(int n, int n2) {
-        InventoryUtils.switchSlot(this.swapAction.getValue(), n, n2);
+    private void doSwap(int slot, int prevSlot) {
+        InventoryUtils.switchSlot(this.swapAction.getValue(), slot, prevSlot);
     }
 
-    private void restoreSlot(int n, int n2) {
-        InventoryUtils.switchBack(this.swapAction.getValue(), n, n2);
+    private void restoreSlot(int slot, int prevSlot) {
+        InventoryUtils.switchBack(this.swapAction.getValue(), slot, prevSlot);
     }
 
     private int findItem(Item item) {
@@ -813,8 +786,8 @@ extends Module {
             ItemStack itemStack = PistonCrystalModule.mc.player.getMainHandItem();
             return !itemStack.isEmpty() && itemStack.getItem() == item ? PistonCrystalModule.mc.player.getInventory().getSelectedSlot() : -1;
         }
-        int n = this.swapAction.getValue().equalsIgnoreCase("AltSwap") || this.swapAction.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END;
-        for (int i = 0; i <= n; ++i) {
+        int maxSlot = this.swapAction.getValue().equalsIgnoreCase("AltSwap") || this.swapAction.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END;
+        for (int i = 0; i <= maxSlot; ++i) {
             ItemStack itemStack = PistonCrystalModule.mc.player.getInventory().getItem(i);
             if (itemStack.isEmpty() || itemStack.getItem() != item) continue;
             return i;
@@ -823,9 +796,9 @@ extends Module {
     }
 
     private int findPiston() {
-        int n = this.findBlock(Blocks.PISTON);
-        if (n != -1) {
-            return n;
+        int slot = this.findBlock(Blocks.PISTON);
+        if (slot != -1) {
+            return slot;
         }
         return this.findBlock(Blocks.STICKY_PISTON);
     }
@@ -840,8 +813,8 @@ extends Module {
             }
             return -1;
         }
-        int n = this.swapAction.getValue().equalsIgnoreCase("AltSwap") || this.swapAction.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END;
-        for (int i = 0; i <= n; ++i) {
+        int maxSlot = this.swapAction.getValue().equalsIgnoreCase("AltSwap") || this.swapAction.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END;
+        for (int i = 0; i <= maxSlot; ++i) {
             BlockItem blockItem;
             Item item;
             ItemStack itemStack = PistonCrystalModule.mc.player.getInventory().getItem(i);
@@ -852,22 +825,22 @@ extends Module {
     }
 
     private int findRedstone() {
-        int n = this.findItem(Items.REDSTONE_BLOCK);
-        if (n != -1) {
+        int slot = this.findItem(Items.REDSTONE_BLOCK);
+        if (slot != -1) {
             this.usingTorch = false;
-            return n;
+            return slot;
         }
-        n = this.findItem(Items.REDSTONE_TORCH);
-        if (n != -1) {
+        slot = this.findItem(Items.REDSTONE_TORCH);
+        if (slot != -1) {
             this.usingTorch = true;
-            return n;
+            return slot;
         }
         return -1;
     }
 
     private Player pickTarget() {
-        double d = this.targetRange.getValue().floatValue();
-        return PistonCrystalModule.mc.level.players().stream().filter(abstractClientPlayer -> abstractClientPlayer != PistonCrystalModule.mc.player).filter(abstractClientPlayer -> !EntityUtils.isGhost((Entity)abstractClientPlayer)).filter(abstractClientPlayer -> !abstractClientPlayer.isSpectator() && abstractClientPlayer.isAlive()).filter(abstractClientPlayer -> PistonCrystalModule.mc.player.distanceToSqr((Entity)abstractClientPlayer) <= d * d).filter(abstractClientPlayer -> !Night.FRIEND_MANAGER.contains(abstractClientPlayer.getName().getString())).filter(abstractClientPlayer -> this.inAirTarget.getValue() || abstractClientPlayer.onGround()).min(this.getComparator()).orElse(null);
+        double maxRange = this.targetRange.getValue().floatValue();
+        return PistonCrystalModule.mc.level.players().stream().filter(abstractClientPlayer -> abstractClientPlayer != PistonCrystalModule.mc.player).filter(abstractClientPlayer -> !EntityUtils.isGhost((Entity)abstractClientPlayer)).filter(abstractClientPlayer -> !abstractClientPlayer.isSpectator() && abstractClientPlayer.isAlive()).filter(abstractClientPlayer -> PistonCrystalModule.mc.player.distanceToSqr((Entity)abstractClientPlayer) <= maxRange * maxRange).filter(abstractClientPlayer -> !Night.FRIEND_MANAGER.contains(abstractClientPlayer.getName().getString())).filter(abstractClientPlayer -> this.inAirTarget.getValue() || abstractClientPlayer.onGround()).min(this.getComparator()).orElse(null);
     }
 
     private Comparator<Player> getComparator() {
@@ -877,63 +850,63 @@ extends Module {
         };
     }
 
-    private boolean inRange(BlockPos blockPos, double d) {
-        return PistonCrystalModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= d * d;
+    private boolean inRange(BlockPos blockPos, double maxRange) {
+        return PistonCrystalModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= maxRange * maxRange;
     }
 
-    private boolean canSupportCrystal(BlockPos blockPos, BlockPos blockPos2) {
-        if (PistonCrystalModule.mc.level == null || blockPos2 == null || blockPos == null) {
+    private boolean canSupportCrystal(BlockPos crystalPos, BlockPos supportPos) {
+        if (PistonCrystalModule.mc.level == null || supportPos == null || crystalPos == null) {
             return false;
         }
-        if (!this.inRange(blockPos2, this.placeRange.getValue().floatValue())) {
+        if (!this.inRange(supportPos, this.placeRange.getValue().floatValue())) {
             return false;
         }
-        if (!PistonCrystalModule.mc.level.getBlockState(blockPos).isAir() && !PistonCrystalModule.mc.level.getBlockState(blockPos).canBeReplaced()) {
+        if (!PistonCrystalModule.mc.level.getBlockState(crystalPos).isAir() && !PistonCrystalModule.mc.level.getBlockState(crystalPos).canBeReplaced()) {
             return false;
         }
-        if (!PistonCrystalModule.mc.level.getBlockState(blockPos.above()).isAir() && !PistonCrystalModule.mc.level.getBlockState(blockPos.above()).canBeReplaced()) {
+        if (!PistonCrystalModule.mc.level.getBlockState(crystalPos.above()).isAir() && !PistonCrystalModule.mc.level.getBlockState(crystalPos.above()).canBeReplaced()) {
             return false;
         }
-        if (PistonHelper.hasEntityBlockCrystal(blockPos, false) || PistonHelper.hasEntityBlockCrystal(blockPos.above(), false)) {
+        if (PistonHelper.hasEntityBlockCrystal(crystalPos, false) || PistonHelper.hasEntityBlockCrystal(crystalPos.above(), false)) {
             return false;
         }
-        if (!PistonCrystalModule.mc.level.getBlockState(blockPos2).isAir() && !PistonCrystalModule.mc.level.getBlockState(blockPos2).canBeReplaced()) {
+        if (!PistonCrystalModule.mc.level.getBlockState(supportPos).isAir() && !PistonCrystalModule.mc.level.getBlockState(supportPos).canBeReplaced()) {
             return false;
         }
-        if (!PistonHelper.canPlace(blockPos2, null, false, true)) {
+        if (!PistonHelper.canPlace(supportPos, null, false, true)) {
             return false;
         }
-        return !this.strictDirection.getValue() || WorldUtils.getDirection(blockPos2, true) != null;
+        return !this.strictDirection.getValue() || WorldUtils.getDirection(supportPos, true) != null;
     }
 
-    private BlockPos findSupportForPiston(BlockPos blockPos, Direction direction, Direction direction2, BlockPos blockPos2) {
-        if (PistonCrystalModule.mc.level == null || blockPos == null) {
+    private BlockPos findSupportForPiston(BlockPos pistonPos, Direction pushDir, Direction pistonOffsetDir, BlockPos crystalSupportPos) {
+        if (PistonCrystalModule.mc.level == null || pistonPos == null) {
             return null;
         }
-        if (blockPos2 != null && blockPos.distManhattan((Vec3i)blockPos2) == 1) {
+        if (crystalSupportPos != null && pistonPos.distManhattan((Vec3i)crystalSupportPos) == 1) {
             return null;
         }
-        Direction[] directionArray = new Direction[]{Direction.DOWN, direction2, direction2.getOpposite()};
-        for (Direction direction3 : directionArray) {
-            BlockPos blockPos3 = blockPos.relative(direction3);
-            if (!this.inRange(blockPos3, this.placeRange.getValue().floatValue()) || !PistonCrystalModule.mc.level.getBlockState(blockPos3).isAir() && !PistonCrystalModule.mc.level.getBlockState(blockPos3).canBeReplaced() || !PistonHelper.canPlace(blockPos3, null, false, true) || this.strictDirection.getValue() && WorldUtils.getDirection(blockPos3, true) == null) continue;
-            return blockPos3;
+        Direction[] candidateDirs = new Direction[]{Direction.DOWN, pistonOffsetDir, pistonOffsetDir.getOpposite()};
+        for (Direction dir : candidateDirs) {
+            BlockPos candidatePos = pistonPos.relative(dir);
+            if (!this.inRange(candidatePos, this.placeRange.getValue().floatValue()) || !PistonCrystalModule.mc.level.getBlockState(candidatePos).isAir() && !PistonCrystalModule.mc.level.getBlockState(candidatePos).canBeReplaced() || !PistonHelper.canPlace(candidatePos, null, false, true) || this.strictDirection.getValue() && WorldUtils.getDirection(candidatePos, true) == null) continue;
+            return candidatePos;
         }
         return null;
     }
 
-    private BlockPos findPistonSupportRepair(BlockPos blockPos, Direction direction) {
-        if (PistonCrystalModule.mc.level == null || blockPos == null) {
+    private BlockPos findPistonSupportRepair(BlockPos pistonPos, Direction pushDir) {
+        if (PistonCrystalModule.mc.level == null || pistonPos == null) {
             return null;
         }
-        BlockPos blockPos2 = blockPos.below();
-        if (!this.isReservedForSetup(blockPos2) && this.inRange(blockPos2, this.placeRange.getValue().floatValue()) && (PistonCrystalModule.mc.level.getBlockState(blockPos2).isAir() || PistonCrystalModule.mc.level.getBlockState(blockPos2).canBeReplaced()) && PistonHelper.canPlace(blockPos2, null, false, true)) {
-            return blockPos2;
+        BlockPos belowPos = pistonPos.below();
+        if (!this.isReservedForSetup(belowPos) && this.inRange(belowPos, this.placeRange.getValue().floatValue()) && (PistonCrystalModule.mc.level.getBlockState(belowPos).isAir() || PistonCrystalModule.mc.level.getBlockState(belowPos).canBeReplaced()) && PistonHelper.canPlace(belowPos, null, false, true)) {
+            return belowPos;
         }
-        for (Direction direction2 : Direction.Plane.HORIZONTAL) {
-            BlockPos blockPos3;
-            if (direction != null && direction2 == direction.getOpposite() || this.isReservedForSetup(blockPos3 = blockPos.relative(direction2)) || !this.inRange(blockPos3, this.placeRange.getValue().floatValue()) || !PistonCrystalModule.mc.level.getBlockState(blockPos3).isAir() && !PistonCrystalModule.mc.level.getBlockState(blockPos3).canBeReplaced() || !PistonHelper.canPlace(blockPos3, null, false, true)) continue;
-            return blockPos3;
+        for (Direction dir : Direction.Plane.HORIZONTAL) {
+            BlockPos sidePos;
+            if (pushDir != null && dir == pushDir.getOpposite() || this.isReservedForSetup(sidePos = pistonPos.relative(dir)) || !this.inRange(sidePos, this.placeRange.getValue().floatValue()) || !PistonCrystalModule.mc.level.getBlockState(sidePos).isAir() && !PistonCrystalModule.mc.level.getBlockState(sidePos).canBeReplaced() || !PistonHelper.canPlace(sidePos, null, false, true)) continue;
+            return sidePos;
         }
         return null;
     }
@@ -943,23 +916,23 @@ extends Module {
     }
 
     public int findSupportBlock() {
-        int n = this.findBlock(Blocks.OBSIDIAN);
-        if (n == -1) {
-            n = this.findBlock(Blocks.CRYING_OBSIDIAN);
+        int slot = this.findBlock(Blocks.OBSIDIAN);
+        if (slot == -1) {
+            slot = this.findBlock(Blocks.CRYING_OBSIDIAN);
         }
-        if (n == -1) {
-            n = this.findBlock(Blocks.ENDER_CHEST);
+        if (slot == -1) {
+            slot = this.findBlock(Blocks.ENDER_CHEST);
         }
-        if (n == -1) {
-            n = this.findBlock(Blocks.NETHERITE_BLOCK);
+        if (slot == -1) {
+            slot = this.findBlock(Blocks.NETHERITE_BLOCK);
         }
-        if (n == -1) {
-            n = this.findBlock(Blocks.COBBLESTONE);
+        if (slot == -1) {
+            slot = this.findBlock(Blocks.COBBLESTONE);
         }
-        if (n == -1) {
-            n = this.findBlock(Blocks.STONE);
+        if (slot == -1) {
+            slot = this.findBlock(Blocks.STONE);
         }
-        return n;
+        return slot;
     }
 
     private boolean isObsidian(BlockPos blockPos) {

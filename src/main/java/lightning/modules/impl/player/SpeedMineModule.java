@@ -180,8 +180,8 @@ extends Module {
     private static final int GRIM_DECOY_Y_OFFSET = 2000;
 
     public SpeedMineModule() {
-        Double d = 0.7;
-        this.speed = new NumberSetting("Speed", "The speed at which the module will mine blocks.", d, d, 1.0);
+        Double defaultSpeed = 0.7;
+        this.speed = new NumberSetting("Speed", "The speed at which the module will mine blocks.", defaultSpeed, defaultSpeed, 1.0);
         this.farReach = new BooleanSetting("FarReach", "Bypass for Duration 0.7 on Grim. Try this if normal AutoMine doesn't work.", false);
         this.sixB = new BooleanSetting("6b", "Allows mining bedrock after 40 ticks and enables instant-mining when broken.", false);
         this.rotate = new ModeSetting("Rotate", "Automatically rotates to the block when mining it.", "Normal", new String[]{"None", "Normal", "Silent"});
@@ -245,8 +245,8 @@ extends Module {
         return this.secondary;
     }
 
-    public void setDoubleEngaged(boolean bl) {
-        this.doubleEngaged = bl;
+    public void setDoubleEngaged(boolean engaged) {
+        this.doubleEngaged = engaged;
     }
 
     private boolean hasSecondarySlot() {
@@ -264,22 +264,22 @@ extends Module {
     }
 
     private boolean canBegin() {
-        long l = System.currentTimeMillis() - this.lastStopMs;
-        if (l >= 275L) {
+        long elapsedMs = System.currentTimeMillis() - this.lastStopMs;
+        if (elapsedMs >= 275L) {
             return true;
         }
-        double d = (300L - l) * (long)(this.farReach.getValue() ? 2 : 1);
-        return this.delayBalance + d <= 900.0;
+        double penalty = (300L - elapsedMs) * (long)(this.farReach.getValue() ? 2 : 1);
+        return this.delayBalance + penalty <= 900.0;
     }
 
-    private void trackStarts(int n) {
-        long l = System.currentTimeMillis() - this.lastStopMs;
-        for (int i = 0; i < n; ++i) {
-            if (l >= 275L) {
+    private void trackStarts(int count) {
+        long elapsedMs = System.currentTimeMillis() - this.lastStopMs;
+        for (int i = 0; i < count; ++i) {
+            if (elapsedMs >= 275L) {
                 this.delayBalance *= 0.9;
                 continue;
             }
-            this.delayBalance += (double)(300L - l);
+            this.delayBalance += (double)(300L - elapsedMs);
         }
         this.delayBalance = Mth.clamp((double)this.delayBalance, (double)-1000.0, (double)1000.0);
     }
@@ -288,9 +288,9 @@ extends Module {
         this.markStop(false);
     }
 
-    private void markStop(boolean bl) {
+    private void markStop(boolean applyCooldown) {
         this.lastStopMs = System.currentTimeMillis();
-        if (bl) {
+        if (applyCooldown) {
             this.stopCooldown = 6;
         }
     }
@@ -303,49 +303,48 @@ extends Module {
         return this.interactPaused;
     }
 
-    public void setInteractPaused(boolean bl) {
-        this.interactPaused = bl;
-        if (bl) {
+    public void setInteractPaused(boolean paused) {
+        this.interactPaused = paused;
+        if (paused) {
             this.interactPausedAt = System.currentTimeMillis();
         } else {
             this.needsRestart = true;
         }
     }
 
-    public void updateProxyMiningState(BlockPos blockPos, float f, BlockPos blockPos2, float f2) {
-        long l = System.currentTimeMillis();
-        boolean bl = blockPos == null ? this.proxyPrimaryPos != null : !blockPos.equals((Object)this.proxyPrimaryPos);
-        this.prevProxyPrimaryProgress = bl ? f : this.proxyPrimaryProgress;
-        this.proxyPrimaryUpdateInterval = Mth.clamp((long)(l - this.proxyPrimaryUpdateTime), (long)1L, (long)500L);
-        this.proxyPrimaryUpdateTime = l;
-        this.proxyPrimaryPos = blockPos;
-        this.proxyPrimaryProgress = f;
-        boolean bl2 = blockPos2 == null ? this.proxySecondaryPos != null : !blockPos2.equals((Object)this.proxySecondaryPos);
-        this.prevProxySecondaryProgress = bl2 ? f2 : this.proxySecondaryProgress;
-        this.proxySecondaryUpdateInterval = Mth.clamp((long)(l - this.proxySecondaryUpdateTime), (long)1L, (long)500L);
-        this.proxySecondaryUpdateTime = l;
-        this.proxySecondaryPos = blockPos2;
-        this.proxySecondaryProgress = f2;
+    public void updateProxyMiningState(BlockPos primaryPos, float primaryProgress, BlockPos secondaryPos, float secondaryProgress) {
+        long now = System.currentTimeMillis();
+        boolean primaryChanged = primaryPos == null ? this.proxyPrimaryPos != null : !primaryPos.equals((Object)this.proxyPrimaryPos);
+        this.prevProxyPrimaryProgress = primaryChanged ? primaryProgress : this.proxyPrimaryProgress;
+        this.proxyPrimaryUpdateInterval = Mth.clamp((long)(now - this.proxyPrimaryUpdateTime), (long)1L, (long)500L);
+        this.proxyPrimaryUpdateTime = now;
+        this.proxyPrimaryPos = primaryPos;
+        this.proxyPrimaryProgress = primaryProgress;
+        boolean secondaryChanged = secondaryPos == null ? this.proxySecondaryPos != null : !secondaryPos.equals((Object)this.proxySecondaryPos);
+        this.prevProxySecondaryProgress = secondaryChanged ? secondaryProgress : this.proxySecondaryProgress;
+        this.proxySecondaryUpdateInterval = Mth.clamp((long)(now - this.proxySecondaryUpdateTime), (long)1L, (long)500L);
+        this.proxySecondaryUpdateTime = now;
+        this.proxySecondaryPos = secondaryPos;
+        this.proxySecondaryProgress = secondaryProgress;
     }
 
-    private float interpolatedProgress(float f, float f2, long l, long l2) {
-        float f3 = Mth.clamp((float)((float)(System.currentTimeMillis() - l) / (float)l2), (float)0.0f, (float)1.0f);
-        return f + (f2 - f) * f3;
+    private float interpolatedProgress(float prevProgress, float currentProgress, long updateTimeMs, long updateIntervalMs) {
+        float fraction = Mth.clamp((float)((float)(System.currentTimeMillis() - updateTimeMs) / (float)updateIntervalMs), (float)0.0f, (float)1.0f);
+        return prevProgress + (currentProgress - prevProgress) * fraction;
     }
 
-    public boolean handle(BlockPos blockPos, int n) {
+    public boolean handle(BlockPos blockPos, int priority) {
         if (!this.canHandle(blockPos)) {
             return false;
         }
         if (this.primary != null && this.primary.getPosition().equals((Object)blockPos) || this.secondary != null && this.secondary.getPosition().equals((Object)blockPos)) {
             return true;
         }
-        if (this.primary != null && n <= 0 && this.sixB.getValue() && this.primary.isBedrockOrigin() && n <= this.primary.getPriority()) {
+        if (this.primary != null && priority <= 0 && this.sixB.getValue() && this.primary.isBedrockOrigin() && priority <= this.primary.getPriority()) {
             return false;
         }
-        boolean bl = this.doubleMine.getValue() && (this.doubleEngaged || n > 0);
-        boolean bl2 = bl;
-        if (bl) {
+        boolean useDouble = this.doubleMine.getValue() && (this.doubleEngaged || priority > 0);
+        if (useDouble) {
             if (this.secondary != null) {
                 if (this.await.getValue().equalsIgnoreCase("Always")) {
                     return false;
@@ -354,26 +353,25 @@ extends Module {
                     return false;
                 }
             }
-            Secondary secondary = this.secondary == null && this.primary != null ? this.primary.demote() : null;
-            Secondary secondary2 = secondary;
-            if (secondary != null) {
-                this.secondary = secondary;
+            Secondary demotedSecondary = this.secondary == null && this.primary != null ? this.primary.demote() : null;
+            if (demotedSecondary != null) {
+                this.secondary = demotedSecondary;
             } else if (this.primary != null) {
                 this.primary.cancel();
             }
-            this.primary = new Action(this, this, blockPos, n);
+            this.primary = new Action(this, this, blockPos, priority);
             this.primaryPaired = this.hasSecondarySlot();
         } else {
             if (this.primary != null) {
                 this.primary.cancel();
             }
-            this.primary = new Action(this, this, blockPos, n);
+            this.primary = new Action(this, this, blockPos, priority);
             this.primaryPaired = false;
         }
         return true;
     }
 
-    public boolean fillSecondary(BlockPos blockPos, int n) {
+    public boolean fillSecondary(BlockPos blockPos, int priority) {
         if (this.primary != null && this.primary.isTerrainBase()) {
             return false;
         }
@@ -389,12 +387,12 @@ extends Module {
         if (this.primary != null && this.primary.getPosition().equals((Object)blockPos)) {
             return true;
         }
-        Action action = new Action(this, this, blockPos, n);
-        Secondary secondary = action.demote();
-        if (secondary == null) {
+        Action action = new Action(this, this, blockPos, priority);
+        Secondary demoted = action.demote();
+        if (demoted == null) {
             return false;
         }
-        this.secondary = secondary;
+        this.secondary = demoted;
         return true;
     }
 
@@ -570,10 +568,9 @@ extends Module {
         if (packet instanceof ServerboundMovePlayerPacket) {
             ServerboundMovePlayerPacket serverboundMovePlayerPacket = (ServerboundMovePlayerPacket)packet;
             if (this.ncpCheck.getValue() && this.primary != null) {
-                boolean bl = this.airCheck.getValue() && !SpeedMineModule.mc.player.onGround() && !SpeedMineModule.mc.player.isInWater();
-                boolean bl2 = this.liquidCheck.getValue() && SpeedMineModule.mc.player.isInWater();
-                boolean bl3 = bl2;
-                if (bl || bl2) {
+                boolean airborne = this.airCheck.getValue() && !SpeedMineModule.mc.player.onGround() && !SpeedMineModule.mc.player.isInWater();
+                boolean inWater = this.liquidCheck.getValue() && SpeedMineModule.mc.player.isInWater();
+                if (airborne || inWater) {
                     ((PlayerMoveC2SPacketAccessor)serverboundMovePlayerPacket).setOnGround(true);
                 }
             }
@@ -590,14 +587,14 @@ extends Module {
         }
         BlockPos blockPos = attackBlockEvent.getPosition();
         if (this.doubleMine.getValue() && this.shift.getValue() && (SpeedMineModule.mc.options.keyShift.isDown() || SpeedMineModule.mc.player.isShiftKeyDown())) {
-            Vec3 vec3 = SpeedMineModule.mc.player.getLookAngle();
-            double d = Math.abs(vec3.x);
-            double d2 = Math.abs(vec3.y);
-            double d3 = Math.abs(vec3.z);
-            Direction direction = d2 > d && d2 > d3 ? (vec3.y > 0.0 ? Direction.UP : Direction.DOWN) : (d > d3 ? (vec3.x > 0.0 ? Direction.EAST : Direction.WEST) : (vec3.z > 0.0 ? Direction.SOUTH : Direction.NORTH));
-            BlockPos blockPos2 = blockPos.relative(direction);
-            if (this.isValid(blockPos2) && !this.isOutOfRange(blockPos2) && !SpeedMineModule.mc.level.getBlockState(blockPos2).canBeReplaced()) {
-                this.handle(blockPos2, 1);
+            Vec3 lookAngle = SpeedMineModule.mc.player.getLookAngle();
+            double absX = Math.abs(lookAngle.x);
+            double absY = Math.abs(lookAngle.y);
+            double absZ = Math.abs(lookAngle.z);
+            Direction direction = absY > absX && absY > absZ ? (lookAngle.y > 0.0 ? Direction.UP : Direction.DOWN) : (absX > absZ ? (lookAngle.x > 0.0 ? Direction.EAST : Direction.WEST) : (lookAngle.z > 0.0 ? Direction.SOUTH : Direction.NORTH));
+            BlockPos behindPos = blockPos.relative(direction);
+            if (this.isValid(behindPos) && !this.isOutOfRange(behindPos) && !SpeedMineModule.mc.level.getBlockState(behindPos).canBeReplaced()) {
+                this.handle(behindPos, 1);
             }
         }
         if (this.handle(blockPos, 1)) {
@@ -644,30 +641,29 @@ extends Module {
     }
 
     public void restoreIronSwap() {
-        int n;
+        int ironSlot;
         if (this.primary != null) {
             this.primary.restoreIronSwap();
         }
-        if (SpeedMineModule.mc.player != null && (n = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
-            int n2 = InventoryUtils.findFastestItem(Blocks.OBSIDIAN.defaultBlockState(), InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
-            if (n2 == -1) {
-                n2 = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
+        if (SpeedMineModule.mc.player != null && (ironSlot = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
+            int swapTargetSlot = InventoryUtils.findFastestItem(Blocks.OBSIDIAN.defaultBlockState(), InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
+            if (swapTargetSlot == -1) {
+                swapTargetSlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
             }
-            if (n2 != -1 && n2 > InventoryUtils.HOTBAR_END) {
-                InventoryUtils.swap("Swap", n2, n);
+            if (swapTargetSlot != -1 && swapTargetSlot > InventoryUtils.HOTBAR_END) {
+                InventoryUtils.swap("Swap", swapTargetSlot, ironSlot);
             }
         }
     }
 
     @Override
     public String getMetaData() {
-        String string = this.primary == null ? "0.0" : new DecimalFormat("0.0").format(this.primary.getProgress() / this.primary.getSpeed());
-        String string2 = this.secondary == null || !this.doubleMine.getValue() ? "" : ", " + new DecimalFormat("0.0").format(this.secondary.getProgress() / this.secondary.getSpeed());
-        return string + string2;
+        String primaryText = this.primary == null ? "0.0" : new DecimalFormat("0.0").format(this.primary.getProgress() / this.primary.getSpeed());
+        String secondaryText = this.secondary == null || !this.doubleMine.getValue() ? "" : ", " + new DecimalFormat("0.0").format(this.secondary.getProgress() / this.secondary.getSpeed());
+        return primaryText + secondaryText;
     }
 
     private boolean canHandle(BlockPos blockPos) {
-        boolean bl;
         if (SpeedMineModule.mc.gameMode.getPlayerMode() == GameType.CREATIVE || SpeedMineModule.mc.gameMode.getPlayerMode() == GameType.SPECTATOR) {
             return false;
         }
@@ -675,7 +671,6 @@ extends Module {
             return false;
         }
         AutoMineModule autoMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoMineModule.class) : null;
-        AutoMineModule autoMineModule2 = autoMineModule;
         if (autoMineModule != null && autoMineModule.isProtectedTerrainBase(blockPos)) {
             return false;
         }
@@ -719,21 +714,21 @@ extends Module {
     }
 
     public boolean isTargetSurroundPosition(BlockPos blockPos, Player player) {
-        int n;
+        int baseY;
         if (blockPos == null || player == null || SpeedMineModule.mc.level == null) {
             return false;
         }
         AABB aABB = player.getBoundingBox();
-        for (int i = n = Mth.floor((double)player.getY()); i <= n + 2; ++i) {
+        for (int i = baseY = Mth.floor((double)player.getY()); i <= baseY + 2; ++i) {
             for (int j = Mth.floor((double)aABB.minX); j < Mth.ceil((double)aABB.maxX); ++j) {
                 for (int k = Mth.floor((double)aABB.minZ); k < Mth.ceil((double)aABB.maxZ); ++k) {
-                    BlockPos blockPos2 = new BlockPos(j, i, k);
-                    if (blockPos.equals((Object)blockPos2)) {
+                    BlockPos playerFootPos = new BlockPos(j, i, k);
+                    if (blockPos.equals((Object)playerFootPos)) {
                         return true;
                     }
-                    if (i > n + 1) continue;
+                    if (i > baseY + 1) continue;
                     for (Direction direction : Direction.Plane.HORIZONTAL) {
-                        if (!blockPos.equals((Object)blockPos2.relative(direction))) continue;
+                        if (!blockPos.equals((Object)playerFootPos.relative(direction))) continue;
                         return true;
                     }
                 }
@@ -752,77 +747,77 @@ extends Module {
     public Target getTarget() {
         LogoutSpotModule logoutSpotModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(LogoutSpotModule.class) : null;
         PopChamsModule popChamsModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(PopChamsModule.class) : null;
-        ArrayList<Player> arrayList = new ArrayList<Player>(SpeedMineModule.mc.level.players());
+        ArrayList<Player> candidates = new ArrayList<Player>(SpeedMineModule.mc.level.players());
         if (logoutSpotModule != null && logoutSpotModule.isToggled()) {
             for (Player player : logoutSpotModule.getGhosts()) {
-                if (player == null || arrayList.contains(player)) continue;
-                arrayList.add(player);
+                if (player == null || candidates.contains(player)) continue;
+                candidates.add(player);
             }
         }
         Target target = null;
-        for (Player player : arrayList) {
+        for (Player player : candidates) {
             LogoutSpotModule.Spot spot;
-            boolean bl;
-            if (player == SpeedMineModule.mc.player || popChamsModule != null && popChamsModule.isGhost((Entity)player) || !(bl = EntityUtils.isGhost((Entity)player)) && (!player.isAlive() || player.getHealth() <= 0.0f) || SpeedMineModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)(this.range.getValue().doubleValue() + 2.0)) || (logoutSpotModule != null && logoutSpotModule.isGhost((Entity)player) ? (spot = logoutSpotModule.getSpot((RemotePlayer)player)) != null && Night.FRIEND_MANAGER.contains(spot.data.name) : Night.FRIEND_MANAGER.contains(player.getName().getString()))) continue;
-            List<Position> list = this.getPositions(player);
-            BlockPos blockPos = this.getTargetPosition(list);
-            if (!this.doubleMine.getValue() && (list.isEmpty() || blockPos == null)) continue;
+            boolean isGhost;
+            if (player == SpeedMineModule.mc.player || popChamsModule != null && popChamsModule.isGhost((Entity)player) || !(isGhost = EntityUtils.isGhost((Entity)player)) && (!player.isAlive() || player.getHealth() <= 0.0f) || SpeedMineModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)(this.range.getValue().doubleValue() + 2.0)) || (logoutSpotModule != null && logoutSpotModule.isGhost((Entity)player) ? (spot = logoutSpotModule.getSpot((RemotePlayer)player)) != null && Night.FRIEND_MANAGER.contains(spot.data.name) : Night.FRIEND_MANAGER.contains(player.getName().getString()))) continue;
+            List<Position> positions = this.getPositions(player);
+            BlockPos targetPos = this.getTargetPosition(positions);
+            if (!this.doubleMine.getValue() && (positions.isEmpty() || targetPos == null)) continue;
             if (target == null) {
-                target = new Target(player, list, blockPos);
+                target = new Target(player, positions, targetPos);
                 continue;
             }
-            boolean bl2 = EntityUtils.isGhost((Entity)target.player());
-            if (bl2 != bl) {
-                if (!bl2) continue;
-                target = new Target(player, list, blockPos);
+            boolean currentTargetIsGhost = EntityUtils.isGhost((Entity)target.player());
+            if (currentTargetIsGhost != isGhost) {
+                if (!currentTargetIsGhost) continue;
+                target = new Target(player, positions, targetPos);
                 continue;
             }
             if (!(SpeedMineModule.mc.player.distanceToSqr((Entity)player) < SpeedMineModule.mc.player.distanceToSqr((Entity)target.player()))) continue;
-            target = new Target(player, list, blockPos);
+            target = new Target(player, positions, targetPos);
         }
         return target;
     }
 
-    private BlockPos getTargetPosition(List<Position> list) {
-        BlockPos blockPos = null;
-        double d = 0.0;
-        for (Position position : list) {
+    private BlockPos getTargetPosition(List<Position> positions) {
+        BlockPos bestPos = null;
+        double bestScore = 0.0;
+        for (Position position : positions) {
             if (this.doubleMine.getValue() && !position.feetPosition() || !this.isValidPosition(position.position()) || HoleUtils.isPlayerInHole((Player)SpeedMineModule.mc.player) && HoleUtils.getFeetPositions((Player)SpeedMineModule.mc.player, true, false, true).contains(position.position())) continue;
-            double d2 = 0.0;
+            double score = 0.0;
             if (this.sixB.getValue() && SpeedMineModule.mc.level.getBlockState(position.position()).getBlock() == Blocks.BEDROCK) {
-                double d3 = d2 = position.feetPosition() ? (d2 = d2 + 1000.0) : (d2 = d2 - 1000.0);
+                score = position.feetPosition() ? score + 1000.0 : score - 1000.0;
             }
             if (position.feetPosition()) {
-                d2 += 5.0;
+                score += 5.0;
                 if (SpeedMineModule.mc.level.getBlockState(position.position()).getBlock() == Blocks.ENDER_CHEST) {
-                    d2 += 0.95;
+                    score += 0.95;
                 } else if (WorldUtils.isCrystalPlaceable(position.position().offset(0, 1, 0))) {
-                    d2 += 0.35;
+                    score += 0.35;
                 }
                 if (this.hasCityPosition(position.position())) {
-                    d2 += 0.6;
+                    score += 0.6;
                 }
             } else {
-                double d4 = SpeedMineModule.mc.level.getBlockState(position.position()).getBlock() == Blocks.ENDER_CHEST ? (d2 = d2 - 2.0) : (d2 = WorldUtils.isCrystalPlaceable(position.position().offset(0, 1, 0)) ? (d2 = d2 + 0.75) : (d2 = d2 - 2.0));
+                score = SpeedMineModule.mc.level.getBlockState(position.position()).getBlock() == Blocks.ENDER_CHEST ? score - 2.0 : (WorldUtils.isCrystalPlaceable(position.position().offset(0, 1, 0)) ? score + 0.75 : score - 2.0);
             }
-            if (!(d2 >= d)) continue;
-            blockPos = position.position();
-            d = d2;
+            if (!(score >= bestScore)) continue;
+            bestPos = position.position();
+            bestScore = score;
         }
-        return blockPos;
+        return bestPos;
     }
 
     private List<Position> getPositions(Player player) {
-        ArrayList<Position> arrayList = new ArrayList<Position>();
+        ArrayList<Position> positions = new ArrayList<Position>();
         for (BlockPos blockPos : HoleUtils.getFeetPositions(player, true, false, true)) {
-            arrayList.add(new Position(blockPos, true));
+            positions.add(new Position(blockPos, true));
             if (this.doubleMine.getValue()) continue;
-            arrayList.add(new Position(blockPos.offset(0, 1, 0), false));
+            positions.add(new Position(blockPos.offset(0, 1, 0), false));
         }
         if (!this.doubleMine.getValue()) {
-            arrayList.add(new Position(player.blockPosition().offset(0, 2, 0), false));
+            positions.add(new Position(player.blockPosition().offset(0, 2, 0), false));
         }
-        return arrayList;
+        return positions;
     }
 
     private boolean isValidPosition(BlockPos blockPos) {
@@ -837,8 +832,8 @@ extends Module {
 
     private boolean hasCityPosition(BlockPos blockPos) {
         for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos blockPos2 = blockPos.relative(direction);
-            if (!WorldUtils.isPlaceable(blockPos2)) continue;
+            BlockPos adjacentPos = blockPos.relative(direction);
+            if (!WorldUtils.isPlaceable(adjacentPos)) continue;
             return true;
         }
         return false;
@@ -861,42 +856,42 @@ extends Module {
     }
 
     private void renderProxyState(PoseStack poseStack) {
-        float f;
+        float progress;
         if (this.proxyPrimaryPos != null) {
-            f = this.interpolatedProgress(this.prevProxyPrimaryProgress, this.proxyPrimaryProgress, this.proxyPrimaryUpdateTime, this.proxyPrimaryUpdateInterval);
-            this.renderProxyBlock(poseStack, this.proxyPrimaryPos, f);
+            progress = this.interpolatedProgress(this.prevProxyPrimaryProgress, this.proxyPrimaryProgress, this.proxyPrimaryUpdateTime, this.proxyPrimaryUpdateInterval);
+            this.renderProxyBlock(poseStack, this.proxyPrimaryPos, progress);
         }
         if (this.proxySecondaryPos != null && this.doubleMine.getValue()) {
-            f = this.interpolatedProgress(this.prevProxySecondaryProgress, this.proxySecondaryProgress, this.proxySecondaryUpdateTime, this.proxySecondaryUpdateInterval);
-            this.renderProxyBlock(poseStack, this.proxySecondaryPos, f);
+            progress = this.interpolatedProgress(this.prevProxySecondaryProgress, this.proxySecondaryProgress, this.proxySecondaryUpdateTime, this.proxySecondaryUpdateInterval);
+            this.renderProxyBlock(poseStack, this.proxySecondaryPos, progress);
         }
     }
 
-    private void renderProxyBlock(PoseStack poseStack, BlockPos blockPos, float f) {
+    private void renderProxyBlock(PoseStack poseStack, BlockPos blockPos, float progress) {
         if (SpeedMineModule.mc.level.getBlockState(blockPos).canBeReplaced()) {
             return;
         }
         AABB aABB = new AABB(blockPos);
         if (this.animation.getValue().equalsIgnoreCase("Expand")) {
-            aABB = new AABB(blockPos).deflate(0.5).inflate(Mth.clamp((double)((double)f / 2.0), (double)0.0, (double)0.5));
+            aABB = new AABB(blockPos).deflate(0.5).inflate(Mth.clamp((double)((double)progress / 2.0), (double)0.0, (double)0.5));
         }
         if (this.animation.getValue().equalsIgnoreCase("Rise")) {
-            aABB = new AABB((double)blockPos.getX(), (double)blockPos.getY(), (double)blockPos.getZ(), (double)blockPos.getX() + 1.0, (double)((float)blockPos.getY() + f), (double)blockPos.getZ() + 1.0);
+            aABB = new AABB((double)blockPos.getX(), (double)blockPos.getY(), (double)blockPos.getZ(), (double)blockPos.getX() + 1.0, (double)((float)blockPos.getY() + progress), (double)blockPos.getZ() + 1.0);
         }
-        Color color = this.fillColor.getColor();
-        Color color2 = this.outlineColor.getColor();
+        Color fill = this.fillColor.getColor();
+        Color outline = this.outlineColor.getColor();
         if (this.color.getValue().equalsIgnoreCase("Static")) {
-            color = (double)f >= 0.9 ? new Color(0, 255, 0, this.fillColor.getAlpha()) : new Color(255, 0, 0, this.fillColor.getAlpha());
-            color2 = (double)f >= 0.9 ? new Color(0, 255, 0, this.outlineColor.getAlpha()) : new Color(255, 0, 0, this.outlineColor.getAlpha());
+            fill = (double)progress >= 0.9 ? new Color(0, 255, 0, this.fillColor.getAlpha()) : new Color(255, 0, 0, this.fillColor.getAlpha());
+            outline = (double)progress >= 0.9 ? new Color(0, 255, 0, this.outlineColor.getAlpha()) : new Color(255, 0, 0, this.outlineColor.getAlpha());
         } else if (this.color.getValue().equalsIgnoreCase("Smooth")) {
-            color = new Color(255 - (int)(Mth.clamp((float)f, (float)0.0f, (float)1.0f) * 255.0f), (int)(Mth.clamp((float)f, (float)0.0f, (float)1.0f) * 255.0f), 0, this.fillColor.getAlpha());
-            color2 = new Color(255 - (int)(Mth.clamp((float)f, (float)0.0f, (float)1.0f) * 255.0f), (int)(Mth.clamp((float)f, (float)0.0f, (float)1.0f) * 255.0f), 0, this.outlineColor.getAlpha());
+            fill = new Color(255 - (int)(Mth.clamp((float)progress, (float)0.0f, (float)1.0f) * 255.0f), (int)(Mth.clamp((float)progress, (float)0.0f, (float)1.0f) * 255.0f), 0, this.fillColor.getAlpha());
+            outline = new Color(255 - (int)(Mth.clamp((float)progress, (float)0.0f, (float)1.0f) * 255.0f), (int)(Mth.clamp((float)progress, (float)0.0f, (float)1.0f) * 255.0f), 0, this.outlineColor.getAlpha());
         }
         if (this.render.getValue().equalsIgnoreCase("Fill") || this.render.getValue().equalsIgnoreCase("Both")) {
-            Renderer3D.renderBox(poseStack, aABB, color);
+            Renderer3D.renderBox(poseStack, aABB, fill);
         }
         if (this.render.getValue().equalsIgnoreCase("Outline") || this.render.getValue().equalsIgnoreCase("Both")) {
-            Renderer3D.renderBoxOutline(poseStack, aABB, color2);
+            Renderer3D.renderBoxOutline(poseStack, aABB, outline);
         }
     }
 
@@ -915,8 +910,8 @@ extends Module {
                 this.serverSend((Packet)intFunction.apply(blockStatePredictionHandler.currentSequence()));
             }
         } else {
-            NetworkUtils.sendSequencedPacket(n -> {
-                Packet packet = (Packet)intFunction.apply(n);
+            NetworkUtils.sendSequencedPacket(sequence -> {
+                Packet packet = (Packet)intFunction.apply(sequence);
                 return packet;
             });
         }
@@ -926,9 +921,9 @@ extends Module {
         this.sendRawPlayerAction(action, blockPos, direction, false);
     }
 
-    private void sendRawPlayerAction(ServerboundPlayerActionPacket.Action action, BlockPos blockPos, Direction direction, boolean bl) {
+    private void sendRawPlayerAction(ServerboundPlayerActionPacket.Action action, BlockPos blockPos, Direction direction, boolean applyCooldown) {
         if (action == ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK) {
-            this.markStop(bl);
+            this.markStop(applyCooldown);
         }
         try (BlockStatePredictionHandler blockStatePredictionHandler = ((ClientWorldAccessor)SpeedMineModule.mc.level).invokeGetPendingUpdateManager().startPredicting();){
             this.serverSend((Packet<?>)new ServerboundPlayerActionPacket(action, blockPos, direction, blockStatePredictionHandler.currentSequence()));
@@ -961,13 +956,11 @@ extends Module {
         final SpeedMineModule this$0;
         final /* synthetic */ SpeedMineModule this$0$;
 
-        public Action(SpeedMineModule speedMineModule, SpeedMineModule speedMineModule2, BlockPos blockPos, int n) {
-            SpeedMineModule speedMineModule3 = speedMineModule;
-            Objects.requireNonNull(speedMineModule3);
-            this.this$0$ = speedMineModule3;
-            SpeedMineModule speedMineModule4 = speedMineModule2;
-            Objects.requireNonNull(speedMineModule4);
-            this.this$0 = speedMineModule4;
+        public Action(SpeedMineModule outerInstance, SpeedMineModule moduleRef, BlockPos blockPos, int priority) {
+            Objects.requireNonNull(outerInstance);
+            this.this$0$ = outerInstance;
+            Objects.requireNonNull(moduleRef);
+            this.this$0 = moduleRef;
             this.startSlot = -1;
             this.lastBrokenCount = -1;
             this.instantRemineResetTimer = new Timer();
@@ -978,7 +971,7 @@ extends Module {
             this.position = blockPos;
             this.state = IMinecraft.mc.level.getBlockState(blockPos);
             this.bedrockOrigin = this.state.getBlock() == Blocks.BEDROCK;
-            this.priority = n;
+            this.priority = priority;
             this.tryStart();
         }
 
@@ -1014,79 +1007,75 @@ extends Module {
             return this.terrainBase;
         }
 
-        public void setTerrainBase(boolean bl) {
-            this.terrainBase = bl;
+        public void setTerrainBase(boolean terrainBase) {
+            this.terrainBase = terrainBase;
         }
 
         public boolean isTerrainSurround() {
             return this.terrainSurround;
         }
 
-        public void setTerrainSurround(boolean bl) {
-            this.terrainSurround = bl;
+        public void setTerrainSurround(boolean terrainSurround) {
+            this.terrainSurround = terrainSurround;
         }
 
         public boolean isStarted() {
             return this.started;
         }
 
-        private int getBreakSlot(BlockState blockState, int n) {
-            int n2;
+        private int getBreakSlot(BlockState blockState, int fallbackSlot) {
+            int ironSlot;
             AutoMineModule autoMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoMineModule.class) : null;
-            AutoMineModule autoMineModule2 = autoMineModule;
-            if (autoMineModule != null && autoMineModule.isToggled() && autoMineModule.ironPickaxe.getValue() && this.ironSwapped && (n2 = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
-                return n2;
+            if (autoMineModule != null && autoMineModule.isToggled() && autoMineModule.ironPickaxe.getValue() && this.ironSwapped && (ironSlot = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
+                return ironSlot;
             }
-            return n;
+            return fallbackSlot;
         }
 
         private long asyncFireDelayMs() {
-            long l = this.this$0.instantDelay.getValue().longValue() * 50L;
+            long baseDelayMs = this.this$0.instantDelay.getValue().longValue() * 50L;
             if (this.position == null) {
-                return l;
+                return baseDelayMs;
             }
             Target target = this.this$0.getTarget();
             if (target == null || target.player() == null) {
-                return l;
+                return baseDelayMs;
             }
-            boolean bl = this.position.getY() == Mth.floor((double)target.player().getY()) + 2 && this.this$0.isTargetSurroundPosition(this.position, target.player());
-            boolean bl2 = bl;
-            if (!bl) {
-                return l;
+            boolean isHeadBlock = this.position.getY() == Mth.floor((double)target.player().getY()) + 2 && this.this$0.isTargetSurroundPosition(this.position, target.player());
+            if (!isHeadBlock) {
+                return baseDelayMs;
             }
             AutoTrapModule autoTrapModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoTrapModule.class) : null;
             AutoMineModule autoMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoMineModule.class) : null;
-            boolean bl3 = autoTrapModule != null && autoTrapModule.isToggled();
-            boolean bl4 = autoMineModule != null && autoMineModule.isToggled() && autoMineModule.priority.getValue().equalsIgnoreCase("Head");
-            boolean bl5 = bl4;
-            if (bl3 && bl4) {
-                return Math.max(l, (long)Night.SERVER_MANAGER.getPing());
+            boolean autoTrapEnabled = autoTrapModule != null && autoTrapModule.isToggled();
+            boolean headPriority = autoMineModule != null && autoMineModule.isToggled() && autoMineModule.priority.getValue().equalsIgnoreCase("Head");
+            if (autoTrapEnabled && headPriority) {
+                return Math.max(baseDelayMs, (long)Night.SERVER_MANAGER.getPing());
             }
-            return l;
+            return baseDelayMs;
         }
 
         private void updateIronGhost() {
-            int n;
+            int ironSlot;
             AutoMineModule autoMineModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoMineModule.class) : null;
-            boolean bl = autoMineModule != null && autoMineModule.isToggled() && autoMineModule.ironPickaxe.getValue();
-            boolean bl2 = bl;
-            if (bl && !this.ironSwapped && (n = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END)) != -1 && this.state != null && !this.state.isAir()) {
-                float f = WorldUtils.getMineSpeed(this.state, n) / Night.WORLD_MANAGER.getTimerMultiplier();
-                this.ghostIronProgress = Mth.clamp((float)(this.ghostIronProgress + f), (float)0.0f, (float)this.getSpeed());
+            boolean ironEnabled = autoMineModule != null && autoMineModule.isToggled() && autoMineModule.ironPickaxe.getValue();
+            if (ironEnabled && !this.ironSwapped && (ironSlot = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END)) != -1 && this.state != null && !this.state.isAir()) {
+                float ironSpeed = WorldUtils.getMineSpeed(this.state, ironSlot) / Night.WORLD_MANAGER.getTimerMultiplier();
+                this.ghostIronProgress = Mth.clamp((float)(this.ghostIronProgress + ironSpeed), (float)0.0f, (float)this.getSpeed());
                 if (this.ghostIronProgress >= this.getSpeed()) {
-                    int n2 = InventoryUtils.findFastestItem(this.state, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
-                    if (n2 == -1) {
-                        n2 = IMinecraft.mc.player.getInventory().getSelectedSlot();
+                    int hotbarTarget = InventoryUtils.findFastestItem(this.state, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
+                    if (hotbarTarget == -1) {
+                        hotbarTarget = IMinecraft.mc.player.getInventory().getSelectedSlot();
                     }
-                    if (n > InventoryUtils.HOTBAR_END) {
-                        InventoryUtils.swap("Swap", n, n2);
+                    if (ironSlot > InventoryUtils.HOTBAR_END) {
+                        InventoryUtils.swap("Swap", ironSlot, hotbarTarget);
                         this.ironSwapped = true;
-                        this.swappedIronInventorySlot = n;
-                        this.swappedIronHotbarSlot = n2;
-                    } else if (n != -1) {
+                        this.swappedIronInventorySlot = ironSlot;
+                        this.swappedIronHotbarSlot = hotbarTarget;
+                    } else if (ironSlot != -1) {
                         this.ironSwapped = true;
                         this.swappedIronInventorySlot = -1;
-                        this.swappedIronHotbarSlot = n;
+                        this.swappedIronHotbarSlot = ironSlot;
                     }
                 }
             }
@@ -1094,20 +1083,19 @@ extends Module {
 
         public void restoreIronSwap() {
             if (this.ironSwapped) {
-                int n;
+                int ironHotbarSlot;
                 if (this.swappedIronInventorySlot > InventoryUtils.HOTBAR_END && this.swappedIronHotbarSlot >= 0 && this.swappedIronHotbarSlot <= InventoryUtils.HOTBAR_END) {
                     if (IMinecraft.mc.player != null && IMinecraft.mc.player.getInventory().getItem(this.swappedIronHotbarSlot).is(Items.IRON_PICKAXE)) {
                         InventoryUtils.swap("Swap", this.swappedIronInventorySlot, this.swappedIronHotbarSlot);
                     }
-                } else if (IMinecraft.mc.player != null && (n = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
+                } else if (IMinecraft.mc.player != null && (ironHotbarSlot = InventoryUtils.find(Items.IRON_PICKAXE, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END)) != -1) {
                     BlockState blockState = this.state != null && !this.state.isAir() ? this.state : Blocks.OBSIDIAN.defaultBlockState();
-                    int n2 = this.swappedIronInventorySlot > InventoryUtils.HOTBAR_END ? this.swappedIronInventorySlot : InventoryUtils.findFastestItem(blockState, InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
-                    int n3 = n2;
-                    if (n2 == -1) {
-                        n2 = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
+                    int restoreInvSlot = this.swappedIronInventorySlot > InventoryUtils.HOTBAR_END ? this.swappedIronInventorySlot : InventoryUtils.findFastestItem(blockState, InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
+                    if (restoreInvSlot == -1) {
+                        restoreInvSlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_END + 1, InventoryUtils.INVENTORY_END);
                     }
-                    if (n2 != -1 && n2 > InventoryUtils.HOTBAR_END) {
-                        InventoryUtils.swap("Swap", n2, n);
+                    if (restoreInvSlot != -1 && restoreInvSlot > InventoryUtils.HOTBAR_END) {
+                        InventoryUtils.swap("Swap", restoreInvSlot, ironHotbarSlot);
                     }
                 }
                 this.ironSwapped = false;
@@ -1160,9 +1148,7 @@ extends Module {
          * WARNING - Removed try catching itself - possible behaviour change.
          */
         private void tryStart() {
-            Object object;
-            Object object2 = object = this.this$0.interactSyncLock;
-            synchronized (object2) {
+            synchronized (this.this$0.interactSyncLock) {
                 if (!this.this$0.canStartNow()) {
                     return;
                 }
@@ -1176,9 +1162,8 @@ extends Module {
                 return true;
             }
             this.updateIronGhost();
-            boolean bl = IMinecraft.mc.player != null && (IMinecraft.mc.player.isUsingItem() || EntityUtils.isEating());
-            boolean bl2 = bl;
-            if (this.this$0.interactPaused && !bl && System.currentTimeMillis() - this.this$0.interactPausedAt >= 750L) {
+            boolean usingItem = IMinecraft.mc.player != null && (IMinecraft.mc.player.isUsingItem() || EntityUtils.isEating());
+            if (this.this$0.interactPaused && !usingItem && System.currentTimeMillis() - this.this$0.interactPausedAt >= 750L) {
                 this.this$0.setInteractPaused(false);
             }
             if (this.this$0.needsRestart && this.this$0.isProxyActive()) {
@@ -1224,10 +1209,9 @@ extends Module {
                     if (this.instantAckStalled()) {
                         return false;
                     }
-                    long l = this.this$0.instantTimeout.getValue().longValue();
-                    boolean bl3 = l > 0L && this.this$0.instantTimer.hasTimeElapsed(l * 50L);
-                    boolean bl4 = bl3;
-                    if (!bl3) {
+                    long timeoutTicks = this.this$0.instantTimeout.getValue().longValue();
+                    boolean timedOut = timeoutTicks > 0L && this.this$0.instantTimer.hasTimeElapsed(timeoutTicks * 50L);
+                    if (!timedOut) {
                         return false;
                     }
                 }
@@ -1248,14 +1232,13 @@ extends Module {
                 if (miningSlot == -1) {
                     miningSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
                 }
-                float f = this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK ? 0.025f : WorldUtils.getMineSpeed(this.state, miningSlot) / Night.WORLD_MANAGER.getTimerMultiplier();
-                float f2 = f;
+                float mineSpeed = this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK ? 0.025f : WorldUtils.getMineSpeed(this.state, miningSlot) / Night.WORLD_MANAGER.getTimerMultiplier();
                 if (this.instantMine) {
                     this.prevProgress = this.getSpeed();
                     this.progress = this.getSpeed();
                 } else {
                     this.prevProgress = this.progress;
-                    this.progress = Mth.clamp((float)(this.progress + f), (float)0.0f, (float)this.getSpeed());
+                    this.progress = Mth.clamp((float)(this.progress + mineSpeed), (float)0.0f, (float)this.getSpeed());
                 }
                 if (this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK) {
                     if (this.this$0.isProxyActive()) {
@@ -1265,18 +1248,17 @@ extends Module {
                     }
                     IMinecraft.mc.player.swing(InteractionHand.MAIN_HAND);
                 }
-                if (this.this$0.rotate.getValue().equalsIgnoreCase("Normal") && this.progress + f * 2.0f >= this.getSpeed()) {
-                    float[] fArray = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
+                if (this.this$0.rotate.getValue().equalsIgnoreCase("Normal") && this.progress + mineSpeed * 2.0f >= this.getSpeed()) {
+                    float[] rotations = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
                     if (this.this$0.isProxyActive()) {
-                        this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.PosRot(IMinecraft.mc.player.getX(), IMinecraft.mc.player.getY(), IMinecraft.mc.player.getZ(), fArray[0], fArray[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
+                        this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.PosRot(IMinecraft.mc.player.getX(), IMinecraft.mc.player.getY(), IMinecraft.mc.player.getZ(), rotations[0], rotations[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
                     } else {
-                        Night.ROTATION_MANAGER.legacyRotate(fArray, Night.ROTATION_MANAGER.getLegacyModulePriority(this.this$0));
+                        Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this.this$0));
                     }
                 }
-                boolean bl5 = IMinecraft.mc.player != null && (IMinecraft.mc.player.isUsingItem() || EntityUtils.isEating());
-                boolean bl6 = this.this$0.interactPaused || !this.this$0.whileEating.getValue() && bl5;
-                boolean bl7 = bl6;
-                if (this.progress >= this.getSpeed() && !blockState.canBeReplaced() && !bl6) {
+                boolean currentlyUsingItem = IMinecraft.mc.player != null && (IMinecraft.mc.player.isUsingItem() || EntityUtils.isEating());
+                boolean paused = this.this$0.interactPaused || !this.this$0.whileEating.getValue() && currentlyUsingItem;
+                if (this.progress >= this.getSpeed() && !blockState.canBeReplaced() && !paused) {
                     if (this.instantMine && this.brokenCount == 0 && this.ackStalled()) {
                         this.start();
                         return false;
@@ -1335,10 +1317,9 @@ extends Module {
                     if (this.instantAckStalled()) {
                         return false;
                     }
-                    long l = this.this$0.instantTimeout.getValue().longValue();
-                    boolean bl = l > 0L && this.this$0.instantTimer.hasTimeElapsed(l * 50L);
-                    boolean bl2 = bl;
-                    if (!bl) {
+                    long timeoutTicks = this.this$0.instantTimeout.getValue().longValue();
+                    boolean timedOut = timeoutTicks > 0L && this.this$0.instantTimer.hasTimeElapsed(timeoutTicks * 50L);
+                    if (!timedOut) {
                         return false;
                     }
                 }
@@ -1359,14 +1340,13 @@ extends Module {
                 if (miningSlot == -1) {
                     miningSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
                 }
-                float f = this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK ? 0.025f : WorldUtils.getMineSpeed(this.state, miningSlot) / Night.WORLD_MANAGER.getTimerMultiplier();
-                float f2 = f;
+                float mineSpeed = this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK ? 0.025f : WorldUtils.getMineSpeed(this.state, miningSlot) / Night.WORLD_MANAGER.getTimerMultiplier();
                 if (this.instantMine) {
                     this.prevProgress = this.getSpeed();
                     this.progress = this.getSpeed();
                 } else {
                     this.prevProgress = this.progress;
-                    this.progress = Mth.clamp((float)(this.progress + f), (float)0.0f, (float)this.getSpeed());
+                    this.progress = Mth.clamp((float)(this.progress + mineSpeed), (float)0.0f, (float)this.getSpeed());
                 }
                 if (this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK) {
                     if (this.this$0.isProxyActive()) {
@@ -1378,12 +1358,12 @@ extends Module {
                         IMinecraft.mc.player.swing(InteractionHand.MAIN_HAND);
                     }
                 }
-                if (this.this$0.rotate.getValue().equalsIgnoreCase("Normal") && this.progress + f * 2.0f >= this.getSpeed()) {
-                    float[] fArray = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
+                if (this.this$0.rotate.getValue().equalsIgnoreCase("Normal") && this.progress + mineSpeed * 2.0f >= this.getSpeed()) {
+                    float[] rotations = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
                     if (this.this$0.isProxyActive()) {
-                        this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.PosRot(IMinecraft.mc.player.getX(), IMinecraft.mc.player.getY(), IMinecraft.mc.player.getZ(), fArray[0], fArray[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
+                        this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.PosRot(IMinecraft.mc.player.getX(), IMinecraft.mc.player.getY(), IMinecraft.mc.player.getZ(), rotations[0], rotations[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
                     } else {
-                        Night.ROTATION_MANAGER.legacyRotate(fArray, Night.ROTATION_MANAGER.getLegacyModulePriority(this.this$0));
+                        Night.ROTATION_MANAGER.legacyRotate(rotations, Night.ROTATION_MANAGER.getLegacyModulePriority(this.this$0));
                     }
                 }
                 if (this.progress >= this.getSpeed() && !blockState.canBeReplaced() && (this.this$0.whileEating.getValue() || !EntityUtils.isEating())) {
@@ -1417,12 +1397,10 @@ extends Module {
 
         private boolean isHeadCrystalComboPending() {
             AutoTrapModule autoTrapModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoTrapModule.class) : null;
-            AutoTrapModule autoTrapModule2 = autoTrapModule;
             if (autoTrapModule == null || !autoTrapModule.isToggled()) {
                 return false;
             }
             AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoCrystalModule.class) : null;
-            AutoCrystalModule autoCrystalModule2 = autoCrystalModule;
             if (autoCrystalModule == null || !autoCrystalModule.isToggled()) {
                 return false;
             }
@@ -1430,8 +1408,8 @@ extends Module {
             if (target == null || target.player() == null) {
                 return false;
             }
-            int n = Mth.floor((double)target.player().getY());
-            return this.position.getY() >= n + 2 && Math.abs((double)this.position.getX() + 0.5 - target.player().getX()) < 1.3 && Math.abs((double)this.position.getZ() + 0.5 - target.player().getZ()) < 1.3;
+            int targetY = Mth.floor((double)target.player().getY());
+            return this.position.getY() >= targetY + 2 && Math.abs((double)this.position.getX() + 0.5 - target.player().getX()) < 1.3 && Math.abs((double)this.position.getZ() + 0.5 - target.player().getZ()) < 1.3;
         }
 
         private boolean isCivBreakComboPending() {
@@ -1451,12 +1429,10 @@ extends Module {
                 return;
             }
             AutoTrapModule autoTrapModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoTrapModule.class) : null;
-            AutoTrapModule autoTrapModule2 = autoTrapModule;
             if (autoTrapModule == null || !autoTrapModule.isToggled()) {
                 return;
             }
             AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoCrystalModule.class) : null;
-            AutoCrystalModule autoCrystalModule2 = autoCrystalModule;
             if (autoCrystalModule == null || !autoCrystalModule.isToggled()) {
                 return;
             }
@@ -1468,77 +1444,74 @@ extends Module {
             if (target == null || target.player() == null) {
                 return;
             }
-            int n2 = Mth.floor((double)target.player().getY());
-            boolean bl = blockPos.getY() >= n2 + 2 && Math.abs((double)blockPos.getX() + 0.5 - target.player().getX()) < 1.3 && Math.abs((double)blockPos.getZ() + 0.5 - target.player().getZ()) < 1.3;
-            boolean bl2 = bl;
-            if (!bl) {
+            int targetY = Mth.floor((double)target.player().getY());
+            boolean isHeadPos = blockPos.getY() >= targetY + 2 && Math.abs((double)blockPos.getX() + 0.5 - target.player().getX()) < 1.3 && Math.abs((double)blockPos.getZ() + 0.5 - target.player().getZ()) < 1.3;
+            if (!isHeadPos) {
                 return;
             }
-            BlockPos blockPos2 = blockPos.above();
-            if (!WorldUtils.isCrystalPlaceable(blockPos2)) {
+            BlockPos abovePos = blockPos.above();
+            if (!WorldUtils.isCrystalPlaceable(abovePos)) {
                 return;
             }
-            int n3 = InventoryUtils.findHotbar(Items.END_CRYSTAL);
-            boolean bl3 = IMinecraft.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL;
-            boolean bl4 = bl3;
-            if (!bl3 && n3 == -1) {
+            int crystalSlot = InventoryUtils.findHotbar(Items.END_CRYSTAL);
+            boolean offhandCrystal = IMinecraft.mc.player.getOffhandItem().getItem() == Items.END_CRYSTAL;
+            if (!offhandCrystal && crystalSlot == -1) {
                 return;
             }
-            InteractionHand interactionHand = bl3 ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
-            Vec3 vec3 = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 1.0, (double)blockPos.getZ() + 0.5);
-            BlockHitResult blockHitResult = new BlockHitResult(vec3, Direction.UP, blockPos, false);
+            InteractionHand interactionHand = offhandCrystal ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+            Vec3 hitVec = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 1.0, (double)blockPos.getZ() + 0.5);
+            BlockHitResult blockHitResult = new BlockHitResult(hitVec, Direction.UP, blockPos, false);
             if (this.this$0.isProxyActive()) {
-                if (bl3) {
-                    this.this$0.serverSendSequenced(n -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n));
+                if (offhandCrystal) {
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, sequence));
                     this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(interactionHand));
                 } else {
-                    int n4 = IMinecraft.mc.player.getInventory().getSelectedSlot();
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n3));
-                    this.this$0.serverSendSequenced(n -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n));
+                    int previousSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(crystalSlot));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, sequence));
                     this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(interactionHand));
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n4));
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(previousSlot));
                 }
-            } else if (bl3) {
-                NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n));
+            } else if (offhandCrystal) {
+                NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, sequence));
                 IMinecraft.mc.getConnection().send((Packet)new ServerboundSwingPacket(interactionHand));
             } else {
-                int n5 = IMinecraft.mc.player.getInventory().getSelectedSlot();
-                InventoryUtils.switchSlot("Silent", n3, n5);
-                NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n));
+                int previousSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
+                InventoryUtils.switchSlot("Silent", crystalSlot, previousSlot);
+                NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemOnPacket(interactionHand, blockHitResult, sequence));
                 IMinecraft.mc.getConnection().send((Packet)new ServerboundSwingPacket(interactionHand));
-                InventoryUtils.switchBack("Silent", n3, n5);
+                InventoryUtils.switchBack("Silent", crystalSlot, previousSlot);
             }
         }
 
-        private void legacyFireBreakBurst(Direction direction, int n) {
+        private void legacyFireBreakBurst(Direction direction, int toolSlot) {
             this.checkAndPlaceHeadCrystal(this.position);
             Night.EVENT_HANDLER.post(new DestroyBlockEvent(this.position));
             if (this.this$0.rotate.getValue().equalsIgnoreCase("Silent")) {
-                float[] fArray = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
+                float[] rotations = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
                 if (this.this$0.isProxyActive()) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.Rot(fArray[0], fArray[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
+                    this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.Rot(rotations[0], rotations[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
                 } else {
-                    Night.ROTATION_MANAGER.wireRotate("Silent", fArray);
+                    Night.ROTATION_MANAGER.wireRotate("Silent", rotations);
                 }
             }
-            int n2 = IMinecraft.mc.player.getInventory().getSelectedSlot();
+            int previousSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
             if (this.this$0.isProxyActive()) {
-                int n3 = this.this$0.switchMode.getValue().equalsIgnoreCase("None") ? -1 : n;
-                boolean bl = n3 != -1 && n3 != n2;
-                boolean bl2 = bl;
-                if (bl) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n3));
+                int targetSlot = this.this$0.switchMode.getValue().equalsIgnoreCase("None") ? -1 : toolSlot;
+                boolean shouldSwap = targetSlot != -1 && targetSlot != previousSlot;
+                if (shouldSwap) {
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(targetSlot));
                 }
                 this.stopDestroyBlock(this.position, direction, true);
                 if (this.this$0.grim.getValue()) {
                     this.this$0.serverSend((Packet<?>)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position.above(500), direction));
                 }
                 this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-                if (bl) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n2));
+                if (shouldSwap) {
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(previousSlot));
                 }
             } else {
-                InventoryUtils.switchSlot(this.this$0.switchMode.getValue(), n, n2);
+                InventoryUtils.switchSlot(this.this$0.switchMode.getValue(), toolSlot, previousSlot);
                 this.stopDestroyBlock(this.position, direction, true);
                 if (this.this$0.grim.getValue()) {
                     IMinecraft.mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position.above(500), direction));
@@ -1547,39 +1520,38 @@ extends Module {
                 if (IMinecraft.mc.level.getBlockState(this.position).getBlock() == Blocks.BEDROCK) {
                     IMinecraft.mc.player.swing(InteractionHand.MAIN_HAND);
                 }
-                InventoryUtils.switchBack(this.this$0.switchMode.getValue(), n, n2);
+                InventoryUtils.switchBack(this.this$0.switchMode.getValue(), toolSlot, previousSlot);
             }
         }
 
-        private void fireBreakBurst(Direction direction, int n, boolean bl) {
-            this.fireBreakBurst(direction, n, bl, !bl);
+        private void fireBreakBurst(Direction direction, int toolSlot, boolean demoting) {
+            this.fireBreakBurst(direction, toolSlot, demoting, !demoting);
         }
 
-        private void fireBreakBurst(Direction direction, int n, boolean bl, boolean bl2) {
-            if (!bl) {
+        private void fireBreakBurst(Direction direction, int toolSlot, boolean demoting, boolean applyCooldown) {
+            if (!demoting) {
                 this.checkAndPlaceHeadCrystal(this.position);
                 Night.EVENT_HANDLER.post(new DestroyBlockEvent(this.position));
             }
             if (this.this$0.rotate.getValue().equalsIgnoreCase("Silent")) {
-                float[] fArray = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
+                float[] rotations = RotationUtils.getRotations(WorldUtils.getHitVector(this.position, direction));
                 if (this.this$0.isProxyActive()) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.Rot(fArray[0], fArray[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
+                    this.this$0.serverSend((Packet<?>)new ServerboundMovePlayerPacket.Rot(rotations[0], rotations[1], IMinecraft.mc.player.onGround(), IMinecraft.mc.player.horizontalCollision));
                 } else {
-                    Night.ROTATION_MANAGER.wireRotate("Silent", fArray);
+                    Night.ROTATION_MANAGER.wireRotate("Silent", rotations);
                 }
             }
-            int n2 = IMinecraft.mc.player.getInventory().getSelectedSlot();
+            int currentSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
             if (this.this$0.isProxyActive()) {
-                int n3 = this.startSlot != -1 ? this.startSlot : n2;
-                int n4 = this.this$0.switchMode.getValue().equalsIgnoreCase("None") ? -1 : n;
-                int n5 = n4;
-                if (n4 != -1) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n4));
+                int restoreSlot = this.startSlot != -1 ? this.startSlot : currentSlot;
+                int targetSlot = this.this$0.switchMode.getValue().equalsIgnoreCase("None") ? -1 : toolSlot;
+                if (targetSlot != -1) {
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(targetSlot));
                     if (this.this$0.switchMode.getValue().equalsIgnoreCase("Normal")) {
-                        IMinecraft.mc.player.getInventory().setSelectedSlot(n4);
+                        IMinecraft.mc.player.getInventory().setSelectedSlot(targetSlot);
                     }
                 }
-                this.stopDestroyBlock(this.position, direction, !bl, bl2);
+                this.stopDestroyBlock(this.position, direction, !demoting, applyCooldown);
                 if (this.this$0.grim.getValue()) {
                     this.this$0.serverSend((Packet<?>)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position.above(500), direction));
                 }
@@ -1587,15 +1559,15 @@ extends Module {
                 if (IMinecraft.mc.level.getBlockState(this.position).getBlock() == Blocks.BEDROCK) {
                     IMinecraft.mc.player.swing(InteractionHand.MAIN_HAND);
                 }
-                if (n4 != -1) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n3));
+                if (targetSlot != -1) {
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(restoreSlot));
                     if (this.this$0.switchMode.getValue().equalsIgnoreCase("Normal")) {
-                        IMinecraft.mc.player.getInventory().setSelectedSlot(n3);
+                        IMinecraft.mc.player.getInventory().setSelectedSlot(restoreSlot);
                     }
                 }
             } else {
-                InventoryUtils.switchSlot(this.this$0.switchMode.getValue(), n, n2);
-                this.stopDestroyBlock(this.position, direction, !bl, bl2);
+                InventoryUtils.switchSlot(this.this$0.switchMode.getValue(), toolSlot, currentSlot);
+                this.stopDestroyBlock(this.position, direction, !demoting, applyCooldown);
                 if (this.this$0.grim.getValue()) {
                     IMinecraft.mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position.above(500), direction));
                 }
@@ -1603,18 +1575,18 @@ extends Module {
                 if (IMinecraft.mc.level.getBlockState(this.position).getBlock() == Blocks.BEDROCK) {
                     IMinecraft.mc.player.swing(InteractionHand.MAIN_HAND);
                 }
-                InventoryUtils.switchBack(this.this$0.switchMode.getValue(), n, n2);
+                InventoryUtils.switchBack(this.this$0.switchMode.getValue(), toolSlot, currentSlot);
             }
         }
 
-        private void stopDestroyBlock(BlockPos blockPos, Direction direction, boolean bl) {
-            this.stopDestroyBlock(blockPos, direction, bl, false);
+        private void stopDestroyBlock(BlockPos blockPos, Direction direction, boolean sendSwing) {
+            this.stopDestroyBlock(blockPos, direction, sendSwing, false);
         }
 
-        private void stopDestroyBlock(BlockPos blockPos, Direction direction, boolean bl, boolean bl2) {
+        private void stopDestroyBlock(BlockPos blockPos, Direction direction, boolean sendSwing, boolean applyCooldown) {
             try (BlockStatePredictionHandler blockStatePredictionHandler = ((ClientWorldAccessor)IMinecraft.mc.level).invokeGetPendingUpdateManager().startPredicting();){
                 ServerboundPlayerActionPacket serverboundPlayerActionPacket = new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, blockPos, direction, blockStatePredictionHandler.currentSequence());
-                this.this$0.markStop(bl2);
+                this.this$0.markStop(applyCooldown);
                 if (this.this$0.isProxyActive()) {
                     this.this$0.serverSend((Packet<?>)serverboundPlayerActionPacket);
                 } else {
@@ -1628,33 +1600,32 @@ extends Module {
                 return;
             }
             AABB aABB = new AABB(this.position);
-            boolean bl = IMinecraft.mc.level.getBlockState(this.position).canBeReplaced() && this.instantMine;
-            double d = bl ? (double)(this.progress / this.getSpeed()) : (double)Mth.clamp((float)Mth.lerp((float)IMinecraft.mc.getDeltaTracker().getGameTimeDeltaPartialTick(false), (float)(this.prevProgress / this.getSpeed()), (float)(this.progress / this.getSpeed())), (float)0.0f, (float)1.0f);
-            double d2 = d;
+            boolean isInstantAir = IMinecraft.mc.level.getBlockState(this.position).canBeReplaced() && this.instantMine;
+            double progressRatio = isInstantAir ? (double)(this.progress / this.getSpeed()) : (double)Mth.clamp((float)Mth.lerp((float)IMinecraft.mc.getDeltaTracker().getGameTimeDeltaPartialTick(false), (float)(this.prevProgress / this.getSpeed()), (float)(this.progress / this.getSpeed())), (float)0.0f, (float)1.0f);
             if (this.this$0.animation.getValue().equalsIgnoreCase("Expand")) {
-                aABB = new AABB(this.position).deflate(0.5).inflate(Mth.clamp((double)(d / 2.0), (double)0.0, (double)0.5));
+                aABB = new AABB(this.position).deflate(0.5).inflate(Mth.clamp((double)(progressRatio / 2.0), (double)0.0, (double)0.5));
             }
             if (this.this$0.animation.getValue().equalsIgnoreCase("Rise")) {
-                aABB = new AABB((double)this.position.getX(), (double)this.position.getY(), (double)this.position.getZ(), (double)this.position.getX() + 1.0, (double)this.position.getY() + d, (double)this.position.getZ() + 1.0);
+                aABB = new AABB((double)this.position.getX(), (double)this.position.getY(), (double)this.position.getZ(), (double)this.position.getX() + 1.0, (double)this.position.getY() + progressRatio, (double)this.position.getZ() + 1.0);
             }
-            Color color = this.this$0.fillColor.getColor();
-            Color color2 = this.this$0.outlineColor.getColor();
+            Color fill = this.this$0.fillColor.getColor();
+            Color outline = this.this$0.outlineColor.getColor();
             if (this.this$0.color.getValue().equalsIgnoreCase("Static")) {
-                color = d >= 0.9 ? new Color(0, 255, 0, this.this$0.fillColor.getAlpha()) : new Color(255, 0, 0, this.this$0.fillColor.getAlpha());
-                color2 = d >= 0.9 ? new Color(0, 255, 0, this.this$0.outlineColor.getAlpha()) : new Color(255, 0, 0, this.this$0.outlineColor.getAlpha());
+                fill = progressRatio >= 0.9 ? new Color(0, 255, 0, this.this$0.fillColor.getAlpha()) : new Color(255, 0, 0, this.this$0.fillColor.getAlpha());
+                outline = progressRatio >= 0.9 ? new Color(0, 255, 0, this.this$0.outlineColor.getAlpha()) : new Color(255, 0, 0, this.this$0.outlineColor.getAlpha());
             } else if (this.this$0.color.getValue().equalsIgnoreCase("Smooth")) {
-                color = new Color(255 - (int)(Mth.clamp((double)d, (double)0.0, (double)1.0) * 255.0), (int)(Mth.clamp((double)d, (double)0.0, (double)1.0) * 255.0), 0, this.this$0.fillColor.getAlpha());
-                color2 = new Color(255 - (int)(Mth.clamp((double)d, (double)0.0, (double)1.0) * 255.0), (int)(Mth.clamp((double)d, (double)0.0, (double)1.0) * 255.0), 0, this.this$0.outlineColor.getAlpha());
+                fill = new Color(255 - (int)(Mth.clamp((double)progressRatio, (double)0.0, (double)1.0) * 255.0), (int)(Mth.clamp((double)progressRatio, (double)0.0, (double)1.0) * 255.0), 0, this.this$0.fillColor.getAlpha());
+                outline = new Color(255 - (int)(Mth.clamp((double)progressRatio, (double)0.0, (double)1.0) * 255.0), (int)(Mth.clamp((double)progressRatio, (double)0.0, (double)1.0) * 255.0), 0, this.this$0.outlineColor.getAlpha());
             }
-            if (d >= (double)this.getSpeed() && this.instantMine && this.this$0.instantRender.getValue().equalsIgnoreCase("Custom")) {
-                color = ColorUtils.getColor(this.this$0.instantColor.getColor(), this.this$0.fillColor.getAlpha());
-                color2 = ColorUtils.getColor(this.this$0.instantColor.getColor(), this.this$0.outlineColor.getAlpha());
+            if (progressRatio >= (double)this.getSpeed() && this.instantMine && this.this$0.instantRender.getValue().equalsIgnoreCase("Custom")) {
+                fill = ColorUtils.getColor(this.this$0.instantColor.getColor(), this.this$0.fillColor.getAlpha());
+                outline = ColorUtils.getColor(this.this$0.instantColor.getColor(), this.this$0.outlineColor.getAlpha());
             }
             if (this.this$0.render.getValue().equalsIgnoreCase("Fill") || this.this$0.render.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBox(poseStack, aABB, color);
+                Renderer3D.renderBox(poseStack, aABB, fill);
             }
             if (this.this$0.render.getValue().equalsIgnoreCase("Outline") || this.this$0.render.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBoxOutline(poseStack, aABB, color2);
+                Renderer3D.renderBoxOutline(poseStack, aABB, outline);
             }
         }
 
@@ -1669,19 +1640,19 @@ extends Module {
                 this.startSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
                 if (this.this$0.farReach.getValue()) {
                     this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction);
-                    BlockPos blockPos = this.grimDecoyPos();
-                    this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, WorldUtils.getClosestDirection(blockPos, true));
+                    BlockPos decoyPos = this.grimDecoyPos();
+                    this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, decoyPos, WorldUtils.getClosestDirection(decoyPos, true));
                 } else {
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, n));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, sequence));
                 }
                 this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             } else {
                 if (this.this$0.farReach.getValue()) {
                     this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction);
-                    BlockPos blockPos = this.grimDecoyPos();
-                    this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, WorldUtils.getClosestDirection(blockPos, true));
+                    BlockPos decoyPos = this.grimDecoyPos();
+                    this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, decoyPos, WorldUtils.getClosestDirection(decoyPos, true));
                 } else {
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, n));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, sequence));
                 }
                 IMinecraft.mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             }
@@ -1708,27 +1679,26 @@ extends Module {
         private void legacyStart() {
             Direction direction = WorldUtils.getClosestDirection(this.position, true);
             if (this.this$0.isProxyActive()) {
-                int n2 = this.this$0.switchMode.getValue().equalsIgnoreCase("None") ? -1 : InventoryUtils.findFastestItem(this.state, InventoryUtils.HOTBAR_START, this.this$0.switchMode.getValue().equalsIgnoreCase("AltSwap") || this.this$0.switchMode.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END);
-                boolean bl = n2 != -1 && n2 != IMinecraft.mc.player.getInventory().getSelectedSlot();
-                boolean bl2 = bl;
-                if (bl) {
-                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n2));
+                int toolSlot = this.this$0.switchMode.getValue().equalsIgnoreCase("None") ? -1 : InventoryUtils.findFastestItem(this.state, InventoryUtils.HOTBAR_START, this.this$0.switchMode.getValue().equalsIgnoreCase("AltSwap") || this.this$0.switchMode.getValue().equalsIgnoreCase("AltPickup") ? InventoryUtils.INVENTORY_END : InventoryUtils.HOTBAR_END);
+                boolean shouldSwap = toolSlot != -1 && toolSlot != IMinecraft.mc.player.getInventory().getSelectedSlot();
+                if (shouldSwap) {
+                    this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(toolSlot));
                 }
                 if (this.this$0.doubleMine.getValue()) {
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, n));
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, n));
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, n));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, sequence));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, sequence));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, sequence));
                 } else {
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, n));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, sequence));
                 }
                 this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             } else {
                 if (this.this$0.doubleMine.getValue()) {
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, n));
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, n));
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, n));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, sequence));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, sequence));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, this.position, direction, sequence));
                 } else {
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, n));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, this.position, direction, sequence));
                 }
                 IMinecraft.mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             }
@@ -1762,10 +1732,10 @@ extends Module {
                     this.this$0.sendRawPlayerAction(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, WorldUtils.getClosestDirection(this.position, true));
                     this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                 } else if (this.this$0.isProxyActive()) {
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, WorldUtils.getClosestDirection(this.position, true), n));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, WorldUtils.getClosestDirection(this.position, true), sequence));
                     this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                 } else {
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, WorldUtils.getClosestDirection(this.position, true), n));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, WorldUtils.getClosestDirection(this.position, true), sequence));
                     IMinecraft.mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                 }
             }
@@ -1791,10 +1761,10 @@ extends Module {
             if (!this.this$0.doubleMine.getValue()) {
                 Direction direction = WorldUtils.getClosestDirection(this.position, true);
                 if (this.this$0.isProxyActive()) {
-                    this.this$0.serverSendSequenced(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, direction, n));
+                    this.this$0.serverSendSequenced(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, direction, sequence));
                     this.this$0.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                 } else {
-                    NetworkUtils.sendSequencedPacket(n -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, direction, n));
+                    NetworkUtils.sendSequencedPacket(sequence -> new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, this.position, direction, sequence));
                     IMinecraft.mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                 }
             }
@@ -1823,13 +1793,12 @@ extends Module {
         }
 
         public int getTicksRemaining() {
-            float f;
             if (!this.mining) {
                 return Integer.MAX_VALUE;
             }
             if (this.this$0.sixB.getValue() && this.state.getBlock() == Blocks.BEDROCK) {
-                float f2 = 0.025f;
-                return Math.max(0, Math.round((this.getSpeed() - this.progress) / f2));
+                float bedrockSpeed = 0.025f;
+                return Math.max(0, Math.round((this.getSpeed() - this.progress) / bedrockSpeed));
             }
             int bestSlot = InventoryUtils.findFastestItem(this.state, InventoryUtils.HOTBAR_START, InventoryUtils.HOTBAR_END);
             if (bestSlot == -1) {
@@ -1903,8 +1872,8 @@ extends Module {
         }
 
         @Generated
-        public void setProgress(float f) {
-            this.progress = f;
+        public void setProgress(float progress) {
+            this.progress = progress;
         }
     }
 
@@ -1919,16 +1888,15 @@ extends Module {
         private int holdTicks;
         final SpeedMineModule this$0;
 
-        private Secondary(SpeedMineModule speedMineModule, SpeedMineModule speedMineModule2, BlockPos blockPos, int n, BlockState blockState, float f) {
-            Objects.requireNonNull(speedMineModule);
-            SpeedMineModule speedMineModule3 = speedMineModule2;
-            Objects.requireNonNull(speedMineModule3);
-            this.this$0 = speedMineModule3;
+        private Secondary(SpeedMineModule outerInstance, SpeedMineModule moduleRef, BlockPos blockPos, int priority, BlockState blockState, float progress) {
+            Objects.requireNonNull(outerInstance);
+            Objects.requireNonNull(moduleRef);
+            this.this$0 = moduleRef;
             this.position = blockPos;
-            this.priority = n;
+            this.priority = priority;
             this.state = blockState;
-            this.progress = f;
-            this.prevProgress = f;
+            this.progress = progress;
+            this.prevProgress = progress;
         }
 
         public BlockPos getPosition() {
@@ -1956,15 +1924,13 @@ extends Module {
         }
 
         public boolean process() {
-            float f;
             BlockState blockState;
             if (this.this$0.isOutOfRange(this.position)) {
                 this.release();
                 return true;
             }
-            boolean bl = IMinecraft.mc.player != null && (IMinecraft.mc.player.isUsingItem() || EntityUtils.isEating());
-            boolean bl2 = bl;
-            if (this.this$0.interactPaused && !bl && System.currentTimeMillis() - this.this$0.interactPausedAt >= 750L) {
+            boolean usingItem = IMinecraft.mc.player != null && (IMinecraft.mc.player.isUsingItem() || EntityUtils.isEating());
+            if (this.this$0.interactPaused && !usingItem && System.currentTimeMillis() - this.this$0.interactPausedAt >= 750L) {
                 this.this$0.setInteractPaused(false);
             }
             if ((blockState = IMinecraft.mc.level.getBlockState(this.position)).canBeReplaced()) {
@@ -1986,9 +1952,8 @@ extends Module {
             ++this.ticks;
             this.prevProgress = this.progress;
             this.progress += speed;
-            boolean bl3 = this.this$0.whileEating.getValue() || !bl || this.this$0.switchMode.getValue().equalsIgnoreCase("None");
-            boolean bl4 = bl3;
-            if (!this.holding && this.progress + speed >= 1.0f && bl3) {
+            boolean canSwitch = this.this$0.whileEating.getValue() || !usingItem || this.this$0.switchMode.getValue().equalsIgnoreCase("None");
+            if (!this.holding && this.progress + speed >= 1.0f && canSwitch) {
                 this.hold(bestSlot);
             }
             if (this.holding && !this.this$0.farReach.getValue() && ++this.holdTicks >= 3) {
@@ -2006,21 +1971,21 @@ extends Module {
             return false;
         }
 
-        private void hold(int n) {
+        private void hold(int slot) {
             if (this.this$0.switchMode.getValue().equalsIgnoreCase("None")) {
                 return;
             }
-            int n2 = IMinecraft.mc.player.getInventory().getSelectedSlot();
+            int currentSlot = IMinecraft.mc.player.getInventory().getSelectedSlot();
             this.holding = true;
-            if (n2 == n) {
+            if (currentSlot == slot) {
                 return;
             }
-            this.this$0.secondaryOriginalSlot = n2;
-            this.this$0.secondaryHoldSlot = n;
+            this.this$0.secondaryOriginalSlot = currentSlot;
+            this.this$0.secondaryHoldSlot = slot;
             if (this.this$0.isProxyActive()) {
-                this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n));
+                this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(slot));
             } else {
-                InventoryUtils.switchSlot(this.this$0.switchMode.getValue(), n, n2);
+                InventoryUtils.switchSlot(this.this$0.switchMode.getValue(), slot, currentSlot);
             }
         }
 
@@ -2032,20 +1997,20 @@ extends Module {
             if (this.this$0.secondaryHoldSlot == -1) {
                 return;
             }
-            int n = this.this$0.secondaryOriginalSlot;
-            int n2 = this.this$0.secondaryHoldSlot;
+            int originalSlot = this.this$0.secondaryOriginalSlot;
+            int holdSlot = this.this$0.secondaryHoldSlot;
             this.this$0.secondaryHoldSlot = -1;
             this.this$0.secondaryOriginalSlot = -1;
             if (IMinecraft.mc.player == null) {
                 return;
             }
-            if (this.this$0.switchMode.getValue().equalsIgnoreCase("Normal") && IMinecraft.mc.player.getInventory().getSelectedSlot() == n) {
+            if (this.this$0.switchMode.getValue().equalsIgnoreCase("Normal") && IMinecraft.mc.player.getInventory().getSelectedSlot() == originalSlot) {
                 return;
             }
             if (this.this$0.isProxyActive()) {
-                this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(n));
+                this.this$0.serverSend((Packet<?>)new ServerboundSetCarriedItemPacket(originalSlot));
             } else {
-                InventoryUtils.switchBack(this.this$0.switchMode.getValue(), n2, n);
+                InventoryUtils.switchBack(this.this$0.switchMode.getValue(), holdSlot, originalSlot);
             }
         }
 
@@ -2053,28 +2018,28 @@ extends Module {
             if (IMinecraft.mc.level.getBlockState(this.position).canBeReplaced()) {
                 return;
             }
-            double d = Mth.clamp((float)Mth.lerp((float)IMinecraft.mc.getDeltaTracker().getGameTimeDeltaPartialTick(false), (float)this.prevProgress, (float)this.progress), (float)0.0f, (float)1.0f);
+            double progressRatio = Mth.clamp((float)Mth.lerp((float)IMinecraft.mc.getDeltaTracker().getGameTimeDeltaPartialTick(false), (float)this.prevProgress, (float)this.progress), (float)0.0f, (float)1.0f);
             AABB aABB = new AABB(this.position);
             if (this.this$0.animation.getValue().equalsIgnoreCase("Expand")) {
-                aABB = new AABB(this.position).deflate(0.5).inflate(Mth.clamp((double)(d / 2.0), (double)0.0, (double)0.5));
+                aABB = new AABB(this.position).deflate(0.5).inflate(Mth.clamp((double)(progressRatio / 2.0), (double)0.0, (double)0.5));
             }
             if (this.this$0.animation.getValue().equalsIgnoreCase("Rise")) {
-                aABB = new AABB((double)this.position.getX(), (double)this.position.getY(), (double)this.position.getZ(), (double)this.position.getX() + 1.0, (double)this.position.getY() + d, (double)this.position.getZ() + 1.0);
+                aABB = new AABB((double)this.position.getX(), (double)this.position.getY(), (double)this.position.getZ(), (double)this.position.getX() + 1.0, (double)this.position.getY() + progressRatio, (double)this.position.getZ() + 1.0);
             }
-            Color color = this.this$0.fillColor.getColor();
-            Color color2 = this.this$0.outlineColor.getColor();
+            Color fill = this.this$0.fillColor.getColor();
+            Color outline = this.this$0.outlineColor.getColor();
             if (this.this$0.color.getValue().equalsIgnoreCase("Static")) {
-                color = d >= 0.9 ? new Color(0, 255, 0, this.this$0.fillColor.getAlpha()) : new Color(255, 0, 0, this.this$0.fillColor.getAlpha());
-                color2 = d >= 0.9 ? new Color(0, 255, 0, this.this$0.outlineColor.getAlpha()) : new Color(255, 0, 0, this.this$0.outlineColor.getAlpha());
+                fill = progressRatio >= 0.9 ? new Color(0, 255, 0, this.this$0.fillColor.getAlpha()) : new Color(255, 0, 0, this.this$0.fillColor.getAlpha());
+                outline = progressRatio >= 0.9 ? new Color(0, 255, 0, this.this$0.outlineColor.getAlpha()) : new Color(255, 0, 0, this.this$0.outlineColor.getAlpha());
             } else if (this.this$0.color.getValue().equalsIgnoreCase("Smooth")) {
-                color = new Color(255 - (int)(d * 255.0), (int)(d * 255.0), 0, this.this$0.fillColor.getAlpha());
-                color2 = new Color(255 - (int)(d * 255.0), (int)(d * 255.0), 0, this.this$0.outlineColor.getAlpha());
+                fill = new Color(255 - (int)(progressRatio * 255.0), (int)(progressRatio * 255.0), 0, this.this$0.fillColor.getAlpha());
+                outline = new Color(255 - (int)(progressRatio * 255.0), (int)(progressRatio * 255.0), 0, this.this$0.outlineColor.getAlpha());
             }
             if (this.this$0.render.getValue().equalsIgnoreCase("Fill") || this.this$0.render.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBox(poseStack, aABB, color);
+                Renderer3D.renderBox(poseStack, aABB, fill);
             }
             if (this.this$0.render.getValue().equalsIgnoreCase("Outline") || this.this$0.render.getValue().equalsIgnoreCase("Both")) {
-                Renderer3D.renderBoxOutline(poseStack, aABB, color2);
+                Renderer3D.renderBoxOutline(poseStack, aABB, outline);
             }
         }
 

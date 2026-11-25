@@ -95,8 +95,8 @@ extends Module {
             return;
         }
         if (packetSendEvent.getPacket() instanceof ServerboundAttackPacket) {
-            long l = System.currentTimeMillis();
-            if (l - this.lastCritTime < 50L) {
+            long now = System.currentTimeMillis();
+            if (now - this.lastCritTime < 50L) {
                 return;
             }
             if (CriticalsModule.mc.player == null || CriticalsModule.mc.level == null) {
@@ -120,36 +120,36 @@ extends Module {
 
     private void onGroundAttack() {
         this.lastCritTime = System.currentTimeMillis();
-        double d = CriticalsModule.mc.player.getX();
-        double d2 = CriticalsModule.mc.player.getY();
-        double d3 = CriticalsModule.mc.player.getZ();
+        double posX = CriticalsModule.mc.player.getX();
+        double posY = CriticalsModule.mc.player.getY();
+        double posZ = CriticalsModule.mc.player.getZ();
         ProxyServerTickListener.allowSend(() -> {
             switch (this.mode.getValue()) {
                 case "Packet": {
-                    this.packetCrit(d, d2, d3);
+                    this.packetCrit(posX, posY, posZ);
                     break;
                 }
                 case "Grim": {
-                    this.grimCrit(d, d2, d3);
+                    this.grimCrit(posX, posY, posZ);
                     break;
                 }
                 case "GrimNew": {
-                    this.grimNewCrit(d, d2, d3);
+                    this.grimNewCrit(posX, posY, posZ);
                 }
             }
         });
         ((ClientPlayerEntityAccessor)CriticalsModule.mc.player).setLastOnGround(false);
     }
 
-    private void packetCrit(double d, double d2, double d3) {
+    private void packetCrit(double posX, double posY, double posZ) {
         if (!CriticalsModule.mc.player.onGround()) {
             return;
         }
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(d, d2 + 0.0625, d3, false, CriticalsModule.mc.player.horizontalCollision));
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(d, d2, d3, false, CriticalsModule.mc.player.horizontalCollision));
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(posX, posY + 0.0625, posZ, false, CriticalsModule.mc.player.horizontalCollision));
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(posX, posY, posZ, false, CriticalsModule.mc.player.horizontalCollision));
     }
 
-    private void grimCrit(double d, double d2, double d3) {
+    private void grimCrit(double posX, double posY, double posZ) {
         if (!CriticalsModule.mc.player.onGround()) {
             return;
         }
@@ -161,20 +161,19 @@ extends Module {
         }
         if (this.onlyWhenHeadCovered.getValue()) {
             BlockPos blockPos = CriticalsModule.mc.player.blockPosition();
-            BlockPos blockPos2 = CriticalsModule.mc.player.isVisuallyCrawling() ? blockPos.above(1) : blockPos.above(2);
-            BlockPos blockPos3 = blockPos2;
-            if (CriticalsModule.mc.level.getBlockState(blockPos2).isAir()) {
+            BlockPos headPos = CriticalsModule.mc.player.isVisuallyCrawling() ? blockPos.above(1) : blockPos.above(2);
+            if (CriticalsModule.mc.level.getBlockState(headPos).isAir()) {
                 return;
             }
         }
-        float f = Night.ROTATION_MANAGER.getServerYaw();
-        float f2 = Night.ROTATION_MANAGER.getServerPitch();
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(d, d2 + 0.0625, d3, f, f2, false, CriticalsModule.mc.player.horizontalCollision));
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(d, d2 + 0.0625013579, d3, f, f2, false, CriticalsModule.mc.player.horizontalCollision));
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(d, d2 + 1.3579E-6, d3, f, f2, false, CriticalsModule.mc.player.horizontalCollision));
+        float serverYaw = Night.ROTATION_MANAGER.getServerYaw();
+        float serverPitch = Night.ROTATION_MANAGER.getServerPitch();
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(posX, posY + 0.0625, posZ, serverYaw, serverPitch, false, CriticalsModule.mc.player.horizontalCollision));
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(posX, posY + 0.0625013579, posZ, serverYaw, serverPitch, false, CriticalsModule.mc.player.horizontalCollision));
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(posX, posY + 1.3579E-6, posZ, serverYaw, serverPitch, false, CriticalsModule.mc.player.horizontalCollision));
     }
 
-    private void grimNewCrit(double d, double d2, double d3) {
+    private void grimNewCrit(double posX, double posY, double posZ) {
         if (!CriticalsModule.mc.player.onGround()) {
             return;
         }
@@ -186,18 +185,17 @@ extends Module {
         }
         if (this.onlyWhenHeadCovered.getValue()) {
             BlockPos blockPos = CriticalsModule.mc.player.blockPosition();
-            BlockPos blockPos2 = CriticalsModule.mc.player.isVisuallyCrawling() ? blockPos.above(1) : blockPos.above(2);
-            BlockPos blockPos3 = blockPos2;
-            if (CriticalsModule.mc.level.getBlockState(blockPos2).isAir()) {
+            BlockPos headPos = CriticalsModule.mc.player.isVisuallyCrawling() ? blockPos.above(1) : blockPos.above(2);
+            if (CriticalsModule.mc.level.getBlockState(headPos).isAir()) {
                 return;
             }
         }
-        float f = Night.ROTATION_MANAGER.getServerYaw();
-        float f2 = Night.ROTATION_MANAGER.getServerPitch();
-        float f3 = (float)((Math.random() * 2.0 - 1.0) * (double)0.001f);
-        float f4 = Mth.clamp((float)(f2 + f3), (float)-90.0f, (float)90.0f);
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(d, d2 + 0.0626, d3, f, f4, false, CriticalsModule.mc.player.horizontalCollision));
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(d, d2 + 0.0455, d3, f, f4, false, CriticalsModule.mc.player.horizontalCollision));
+        float serverYaw = Night.ROTATION_MANAGER.getServerYaw();
+        float serverPitch = Night.ROTATION_MANAGER.getServerPitch();
+        float jitter = (float)((Math.random() * 2.0 - 1.0) * (double)0.001f);
+        float pitch = Mth.clamp((float)(serverPitch + jitter), (float)-90.0f, (float)90.0f);
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(posX, posY + 0.0626, posZ, serverYaw, pitch, false, CriticalsModule.mc.player.horizontalCollision));
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(posX, posY + 0.0455, posZ, serverYaw, pitch, false, CriticalsModule.mc.player.horizontalCollision));
     }
 
     private boolean isPhased(Entity entity) {
@@ -205,15 +203,15 @@ extends Module {
             return false;
         }
         AABB aABB = entity.getBoundingBox();
-        int n = Mth.floor((double)aABB.minX);
-        int n2 = Mth.ceil((double)aABB.maxX);
-        int n3 = Mth.floor((double)aABB.minY);
-        int n4 = Mth.ceil((double)aABB.maxY);
-        int n5 = Mth.floor((double)aABB.minZ);
-        int n6 = Mth.ceil((double)aABB.maxZ);
-        for (int i = n; i < n2; ++i) {
-            for (int j = n3; j < n4; ++j) {
-                for (int k = n5; k < n6; ++k) {
+        int minX = Mth.floor((double)aABB.minX);
+        int maxX = Mth.ceil((double)aABB.maxX);
+        int minY = Mth.floor((double)aABB.minY);
+        int maxY = Mth.ceil((double)aABB.maxY);
+        int minZ = Mth.floor((double)aABB.minZ);
+        int maxZ = Mth.ceil((double)aABB.maxZ);
+        for (int i = minX; i < maxX; ++i) {
+            for (int j = minY; j < maxY; ++j) {
+                for (int k = minZ; k < maxZ; ++k) {
                     BlockPos blockPos = new BlockPos(i, j, k);
                     VoxelShape voxelShape = CriticalsModule.mc.level.getBlockState(blockPos).getCollisionShape((BlockGetter)CriticalsModule.mc.level, blockPos);
                     if (voxelShape.isEmpty() || !voxelShape.bounds().move(blockPos).intersects(aABB)) continue;
@@ -225,8 +223,8 @@ extends Module {
     }
 
     private boolean eyesPhased(Player player) {
-        Vec3 vec3 = player.getEyePosition();
-        BlockPos blockPos = BlockPos.containing((Position)vec3);
+        Vec3 eyePos = player.getEyePosition();
+        BlockPos blockPos = BlockPos.containing((Position)eyePos);
         BlockState blockState = CriticalsModule.mc.level.getBlockState(blockPos);
         if (blockState.isAir()) {
             return false;
@@ -236,7 +234,7 @@ extends Module {
             return false;
         }
         for (AABB aABB : voxelShape.toAabbs()) {
-            if (!aABB.move(blockPos).contains(vec3)) continue;
+            if (!aABB.move(blockPos).contains(eyePos)) continue;
             return true;
         }
         return false;

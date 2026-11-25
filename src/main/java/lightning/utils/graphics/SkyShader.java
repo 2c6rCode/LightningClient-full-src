@@ -67,50 +67,49 @@ implements IMinecraft {
             return;
         }
         AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-        AtmosphereModule atmosphereModule2 = atmosphereModule;
         if (atmosphereModule == null || !atmosphereModule.isToggled() || !atmosphereModule.modifySky.getValue()) {
             return;
         }
         if (!atmosphereModule.skyMode.getValue().equalsIgnoreCase("Custom")) {
             return;
         }
-        int n = mc.getWindow().getWidth();
-        int n2 = mc.getWindow().getHeight();
-        if (n <= 0 || n2 <= 0) {
+        int width = mc.getWindow().getWidth();
+        int height = mc.getWindow().getHeight();
+        if (width <= 0 || height <= 0) {
             return;
         }
-        float f = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        time += f * 0.05f * atmosphereModule.speed.getValue().floatValue();
-        int n3 = atmosphereModule.customSkyMode.getValue().equalsIgnoreCase("Storm") ? 1 : 0;
+        float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        time += partialTick * 0.05f * atmosphereModule.speed.getValue().floatValue();
+        int stormMode = atmosphereModule.customSkyMode.getValue().equalsIgnoreCase("Storm") ? 1 : 0;
         Color color = atmosphereModule.skyTint.getColor();
-        float f2 = (float)color.getRed() / 255.0f;
-        float f3 = (float)color.getGreen() / 255.0f;
-        float f4 = (float)color.getBlue() / 255.0f;
-        float f5 = (float)color.getAlpha() / 255.0f;
-        Vector4f vector4f = new Vector4f(f2, f3, f4, f5);
-        Vector4f vector4f2 = new Vector4f(f2 * 0.1f, f3 * 0.1f, f4 * 0.1f, 1.0f);
-        Vector4f vector4f3 = new Vector4f(f2 * 0.8f, f3 * 0.8f, f4 * 0.8f, 1.0f);
-        float f6 = 0.0f;
-        float f7 = 0.0f;
-        float f8 = (float)Math.toRadians(70.0);
+        float red = (float)color.getRed() / 255.0f;
+        float green = (float)color.getGreen() / 255.0f;
+        float blue = (float)color.getBlue() / 255.0f;
+        float alpha = (float)color.getAlpha() / 255.0f;
+        Vector4f tintVec = new Vector4f(red, green, blue, alpha);
+        Vector4f ambientVec = new Vector4f(red * 0.1f, green * 0.1f, blue * 0.1f, 1.0f);
+        Vector4f highlightVec = new Vector4f(red * 0.8f, green * 0.8f, blue * 0.8f, 1.0f);
+        float yawRad = 0.0f;
+        float pitchRad = 0.0f;
+        float fovRad = (float)Math.toRadians(70.0);
         if (SkyShader.mc.gameRenderer != null && SkyShader.mc.gameRenderer.mainCamera() != null) {
             camera = SkyShader.mc.gameRenderer.mainCamera();
-            f6 = (float)Math.toRadians(camera.yRot());
-            f7 = (float)Math.toRadians(camera.xRot());
+            yawRad = (float)Math.toRadians(camera.yRot());
+            pitchRad = (float)Math.toRadians(camera.xRot());
         }
         if (SkyShader.mc.options != null) {
-            f8 = (float)Math.toRadians(((Integer)SkyShader.mc.options.fov().get()).intValue());
+            fovRad = (float)Math.toRadians(((Integer)SkyShader.mc.options.fov().get()).intValue());
         }
-        Vector4f cameraVec = new Vector4f(f6, f7, f8, 0.0f);
+        Vector4f cameraVec = new Vector4f(yawRad, pitchRad, fovRad, 0.0f);
         GpuBuffer gpuBuffer = RenderSystem.getDevice().createBuffer(() -> "Lightning Sky shader UBO", 136, (long)UBO_SIZE);
         try (MemoryStack memoryStack = MemoryStack.stackPush();){
-            byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4((Vector4fc)vector4f).putVec4((Vector4fc)vector4f2).putVec4((Vector4fc)vector4f3).putVec4((Vector4fc)cameraVec).putVec2((float)n, (float)n2).putFloat(time).putFloat(atmosphereModule.intensity.getValue().floatValue()).putFloat(atmosphereModule.speed.getValue().floatValue()).putInt(n3).get();
+            byteBuffer = Std140Builder.onStack((MemoryStack)memoryStack, (int)UBO_SIZE).putVec4((Vector4fc)tintVec).putVec4((Vector4fc)ambientVec).putVec4((Vector4fc)highlightVec).putVec4((Vector4fc)cameraVec).putVec2((float)width, (float)height).putFloat(time).putFloat(atmosphereModule.intensity.getValue().floatValue()).putFloat(atmosphereModule.speed.getValue().floatValue()).putInt(stormMode).get();
             RenderSystem.getDevice().createCommandEncoder().writeToBuffer(gpuBuffer.slice(), byteBuffer);
         }
         com.mojang.blaze3d.pipeline.RenderTarget renderTarget = OutputTarget.MAIN_TARGET.getRenderTarget();
-        GpuTextureView gpuTextureView = RenderSystem.outputColorTextureOverride != null ? RenderSystem.outputColorTextureOverride : renderTarget.getColorTextureView();
-        GpuTextureView gpuTextureView2 = renderTarget.useDepth ? (RenderSystem.outputDepthTextureOverride != null ? RenderSystem.outputDepthTextureOverride : renderTarget.getDepthTextureView()) : null;
-        try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Lightning Sky shader draw", gpuTextureView, Optional.empty(), gpuTextureView2, OptionalDouble.empty());){
+        GpuTextureView colorView = RenderSystem.outputColorTextureOverride != null ? RenderSystem.outputColorTextureOverride : renderTarget.getColorTextureView();
+        GpuTextureView depthView = renderTarget.useDepth ? (RenderSystem.outputDepthTextureOverride != null ? RenderSystem.outputDepthTextureOverride : renderTarget.getDepthTextureView()) : null;
+        try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Lightning Sky shader draw", colorView, Optional.empty(), depthView, OptionalDouble.empty());){
             renderPass.setPipeline(SKY_PIPELINE);
             renderPass.setUniform("SkySettings", gpuBuffer);
             renderPass.draw(3, 1, 0, 0);

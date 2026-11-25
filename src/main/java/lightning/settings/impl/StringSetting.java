@@ -16,36 +16,36 @@ extends Setting {
     private String value;
     private final String defaultValue;
 
-    public StringSetting(String string, String string2, String string3) {
-        super(string, string, string2, new Setting.Visibility());
-        this.value = string3;
-        this.defaultValue = string3;
+    public StringSetting(String name, String description, String defaultValue) {
+        super(name, name, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public StringSetting(String string, String string2, String string3, String string4) {
-        super(string, string2, string3, new Setting.Visibility());
-        this.value = string4;
-        this.defaultValue = string4;
+    public StringSetting(String name, String tag, String description, String defaultValue) {
+        super(name, tag, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public StringSetting(String string, String string2, Setting.Visibility visibility, String string3) {
-        super(string, string, string2, visibility);
-        this.value = string3;
-        this.defaultValue = string3;
+    public StringSetting(String name, String description, Setting.Visibility visibility, String defaultValue) {
+        super(name, name, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public StringSetting(String string, String string2, String string3, Setting.Visibility visibility, String string4) {
-        super(string, string2, string3, visibility);
-        this.value = string4;
-        this.defaultValue = string4;
+    public StringSetting(String name, String tag, String description, Setting.Visibility visibility, String defaultValue) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
     public void resetValue() {
         this.value = this.defaultValue;
     }
 
-    public void setValue(String string) {
-        this.value = string;
+    public void setValue(String value) {
+        this.value = value;
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }
 
@@ -64,10 +64,10 @@ extends Setting {
         private final StringSetting value;
         private final String targetValue;
 
-        public Visibility(StringSetting stringSetting, String string) {
+        public Visibility(StringSetting stringSetting, String targetValue) {
             super(stringSetting);
             this.value = stringSetting;
-            this.targetValue = string;
+            this.targetValue = targetValue;
         }
 
         @Override

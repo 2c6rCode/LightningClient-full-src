@@ -37,10 +37,10 @@ extends Module {
     }
 
     public void onExceptionCaught(Throwable throwable) {
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         ++this.suppressedCountSinceLastLog;
-        if (this.logConsole.getValue() && l - this.lastConsoleLog > 1000L) {
-            this.lastConsoleLog = l;
+        if (this.logConsole.getValue() && now - this.lastConsoleLog > 1000L) {
+            this.lastConsoleLog = now;
             String msg = throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage();
             if (msg == null || msg.isBlank()) {
                 msg = throwable.getClass().getSimpleName();
@@ -48,8 +48,8 @@ extends Module {
             LOGGER.warn("[NoPacketKick] Suppressed packet exception ({} occurrences in last sec): {}", (Object)this.suppressedCountSinceLastLog, (Object)msg);
             this.suppressedCountSinceLastLog = 0;
         }
-        if (this.logChat.getValue() && NoPacketKickModule.mc.player != null && NoPacketKickModule.mc.level != null && l - this.lastChatNotification > 1000L) {
-            this.lastChatNotification = l;
+        if (this.logChat.getValue() && NoPacketKickModule.mc.player != null && NoPacketKickModule.mc.level != null && now - this.lastChatNotification > 1000L) {
+            this.lastChatNotification = now;
             String msg = throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage();
             if (msg == null || msg.isBlank()) {
                 msg = throwable.getClass().getSimpleName();

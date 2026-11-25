@@ -75,8 +75,8 @@ extends Module {
         if (!this.whileEating.getValue() && EntityUtils.isEating()) {
             return;
         }
-        List list = OpponentScaffold.mc.level.players();
-        if (list == null || list.isEmpty()) {
+        List players = OpponentScaffold.mc.level.players();
+        if (players == null || players.isEmpty()) {
             return;
         }
         Runnable runnable = () -> {
@@ -96,10 +96,9 @@ extends Module {
                 this.positions = new ArrayList<BlockPos>();
                 return;
             }
-            int n = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            int n2 = OpponentScaffold.mc.player.getInventory() != null ? OpponentScaffold.mc.player.getInventory().getSelectedSlot() : 0;
-            int n3 = n2;
-            if (n == -1) {
+            int blockSlot = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            int oldSlot = OpponentScaffold.mc.player.getInventory() != null ? OpponentScaffold.mc.player.getInventory().getSelectedSlot() : 0;
+            if (blockSlot == -1) {
                 if (this.itemDisable.getValue()) {
                     Night.CHAT_MANAGER.tagged("No blocks could be found in your hotbar.", this.getName());
                     this.setToggled(false);
@@ -107,7 +106,7 @@ extends Module {
                 this.positions = new ArrayList<BlockPos>();
                 return;
             }
-            Target target = this.getTarget(list);
+            Target target = this.getTarget(players);
             if (target == null) {
                 if (this.selfDisable.getValue()) {
                     this.setToggled(false);
@@ -118,26 +117,26 @@ extends Module {
             this.positions = target.positions();
             Night.ROTATION_MANAGER.beginBatchRotation();
             try {
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-                ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
+                ArrayList<BlockPos> placedPositions = new ArrayList<BlockPos>();
                 for (BlockPos blockPos : this.positions) {
                     if (this.blocksPlaced >= this.limit.getValue().intValue()) break;
-                    Direction direction = WorldUtils.getDirection(blockPos, arrayList, this.strictDirection.getValue());
+                    Direction direction = WorldUtils.getDirection(blockPos, placedPositions, this.strictDirection.getValue());
                     if (direction == null) {
-                        Direction direction2;
-                        BlockPos blockPos2 = blockPos.offset(0, -1, 0);
-                        if (!WorldUtils.isPlaceable(blockPos2) || (direction2 = WorldUtils.getDirection(blockPos2, arrayList, this.strictDirection.getValue())) == null) continue;
-                        WorldUtils.placeBlock(blockPos2, direction2, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
-                        arrayList.add(blockPos2);
+                        Direction supportDir;
+                        BlockPos supportPos = blockPos.offset(0, -1, 0);
+                        if (!WorldUtils.isPlaceable(supportPos) || (supportDir = WorldUtils.getDirection(supportPos, placedPositions, this.strictDirection.getValue())) == null) continue;
+                        WorldUtils.placeBlock(supportPos, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
+                        placedPositions.add(supportPos);
                         ++this.blocksPlaced;
                         if (this.blocksPlaced >= this.limit.getValue().intValue()) break;
-                        if (this.await.getValue() || (direction = WorldUtils.getDirection(blockPos, arrayList, this.strictDirection.getValue())) == null) continue;
+                        if (this.await.getValue() || (direction = WorldUtils.getDirection(blockPos, placedPositions, this.strictDirection.getValue())) == null) continue;
                     }
                     WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
-                    arrayList.add(blockPos);
+                    placedPositions.add(blockPos);
                     ++this.blocksPlaced;
                 }
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
             }
             finally {
                 Night.ROTATION_MANAGER.endBatchRotation();
@@ -168,53 +167,52 @@ extends Module {
         return String.valueOf(this.positions.size());
     }
 
-    private Target getTarget(List<AbstractClientPlayer> list) {
+    private Target getTarget(List<AbstractClientPlayer> players) {
         if (OpponentScaffold.mc.player == null) {
             return null;
         }
-        AbstractClientPlayer object2 = null;
-        double d = Double.MAX_VALUE;
-        for (AbstractClientPlayer object3 : list) {
-            double arrayList;
-            if (object3 == OpponentScaffold.mc.player || object3.isInvisible() || Night.FRIEND_MANAGER.contains(object3.getName().getString()) || object3.getHealth() <= 0.0f || (arrayList = OpponentScaffold.mc.player.distanceToSqr((Entity)object3)) > (double)Mth.square((float)this.enemyRange.getValue().floatValue()) || !(arrayList < d)) continue;
-            d = arrayList;
-            object2 = object3;
+        AbstractClientPlayer bestTarget = null;
+        double bestDistSq = Double.MAX_VALUE;
+        for (AbstractClientPlayer candidate : players) {
+            double distSq;
+            if (candidate == OpponentScaffold.mc.player || candidate.isInvisible() || Night.FRIEND_MANAGER.contains(candidate.getName().getString()) || candidate.getHealth() <= 0.0f || (distSq = OpponentScaffold.mc.player.distanceToSqr((Entity)candidate)) > (double)Mth.square((float)this.enemyRange.getValue().floatValue()) || !(distSq < bestDistSq)) continue;
+            bestDistSq = distSq;
+            bestTarget = candidate;
         }
-        if (object2 == null) {
+        if (bestTarget == null) {
             return null;
         }
-        BlockPos blockPos = this.getTargetPosition((Player)object2);
+        BlockPos blockPos = this.getTargetPosition((Player)bestTarget);
         if (blockPos == null) {
             return null;
         }
         HitboxDesyncModule hitboxDesyncModule = Night.MODULE_MANAGER.getModule(HitboxDesyncModule.class);
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-        BlockPos blockPos2 = blockPos.below();
-        boolean bl = hitboxDesyncModule != null && hitboxDesyncModule.isToggled() && !Boolean.TRUE.equals(hitboxDesyncModule.close.getValue());
-        boolean bl2 = bl;
-        if (WorldUtils.isPlaceable(blockPos2, bl)) {
-            double distSq = OpponentScaffold.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos2));
+        ArrayList<BlockPos> validPositions = new ArrayList<BlockPos>();
+        BlockPos belowPos = blockPos.below();
+        boolean ignoreDesync = hitboxDesyncModule != null && hitboxDesyncModule.isToggled() && !Boolean.TRUE.equals(hitboxDesyncModule.close.getValue());
+        if (WorldUtils.isPlaceable(belowPos, ignoreDesync)) {
+            double distSq = OpponentScaffold.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)belowPos));
             if (distSq <= Mth.square((double)this.range.getValue().doubleValue())) {
-                arrayList.add(blockPos2);
+                validPositions.add(belowPos);
             }
         }
-        if (arrayList.isEmpty()) {
+        if (validPositions.isEmpty()) {
             return null;
         }
-        return new Target((Player)object2, (List<BlockPos>)arrayList);
+        return new Target((Player)bestTarget, (List<BlockPos>)validPositions);
     }
 
     private BlockPos getTargetPosition(Player player) {
         if (player == null) {
             return null;
         }
-        int n = this.extrapolation.getValue().intValue();
-        if (n > 0) {
-            double d = player.getX() - player.xo;
-            double d2 = player.getZ() - player.zo;
-            double d3 = player.getX() + d * (double)n;
-            double d4 = player.getZ() + d2 * (double)n;
-            return new BlockPos((int)Math.floor(d3), (int)Math.floor(player.getY()), (int)Math.floor(d4));
+        int ticks = this.extrapolation.getValue().intValue();
+        if (ticks > 0) {
+            double velX = player.getX() - player.xo;
+            double velZ = player.getZ() - player.zo;
+            double predX = player.getX() + velX * (double)ticks;
+            double predZ = player.getZ() + velZ * (double)ticks;
+            return new BlockPos((int)Math.floor(predX), (int)Math.floor(player.getY()), (int)Math.floor(predZ));
         }
         return PositionUtils.getFlooredPosition((Entity)player);
     }

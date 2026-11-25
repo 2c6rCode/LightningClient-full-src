@@ -52,8 +52,8 @@ ISelfState {
     }
 
     @Override
-    public void night$setChamsYOffset(float f) {
-        this.chamsYOffset = f;
+    public void night$setChamsYOffset(float yOffset) {
+        this.chamsYOffset = yOffset;
     }
 
     @Override
@@ -62,8 +62,8 @@ ISelfState {
     }
 
     @Override
-    public void night$setSelf(boolean bl) {
-        this.isSelf = bl;
+    public void night$setSelf(boolean isSelf) {
+        this.isSelf = isSelf;
     }
 
     @Override
@@ -117,37 +117,37 @@ ISelfState {
     }
 
     @Override
-    public void night$setChamsRealAlpha(float f) {
-        this.chamsRealAlpha = f;
+    public void night$setChamsRealAlpha(float alpha) {
+        this.chamsRealAlpha = alpha;
     }
 
     @Override
-    public void night$setChamsGlint(boolean bl, int n) {
-        this.chamsGlint = bl;
-        this.chamsGlintColor = n;
+    public void night$setChamsGlint(boolean glint, int glintColor) {
+        this.chamsGlint = glint;
+        this.chamsGlintColor = glintColor;
         this.chamsGlintParams = Glint.ENTITY;
     }
 
     @Override
-    public void night$setChamsGlint(boolean bl, int n, Glint.GlintParams glintParams) {
-        this.chamsGlint = bl;
-        this.chamsGlintColor = n;
+    public void night$setChamsGlint(boolean glint, int glintColor, Glint.GlintParams glintParams) {
+        this.chamsGlint = glint;
+        this.chamsGlintColor = glintColor;
         this.chamsGlintParams = glintParams != null ? glintParams : Glint.ENTITY;
     }
 
     @Override
-    public void night$setChams(boolean bl, int n, boolean bl2, int n2, boolean bl3) {
-        this.night$setChams(bl, n, bl2, n2, bl3, false);
+    public void night$setChams(boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine) {
+        this.night$setChams(fill, fillColor, outline, outlineColor, shine, false);
     }
 
     @Override
-    public void night$setChams(boolean bl, int n, boolean bl2, int n2, boolean bl3, boolean bl4) {
-        this.chamsFill = bl;
-        this.chamsFillColor = n;
-        this.chamsOutline = bl2;
-        this.chamsOutlineColor = n2;
-        this.chamsShine = bl3;
-        this.chamsSuppressReal = bl4;
+    public void night$setChams(boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine, boolean suppressReal) {
+        this.chamsFill = fill;
+        this.chamsFillColor = fillColor;
+        this.chamsOutline = outline;
+        this.chamsOutlineColor = outlineColor;
+        this.chamsShine = shine;
+        this.chamsSuppressReal = suppressReal;
         this.chamsRealAlpha = 1.0f;
         this.chamsGlint = false;
         this.chamsGlintColor = -1;

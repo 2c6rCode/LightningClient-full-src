@@ -20,15 +20,15 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(value={ItemFeatureRenderer.class})
 public class ItemFeatureRendererMixin {
     @ModifyArg(method={"prepareMainSubmit"}, at={@At(value="INVOKE", target="Lcom/mojang/blaze3d/vertex/QuadInstance;setColor(I)V")})
-    private int night$handsOpacity(int n, @Local(argsOnly=true) ItemFeatureRenderer.Submit submit) {
+    private int night$handsOpacity(int color, @Local(argsOnly=true) ItemFeatureRenderer.Submit submit) {
         if (!submit.displayContext().firstPerson()) {
-            return n;
+            return color;
         }
-        return ItemFeatureRendererMixin.applyHandsOpacity(n);
+        return ItemFeatureRendererMixin.applyHandsOpacity(color);
     }
 
-    private static int applyHandsOpacity(int n) {
-        return n;
+    private static int applyHandsOpacity(int color) {
+        return color;
     }
 }
 

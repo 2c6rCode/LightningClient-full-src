@@ -34,8 +34,8 @@ public abstract class ButtonWidgetMixin {
                 return;
             }
             AbstractButton abstractButton = (AbstractButton)(Object)this;
-            int n = Math.round(clickGuiModule.neekeriOpacity.getValue().floatValue() / 100.0f * 255.0f);
-            NeekeriFill.fill((GuiGraphicsExtractor)guiGraphicsExtractor, (int)abstractButton.getX(), (int)abstractButton.getY(), (int)abstractButton.getWidth(), (int)abstractButton.getHeight(), (int)n);
+            int opacity = Math.round(clickGuiModule.neekeriOpacity.getValue().floatValue() / 100.0f * 255.0f);
+            NeekeriFill.fill((GuiGraphicsExtractor)guiGraphicsExtractor, (int)abstractButton.getX(), (int)abstractButton.getY(), (int)abstractButton.getWidth(), (int)abstractButton.getHeight(), (int)opacity);
             return;
         }
         catch (NullPointerException nullPointerException) {

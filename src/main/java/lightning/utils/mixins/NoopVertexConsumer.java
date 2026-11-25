@@ -13,35 +13,35 @@ public enum NoopVertexConsumer implements VertexConsumer
     INSTANCE;
 
 
-    public VertexConsumer addVertex(float f, float f2, float f3) {
+    public VertexConsumer addVertex(float x, float y, float z) {
         return this;
     }
 
-    public VertexConsumer setColor(int n, int n2, int n3, int n4) {
+    public VertexConsumer setColor(int red, int green, int blue, int alpha) {
         return this;
     }
 
-    public VertexConsumer setColor(int n) {
+    public VertexConsumer setColor(int color) {
         return this;
     }
 
-    public VertexConsumer setLineWidth(float f) {
+    public VertexConsumer setLineWidth(float lineWidth) {
         return this;
     }
 
-    public VertexConsumer setUv(float f, float f2) {
+    public VertexConsumer setUv(float u, float v) {
         return this;
     }
 
-    public VertexConsumer setUv1(int n, int n2) {
+    public VertexConsumer setUv1(int u, int v) {
         return this;
     }
 
-    public VertexConsumer setUv2(int n, int n2) {
+    public VertexConsumer setUv2(int u, int v) {
         return this;
     }
 
-    public VertexConsumer setNormal(float f, float f2, float f3) {
+    public VertexConsumer setNormal(float normalX, float normalY, float normalZ) {
         return this;
     }
 }

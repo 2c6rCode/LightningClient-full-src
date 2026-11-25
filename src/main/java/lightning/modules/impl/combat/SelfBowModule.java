@@ -46,15 +46,14 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerUpdate(PlayerUpdateEvent playerUpdateEvent) {
-        int n;
+        int arrowSlot;
         if (SelfBowModule.mc.player == null || SelfBowModule.mc.level == null) {
             return;
         }
-        int n2 = InventoryUtils.findHotbar(Items.BOW);
+        int bowSlot = InventoryUtils.findHotbar(Items.BOW);
         if (this.manual.getValue()) {
-            boolean bl = SelfBowModule.mc.player.isUsingItem() && SelfBowModule.mc.player.getInventory().getSelectedItem().getItem() == Items.BOW;
-            boolean bl2 = bl;
-            if (bl && !this.todo) {
+            boolean isUsingBow = SelfBowModule.mc.player.isUsingItem() && SelfBowModule.mc.player.getInventory().getSelectedItem().getItem() == Items.BOW;
+            if (isUsingBow && !this.todo) {
                 if (this.effectCycle.getValue()) {
                     this.findArrows();
                 }
@@ -78,13 +77,13 @@ extends Module {
                 this.setToggled(false);
                 return;
             }
-            if (!this.autoSwitch.getValue().equals("None") && n2 == -1) {
+            if (!this.autoSwitch.getValue().equals("None") && bowSlot == -1) {
                 Night.CHAT_MANAGER.tagged("Could not find a bow in your hotbar.", this.getName());
                 this.setToggled(false);
                 return;
             }
             if (SelfBowModule.mc.player.getMainHandItem().getItem() != Items.BOW) {
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n2, this.previousSlot);
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), bowSlot, this.previousSlot);
                 this.switched = true;
             }
             SelfBowModule.mc.options.keyUse.setDown(true);
@@ -93,8 +92,8 @@ extends Module {
             ++this.chargeTicks;
             return;
         }
-        if (this.effectCycle.getValue() && !this.queue.isEmpty() && (n = this.queue.poll().intValue()) != this.bestArrow) {
-            InventoryUtils.swap("Pickup", n, this.bestArrow);
+        if (this.effectCycle.getValue() && !this.queue.isEmpty() && (arrowSlot = this.queue.poll().intValue()) != this.bestArrow) {
+            InventoryUtils.swap("Pickup", arrowSlot, this.bestArrow);
         }
         if (mc.getConnection() != null) {
             ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(Night.POSITION_MANAGER.getServerX(), Night.POSITION_MANAGER.getServerY(), Night.POSITION_MANAGER.getServerZ(), SelfBowModule.mc.player.getYRot(), -90.0f, Night.POSITION_MANAGER.isServerOnGround(), SelfBowModule.mc.player.horizontalCollision)));
@@ -148,8 +147,8 @@ extends Module {
 
     @Override
     public String getMetaData() {
-        int n = SelfBowModule.mc.player.getInventory().getSelectedItem().getItem() == Items.BOW ? SelfBowModule.mc.player.getTicksUsingItem() : 0;
-        return String.valueOf(n);
+        int ticksUsing = SelfBowModule.mc.player.getInventory().getSelectedItem().getItem() == Items.BOW ? SelfBowModule.mc.player.getTicksUsingItem() : 0;
+        return String.valueOf(ticksUsing);
     }
 }
 

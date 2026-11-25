@@ -27,13 +27,13 @@ public class ScreenshotMixin {
     private static Consumer<Component> night$wrapScreenshotConsumer(Consumer<Component> consumer) {
         return component -> {
             ScreenshotModule screenshotModule = Night.MODULE_MANAGER != null ? (ScreenshotModule)Night.MODULE_MANAGER.getModule(ScreenshotModule.class) : null;
-            boolean bl = screenshotModule != null && screenshotModule.isToggled();
-            boolean bl2 = bl;
-            if (!bl) {
+            boolean moduleEnabled = screenshotModule != null && screenshotModule.isToggled();
+            boolean unusedModuleEnabled = moduleEnabled;
+            if (!moduleEnabled) {
                 consumer.accept((Component)component);
             }
             try {
-                if (bl) {
+                if (moduleEnabled) {
                     screenshotModule.onScreenshotCaptured(component);
                 }
             }

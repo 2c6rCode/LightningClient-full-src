@@ -48,7 +48,7 @@ extends Screen {
     }
 
     @Inject(method={"extractBackground"}, at={@At(value="HEAD")}, cancellable=true)
-    private void renderBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void renderBackground(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
             if (this.reason.equals((Object)LevelLoadingScreen.Reason.OTHER) && ((MenuModule)Night.MODULE_MANAGER.getModule(MenuModule.class)).isToggled() && ((MenuModule)Night.MODULE_MANAGER.getModule(MenuModule.class)).mainMenu.getValue()) {
                 Renderer2D.renderQuad((GuiGraphicsExtractor)guiGraphicsExtractor, (float)0.0f, (float)0.0f, (float)this.width, (float)this.height, (Color)new Color(25, 25, 25, 255));

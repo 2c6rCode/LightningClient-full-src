@@ -77,8 +77,8 @@ extends Module {
 
     @SubscribeEvent
     public void onKey(KeyInputEvent keyInputEvent) {
-        int n = keyInputEvent.getKey();
-        if (n == 256 || n == 340 || n == 344) {
+        int key = keyInputEvent.getKey();
+        if (key == 256 || key == 340 || key == 344) {
             this.trackEntity = null;
         }
     }
@@ -108,7 +108,7 @@ extends Module {
         }
     }
 
-    public void onInput(float f, float f2) {
+    public void onInput(float forward, float strafe) {
         if (FreecamV1Module.mc.player == null) {
             return;
         }
@@ -118,16 +118,16 @@ extends Module {
         this.prevFakeX = this.fakeX;
         this.prevFakeY = this.fakeY;
         this.prevFakeZ = this.fakeZ;
-        double d = this.hSpeed.getValue().doubleValue();
-        if (f != 0.0f || f2 != 0.0f) {
-            double d2 = Math.sqrt(f * f + f2 * f2);
-            double d3 = (double)f / d2;
-            double d4 = (double)f2 / d2;
-            double d5 = Math.toRadians(FreecamV1Module.mc.player.getYRot());
-            double d6 = Math.sin(d5);
-            double d7 = Math.cos(d5);
-            this.fakeX += (-d6 * d3 + d7 * d4) * d;
-            this.fakeZ += (d7 * d3 + d6 * d4) * d;
+        double speed = this.hSpeed.getValue().doubleValue();
+        if (forward != 0.0f || strafe != 0.0f) {
+            double length = Math.sqrt(forward * forward + strafe * strafe);
+            double normForward = (double)forward / length;
+            double normStrafe = (double)strafe / length;
+            double yawRad = Math.toRadians(FreecamV1Module.mc.player.getYRot());
+            double sinYaw = Math.sin(yawRad);
+            double cosYaw = Math.cos(yawRad);
+            this.fakeX += (-sinYaw * normForward + cosYaw * normStrafe) * speed;
+            this.fakeZ += (cosYaw * normForward + sinYaw * normStrafe) * speed;
         }
         if (FreecamV1Module.mc.options.keyJump.isDown()) {
             this.fakeY += this.vSpeed.getValue().doubleValue();
@@ -154,9 +154,9 @@ extends Module {
         }
     }
 
-    public void onScroll(double d) {
-        float f = d > 0.0 ? 0.05f : -0.05f;
-        this.hSpeed.setValue(Float.valueOf(this.hSpeed.getValue().floatValue() + f));
+    public void onScroll(double delta) {
+        float step = delta > 0.0 ? 0.05f : -0.05f;
+        this.hSpeed.setValue(Float.valueOf(this.hSpeed.getValue().floatValue() + step));
     }
 
     @SubscribeEvent

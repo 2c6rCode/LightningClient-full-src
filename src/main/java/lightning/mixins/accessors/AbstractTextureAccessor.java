@@ -17,6 +17,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 @Mixin(value={AbstractTexture.class})
 public interface AbstractTextureAccessor {
     @Accessor(value="sampler")
-    public void setSampler(GpuSampler var1);
+    public void setSampler(GpuSampler sampler);
 }
 

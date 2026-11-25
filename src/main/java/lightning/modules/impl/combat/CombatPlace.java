@@ -78,78 +78,78 @@ extends Module {
             ++this.delayTicks;
             return;
         }
-        List<BlockPos> list = this.getPlacePositions(player);
-        if (list.isEmpty()) {
+        List<BlockPos> positions = this.getPlacePositions(player);
+        if (positions.isEmpty()) {
             return;
         }
-        double d = Math.pow(this.range.getValue().doubleValue(), 2.0);
-        list.removeIf(blockPos -> CombatPlace.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > d);
-        if (list.isEmpty()) {
+        double rangeSq = Math.pow(this.range.getValue().doubleValue(), 2.0);
+        positions.removeIf(blockPos -> CombatPlace.mc.player.getEyePosition().distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) > rangeSq);
+        if (positions.isEmpty()) {
             return;
         }
-        this.placeBlocks(list);
+        this.placeBlocks(positions);
         this.delayTicks = 0;
     }
 
-    private void placeBlocks(List<BlockPos> list) {
+    private void placeBlocks(List<BlockPos> positions) {
         if (CombatPlace.mc.player == null) {
             return;
         }
-        int n = InventoryUtils.findHardestBlock(0, 8);
-        if (n == -1) {
+        int blockSlot = InventoryUtils.findHardestBlock(0, 8);
+        if (blockSlot == -1) {
             return;
         }
-        int n2 = CombatPlace.mc.player.getInventory().getSelectedSlot();
-        InventoryUtils.switchSlot("Silent", n, n2);
-        int n3 = 0;
-        for (BlockPos blockPos : list) {
-            if (n3 >= this.limit.getValue().intValue()) break;
+        int oldSlot = CombatPlace.mc.player.getInventory().getSelectedSlot();
+        InventoryUtils.switchSlot("Silent", blockSlot, oldSlot);
+        int placedCount = 0;
+        for (BlockPos blockPos : positions) {
+            if (placedCount >= this.limit.getValue().intValue()) break;
             Direction direction = WorldUtils.getDirection(blockPos, false);
             if (direction == null) continue;
             WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), false);
-            ++n3;
+            ++placedCount;
         }
-        InventoryUtils.switchBack("Silent", n, n2);
+        InventoryUtils.switchBack("Silent", blockSlot, oldSlot);
     }
 
     private List<BlockPos> getPlacePositions(Player player) {
-        String string;
-        BlockPos blockPos;
-        ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-        if (this.flatten.getValue() && this.isValidSpot(blockPos = BlockPos.containing((Position)player.position()).below())) {
-            arrayList.add(blockPos);
+        String predictMode;
+        BlockPos belowPos;
+        ArrayList<BlockPos> positions = new ArrayList<BlockPos>();
+        if (this.flatten.getValue() && this.isValidSpot(belowPos = BlockPos.containing((Position)player.position()).below())) {
+            positions.add(belowPos);
         }
-        if (!(string = this.mode.getValue()).equals("None")) {
+        if (!(predictMode = this.mode.getValue()).equals("None")) {
             double speedKmh = EntityUtils.getSpeed((Entity)player, EntityUtils.SpeedUnit.KILOMETERS);
             if (speedKmh >= this.minKmh.getValue().doubleValue()) {
-                double d3;
+                double deltaZ;
                 InterpolationHandler interpolationHandler = player.getInterpolation();
-                Vec3 vec3 = interpolationHandler != null ? interpolationHandler.position() : player.position();
-                double d4 = vec3.x;
-                double d5 = vec3.z;
-                double d6 = d4 - player.getX();
-                double d7 = Math.sqrt(d6 * d6 + (d3 = d5 - player.getZ()) * d3);
-                if (d7 > 0.001) {
-                    double d8;
-                    double d9 = d6 / d7;
-                    double d10 = d3 / d7;
-                    double d11 = Math.sqrt(Math.pow(player.getX() - player.xo, 2.0) + Math.pow(player.getZ() - player.zo, 2.0));
-                    BlockPos blockPos2 = BlockPos.containing((double)(d4 + d9 * d11 * (d8 = this.predictTicks.getValue().doubleValue())), (double)player.getY(), (double)(d5 + d10 * d11 * d8));
-                    if (this.isValidSpot(blockPos2)) {
-                        BlockPos blockPos3;
-                        BlockPos blockPos4;
-                        arrayList.add(blockPos2);
-                        if ((string.equals("Two") || string.equals("Three")) && this.isValidSpot(blockPos4 = blockPos2.above())) {
-                            arrayList.add(blockPos4);
+                Vec3 interpPos = interpolationHandler != null ? interpolationHandler.position() : player.position();
+                double interpX = interpPos.x;
+                double interpZ = interpPos.z;
+                double deltaX = interpX - player.getX();
+                double horizDist = Math.sqrt(deltaX * deltaX + (deltaZ = interpZ - player.getZ()) * deltaZ);
+                if (horizDist > 0.001) {
+                    double scale;
+                    double dirX = deltaX / horizDist;
+                    double dirZ = deltaZ / horizDist;
+                    double stepSpeed = Math.sqrt(Math.pow(player.getX() - player.xo, 2.0) + Math.pow(player.getZ() - player.zo, 2.0));
+                    BlockPos frontPos = BlockPos.containing((double)(interpX + dirX * stepSpeed * (scale = this.predictTicks.getValue().doubleValue())), (double)player.getY(), (double)(interpZ + dirZ * stepSpeed * scale));
+                    if (this.isValidSpot(frontPos)) {
+                        BlockPos topPos;
+                        BlockPos upperPos;
+                        positions.add(frontPos);
+                        if ((predictMode.equals("Two") || predictMode.equals("Three")) && this.isValidSpot(upperPos = frontPos.above())) {
+                            positions.add(upperPos);
                         }
-                        if (string.equals("Three") && this.isValidSpot(blockPos3 = blockPos2.above(2))) {
-                            arrayList.add(blockPos3);
+                        if (predictMode.equals("Three") && this.isValidSpot(topPos = frontPos.above(2))) {
+                            positions.add(topPos);
                         }
                     }
                 }
             }
         }
-        return arrayList;
+        return positions;
     }
 
     private boolean isValidSpot(BlockPos blockPos) {

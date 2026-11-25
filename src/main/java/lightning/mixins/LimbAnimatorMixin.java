@@ -21,54 +21,54 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(value={WalkAnimationState.class})
 public class LimbAnimatorMixin {
     @ModifyReturnValue(method={"position()F"}, at={@At(value="RETURN")})
-    private float getPos(float f) {
+    private float getPos(float position) {
         try {
             if (((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() && ((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).limbSwing.getValue()) {
                 return 0.0f;
             }
-            return f;
+            return position;
         }
         catch (NullPointerException nullPointerException) {
-            return f;
+            return position;
         }
     }
 
     @ModifyReturnValue(method={"position(F)F"}, at={@At(value="RETURN")})
-    private float getPos2(float f) {
+    private float getPos2(float position) {
         try {
             if (((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() && ((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).limbSwing.getValue()) {
                 return 0.0f;
             }
-            return f;
+            return position;
         }
         catch (NullPointerException nullPointerException) {
-            return f;
+            return position;
         }
     }
 
     @ModifyReturnValue(method={"speed()F"}, at={@At(value="RETURN")})
-    private float getSpeed(float f) {
+    private float getSpeed(float speed) {
         try {
             if (((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() && ((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).limbSwing.getValue()) {
                 return 0.0f;
             }
-            return f;
+            return speed;
         }
         catch (NullPointerException nullPointerException) {
-            return f;
+            return speed;
         }
     }
 
     @ModifyReturnValue(method={"speed(F)F"}, at={@At(value="RETURN")})
-    private float getSpeed2(float f) {
+    private float getSpeed2(float speed) {
         try {
             if (((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).isToggled() && ((NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class)).limbSwing.getValue()) {
                 return 0.0f;
             }
-            return f;
+            return speed;
         }
         catch (NullPointerException nullPointerException) {
-            return f;
+            return speed;
         }
     }
 }

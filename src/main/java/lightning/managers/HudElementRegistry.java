@@ -13,46 +13,46 @@ public class HudElementRegistry {
     private static final Map<String, Element> ELEMENTS = new LinkedHashMap<String, Element>();
     private static final Map<String, float[]> RAW_BOUNDS = new LinkedHashMap<String, float[]>();
 
-    public static void register(String string, BooleanSetting booleanSetting, PositionSetting positionSetting) {
-        HudElementRegistry.register(string, booleanSetting, positionSetting, null);
+    public static void register(String name, BooleanSetting booleanSetting, PositionSetting positionSetting) {
+        HudElementRegistry.register(name, booleanSetting, positionSetting, null);
     }
 
-    public static void register(String string, BooleanSetting booleanSetting, PositionSetting positionSetting, CategorySetting categorySetting) {
-        ELEMENTS.put(string, new Element(string, booleanSetting, positionSetting, categorySetting));
+    public static void register(String name, BooleanSetting booleanSetting, PositionSetting positionSetting, CategorySetting categorySetting) {
+        ELEMENTS.put(name, new Element(name, booleanSetting, positionSetting, categorySetting));
     }
 
-    public static void reportBounds(String string, float f, float f2, float f3, float f4) {
-        RAW_BOUNDS.put(string, new float[]{f, f2, f3, f4});
+    public static void reportBounds(String name, float minX, float minY, float maxX, float maxY) {
+        RAW_BOUNDS.put(name, new float[]{minX, minY, maxX, maxY});
     }
 
     public static Map<String, Element> getElements() {
         return ELEMENTS;
     }
 
-    public static float[] getBounds(String string) {
-        float[] fArray = RAW_BOUNDS.get(string);
-        Element element = ELEMENTS.get(string);
-        if (fArray == null || element == null) {
-            return fArray;
+    public static float[] getBounds(String name) {
+        float[] rawBounds = RAW_BOUNDS.get(name);
+        Element element = ELEMENTS.get(name);
+        if (rawBounds == null || element == null) {
+            return rawBounds;
         }
-        float f = element.offset().getX();
-        float f2 = element.offset().getY();
-        return new float[]{fArray[0] + f, fArray[1] + f2, fArray[2] + f, fArray[3] + f2};
+        float offsetX = element.offset().getX();
+        float offsetY = element.offset().getY();
+        return new float[]{rawBounds[0] + offsetX, rawBounds[1] + offsetY, rawBounds[2] + offsetX, rawBounds[3] + offsetY};
     }
 
-    public static void clamp(String string, int n, int n2) {
-        Element element = ELEMENTS.get(string);
-        float[] fArray = RAW_BOUNDS.get(string);
-        if (element == null || fArray == null) {
+    public static void clamp(String name, int screenWidth, int screenHeight) {
+        Element element = ELEMENTS.get(name);
+        float[] rawBounds = RAW_BOUNDS.get(name);
+        if (element == null || rawBounds == null) {
             return;
         }
-        float f = fArray[2] - fArray[0];
-        float f2 = fArray[3] - fArray[1];
-        float f3 = -fArray[0];
-        float f4 = Math.max(f3, (float)n - f - fArray[0]);
-        float f5 = -fArray[1];
-        float f6 = Math.max(f5, (float)n2 - f2 - fArray[1]);
-        element.offset().set(Math.clamp(element.offset().getX(), f3, f4), Math.clamp(element.offset().getY(), f5, f6));
+        float width = rawBounds[2] - rawBounds[0];
+        float height = rawBounds[3] - rawBounds[1];
+        float minOffsetX = -rawBounds[0];
+        float maxOffsetX = Math.max(minOffsetX, (float)screenWidth - width - rawBounds[0]);
+        float minOffsetY = -rawBounds[1];
+        float maxOffsetY = Math.max(minOffsetY, (float)screenHeight - height - rawBounds[1]);
+        element.offset().set(Math.clamp(element.offset().getX(), minOffsetX, maxOffsetX), Math.clamp(element.offset().getY(), minOffsetY, maxOffsetY));
     }
 
     public record Element(String name, BooleanSetting enabled, PositionSetting offset, CategorySetting category) {

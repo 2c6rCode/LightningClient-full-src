@@ -60,23 +60,21 @@ extends Module {
      */
     @SubscribeEvent
     public void onTick(TickEvent tickEvent) {
-        ConcurrentLinkedQueue<String> concurrentLinkedQueue;
         if (this.getNull() || this.queue.isEmpty()) {
             return;
         }
         this.killMessages = FileUtils.readLines(new File("Lightning/Client/" + this.killFile.getValue()));
         this.popMessages = FileUtils.readLines(new File("Lightning/Client/" + this.popFile.getValue()));
-        ConcurrentLinkedQueue<String> concurrentLinkedQueue2 = concurrentLinkedQueue = this.queue;
-        synchronized (concurrentLinkedQueue2) {
+        synchronized (this.queue) {
             if (this.timer.hasTimeElapsed(this.delay.getValue().intValue() * 1000)) {
-                String string = this.queue.poll();
-                if (!string.isEmpty()) {
+                String nextMessage = this.queue.poll();
+                if (!nextMessage.isEmpty()) {
                     if (this.clientside.getValue()) {
-                        Night.CHAT_MANAGER.message(string);
+                        Night.CHAT_MANAGER.message(nextMessage);
                     } else {
-                        KillSayModule.mc.player.connection.sendChat((this.greenText.getValue() ? "> " : "") + string);
+                        KillSayModule.mc.player.connection.sendChat((this.greenText.getValue() ? "> " : "") + nextMessage);
                     }
-                    this.lastMessage = string;
+                    this.lastMessage = nextMessage;
                 }
                 this.timer.reset();
             }
@@ -88,17 +86,15 @@ extends Module {
      */
     @SubscribeEvent
     public void onTargetDeath(TargetDeathEvent targetDeathEvent) {
-        ConcurrentLinkedQueue<String> concurrentLinkedQueue;
         if (this.getNull() || targetDeathEvent.getPlayer() == KillSayModule.mc.player) {
             return;
         }
         ++this.streak;
-        ConcurrentLinkedQueue<String> concurrentLinkedQueue2 = concurrentLinkedQueue = this.queue;
-        synchronized (concurrentLinkedQueue2) {
+        synchronized (this.queue) {
             if (this.kills.getValue()) {
                 this.queue.clear();
-                String string = this.getKillMessage(targetDeathEvent.getPlayer().getName().getString());
-                this.queue.add(string);
+                String killMsg = this.getKillMessage(targetDeathEvent.getPlayer().getName().getString());
+                this.queue.add(killMsg);
             }
         }
         if (this.killStreak.getValue() && this.streak > 1) {
@@ -111,14 +107,12 @@ extends Module {
      */
     @SubscribeEvent
     public void onPlayerPop(PlayerPopEvent playerPopEvent) {
-        ConcurrentLinkedQueue<String> concurrentLinkedQueue;
         if (this.getNull() || playerPopEvent.getPlayer() == KillSayModule.mc.player || !Night.TARGET_MANAGER.isTarget(playerPopEvent.getPlayer()) || !this.pops.getValue()) {
             return;
         }
-        ConcurrentLinkedQueue<String> concurrentLinkedQueue2 = concurrentLinkedQueue = this.queue;
-        synchronized (concurrentLinkedQueue2) {
-            String string = this.getPopMessage(playerPopEvent.getPlayer().getName().getString(), playerPopEvent.getPops());
-            this.queue.add(string);
+        synchronized (this.queue) {
+            String popMsg = this.getPopMessage(playerPopEvent.getPlayer().getName().getString(), playerPopEvent.getPops());
+            this.queue.add(popMsg);
         }
     }
 
@@ -148,27 +142,27 @@ extends Module {
         this.suicide = false;
     }
 
-    private String getPopMessage(String string, int n) {
-        String string2;
+    private String getPopMessage(String playerName, int popCount) {
+        String message;
         if (this.mode.getValue().equals("Custom") && !this.popMessages.isEmpty()) {
-            while ((string2 = this.popMessages.get((int)MathUtils.random(this.popMessages.size(), 0.0)).replace("[username]", string)).equals(this.lastMessage) && this.popMessages.size() > 1) {
+            while ((message = this.popMessages.get((int)MathUtils.random(this.popMessages.size(), 0.0)).replace("[username]", playerName)).equals(this.lastMessage) && this.popMessages.size() > 1) {
             }
         } else {
-            string2 = n + (n > 1 ? " pops " : " pop ") + string + "!";
+            message = popCount + (popCount > 1 ? " pops " : " pop ") + playerName + "!";
         }
-        return string2;
+        return message;
     }
 
-    private String getKillMessage(String string) {
-        String string2;
+    private String getKillMessage(String playerName) {
+        String message;
         if (this.mode.getValue().equals("Custom") && !this.killMessages.isEmpty()) {
-            while ((string2 = this.killMessages.get((int)MathUtils.random(this.killMessages.size(), 0.0)).replace("[username]", string)).equals(this.lastMessage) && this.killMessages.size() > 1) {
+            while ((message = this.killMessages.get((int)MathUtils.random(this.killMessages.size(), 0.0)).replace("[username]", playerName)).equals(this.lastMessage) && this.killMessages.size() > 1) {
             }
         } else {
-            while ((string2 = this.KILL_MESSAGES[(int)MathUtils.random(this.KILL_MESSAGES.length, 0.0)].replace("[username]", string)).equals(this.lastMessage)) {
+            while ((message = this.KILL_MESSAGES[(int)MathUtils.random(this.KILL_MESSAGES.length, 0.0)].replace("[username]", playerName)).equals(this.lastMessage)) {
             }
         }
-        return string2;
+        return message;
     }
 
     @Override

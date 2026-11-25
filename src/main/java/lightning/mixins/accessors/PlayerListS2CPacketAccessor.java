@@ -22,10 +22,10 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface PlayerListS2CPacketAccessor {
     @Accessor(value="actions")
     @Mutable
-    public void setActions(EnumSet<ClientboundPlayerInfoUpdatePacket.Action> var1);
+    public void setActions(EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions);
 
     @Accessor(value="entries")
     @Mutable
-    public void setEntries(List<ClientboundPlayerInfoUpdatePacket.Entry> var1);
+    public void setEntries(List<ClientboundPlayerInfoUpdatePacket.Entry> entries);
 }
 

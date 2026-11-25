@@ -50,7 +50,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value={AvatarRenderer.class})
 public class AvatarRendererMixin {
     @Inject(method={"extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V"}, at={@At(value="TAIL")})
-    private void night$forceChamsOverlayLayers(Avatar avatar, AvatarRenderState avatarRenderState, float f, CallbackInfo callbackInfo) {
+    private void night$forceChamsOverlayLayers(Avatar avatar, AvatarRenderState avatarRenderState, float tickDelta, CallbackInfo callbackInfo) {
         try {
             if (!(avatar instanceof Entity)) {
                 return;
@@ -74,8 +74,8 @@ public class AvatarRendererMixin {
     }
 
     @Redirect(method={"renderHand"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/renderer/SubmitNodeCollector;submitModelPart(Lnet/minecraft/client/model/geom/ModelPart;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/rendertype/RenderType;IILnet/minecraft/client/renderer/texture/TextureAtlasSprite;)V")}, require=0)
-    private void night$handOutline(SubmitNodeCollector submitNodeCollector, ModelPart modelPart, PoseStack poseStack, RenderType renderType, int n, int n2, TextureAtlasSprite textureAtlasSprite) {
-        submitNodeCollector.submitModelPart(modelPart, poseStack, renderType, n, n2, textureAtlasSprite, -1, null, AvatarRendererMixin.night$outlineColor());
+    private void night$handOutline(SubmitNodeCollector submitNodeCollector, ModelPart modelPart, PoseStack poseStack, RenderType renderType, int packedLight, int packedOverlay, TextureAtlasSprite textureAtlasSprite) {
+        submitNodeCollector.submitModelPart(modelPart, poseStack, renderType, packedLight, packedOverlay, textureAtlasSprite, -1, null, AvatarRendererMixin.night$outlineColor());
     }
 
     private static int night$outlineColor() {
@@ -93,10 +93,10 @@ public class AvatarRendererMixin {
     @Inject(method={"getRenderOffset(Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;)Lnet/minecraft/world/phys/Vec3;"}, at={@At(value="RETURN")}, cancellable=true)
     private void night$applyPopChamYOffset(AvatarRenderState avatarRenderState, CallbackInfoReturnable<Vec3> callbackInfoReturnable) {
         IChamsCapture iChamsCapture = (IChamsCapture)avatarRenderState;
-        float f = iChamsCapture.night$chamsYOffset();
-        if (f != 0.0f) {
+        float yOffset = iChamsCapture.night$chamsYOffset();
+        if (yOffset != 0.0f) {
             Vec3 vec3 = (Vec3)callbackInfoReturnable.getReturnValue();
-            callbackInfoReturnable.setReturnValue(vec3 == null ? new Vec3(0.0, (double)f, 0.0) : vec3.add(0.0, (double)f, 0.0));
+            callbackInfoReturnable.setReturnValue(vec3 == null ? new Vec3(0.0, (double)yOffset, 0.0) : vec3.add(0.0, (double)yOffset, 0.0));
         }
     }
 }

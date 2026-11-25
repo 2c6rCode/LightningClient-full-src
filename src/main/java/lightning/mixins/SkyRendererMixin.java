@@ -82,9 +82,9 @@ public abstract class SkyRendererMixin {
     }
 
     @Inject(method={"renderSunMoonAndStars"}, at={@At(value="TAIL")})
-    private void night$resolveStarGlow(PoseStack poseStack, float f, float f2, float f3, MoonPhase moonPhase, float f4, float f5, CallbackInfo callbackInfo) {
+    private void night$resolveStarGlow(PoseStack poseStack, float timeOfDay, float sunAngle, float rainLevel, MoonPhase moonPhase, float starBrightness, float skyDarken, CallbackInfo callbackInfo) {
         try {
-            if (f5 <= 0.0f) {
+            if (skyDarken <= 0.0f) {
                 return;
             }
             AtmosphereModule atmosphereModule = (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class);
@@ -111,10 +111,10 @@ public abstract class SkyRendererMixin {
     }
 
     @Inject(method={"extractRenderState"}, at={@At(value="RETURN")})
-    private void night$forceSkybox(ClientLevel clientLevel, float f, Camera camera, SkyRenderState skyRenderState, CallbackInfo callbackInfo) {
+    private void night$forceSkybox(ClientLevel clientLevel, float partialTick, Camera camera, SkyRenderState skyRenderState, CallbackInfo callbackInfo) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue()) {
                 skyRenderState.skybox = DimensionType.Skybox.OVERWORLD;
             }
@@ -126,10 +126,10 @@ public abstract class SkyRendererMixin {
     }
 
     @Inject(method={"renderSkyDisc"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$renderCustomSkyDisc(int n, CallbackInfo callbackInfo) {
+    private void night$renderCustomSkyDisc(int color, CallbackInfo callbackInfo) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue() && atmosphereModule.skyMode.getValue().equalsIgnoreCase("Custom")) {
                 SkyShader.renderSky();
                 callbackInfo.cancel();
@@ -142,17 +142,17 @@ public abstract class SkyRendererMixin {
     }
 
     @ModifyVariable(method={"renderSkyDisc"}, at={@At(value="HEAD")}, argsOnly=true, ordinal=0)
-    private int night$modifySkyColor(int n) {
+    private int night$modifySkyColor(int color) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue() && atmosphereModule.skyMode.getValue().equalsIgnoreCase("Vanilla")) {
                 return atmosphereModule.skyColor.getColor().getRGB();
             }
-            return n;
+            return color;
         }
         catch (NullPointerException nullPointerException) {
-            return n;
+            return color;
         }
     }
 
@@ -160,7 +160,7 @@ public abstract class SkyRendererMixin {
     private void night$cancelDarkDisc(CallbackInfo callbackInfo) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue()) {
                 callbackInfo.cancel();
             }
@@ -175,7 +175,7 @@ public abstract class SkyRendererMixin {
     private void night$cancelSunriseAndSunset(CallbackInfo callbackInfo) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue()) {
                 callbackInfo.cancel();
             }
@@ -187,15 +187,15 @@ public abstract class SkyRendererMixin {
     }
 
     @Inject(method={"renderSunMoonAndStars"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$cancelSunMoonAndStars(PoseStack poseStack, float f, float f2, float f3, MoonPhase moonPhase, float f4, float f5, CallbackInfo callbackInfo) {
+    private void night$cancelSunMoonAndStars(PoseStack poseStack, float timeOfDay, float sunAngle, float rainLevel, MoonPhase moonPhase, float starBrightness, float skyDarken, CallbackInfo callbackInfo) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue()) {
                 Minecraft minecraft = Minecraft.getInstance();
-                boolean bl = minecraft.level != null && minecraft.level.dimensionType().skybox() == DimensionType.Skybox.NONE;
-                boolean bl2 = bl;
-                if (bl || atmosphereModule.skyMode.getValue().equalsIgnoreCase("Custom") && !atmosphereModule.starGlow.getValue()) {
+                boolean noSkybox = minecraft.level != null && minecraft.level.dimensionType().skybox() == DimensionType.Skybox.NONE;
+                boolean unusedNoSkybox = noSkybox;
+                if (noSkybox || atmosphereModule.skyMode.getValue().equalsIgnoreCase("Custom") && !atmosphereModule.starGlow.getValue()) {
                     callbackInfo.cancel();
                 }
             }
@@ -210,7 +210,7 @@ public abstract class SkyRendererMixin {
     private void night$renderCustomEndSky(CallbackInfo callbackInfo) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue() && atmosphereModule.skyMode.getValue().equalsIgnoreCase("Custom")) {
                 SkyShader.renderSky();
                 callbackInfo.cancel();

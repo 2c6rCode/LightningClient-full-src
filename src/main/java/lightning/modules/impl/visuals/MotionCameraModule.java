@@ -75,8 +75,8 @@ implements IMotionCameraModule {
     }
 
     private boolean inExceptionWindow() {
-        long l = this.exceptionDuration.getValue().longValue();
-        return this.pearlException.getValue() && !this.pearlTimer.hasTimeElapsed(l) || this.rubberbandException.getValue() && !this.rubberbandTimer.hasTimeElapsed(l);
+        long durationMs = this.exceptionDuration.getValue().longValue();
+        return this.pearlException.getValue() && !this.pearlTimer.hasTimeElapsed(durationMs) || this.rubberbandException.getValue() && !this.rubberbandTimer.hasTimeElapsed(durationMs);
     }
 
     private boolean isRidingOrFlying() {
@@ -113,9 +113,9 @@ implements IMotionCameraModule {
             this.prevFakeX = this.fakeX;
             this.prevFakeY = this.fakeY;
             this.prevFakeZ = this.fakeZ;
-            double d = MotionCameraModule.mc.options.getCameraType().isFirstPerson() ? 0.0 : this.getTargetPerspectiveDistance();
-            this.distance = d;
-            this.prevDistance = d;
+            double initialDistance = MotionCameraModule.mc.options.getCameraType().isFirstPerson() ? 0.0 : this.getTargetPerspectiveDistance();
+            this.distance = initialDistance;
+            this.prevDistance = initialDistance;
         }
     }
 
@@ -127,24 +127,24 @@ implements IMotionCameraModule {
         this.prevFakeX = this.fakeX;
         this.prevFakeY = this.fakeY;
         this.prevFakeZ = this.fakeZ;
-        double d = MotionCameraModule.mc.player.getX();
-        double d2 = MotionCameraModule.mc.player.getY() + (double)MotionCameraModule.mc.player.getEyeHeight(MotionCameraModule.mc.player.getPose());
-        double d3 = MotionCameraModule.mc.player.getZ();
+        double targetX = MotionCameraModule.mc.player.getX();
+        double targetY = MotionCameraModule.mc.player.getY() + (double)MotionCameraModule.mc.player.getEyeHeight(MotionCameraModule.mc.player.getPose());
+        double targetZ = MotionCameraModule.mc.player.getZ();
         if (this.isRidingOrFlying()) {
-            this.fakeX = d;
-            this.fakeY = d2;
-            this.fakeZ = d3;
+            this.fakeX = targetX;
+            this.fakeY = targetY;
+            this.fakeZ = targetZ;
         } else {
-            double d4 = MotionCameraModule.mc.options.getCameraType().isFirstPerson() ? this.firstPersonSpeed.getValue().doubleValue() : this.speed.getValue().doubleValue();
-            this.fakeX = AnimateUtil.animate(this.fakeX, d, d4);
-            this.fakeY = AnimateUtil.animate(this.fakeY, d2, d4);
-            this.fakeZ = AnimateUtil.animate(this.fakeZ, d3, d4);
+            double followSpeed = MotionCameraModule.mc.options.getCameraType().isFirstPerson() ? this.firstPersonSpeed.getValue().doubleValue() : this.speed.getValue().doubleValue();
+            this.fakeX = AnimateUtil.animate(this.fakeX, targetX, followSpeed);
+            this.fakeY = AnimateUtil.animate(this.fakeY, targetY, followSpeed);
+            this.fakeZ = AnimateUtil.animate(this.fakeZ, targetZ, followSpeed);
         }
         this.prevDistance = this.distance;
-        boolean bl = MotionCameraModule.mc.options.getCameraType().isFirstPerson();
-        double d5 = bl ? 0.0 : this.getTargetPerspectiveDistance();
-        double d6 = this.distance = this.smoothPerspective.getValue() && !bl ? AnimateUtil.animate(this.distance, d5, this.perspectiveSpeed.getValue().doubleValue()) : d5;
-        if (bl) {
+        boolean isFirstPerson = MotionCameraModule.mc.options.getCameraType().isFirstPerson();
+        double targetDistance = isFirstPerson ? 0.0 : this.getTargetPerspectiveDistance();
+        this.distance = this.smoothPerspective.getValue() && !isFirstPerson ? AnimateUtil.animate(this.distance, targetDistance, this.perspectiveSpeed.getValue().doubleValue()) : targetDistance;
+        if (isFirstPerson) {
             this.prevDistance = 0.0;
         }
     }
@@ -159,26 +159,26 @@ implements IMotionCameraModule {
 
     @Override
     public double getFakeX() {
-        float f = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
-        return MathUtils.interpolate(this.prevFakeX, this.fakeX, f);
+        float partialTicks = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
+        return MathUtils.interpolate(this.prevFakeX, this.fakeX, partialTicks);
     }
 
     @Override
     public double getFakeY() {
-        float f = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
-        return MathUtils.interpolate(this.prevFakeY, this.fakeY, f);
+        float partialTicks = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
+        return MathUtils.interpolate(this.prevFakeY, this.fakeY, partialTicks);
     }
 
     @Override
     public double getFakeZ() {
-        float f = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
-        return MathUtils.interpolate(this.prevFakeZ, this.fakeZ, f);
+        float partialTicks = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
+        return MathUtils.interpolate(this.prevFakeZ, this.fakeZ, partialTicks);
     }
 
     @Override
     public double getDistance() {
-        float f = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
-        return MathUtils.interpolate(this.prevDistance, this.distance, f);
+        float partialTicks = mc.getDeltaTracker() != null ? mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) : 1.0f;
+        return MathUtils.interpolate(this.prevDistance, this.distance, partialTicks);
     }
 }
 

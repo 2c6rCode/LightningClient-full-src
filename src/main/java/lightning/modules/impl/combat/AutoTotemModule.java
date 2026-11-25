@@ -98,8 +98,8 @@ extends Module {
 
     private void updateTotem() {
         AutoShopModule autoShopModule;
-        int n;
-        int n2;
+        int targetSlot;
+        int emptySlot;
         ItemStack carried;
         if (AutoTotemModule.mc.player == null || AutoTotemModule.mc.level == null) {
             return;
@@ -109,9 +109,9 @@ extends Module {
             return;
         }
         Screen screen = AutoTotemModule.mc.gui.screen();
-        boolean bl = screen instanceof InventoryScreen;
-        boolean bl2 = screen instanceof AbstractContainerScreen;
-        if (bl2 && !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty()) {
+        boolean inInventory = screen instanceof InventoryScreen;
+        boolean inContainer = screen instanceof AbstractContainerScreen;
+        if (inContainer && !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty()) {
             this.reason("skip: cursor is holding an item in an open container");
             return;
         }
@@ -123,20 +123,20 @@ extends Module {
         if (!AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty()) {
             carried = AutoTotemModule.mc.player.containerMenu.getCarried();
             if (carried.getItem() == item) {
-                int n3;
+                int freeSlot;
                 InventoryUtils.click(45, 0, ContainerInput.PICKUP);
-                if (!bl && !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty() && (n3 = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END)) != -1) {
-                    InventoryUtils.click(InventoryUtils.indexToSlot(n3), 0, ContainerInput.PICKUP);
+                if (!inInventory && !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty() && (freeSlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END)) != -1) {
+                    InventoryUtils.click(InventoryUtils.indexToSlot(freeSlot), 0, ContainerInput.PICKUP);
                 }
                 if (this.debug.getValue()) {
                     this.log("RECOVERED stuck cursor -> placed " + this.itemName(item) + " into offhand");
                 }
                 return;
             }
-            if (!bl) {
-                n2 = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
-                if (n2 != -1) {
-                    InventoryUtils.click(InventoryUtils.indexToSlot(n2), 0, ContainerInput.PICKUP);
+            if (!inInventory) {
+                emptySlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+                if (emptySlot != -1) {
+                    InventoryUtils.click(InventoryUtils.indexToSlot(emptySlot), 0, ContainerInput.PICKUP);
                 }
                 if (!AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty()) {
                     this.reason("skip: cursor is holding an item and could not clear it");
@@ -149,8 +149,8 @@ extends Module {
                 this.reason("skip: Suicide offhandOverride, offhand already empty");
                 return;
             }
-            n = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
-            if (n == -1) {
+            targetSlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+            if (targetSlot == -1) {
                 this.reason("Suicide override: no empty slot to move offhand item into");
             }
         } else {
@@ -160,32 +160,32 @@ extends Module {
             }
             if (this.gappleStagedSlot != -1 && item == Items.TOTEM_OF_UNDYING) {
                 if (AutoTotemModule.mc.player.getInventory().getItem(this.gappleStagedSlot).getItem() == Items.TOTEM_OF_UNDYING) {
-                    n = this.gappleStagedSlot;
+                    targetSlot = this.gappleStagedSlot;
                 } else {
-                    n = InventoryUtils.findInventory(item);
-                    if (n == -1) {
-                        n = InventoryUtils.find(item);
+                    targetSlot = InventoryUtils.findInventory(item);
+                    if (targetSlot == -1) {
+                        targetSlot = InventoryUtils.find(item);
                     }
                 }
                 this.gappleStagedSlot = -1;
             } else if (item == Items.ENCHANTED_GOLDEN_APPLE || item == Items.GOLDEN_APPLE) {
-                n = InventoryUtils.findHotbar(item);
-                if (n == -1) {
-                    n = InventoryUtils.findInventory(item);
+                targetSlot = InventoryUtils.findHotbar(item);
+                if (targetSlot == -1) {
+                    targetSlot = InventoryUtils.findInventory(item);
                 }
-                if (n != -1) {
-                    this.gappleStagedSlot = n;
+                if (targetSlot != -1) {
+                    this.gappleStagedSlot = targetSlot;
                 }
             } else {
-                n = InventoryUtils.findInventory(item);
-                if (n == -1) {
-                    n = InventoryUtils.find(item);
+                targetSlot = InventoryUtils.findInventory(item);
+                if (targetSlot == -1) {
+                    targetSlot = InventoryUtils.find(item);
                 }
             }
-            if (n == -1) {
+            if (targetSlot == -1) {
                 if (item == Items.TOTEM_OF_UNDYING && this.hasItem(Items.TOTEM_OF_UNDYING)) {
-                    n = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
-                    if (n == -1) {
+                    targetSlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END);
+                    if (targetSlot == -1) {
                         this.reason("FAIL: have a totem but no empty slot to stage the swap");
                     }
                 } else {
@@ -194,33 +194,31 @@ extends Module {
                 }
             }
         }
-        if (n == -1) {
+        if (targetSlot == -1) {
             this.reason("FAIL: no usable slot resolved (see previous reason)");
             return;
         }
         MultiTaskModule multiTask = Night.MODULE_MANAGER.getModule(MultiTaskModule.class);
-        int n4 = multiTask != null && multiTask.isToggled() && multiTask.autoTotem.getValue() ? 1 : 0;
-        n2 = n4;
-        if (n4 == 0 && AutoTotemModule.mc.player.isUsingItem()) {
+        boolean allowMultiTask = multiTask != null && multiTask.isToggled() && multiTask.autoTotem.getValue();
+        if (!allowMultiTask && AutoTotemModule.mc.player.isUsingItem()) {
             AutoTotemModule.mc.gameMode.releaseUsingItem((Player)AutoTotemModule.mc.player);
         }
         if ((autoShopModule = Night.MODULE_MANAGER.getModule(AutoShopModule.class)).antiGhostTotem.getValue()) {
-            autoShopModule = autoShopModule;
             if (autoShopModule.isRunning()) {
                 autoShopModule.abort("AntiGhostTotem: shop cancelled so the totem can be swapped now.");
             }
         }
         if (this.version117.getValue()) {
-            InventoryUtils.swap("Swap", n, 40);
+            InventoryUtils.swap("Swap", targetSlot, 40);
         } else {
-            int n5;
-            InventoryUtils.swap("Pickup", n, 45);
-            if (!bl && !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty() && (n5 = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END)) != -1) {
-                InventoryUtils.click(InventoryUtils.indexToSlot(n5), 0, ContainerInput.PICKUP);
+            int freeSlot;
+            InventoryUtils.swap("Pickup", targetSlot, 45);
+            if (!inInventory && !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty() && (freeSlot = InventoryUtils.findEmptySlot(InventoryUtils.HOTBAR_START, InventoryUtils.INVENTORY_END)) != -1) {
+                InventoryUtils.click(InventoryUtils.indexToSlot(freeSlot), 0, ContainerInput.PICKUP);
             }
         }
         if (this.debug.getValue()) {
-            this.log("SWAP -> offhand: " + this.itemName(item) + " (from slot " + n + ") [mode=" + (this.version117.getValue() ? "1.17+ (Swap)" : "Clicks (Pickup)") + "]");
+            this.log("SWAP -> offhand: " + this.itemName(item) + " (from slot " + targetSlot + ") [mode=" + (this.version117.getValue() ? "1.17+ (Swap)" : "Clicks (Pickup)") + "]");
         }
         this.lastReason = "";
     }
@@ -234,33 +232,32 @@ extends Module {
             return;
         }
         this.totemCount = AutoTotemModule.mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING) + (!AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty() && AutoTotemModule.mc.player.containerMenu.getCarried().getItem() == Items.TOTEM_OF_UNDYING ? AutoTotemModule.mc.player.containerMenu.getCarried().getCount() : 0);
-        boolean bl = AutoTotemModule.mc.player.getHealth() > 0.0f && !AutoTotemModule.mc.player.isDeadOrDying();
-        boolean bl2 = bl;
-        if (this.debug.getValue() && this.wasAlive && !bl) {
+        boolean isAlive = AutoTotemModule.mc.player.getHealth() > 0.0f && !AutoTotemModule.mc.player.isDeadOrDying();
+        if (this.debug.getValue() && this.wasAlive && !isAlive) {
             this.logDeath();
         }
-        this.wasAlive = bl;
+        this.wasAlive = isAlive;
     }
 
     private void logDeath() {
-        String string;
+        String deathCause;
         try {
-            string = AutoTotemModule.mc.player.getCombatTracker().getDeathMessage().getString();
+            deathCause = AutoTotemModule.mc.player.getCombatTracker().getDeathMessage().getString();
         }
         catch (Throwable throwable) {
-            string = "(unknown)";
+            deathCause = "(unknown)";
         }
-        ItemStack itemStack = AutoTotemModule.mc.player.getOffhandItem();
-        boolean bl = itemStack.getItem() == Items.TOTEM_OF_UNDYING;
+        ItemStack offhandStack = AutoTotemModule.mc.player.getOffhandItem();
+        boolean hadTotem = offhandStack.getItem() == Items.TOTEM_OF_UNDYING;
         this.log("================ DEATH ================");
-        this.log("Cause: " + string);
-        this.log("Offhand at death: " + (itemStack.isEmpty() ? "EMPTY" : this.itemName(itemStack.getItem())) + (bl ? " (totem WAS present!)" : ""));
+        this.log("Cause: " + deathCause);
+        this.log("Offhand at death: " + (offhandStack.isEmpty() ? "EMPTY" : this.itemName(offhandStack.getItem())) + (hadTotem ? " (totem WAS present!)" : ""));
         this.log("Totems in inventory at death: " + this.totemCount);
         this.log("Health+Absorb at death: " + (AutoTotemModule.mc.player.getHealth() + AutoTotemModule.mc.player.getAbsorptionAmount()));
         this.log("needsTotem()=" + this.needsTotem());
         this.log("Item mode=" + this.item.getValue() + ", target now=" + this.itemName(this.getItem()));
         this.log("Last swap reason: " + (this.lastReason.isEmpty() ? "(none)" : this.lastReason));
-        if (bl) {
+        if (hadTotem) {
             this.log("=> A totem WAS in offhand but you still died (one-shot exceeding totem heal, or totem pop not registered before death).");
         } else if (this.totemCount == 0) {
             this.log("=> No totems left in inventory -- nothing to place.");
@@ -272,26 +269,25 @@ extends Module {
 
     private Item getItem() {
         SpeedMineModule speedMineModule;
-        boolean bl = this.hasItem(Items.TOTEM_OF_UNDYING);
-        Item item = this.hasItem(Items.ENCHANTED_GOLDEN_APPLE) ? Items.ENCHANTED_GOLDEN_APPLE : (this.hasItem(Items.GOLDEN_APPLE) ? Items.GOLDEN_APPLE : null);
-        boolean bl2 = item != null;
-        boolean bl3 = AutoTotemModule.mc.player.getMainHandItem().is(ItemTags.SWORDS) || AutoTotemModule.mc.player.getMainHandItem().getItem() instanceof AxeItem;
-        boolean bl4 = AutoTotemModule.mc.player.getMainHandItem().is(ItemTags.PICKAXES);
-        boolean bl5 = AutoTotemModule.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING);
-        boolean bl6 = this.gappleSword.getValue() && bl3 || this.gapplePickaxe.getValue() && bl4 || this.gappleTotem.getValue() && bl5;
-        boolean bl7 = bl6;
-        if (this.useGapple.getValue() && AutoTotemModule.mc.options.keyUse.isDown() && bl6 && bl2 && (this.lethalOverride.getValue() || !this.needsTotem() || !bl)) {
-            return item;
+        boolean hasTotem = this.hasItem(Items.TOTEM_OF_UNDYING);
+        Item gappleItem = this.hasItem(Items.ENCHANTED_GOLDEN_APPLE) ? Items.ENCHANTED_GOLDEN_APPLE : (this.hasItem(Items.GOLDEN_APPLE) ? Items.GOLDEN_APPLE : null);
+        boolean hasGapple = gappleItem != null;
+        boolean holdingWeapon = AutoTotemModule.mc.player.getMainHandItem().is(ItemTags.SWORDS) || AutoTotemModule.mc.player.getMainHandItem().getItem() instanceof AxeItem;
+        boolean holdingPickaxe = AutoTotemModule.mc.player.getMainHandItem().is(ItemTags.PICKAXES);
+        boolean holdingTotem = AutoTotemModule.mc.player.getMainHandItem().is(Items.TOTEM_OF_UNDYING);
+        boolean shouldUseGapple = this.gappleSword.getValue() && holdingWeapon || this.gapplePickaxe.getValue() && holdingPickaxe || this.gappleTotem.getValue() && holdingTotem;
+        if (this.useGapple.getValue() && AutoTotemModule.mc.options.keyUse.isDown() && shouldUseGapple && hasGapple && (this.lethalOverride.getValue() || !this.needsTotem() || !hasTotem)) {
+            return gappleItem;
         }
         if (this.needsTotem()) {
-            if (bl) {
+            if (hasTotem) {
                 return Items.TOTEM_OF_UNDYING;
             }
-            if (this.noTotemGap.getValue() && bl2) {
-                return item;
+            if (this.noTotemGap.getValue() && hasGapple) {
+                return gappleItem;
             }
         }
-        if (!(!bl || !this.item.getValue().equalsIgnoreCase("Crystal") || !this.smartMine.getValue() || (speedMineModule = Night.MODULE_MANAGER.getModule(SpeedMineModule.class)).getPrimary() != null && speedMineModule.getPrimary().isMining() || speedMineModule.getSecondary() != null && speedMineModule.getSecondary().isMining())) {
+        if (!(!hasTotem || !this.item.getValue().equalsIgnoreCase("Crystal") || !this.smartMine.getValue() || (speedMineModule = Night.MODULE_MANAGER.getModule(SpeedMineModule.class)).getPrimary() != null && speedMineModule.getPrimary().isMining() || speedMineModule.getSecondary() != null && speedMineModule.getSecondary().isMining())) {
             return Items.TOTEM_OF_UNDYING;
         }
         switch (this.item.getValue()) {
@@ -300,19 +296,19 @@ extends Module {
                 return Items.END_CRYSTAL;
             }
             case "Gapple": {
-                if (!bl2) break;
-                return item;
+                if (!hasGapple) break;
+                return gappleItem;
             }
             default: {
-                if (!bl) break;
+                if (!hasTotem) break;
                 return Items.TOTEM_OF_UNDYING;
             }
         }
-        if (bl) {
+        if (hasTotem) {
             return Items.TOTEM_OF_UNDYING;
         }
-        if (this.noTotemGap.getValue() && bl2) {
-            return item;
+        if (this.noTotemGap.getValue() && hasGapple) {
+            return gappleItem;
         }
         return AutoTotemModule.mc.player.getOffhandItem().getItem();
     }
@@ -337,19 +333,19 @@ extends Module {
         return InventoryUtils.find(item) != -1 || AutoTotemModule.mc.player.getOffhandItem().getItem() == item || !AutoTotemModule.mc.player.containerMenu.getCarried().isEmpty() && AutoTotemModule.mc.player.containerMenu.getCarried().getItem() == item;
     }
 
-    private void reason(String string) {
+    private void reason(String msg) {
         if (!this.debug.getValue()) {
             return;
         }
-        if (string.equals(this.lastReason)) {
+        if (msg.equals(this.lastReason)) {
             return;
         }
-        this.lastReason = string;
-        Night.CHAT_MANAGER.tagged(string, this.getName());
+        this.lastReason = msg;
+        Night.CHAT_MANAGER.tagged(msg, this.getName());
     }
 
-    private void log(String string) {
-        Night.CHAT_MANAGER.tagged(string, this.getName());
+    private void log(String msg) {
+        Night.CHAT_MANAGER.tagged(msg, this.getName());
     }
 
     private String itemName(Item item) {

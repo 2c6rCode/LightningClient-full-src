@@ -18,10 +18,10 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface PlayerPositionAccessor {
     @Accessor(value="yRot")
     @Mutable
-    public void setYaw(float var1);
+    public void setYaw(float yaw);
 
     @Accessor(value="xRot")
     @Mutable
-    public void setPitch(float var1);
+    public void setPitch(float pitch);
 }
 

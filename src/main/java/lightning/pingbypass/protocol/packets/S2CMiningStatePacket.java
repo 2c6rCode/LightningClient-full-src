@@ -25,13 +25,13 @@ extends PbPacket {
     private final BlockPos secondaryPos;
     private final float secondaryProgress;
 
-    public S2CMiningStatePacket(@Nullable BlockPos blockPos, float f, @Nullable BlockPos blockPos2, float f2) {
-        this.hasPrimary = blockPos != null;
-        this.primaryPos = blockPos;
-        this.primaryProgress = f;
-        this.hasSecondary = blockPos2 != null;
-        this.secondaryPos = blockPos2;
-        this.secondaryProgress = f2;
+    public S2CMiningStatePacket(@Nullable BlockPos primaryPos, float primaryProgress, @Nullable BlockPos secondaryPos, float secondaryProgress) {
+        this.hasPrimary = primaryPos != null;
+        this.primaryPos = primaryPos;
+        this.primaryProgress = primaryProgress;
+        this.hasSecondary = secondaryPos != null;
+        this.secondaryPos = secondaryPos;
+        this.secondaryProgress = secondaryProgress;
     }
 
     public S2CMiningStatePacket(FriendlyByteBuf friendlyByteBuf) {

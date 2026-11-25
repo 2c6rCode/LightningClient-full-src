@@ -16,9 +16,9 @@ extends Event {
     private final boolean state;
 
     @Generated
-    public ToggleModuleEvent(Module module, boolean bl) {
+    public ToggleModuleEvent(Module module, boolean state) {
         this.module = module;
-        this.state = bl;
+        this.state = state;
     }
 
     @Generated

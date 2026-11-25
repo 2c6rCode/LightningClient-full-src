@@ -98,9 +98,9 @@ extends Module {
     @SubscribeEvent
     public void onEntitySpawn(EntitySpawnEvent entitySpawnEvent) {
         TrajectorySolution trajectorySolution;
-        double d;
-        Vec3 vec3;
-        Player player;
+        double deltaZ;
+        Vec3 enemyLanding;
+        Player bestTarget;
         if (PearlChaseModule.mc.player == null || PearlChaseModule.mc.level == null) {
             return;
         }
@@ -112,24 +112,24 @@ extends Module {
         if (!this.whileEating.getValue() && EntityUtils.isEating()) {
             return;
         }
-        Player player2 = null;
-        Entity entity2 = thrownEnderpearl.getOwner();
-        if (entity2 instanceof Player) {
-            player2 = player = (Player)entity2;
+        Player thrower = null;
+        Entity owner = thrownEnderpearl.getOwner();
+        if (owner instanceof Player) {
+            thrower = bestTarget = (Player)owner;
         } else {
-            double d2 = 16.0;
-            for (Player player3 : PearlChaseModule.mc.level.players()) {
-                double d3;
-                if (!this.validTarget(player3) || !((d3 = player3.distanceToSqr(thrownEnderpearl.position())) < d2)) continue;
-                d2 = d3;
-                player2 = player3;
+            double bestDistSq = 16.0;
+            for (Player candidate : PearlChaseModule.mc.level.players()) {
+                double distSq;
+                if (!this.validTarget(candidate) || !((distSq = candidate.distanceToSqr(thrownEnderpearl.position())) < bestDistSq)) continue;
+                bestDistSq = distSq;
+                thrower = candidate;
             }
         }
-        if (player2 == null || !this.validTarget(player2)) {
+        if (thrower == null || !this.validTarget(thrower)) {
             return;
         }
-        player = this.getBestTarget();
-        if (player != null && player2 != player) {
+        bestTarget = this.getBestTarget();
+        if (bestTarget != null && thrower != bestTarget) {
             return;
         }
         if (!this.processedPearls.add(thrownEnderpearl.getId())) {
@@ -138,29 +138,29 @@ extends Module {
         if (this.processedPearls.size() > 100) {
             this.processedPearls.clear();
         }
-        if ((vec3 = this.predictEnemyLanding(thrownEnderpearl, player2)) == null) {
+        if ((enemyLanding = this.predictEnemyLanding(thrownEnderpearl, thrower)) == null) {
             return;
         }
-        double d4 = vec3.x - thrownEnderpearl.getX();
-        double d5 = Math.sqrt(d4 * d4 + (d = vec3.z - thrownEnderpearl.getZ()) * d);
-        if (d5 < this.distance.getValue().doubleValue()) {
+        double deltaX = enemyLanding.x - thrownEnderpearl.getX();
+        double horizDist = Math.sqrt(deltaX * deltaX + (deltaZ = enemyLanding.z - thrownEnderpearl.getZ()) * deltaZ);
+        if (horizDist < this.distance.getValue().doubleValue()) {
             return;
         }
-        Vec3 vec32 = new Vec3(d4, 0.0, d);
-        vec32 = d5 > 1.0E-4 ? vec32.scale(1.0 / d5) : Vec3.ZERO;
-        Vec3 vec33 = vec3.add(vec32.scale(this.offset.getValue().doubleValue()));
-        BlockHitResult blockHitResult = PearlChaseModule.mc.level.clip(new ClipContext(vec33.add(0.0, 2.0, 0.0), vec33.subtract(0.0, 10.0, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PearlChaseModule.mc.player));
+        Vec3 dir = new Vec3(deltaX, 0.0, deltaZ);
+        dir = horizDist > 1.0E-4 ? dir.scale(1.0 / horizDist) : Vec3.ZERO;
+        Vec3 targetPos = enemyLanding.add(dir.scale(this.offset.getValue().doubleValue()));
+        BlockHitResult blockHitResult = PearlChaseModule.mc.level.clip(new ClipContext(targetPos.add(0.0, 2.0, 0.0), targetPos.subtract(0.0, 10.0, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PearlChaseModule.mc.player));
         if (blockHitResult.getType() != HitResult.Type.MISS) {
-            vec33 = blockHitResult.getLocation();
+            targetPos = blockHitResult.getLocation();
         }
-        if ((trajectorySolution = this.solveTrajectory(vec33)) == null) {
+        if ((trajectorySolution = this.solveTrajectory(targetPos)) == null) {
             return;
         }
-        int n = this.delay.getValue().intValue();
-        if (n <= 0) {
-            this.executeThrow(trajectorySolution.yaw(), trajectorySolution.pitch(), vec33, trajectorySolution.path());
+        int delayTicks = this.delay.getValue().intValue();
+        if (delayTicks <= 0) {
+            this.executeThrow(trajectorySolution.yaw(), trajectorySolution.pitch(), targetPos, trajectorySolution.path());
         } else {
-            this.pendingThrow = new PendingThrow(vec33, trajectorySolution.yaw(), trajectorySolution.pitch(), n, trajectorySolution.path());
+            this.pendingThrow = new PendingThrow(targetPos, trajectorySolution.yaw(), trajectorySolution.pitch(), delayTicks, trajectorySolution.path());
         }
     }
 
@@ -173,8 +173,8 @@ extends Module {
             if (!this.whileEating.getValue() && EntityUtils.isEating()) {
                 return;
             }
-            int n = this.pendingThrow.delayTicks() - 1;
-            if (n <= 0) {
+            int remainingDelay = this.pendingThrow.delayTicks() - 1;
+            if (remainingDelay <= 0) {
                 TrajectorySolution trajectorySolution = this.solveTrajectory(this.pendingThrow.targetPos());
                 if (trajectorySolution != null) {
                     this.executeThrow(trajectorySolution.yaw(), trajectorySolution.pitch(), this.pendingThrow.targetPos(), trajectorySolution.path());
@@ -183,43 +183,43 @@ extends Module {
                 }
                 this.pendingThrow = null;
             } else {
-                this.pendingThrow = new PendingThrow(this.pendingThrow.targetPos(), this.pendingThrow.yaw(), this.pendingThrow.pitch(), n, this.pendingThrow.path());
+                this.pendingThrow = new PendingThrow(this.pendingThrow.targetPos(), this.pendingThrow.yaw(), this.pendingThrow.pitch(), remainingDelay, this.pendingThrow.path());
             }
         }
     }
 
     @SubscribeEvent
     public void onRenderWorld(RenderWorldEvent renderWorldEvent) {
-        long l;
+        long durationMs;
         if (!this.render.getValue() || this.renderLandingPos == null || PearlChaseModule.mc.player == null || PearlChaseModule.mc.level == null) {
             return;
         }
-        long l2 = this.renderTimer.timeElapsed();
-        if (l2 > (l = (long)(this.renderDuration.getValue().doubleValue() * 1000.0))) {
+        long elapsedMs = this.renderTimer.timeElapsed();
+        if (elapsedMs > (durationMs = (long)(this.renderDuration.getValue().doubleValue() * 1000.0))) {
             this.renderLandingPos = null;
             this.renderPath = null;
             return;
         }
-        float f = 1.0f - (float)l2 / (float)l;
-        int n = (int)(60.0f * f);
-        int n2 = (int)(220.0f * f);
-        if (n <= 0 && n2 <= 0) {
+        float alphaFactor = 1.0f - (float)elapsedMs / (float)durationMs;
+        int fillAlpha = (int)(60.0f * alphaFactor);
+        int outlineAlpha = (int)(220.0f * alphaFactor);
+        if (fillAlpha <= 0 && outlineAlpha <= 0) {
             return;
         }
-        Color color = new Color(0, 230, 255, n);
-        Color color2 = new Color(0, 230, 255, n2);
-        Color color3 = new Color(80, 255, 180, n2);
+        Color fillColor = new Color(0, 230, 255, fillAlpha);
+        Color outlineColor = new Color(0, 230, 255, outlineAlpha);
+        Color lineColor = new Color(80, 255, 180, outlineAlpha);
         AABB aABB = new AABB(this.renderLandingPos.x - 0.35, this.renderLandingPos.y, this.renderLandingPos.z - 0.35, this.renderLandingPos.x + 0.35, this.renderLandingPos.y + 0.7, this.renderLandingPos.z + 0.35);
-        Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, color);
-        Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, color2);
+        Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, fillColor);
+        Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, outlineColor);
         if (this.renderPath != null && this.renderPath.size() > 1) {
             for (int i = 0; i < this.renderPath.size() - 1; ++i) {
-                Renderer3D.renderLine(renderWorldEvent.getMatrices(), this.renderPath.get(i), this.renderPath.get(i + 1), color3);
+                Renderer3D.renderLine(renderWorldEvent.getMatrices(), this.renderPath.get(i), this.renderPath.get(i + 1), lineColor);
             }
         }
     }
 
-    private void executeThrow(float f, float f2, Vec3 vec3, List<Vec3> list) {
+    private void executeThrow(float yaw, float pitch, Vec3 landingPos, List<Vec3> path) {
         if (this.switchMode.getValue().equalsIgnoreCase("None") && PearlChaseModule.mc.player.getMainHandItem().getItem() != Items.ENDER_PEARL) {
             if (this.itemDisable.getValue()) {
                 Night.CHAT_MANAGER.tagged("You are currently not holding an Ender Pearl.", this.getName());
@@ -227,9 +227,9 @@ extends Module {
             }
             return;
         }
-        int n2 = InventoryUtils.find(Items.ENDER_PEARL, 0, this.switchMode.getValue().equalsIgnoreCase("AltSwap") || this.switchMode.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n3 = PearlChaseModule.mc.player.getInventory().getSelectedSlot();
-        if (n2 == -1) {
+        int pearlSlot = InventoryUtils.find(Items.ENDER_PEARL, 0, this.switchMode.getValue().equalsIgnoreCase("AltSwap") || this.switchMode.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int oldSlot = PearlChaseModule.mc.player.getInventory().getSelectedSlot();
+        if (pearlSlot == -1) {
             if (this.itemDisable.getValue()) {
                 Night.CHAT_MANAGER.tagged("No Ender Pearls could be found in your inventory.", this.getName());
                 this.setToggled(false);
@@ -237,141 +237,139 @@ extends Module {
             return;
         }
         if (this.rotate.getValue().equalsIgnoreCase("Silent")) {
-            Night.ROTATION_MANAGER.packetRotate(f, f2, true);
+            Night.ROTATION_MANAGER.packetRotate(yaw, pitch, true);
         } else if (this.rotate.getValue().equalsIgnoreCase("Normal")) {
-            Night.ROTATION_MANAGER.legacyRotate(new float[]{f, f2}, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
-            PearlChaseModule.mc.player.setYRot(f);
-            PearlChaseModule.mc.player.setXRot(f2);
+            Night.ROTATION_MANAGER.legacyRotate(new float[]{yaw, pitch}, Night.ROTATION_MANAGER.getLegacyModulePriority(this));
+            PearlChaseModule.mc.player.setYRot(yaw);
+            PearlChaseModule.mc.player.setXRot(pitch);
         }
-        InventoryUtils.switchSlot(this.switchMode.getValue(), n2, n3);
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, f, f2));
+        InventoryUtils.switchSlot(this.switchMode.getValue(), pearlSlot, oldSlot);
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, yaw, pitch));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-        InventoryUtils.switchBack(this.switchMode.getValue(), n2, n3);
-        this.renderLandingPos = vec3;
-        this.renderPath = list;
+        InventoryUtils.switchBack(this.switchMode.getValue(), pearlSlot, oldSlot);
+        this.renderLandingPos = landingPos;
+        this.renderPath = path;
         this.renderTimer.reset();
     }
 
     private Vec3 predictEnemyLanding(ThrownEnderpearl thrownEnderpearl, Player player) {
-        Vec3 vec3 = thrownEnderpearl.position();
-        Vec3 vec32 = thrownEnderpearl.getDeltaMovement();
-        if (vec32.lengthSqr() < 1.0E-4 && player != null) {
-            vec32 = PearlChaseModule.getPearlInitialVelocity(player.getYRot(), player.getXRot(), player.getDeltaMovement(), player.onGround());
+        Vec3 pos = thrownEnderpearl.position();
+        Vec3 vel = thrownEnderpearl.getDeltaMovement();
+        if (vel.lengthSqr() < 1.0E-4 && player != null) {
+            vel = PearlChaseModule.getPearlInitialVelocity(player.getYRot(), player.getXRot(), player.getDeltaMovement(), player.onGround());
         }
         for (int i = 0; i < 300; ++i) {
-            Vec3 vec33 = vec3.add(vec32);
-            BlockHitResult blockHitResult = PearlChaseModule.mc.level.clip(new ClipContext(vec3, vec33, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)thrownEnderpearl));
+            Vec3 nextPos = pos.add(vel);
+            BlockHitResult blockHitResult = PearlChaseModule.mc.level.clip(new ClipContext(pos, nextPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)thrownEnderpearl));
             if (blockHitResult.getType() != HitResult.Type.MISS) {
                 return blockHitResult.getLocation();
             }
-            vec3 = vec33;
-            vec32 = vec32.scale(0.99).subtract(0.0, 0.03, 0.0);
+            pos = nextPos;
+            vel = vel.scale(0.99).subtract(0.0, 0.03, 0.0);
         }
-        return vec3;
+        return pos;
     }
 
-    private TrajectorySolution solveTrajectory(Vec3 vec3) {
-        float[] fArray;
-        float f;
-        Vec3 vec32 = PearlChaseModule.mc.player.getEyePosition();
-        Vec3 vec33 = vec3.subtract(vec32);
-        float f2 = f = (float)Math.toDegrees(Math.atan2(-vec33.x, vec33.z));
-        float f3 = 0.0f;
-        double d = Double.MAX_VALUE;
+    private TrajectorySolution solveTrajectory(Vec3 targetPos) {
+        float[] yawOffsets;
+        float baseYaw;
+        Vec3 eyePos = PearlChaseModule.mc.player.getEyePosition();
+        Vec3 toTarget = targetPos.subtract(eyePos);
+        float bestYaw = baseYaw = (float)Math.toDegrees(Math.atan2(-toTarget.x, toTarget.z));
+        float bestPitch = 0.0f;
+        double bestScore = Double.MAX_VALUE;
         if (this.avoidObstacles.getValue()) {
-            fArray = new float[]{0.0f, -1.0f, 1.0f, -2.5f, 2.5f, -4.0f, 4.0f};
+            yawOffsets = new float[]{0.0f, -1.0f, 1.0f, -2.5f, 2.5f, -4.0f, 4.0f};
         } else {
-            fArray = new float[]{0.0f};
+            yawOffsets = new float[]{0.0f};
         }
-        float[] fArray2 = fArray;
-        for (float f4 : fArray) {
-            float f5 = f + f4;
-            for (float f6 = -85.0f; f6 <= 85.0f; f6 += 1.0f) {
-                SimulationResult simulationResult = this.simulatePearl(vec32, f5, f6, vec3, false);
-                double d2 = simulationResult.distToTarget();
+        for (float yawOffset : yawOffsets) {
+            float testYaw = baseYaw + yawOffset;
+            for (float testPitch = -85.0f; testPitch <= 85.0f; testPitch += 1.0f) {
+                SimulationResult simulationResult = this.simulatePearl(eyePos, testYaw, testPitch, targetPos, false);
+                double score = simulationResult.distToTarget();
                 if (simulationResult.hitEarlyObstacle()) {
-                    d2 += 500.0;
+                    score += 500.0;
                 }
                 if (this.arcMode.getValue().equalsIgnoreCase("Low")) {
-                    d2 += (double)Math.max(0.0f, -f6) * 0.1;
+                    score += (double)Math.max(0.0f, -testPitch) * 0.1;
                 } else if (this.arcMode.getValue().equalsIgnoreCase("High")) {
-                    d2 += Math.max(0.0, (double)f6 + 50.0) * 0.2;
+                    score += Math.max(0.0, (double)testPitch + 50.0) * 0.2;
                 } else if (this.arcMode.getValue().equalsIgnoreCase("Smart") && !simulationResult.hitEarlyObstacle()) {
-                    d2 += (double)Math.max(0.0f, -f6) * 0.02;
+                    score += (double)Math.max(0.0f, -testPitch) * 0.02;
                 }
-                if (!(d2 < d)) continue;
-                d = d2;
-                f3 = f6;
-                f2 = f5;
+                if (!(score < bestScore)) continue;
+                bestScore = score;
+                bestPitch = testPitch;
+                bestYaw = testYaw;
             }
-            if (d < 1.0) break;
+            if (bestScore < 1.0) break;
         }
-        float f7 = f3;
-        for (float f8 = f3 - 1.5f; f8 <= f3 + 1.5f; f8 += 0.1f) {
-            SimulationResult simulationResult = this.simulatePearl(vec32, f2, f8, vec3, false);
-            double d3 = simulationResult.distToTarget();
+        float refinedPitch = bestPitch;
+        for (float finePitch = bestPitch - 1.5f; finePitch <= bestPitch + 1.5f; finePitch += 0.1f) {
+            SimulationResult simulationResult = this.simulatePearl(eyePos, bestYaw, finePitch, targetPos, false);
+            double fineScore = simulationResult.distToTarget();
             if (simulationResult.hitEarlyObstacle()) {
-                d3 += 500.0;
+                fineScore += 500.0;
             }
-            if (!(d3 < d)) continue;
-            d = d3;
-            f7 = f8;
+            if (!(fineScore < bestScore)) continue;
+            bestScore = fineScore;
+            refinedPitch = finePitch;
         }
-        SimulationResult simulationResult = this.simulatePearl(vec32, f2, f7, vec3, true);
-        return new TrajectorySolution(f2, f7, simulationResult.path());
+        SimulationResult simulationResult = this.simulatePearl(eyePos, bestYaw, refinedPitch, targetPos, true);
+        return new TrajectorySolution(bestYaw, refinedPitch, simulationResult.path());
     }
 
-    private SimulationResult simulatePearl(Vec3 vec3, float f, float f2, Vec3 vec32, boolean bl) {
-        Vec3 vec33 = PearlChaseModule.mc.player != null ? PearlChaseModule.mc.player.getDeltaMovement() : Vec3.ZERO;
-        boolean bl2 = PearlChaseModule.mc.player == null || PearlChaseModule.mc.player.onGround();
-        Vec3 vec34 = PearlChaseModule.getPearlInitialVelocity(f, f2, vec33, bl2);
-        Vec3 vec35 = vec3;
-        ArrayList<Vec3> arrayList = bl ? new ArrayList<Vec3>() : null;
-        ArrayList<Vec3> arrayList2 = arrayList;
-        if (bl) {
-            arrayList.add(vec35);
+    private SimulationResult simulatePearl(Vec3 startPos, float yaw, float pitch, Vec3 targetPos, boolean recordPath) {
+        Vec3 playerVel = PearlChaseModule.mc.player != null ? PearlChaseModule.mc.player.getDeltaMovement() : Vec3.ZERO;
+        boolean onGround = PearlChaseModule.mc.player == null || PearlChaseModule.mc.player.onGround();
+        Vec3 vel = PearlChaseModule.getPearlInitialVelocity(yaw, pitch, playerVel, onGround);
+        Vec3 pos = startPos;
+        ArrayList<Vec3> path = recordPath ? new ArrayList<Vec3>() : null;
+        if (recordPath) {
+            path.add(pos);
         }
-        Vec3 vec36 = null;
-        boolean bl3 = false;
-        double d = vec32.distanceTo(vec3);
+        Vec3 landingPos = null;
+        boolean hitObstacle = false;
+        double totalDist = targetPos.distanceTo(startPos);
         for (int i = 0; i < 250; ++i) {
-            Vec3 vec37 = vec35.add(vec34);
-            BlockHitResult blockHitResult = PearlChaseModule.mc.level.clip(new ClipContext(vec35, vec37, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PearlChaseModule.mc.player));
+            Vec3 nextPos = pos.add(vel);
+            BlockHitResult blockHitResult = PearlChaseModule.mc.level.clip(new ClipContext(pos, nextPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)PearlChaseModule.mc.player));
             if (blockHitResult.getType() != HitResult.Type.MISS) {
-                vec36 = blockHitResult.getLocation();
-                if (bl) {
-                    arrayList.add(vec36);
+                landingPos = blockHitResult.getLocation();
+                if (recordPath) {
+                    path.add(landingPos);
                 }
-                double d2 = vec36.distanceTo(vec3);
-                double d3 = vec36.distanceTo(vec32);
-                if (!(d2 < d * 0.7) || !(d3 > 3.0)) break;
-                bl3 = true;
+                double hitDist = landingPos.distanceTo(startPos);
+                double remainingDist = landingPos.distanceTo(targetPos);
+                if (!(hitDist < totalDist * 0.7) || !(remainingDist > 3.0)) break;
+                hitObstacle = true;
                 break;
             }
-            vec35 = vec37;
-            if (bl) {
-                arrayList.add(vec35);
+            pos = nextPos;
+            if (recordPath) {
+                path.add(pos);
             }
-            vec34 = vec34.scale(0.99).subtract(0.0, 0.03, 0.0);
+            vel = vel.scale(0.99).subtract(0.0, 0.03, 0.0);
         }
-        if (vec36 == null) {
-            vec36 = vec35;
+        if (landingPos == null) {
+            landingPos = pos;
         }
-        double d4 = vec36.distanceTo(vec32);
-        return new SimulationResult(vec36, d4, bl3, arrayList != null ? arrayList.size() : 0, arrayList);
+        double distToTarget = landingPos.distanceTo(targetPos);
+        return new SimulationResult(landingPos, distToTarget, hitObstacle, path != null ? path.size() : 0, path);
     }
 
-    private static Vec3 getLookVector(float f, float f2) {
-        float f3 = -Mth.sin((double)(f * ((float)Math.PI / 180))) * Mth.cos((double)(f2 * ((float)Math.PI / 180)));
-        float f4 = -Mth.sin((double)(f2 * ((float)Math.PI / 180)));
-        float f5 = Mth.cos((double)(f * ((float)Math.PI / 180))) * Mth.cos((double)(f2 * ((float)Math.PI / 180)));
-        return new Vec3((double)f3, (double)f4, (double)f5).normalize();
+    private static Vec3 getLookVector(float yaw, float pitch) {
+        float vx = -Mth.sin((double)(yaw * ((float)Math.PI / 180))) * Mth.cos((double)(pitch * ((float)Math.PI / 180)));
+        float vy = -Mth.sin((double)(pitch * ((float)Math.PI / 180)));
+        float vz = Mth.cos((double)(yaw * ((float)Math.PI / 180))) * Mth.cos((double)(pitch * ((float)Math.PI / 180)));
+        return new Vec3((double)vx, (double)vy, (double)vz).normalize();
     }
 
-    private static Vec3 getPearlInitialVelocity(float f, float f2, Vec3 vec3, boolean bl) {
-        Vec3 vec32 = PearlChaseModule.getLookVector(f, f2);
-        Vec3 vec33 = new Vec3(vec3.x, bl ? 0.0 : vec3.y, vec3.z);
-        return vec32.scale(1.5).add(vec33);
+    private static Vec3 getPearlInitialVelocity(float yaw, float pitch, Vec3 playerVel, boolean onGround) {
+        Vec3 lookVec = PearlChaseModule.getLookVector(yaw, pitch);
+        Vec3 inheritedVel = new Vec3(playerVel.x, onGround ? 0.0 : playerVel.y, playerVel.z);
+        return lookVec.scale(1.5).add(inheritedVel);
     }
 
     private boolean validTarget(Player player) {
@@ -394,20 +392,20 @@ extends Module {
         if (PearlChaseModule.mc.player == null || PearlChaseModule.mc.level == null) {
             return null;
         }
-        Player player = null;
-        double d = 0.0;
-        for (Player player2 : PearlChaseModule.mc.level.players()) {
-            if (!this.validTarget(player2)) continue;
+        Player bestTarget = null;
+        double bestScore = 0.0;
+        for (Player candidate : PearlChaseModule.mc.level.players()) {
+            if (!this.validTarget(candidate)) continue;
             double score = switch (this.target.getValue()) {
-                case "Lowest" -> (double)(player2.getHealth() + player2.getAbsorptionAmount());
-                case "Furthest" -> -PearlChaseModule.mc.player.distanceToSqr((Entity)player2);
-                default -> PearlChaseModule.mc.player.distanceToSqr((Entity)player2);
+                case "Lowest" -> (double)(candidate.getHealth() + candidate.getAbsorptionAmount());
+                case "Furthest" -> -PearlChaseModule.mc.player.distanceToSqr((Entity)candidate);
+                default -> PearlChaseModule.mc.player.distanceToSqr((Entity)candidate);
             };
-            if (player != null && !(score < d)) continue;
-            player = player2;
-            d = score;
+            if (bestTarget != null && !(score < bestScore)) continue;
+            bestTarget = candidate;
+            bestScore = score;
         }
-        return player;
+        return bestTarget;
     }
 
     private record PendingThrow(Vec3 targetPos, float yaw, float pitch, int delayTicks, List<Vec3> path) {

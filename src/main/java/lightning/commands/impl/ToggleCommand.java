@@ -20,12 +20,12 @@ import net.minecraft.ChatFormatting;
 public class ToggleCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
             return this.moduleNames();
         }
-        if (stringArray.length == 1) {
-            Module module = Night.MODULE_MANAGER.getModule(stringArray[0]);
+        if (args.length == 1) {
+            Module module = Night.MODULE_MANAGER.getModule(args[0]);
             if (module == null) {
                 return List.of();
             }
@@ -35,14 +35,14 @@ extends Command {
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 1 || stringArray.length == 2) {
-            Module module = Night.MODULE_MANAGER.getModule(stringArray[0]);
+    public void execute(String[] args) {
+        if (args.length == 1 || args.length == 2) {
+            Module module = Night.MODULE_MANAGER.getModule(args[0]);
             if (module == null) {
                 Night.CHAT_MANAGER.tagged("Could not find the module specified.", this.getTag(), this.getName());
                 return;
             }
-            if (stringArray.length == 1) {
+            if (args.length == 1) {
                 if (module.isPersistent()) {
                     Night.CHAT_MANAGER.tagged("Cannot toggle a persistent module.", this.getTag(), this.getName());
                     return;
@@ -50,8 +50,8 @@ extends Command {
                 module.setToggled(!module.isToggled(), false);
                 Night.CHAT_MANAGER.tagged(String.valueOf(ChatUtils.getPrimary()) + module.getName() + String.valueOf(ChatUtils.getSecondary()) + " has been toggled " + (module.isToggled() ? String.valueOf(ChatFormatting.GREEN) + "on" : String.valueOf(ChatFormatting.RED) + "off") + String.valueOf(ChatUtils.getSecondary()) + ".", this.getTag(), this.getName() + "-cmd-" + module.getName());
             }
-            if (stringArray.length == 2) {
-                Setting setting = module.getSetting(stringArray[1]);
+            if (args.length == 2) {
+                Setting setting = module.getSetting(args[1]);
                 if (setting == null) {
                     Night.CHAT_MANAGER.tagged("Could not find the setting specified.", this.getTag(), this.getName());
                     return;

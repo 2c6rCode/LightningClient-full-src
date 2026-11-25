@@ -29,18 +29,18 @@ public interface IChamsCapture {
 
     public float night$chamsRealAlpha();
 
-    public void night$setChamsRealAlpha(float var1);
+    public void night$setChamsRealAlpha(float alpha);
 
     public float night$chamsYOffset();
 
-    public void night$setChamsYOffset(float var1);
+    public void night$setChamsYOffset(float yOffset);
 
-    public void night$setChams(boolean var1, int var2, boolean var3, int var4, boolean var5);
+    public void night$setChams(boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine);
 
-    public void night$setChams(boolean var1, int var2, boolean var3, int var4, boolean var5, boolean var6);
+    public void night$setChams(boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine, boolean suppressReal);
 
-    public void night$setChamsGlint(boolean var1, int var2);
+    public void night$setChamsGlint(boolean glint, int glintColor);
 
-    public void night$setChamsGlint(boolean var1, int var2, Glint.GlintParams var3);
+    public void night$setChamsGlint(boolean glint, int glintColor, Glint.GlintParams glintParams);
 }
 

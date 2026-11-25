@@ -10,15 +10,15 @@ import lightning.commands.RegisterCommand;
 public class SayCommand
 extends Command {
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length >= 1) {
-            StringBuilder stringBuilder = new StringBuilder();
-            int n = 0;
-            for (String string : stringArray) {
-                stringBuilder.append(string).append(n + 1 == stringArray.length ? "" : " ");
-                ++n;
+    public void execute(String[] args) {
+        if (args.length >= 1) {
+            StringBuilder builder = new StringBuilder();
+            int index = 0;
+            for (String part : args) {
+                builder.append(part).append(index + 1 == args.length ? "" : " ");
+                ++index;
             }
-            mc.getConnection().sendChat(stringBuilder.toString());
+            mc.getConnection().sendChat(builder.toString());
         } else {
             this.messageSyntax();
         }

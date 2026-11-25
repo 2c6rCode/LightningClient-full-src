@@ -46,15 +46,15 @@ extends Module {
 
     @Override
     public void onEnable() {
-        DiscordIPC.setOnError((n, string) -> LOGGER.warn("[RPC] Discord IPC error {}: {}", n, string));
+        DiscordIPC.setOnError((errorCode, message) -> LOGGER.warn("[RPC] Discord IPC error {}: {}", errorCode, message));
         this.rpc.setStart(Night.UPTIME / 1000L);
         this.connect();
     }
 
     private void connect() {
         DiscordIPC.stop();
-        boolean bl = DiscordIPC.start(this.appIdForMode(), () -> LOGGER.info("[RPC] Connected to Discord IPC"));
-        if (!bl) {
+        boolean started = DiscordIPC.start(this.appIdForMode(), () -> LOGGER.info("[RPC] Connected to Discord IPC"));
+        if (!started) {
             LOGGER.warn("[RPC] DiscordIPC.start() returned false -- no local Discord IPC pipe found (is Discord running?)");
             return;
         }
@@ -69,8 +69,8 @@ extends Module {
             this.rpc.setState(null);
             return;
         }
-        String string = "30th6_";
-        this.rpc.setState(string != null ? "UID " + string : null);
+        String uid = "30th6_";
+        this.rpc.setState(uid != null ? "UID " + uid : null);
     }
 
     private long appIdForMode() {

@@ -57,13 +57,12 @@ extends Module {
         if (elytraFlyModule.isToggled() && elytraFlyModule.mode.getValue().equalsIgnoreCase("Control") && TickShiftModule.mc.player.isFallFlying()) {
             return;
         }
-        boolean bl = ((ISprintModule)((Object)Night.MODULE_MANAGER.getModule("Sprint"))).isInstantMode();
-        boolean bl2 = TickShiftModule.mc.player.xxa == 0.0f && TickShiftModule.mc.player.zza == 0.0f && TickShiftModule.mc.player.fallDistance == 0.0;
-        boolean bl3 = bl2;
-        if (!bl) {
-            bl2 |= EntityUtils.getSpeed((Entity)TickShiftModule.mc.player, EntityUtils.SpeedUnit.KILOMETERS) <= 5.0;
+        boolean instantSprint = ((ISprintModule)((Object)Night.MODULE_MANAGER.getModule("Sprint"))).isInstantMode();
+        boolean charging = TickShiftModule.mc.player.xxa == 0.0f && TickShiftModule.mc.player.zza == 0.0f && TickShiftModule.mc.player.fallDistance == 0.0;
+        if (!instantSprint) {
+            charging |= EntityUtils.getSpeed((Entity)TickShiftModule.mc.player, EntityUtils.SpeedUnit.KILOMETERS) <= 5.0;
         }
-        if (bl2) {
+        if (charging) {
             Night.WORLD_MANAGER.setTimerMultiplier(1.0f);
             if (this.wait >= this.delay.getValue().intValue()) {
                 if (this.ticks < this.maxTicks.getValue().intValue()) {
@@ -86,8 +85,8 @@ extends Module {
         return this.ticks;
     }
 
-    public void setTicks(int n) {
-        this.ticks = n;
+    public void setTicks(int ticks) {
+        this.ticks = ticks;
     }
 
     public boolean isShifting() {

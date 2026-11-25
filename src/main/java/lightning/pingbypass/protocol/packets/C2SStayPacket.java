@@ -14,8 +14,8 @@ extends PbPacket {
     public static final int ID = 9;
     private final boolean stay;
 
-    public C2SStayPacket(boolean bl) {
-        this.stay = bl;
+    public C2SStayPacket(boolean stay) {
+        this.stay = stay;
     }
 
     public C2SStayPacket(FriendlyByteBuf friendlyByteBuf) {

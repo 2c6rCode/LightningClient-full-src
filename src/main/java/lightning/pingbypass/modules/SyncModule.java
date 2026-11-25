@@ -13,46 +13,46 @@ import lightning.settings.impl.NumberSetting;
 import lightning.settings.impl.StringSetting;
 
 public class SyncModule {
-    public static void applyToggle(PbModule pbModule, boolean bl) {
-        pbModule.setToggled(bl);
+    public static void applyToggle(PbModule pbModule, boolean toggled) {
+        pbModule.setToggled(toggled);
     }
 
-    public static void applySetting(PbModule pbModule, String string, String string2) {
-        Setting setting = pbModule.getSetting(string);
+    public static void applySetting(PbModule pbModule, String settingName, String value) {
+        Setting setting = pbModule.getSetting(settingName);
         if (setting == null) {
             return;
         }
         if (setting instanceof BooleanSetting) {
             BooleanSetting booleanSetting = (BooleanSetting)setting;
-            booleanSetting.setValue(Boolean.parseBoolean(string2));
+            booleanSetting.setValue(Boolean.parseBoolean(value));
         } else if (setting instanceof NumberSetting) {
             NumberSetting numberSetting = (NumberSetting)setting;
             switch (numberSetting.getType()) {
                 case INTEGER: {
-                    numberSetting.setValue(Integer.parseInt(string2));
+                    numberSetting.setValue(Integer.parseInt(value));
                     break;
                 }
                 case LONG: {
-                    numberSetting.setValue(Long.parseLong(string2));
+                    numberSetting.setValue(Long.parseLong(value));
                     break;
                 }
                 case FLOAT: {
-                    numberSetting.setValue(Float.valueOf(Float.parseFloat(string2)));
+                    numberSetting.setValue(Float.valueOf(Float.parseFloat(value)));
                     break;
                 }
                 case DOUBLE: {
-                    numberSetting.setValue(Double.parseDouble(string2));
+                    numberSetting.setValue(Double.parseDouble(value));
                 }
             }
         } else if (setting instanceof ModeSetting) {
             ModeSetting modeSetting = (ModeSetting)setting;
-            modeSetting.setValue(string2);
+            modeSetting.setValue(value);
         } else if (setting instanceof StringSetting) {
             StringSetting stringSetting = (StringSetting)setting;
-            stringSetting.setValue(string2);
+            stringSetting.setValue(value);
         } else if (setting instanceof ColorSetting) {
             ColorSetting colorSetting = (ColorSetting)setting;
-            String[] stringArray = string2.split(",");
+            String[] stringArray = value.split(",");
             if (stringArray.length >= 4) {
                 colorSetting.setColor(new Color(Integer.parseInt(stringArray[0]), Integer.parseInt(stringArray[1]), Integer.parseInt(stringArray[2]), Integer.parseInt(stringArray[3])));
                 if (stringArray.length >= 5) {

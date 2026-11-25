@@ -48,9 +48,9 @@ extends Module {
             return false;
         }
         if (this.angryMobs.getValue() && entity != null) {
-            boolean bl = entity instanceof EndCrystal || entity instanceof VehicleEntity || entity instanceof ItemFrame || entity instanceof ArmorStand || !(entity instanceof LivingEntity);
-            boolean bl2 = entity instanceof NeutralMob;
-            return bl || bl2;
+            boolean isNonLiving = entity instanceof EndCrystal || entity instanceof VehicleEntity || entity instanceof ItemFrame || entity instanceof ArmorStand || !(entity instanceof LivingEntity);
+            boolean isNeutral = entity instanceof NeutralMob;
+            return isNonLiving || isNeutral;
         }
         return true;
     }

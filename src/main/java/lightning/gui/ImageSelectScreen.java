@@ -91,165 +91,164 @@ extends Screen {
         this.slideAnim.setEasing(Easing.Method.EASE_IN_CUBIC);
     }
 
-    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, this.width, this.height, new Color(10, 10, 10, 160));
     }
 
-    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        super.extractRenderState(guiGraphicsExtractor, n, n2, f);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
         if (this.lineTimer.hasTimeElapsed(400L)) {
             this.showLine = !this.showLine;
             this.lineTimer.reset();
         }
-        float f2 = this.slideAnim.get(this.closing ? 0.0f : 1.0f);
-        if (this.closing && f2 <= 0.001f) {
+        float slideProgress = this.slideAnim.get(this.closing ? 0.0f : 1.0f);
+        if (this.closing && slideProgress <= 0.001f) {
             Minecraft.getInstance().gui.setScreen(this.parent);
             return;
         }
-        int n3 = 364;
-        this.colX1 = (this.width - n3) / 2;
+        int totalWidth = 364;
+        this.colX1 = (this.width - totalWidth) / 2;
         this.colX2 = this.colX1 + 175 + 14;
         this.colY = Math.max(15, (this.height - 240) / 2);
         this.colHeight = Math.min(260, this.height - 30);
         guiGraphicsExtractor.pose().pushMatrix();
-        guiGraphicsExtractor.pose().translate(0.0f, (1.0f - f2) * -160.0f);
-        List<File> list = this.query.isEmpty() ? this.allFiles : this.filterFiles(this.allFiles, this.query);
-        this.renderListColumn(guiGraphicsExtractor, n, n2, this.colX1, list);
-        this.renderPreviewColumn(guiGraphicsExtractor, n, n2, this.colX2);
+        guiGraphicsExtractor.pose().translate(0.0f, (1.0f - slideProgress) * -160.0f);
+        List<File> files = this.query.isEmpty() ? this.allFiles : this.filterFiles(this.allFiles, this.query);
+        this.renderListColumn(guiGraphicsExtractor, mouseX, mouseY, this.colX1, files);
+        this.renderPreviewColumn(guiGraphicsExtractor, mouseX, mouseY, this.colX2);
         guiGraphicsExtractor.pose().popMatrix();
     }
 
-    private List<File> filterFiles(List<File> list, String string) {
-        String string2 = string.toLowerCase().trim();
-        return list.stream().filter(file -> file.getName().toLowerCase().contains(string2)).toList();
+    private List<File> filterFiles(List<File> files, String searchQuery) {
+        String lowerQuery = searchQuery.toLowerCase().trim();
+        return files.stream().filter(file -> file.getName().toLowerCase().contains(lowerQuery)).toList();
     }
 
-    private void renderListColumn(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, int n3, List<File> list) {
-        int n4;
-        Renderer2D.renderQuad(guiGraphicsExtractor, n3, this.colY, n3 + 175, this.colY + 15, new Color(21, 21, 21, 220));
-        Renderer2D.renderQuad(guiGraphicsExtractor, n3, this.colY + 15 - 1, n3 + 175, this.colY + 15, ClickGuiScreen.getButtonColor(this.colY, 200));
+    private void renderListColumn(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int colX, List<File> files) {
+        Renderer2D.renderQuad(guiGraphicsExtractor, colX, this.colY, colX + 175, this.colY + 15, new Color(21, 21, 21, 220));
+        Renderer2D.renderQuad(guiGraphicsExtractor, colX, this.colY + 15 - 1, colX + 175, this.colY + 15, ClickGuiScreen.getButtonColor(this.colY, 200));
         String text;
         if (this.query.isEmpty()) {
             text = "Images (search...)";
-            n4 = Night.FONT_MANAGER.getWidth(" ");
+            int spaceWidth = Night.FONT_MANAGER.getWidth(" ");
             if (this.showLine) {
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "|", n3 + 3, this.colY + 3, Color.WHITE);
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "|", colX + 3, this.colY + 3, Color.WHITE);
             }
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, text, n3 + 3 + n4, this.colY + 3, Color.GRAY);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, text, colX + 3 + spaceWidth, this.colY + 3, Color.GRAY);
         } else {
             text = this.query + (this.showLine ? "|" : " ");
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, text, n3 + 3, this.colY + 3, Color.WHITE);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, text, colX + 3, this.colY + 3, Color.WHITE);
         }
-        int n5 = this.colY + 15;
-        n4 = this.colHeight - 15;
-        Renderer2D.renderQuad(guiGraphicsExtractor, n3, n5, n3 + 175, n5 + n4, new Color(16, 16, 16, 190));
-        Renderer2D.renderOutline(guiGraphicsExtractor, n3, this.colY, n3 + 175, n5 + n4, ClickGuiScreen.getButtonColor(this.colY, 120));
-        if (list.isEmpty()) {
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "No images found in:", n3 + 10, n5 + 20, Color.GRAY);
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "Lightning/images", n3 + 10, n5 + 32, ClickGuiScreen.getButtonColor(n5, 220));
-            int n6 = n5 + 55;
-            int n7 = 16;
-            boolean bl = n >= n3 + 10 && n <= n3 + 175 - 10 && n2 >= n6 && n2 <= n6 + n7;
-            Color color = bl ? ClickGuiScreen.getButtonColor(n6, 200) : new Color(31, 31, 31, 200);
-            Renderer2D.renderQuad(guiGraphicsExtractor, n3 + 10, n6, n3 + 175 - 10, n6 + n7, color);
-            Renderer2D.renderOutline(guiGraphicsExtractor, n3 + 10, n6, n3 + 175 - 10, n6 + n7, ClickGuiScreen.getButtonColor(n6, 150));
-            int n8 = Night.FONT_MANAGER.getWidth("Open Folder");
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "Open Folder", n3 + (175 - n8) / 2, n6 + 4, Color.WHITE);
+        int bodyY = this.colY + 15;
+        int bodyHeight = this.colHeight - 15;
+        Renderer2D.renderQuad(guiGraphicsExtractor, colX, bodyY, colX + 175, bodyY + bodyHeight, new Color(16, 16, 16, 190));
+        Renderer2D.renderOutline(guiGraphicsExtractor, colX, this.colY, colX + 175, bodyY + bodyHeight, ClickGuiScreen.getButtonColor(this.colY, 120));
+        if (files.isEmpty()) {
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "No images found in:", colX + 10, bodyY + 20, Color.GRAY);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "Lightning/images", colX + 10, bodyY + 32, ClickGuiScreen.getButtonColor(bodyY, 220));
+            int btnY = bodyY + 55;
+            int btnH = 16;
+            boolean btnHovered = mouseX >= colX + 10 && mouseX <= colX + 175 - 10 && mouseY >= btnY && mouseY <= btnY + btnH;
+            Color color = btnHovered ? ClickGuiScreen.getButtonColor(btnY, 200) : new Color(31, 31, 31, 200);
+            Renderer2D.renderQuad(guiGraphicsExtractor, colX + 10, btnY, colX + 175 - 10, btnY + btnH, color);
+            Renderer2D.renderOutline(guiGraphicsExtractor, colX + 10, btnY, colX + 175 - 10, btnY + btnH, ClickGuiScreen.getButtonColor(btnY, 150));
+            int btnTextWidth = Night.FONT_MANAGER.getWidth("Open Folder");
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "Open Folder", colX + (175 - btnTextWidth) / 2, btnY + 4, Color.WHITE);
             return;
         }
-        guiGraphicsExtractor.enableScissor(n3, n5, n3 + 175, n5 + n4);
-        int n9 = n4 / 18 + 2;
-        int n10 = (int)this.scrollList;
-        for (int i = 0; i < n9; ++i) {
-            int n11 = n10 + i;
-            if (n11 < 0 || n11 >= list.size()) continue;
-            File file = list.get(n11);
-            int n12 = n5 + Math.round((float)(i * 18) - (this.scrollList - (float)n10) * 18.0f);
-            if (n12 + 18 < n5 || n12 > n5 + n4) continue;
-            this.renderRow(guiGraphicsExtractor, n, n2, n3, n12, file);
+        guiGraphicsExtractor.enableScissor(colX, bodyY, colX + 175, bodyY + bodyHeight);
+        int visibleRows = bodyHeight / 18 + 2;
+        int startIdx = (int)this.scrollList;
+        for (int i = 0; i < visibleRows; ++i) {
+            int idx = startIdx + i;
+            if (idx < 0 || idx >= files.size()) continue;
+            File file = files.get(idx);
+            int rowY = bodyY + Math.round((float)(i * 18) - (this.scrollList - (float)startIdx) * 18.0f);
+            if (rowY + 18 < bodyY || rowY > bodyY + bodyHeight) continue;
+            this.renderRow(guiGraphicsExtractor, mouseX, mouseY, colX, rowY, file);
         }
         guiGraphicsExtractor.disableScissor();
     }
 
-    private void renderRow(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, int n3, int n4, File file) {
-        String string = file.getName();
-        boolean bl = string.equals(this.selectedPreviewName);
-        boolean bl2 = string.equals(this.setting.getValue());
-        boolean bl3 = n >= n3 && n < n3 + 175 && n2 >= n4 && n2 < n4 + 18 - 1;
-        Color color = bl ? new Color(255, 255, 255, 30) : (bl3 ? new Color(255, 255, 255, 15) : new Color(0, 0, 0, 0));
-        if (color.getAlpha() > 0) {
-            Renderer2D.renderQuad(guiGraphicsExtractor, n3, n4, n3 + 175, n4 + 18 - 1, color);
+    private void renderRow(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int colX, int rowY, File file) {
+        String name = file.getName();
+        boolean isPreviewing = name.equals(this.selectedPreviewName);
+        boolean isSelected = name.equals(this.setting.getValue());
+        boolean isHovered = mouseX >= colX && mouseX < colX + 175 && mouseY >= rowY && mouseY < rowY + 18 - 1;
+        Color bgColor = isPreviewing ? new Color(255, 255, 255, 30) : (isHovered ? new Color(255, 255, 255, 15) : new Color(0, 0, 0, 0));
+        if (bgColor.getAlpha() > 0) {
+            Renderer2D.renderQuad(guiGraphicsExtractor, colX, rowY, colX + 175, rowY + 18 - 1, bgColor);
         }
-        if (bl2) {
-            Renderer2D.renderQuad(guiGraphicsExtractor, n3, n4, n3 + 3, n4 + 18 - 1, ClickGuiScreen.getButtonColor(n4, 255));
+        if (isSelected) {
+            Renderer2D.renderQuad(guiGraphicsExtractor, colX, rowY, colX + 3, rowY + 18 - 1, ClickGuiScreen.getButtonColor(rowY, 255));
         }
-        Color color3 = bl2 ? Color.YELLOW : (bl ? ClickGuiScreen.getButtonColor(n4, 255) : Color.WHITE);
-        Object object = string;
-        if (Night.FONT_MANAGER.getWidth((String)object) > 155) {
-            while (Night.FONT_MANAGER.getWidth((String)object + "...") > 155 && ((String)object).length() > 3) {
-                object = ((String)object).substring(0, ((String)object).length() - 1);
+        Color textColor = isSelected ? Color.YELLOW : (isPreviewing ? ClickGuiScreen.getButtonColor(rowY, 255) : Color.WHITE);
+        String displayName = name;
+        if (Night.FONT_MANAGER.getWidth(displayName) > 155) {
+            while (Night.FONT_MANAGER.getWidth(displayName + "...") > 155 && displayName.length() > 3) {
+                displayName = displayName.substring(0, displayName.length() - 1);
             }
-            object = (String)object + "...";
+            displayName = displayName + "...";
         }
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object, n3 + 8, n4 + (18 - Night.FONT_MANAGER.getHeight()) / 2, color3);
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, displayName, colX + 8, rowY + (18 - Night.FONT_MANAGER.getHeight()) / 2, textColor);
     }
 
-    private void renderPreviewColumn(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, int n3) {
-        Renderer2D.renderQuad(guiGraphicsExtractor, n3, this.colY, n3 + 175, this.colY + 15, new Color(21, 21, 21, 220));
-        Renderer2D.renderQuad(guiGraphicsExtractor, n3, this.colY + 15 - 1, n3 + 175, this.colY + 15, ClickGuiScreen.getButtonColor(this.colY, 200));
-        Object object = "Preview" + (String)(this.selectedPreviewName != null ? ": " + this.selectedPreviewName : "");
-        if (Night.FONT_MANAGER.getWidth((String)object) > 165) {
-            object = "Preview";
+    private void renderPreviewColumn(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int colX) {
+        Renderer2D.renderQuad(guiGraphicsExtractor, colX, this.colY, colX + 175, this.colY + 15, new Color(21, 21, 21, 220));
+        Renderer2D.renderQuad(guiGraphicsExtractor, colX, this.colY + 15 - 1, colX + 175, this.colY + 15, ClickGuiScreen.getButtonColor(this.colY, 200));
+        String headerTitle = "Preview" + (this.selectedPreviewName != null ? ": " + this.selectedPreviewName : "");
+        if (Night.FONT_MANAGER.getWidth(headerTitle) > 165) {
+            headerTitle = "Preview";
         }
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object, n3 + 5, this.colY + 3, Color.WHITE);
-        int n4 = this.colY + 15;
-        int n5 = this.colHeight - 15;
-        Renderer2D.renderQuad(guiGraphicsExtractor, n3, n4, n3 + 175, n4 + n5, new Color(16, 16, 16, 190));
-        Renderer2D.renderOutline(guiGraphicsExtractor, n3, this.colY, n3 + 175, n4 + n5, ClickGuiScreen.getButtonColor(this.colY, 120));
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, headerTitle, colX + 5, this.colY + 3, Color.WHITE);
+        int bodyY = this.colY + 15;
+        int bodyHeight = this.colHeight - 15;
+        Renderer2D.renderQuad(guiGraphicsExtractor, colX, bodyY, colX + 175, bodyY + bodyHeight, new Color(16, 16, 16, 190));
+        Renderer2D.renderOutline(guiGraphicsExtractor, colX, this.colY, colX + 175, bodyY + bodyHeight, ClickGuiScreen.getButtonColor(this.colY, 120));
         if (this.currentPreviewEntry != null && this.currentPreviewEntry.texture != null && this.currentPreviewEntry.identifier != null) {
-            int n6;
-            int n7;
-            int n8 = 12;
-            int n9 = n3 + n8;
-            int n10 = n4 + n8;
-            int n11 = 175 - n8 * 2;
-            int n12 = n5 - n8 * 2 - 28;
-            Renderer2D.renderQuad(guiGraphicsExtractor, n9 - 1, n10 - 1, n9 + n11 + 1, n10 + n12 + 1, new Color(5, 5, 5, 220));
-            Renderer2D.renderOutline(guiGraphicsExtractor, n9 - 1, n10 - 1, n9 + n11 + 1, n10 + n12 + 1, new Color(41, 41, 41, 150));
-            float f = (float)this.currentPreviewEntry.width / (float)Math.max(1, this.currentPreviewEntry.height);
-            float f2 = (float)n11 / (float)n12;
-            if (f > f2) {
-                n7 = n11;
-                n6 = Math.max(1, Math.round((float)n11 / f));
+            int drawH;
+            int drawW;
+            int pad = 12;
+            int boxX = colX + pad;
+            int boxY = bodyY + pad;
+            int boxW = 175 - pad * 2;
+            int boxH = bodyHeight - pad * 2 - 28;
+            Renderer2D.renderQuad(guiGraphicsExtractor, boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, new Color(5, 5, 5, 220));
+            Renderer2D.renderOutline(guiGraphicsExtractor, boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, new Color(41, 41, 41, 150));
+            float aspect = (float)this.currentPreviewEntry.width / (float)Math.max(1, this.currentPreviewEntry.height);
+            float boxAspect = (float)boxW / (float)boxH;
+            if (aspect > boxAspect) {
+                drawW = boxW;
+                drawH = Math.max(1, Math.round((float)boxW / aspect));
             } else {
-                n6 = n12;
-                n7 = Math.max(1, Math.round((float)n12 * f));
+                drawH = boxH;
+                drawW = Math.max(1, Math.round((float)boxH * aspect));
             }
-            int n13 = n9 + (n11 - n7) / 2;
-            int n14 = n10 + (n12 - n6) / 2;
-            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, this.currentPreviewEntry.identifier, n13, n14, 0.0f, 0.0f, n7, n6, n7, n6, n7, n6, -1);
-            String string = this.currentPreviewEntry.width + " x " + this.currentPreviewEntry.height + " px";
-            int n15 = Night.FONT_MANAGER.getWidth(string);
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n3 + (175 - n15) / 2, n10 + n12 + 4, Color.LIGHT_GRAY);
-            String string2 = "Double-click item to select";
-            int n16 = Night.FONT_MANAGER.getWidth(string2);
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string2, n3 + (175 - n16) / 2, n10 + n12 + 15, Color.GRAY);
+            int drawX = boxX + (boxW - drawW) / 2;
+            int drawY = boxY + (boxH - drawH) / 2;
+            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, this.currentPreviewEntry.identifier, drawX, drawY, 0.0f, 0.0f, drawW, drawH, drawW, drawH, drawW, drawH, -1);
+            String dimText = this.currentPreviewEntry.width + " x " + this.currentPreviewEntry.height + " px";
+            int dimWidth = Night.FONT_MANAGER.getWidth(dimText);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, dimText, colX + (175 - dimWidth) / 2, boxY + boxH + 4, Color.LIGHT_GRAY);
+            String selectHint = "Double-click item to select";
+            int selectHintWidth = Night.FONT_MANAGER.getWidth(selectHint);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, selectHint, colX + (175 - selectHintWidth) / 2, boxY + boxH + 15, Color.GRAY);
         } else {
-            String string = "Select an image on the left";
-            int n17 = Night.FONT_MANAGER.getWidth(string);
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n3 + (175 - n17) / 2, n4 + n5 / 2 - 6, Color.GRAY);
+            String hintText = "Select an image on the left";
+            int emptyHintWidth = Night.FONT_MANAGER.getWidth(hintText);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, hintText, colX + (175 - emptyHintWidth) / 2, bodyY + bodyHeight / 2 - 6, Color.GRAY);
         }
     }
 
-    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean bl) {
-        double d = mouseButtonEvent.x();
-        double d2 = mouseButtonEvent.y();
+    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean doubleClick) {
+        double mouseX = mouseButtonEvent.x();
+        double mouseY = mouseButtonEvent.y();
         if (mouseButtonEvent.button() != 0) {
-            return super.mouseClicked(mouseButtonEvent, bl);
+            return super.mouseClicked(mouseButtonEvent, doubleClick);
         }
-        int n = this.colY + 15;
-        int n2 = this.colHeight - 15;
-        if (this.allFiles.isEmpty() && d >= (double)(this.colX1 + 10) && d <= (double)(this.colX1 + 175 - 10) && d2 >= (double)(n + 55) && d2 <= (double)(n + 71)) {
+        int bodyY = this.colY + 15;
+        int bodyHeight = this.colHeight - 15;
+        if (this.allFiles.isEmpty() && mouseX >= (double)(this.colX1 + 10) && mouseX <= (double)(this.colX1 + 175 - 10) && mouseY >= (double)(bodyY + 55) && mouseY <= (double)(bodyY + 71)) {
             try {
                 Desktop.getDesktop().open(ImageManager.IMAGES_DIR.toFile());
             }
@@ -258,55 +257,55 @@ extends Screen {
             }
             return true;
         }
-        if (d >= (double)this.colX1 && d < (double)(this.colX1 + 175) && d2 >= (double)n && d2 < (double)(n + n2)) {
-            List<File> list = this.query.isEmpty() ? this.allFiles : this.filterFiles(this.allFiles, this.query);
-            int n3 = (int)(d2 - (double)n);
-            int n4 = (int)this.scrollList + n3 / 18;
-            if (n4 >= 0 && n4 < list.size()) {
-                File file = list.get(n4);
-                String string = file.getName();
-                long l = System.currentTimeMillis();
-                if (bl || string.equals(this.lastClickedItem) && l - this.lastClickTime < 350L) {
-                    this.setting.setValue(string);
+        if (mouseX >= (double)this.colX1 && mouseX < (double)(this.colX1 + 175) && mouseY >= (double)bodyY && mouseY < (double)(bodyY + bodyHeight)) {
+            List<File> files = this.query.isEmpty() ? this.allFiles : this.filterFiles(this.allFiles, this.query);
+            int relY = (int)(mouseY - (double)bodyY);
+            int clickedIdx = (int)this.scrollList + relY / 18;
+            if (clickedIdx >= 0 && clickedIdx < files.size()) {
+                File file = files.get(clickedIdx);
+                String fileName = file.getName();
+                long now = System.currentTimeMillis();
+                if (doubleClick || fileName.equals(this.lastClickedItem) && now - this.lastClickTime < 350L) {
+                    this.setting.setValue(fileName);
                     if (Night.IMAGE_MANAGER != null) {
-                        Night.IMAGE_MANAGER.setCurrentActiveImage(string);
+                        Night.IMAGE_MANAGER.setCurrentActiveImage(fileName);
                     }
                     this.requestClose();
                     return true;
                 }
-                this.selectedPreviewName = string;
-                this.lastClickedItem = string;
-                this.lastClickTime = l;
-                this.setting.setValue(string);
+                this.selectedPreviewName = fileName;
+                this.lastClickedItem = fileName;
+                this.lastClickTime = now;
+                this.setting.setValue(fileName);
                 if (Night.IMAGE_MANAGER != null) {
-                    Night.IMAGE_MANAGER.setCurrentActiveImage(string);
+                    Night.IMAGE_MANAGER.setCurrentActiveImage(fileName);
                 }
                 this.updatePreview();
                 return true;
             }
         }
-        return super.mouseClicked(mouseButtonEvent, bl);
+        return super.mouseClicked(mouseButtonEvent, doubleClick);
     }
 
-    public boolean mouseScrolled(double d, double d2, double d3, double d4) {
-        if (d >= (double)this.colX1 && d < (double)(this.colX1 + 175)) {
-            List<File> list = this.query.isEmpty() ? this.allFiles : this.filterFiles(this.allFiles, this.query);
-            int n = this.colHeight - 15;
-            float f = Math.max(0.0f, (float)list.size() - (float)n / 18.0f);
-            this.targetScrollList = Math.max(0.0f, Math.min(this.targetScrollList - (float)d4, f));
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (mouseX >= (double)this.colX1 && mouseX < (double)(this.colX1 + 175)) {
+            List<File> files = this.query.isEmpty() ? this.allFiles : this.filterFiles(this.allFiles, this.query);
+            int bodyHeight = this.colHeight - 15;
+            float maxScroll = Math.max(0.0f, (float)files.size() - (float)bodyHeight / 18.0f);
+            this.targetScrollList = Math.max(0.0f, Math.min(this.targetScrollList - (float)verticalAmount, maxScroll));
             this.scrollList += (this.targetScrollList - this.scrollList) * 0.5f;
             return true;
         }
-        return super.mouseScrolled(d, d2, d3, d4);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     public boolean keyPressed(KeyEvent keyEvent) {
-        int n = keyEvent.key();
-        if (n == 256) {
+        int keyCode = keyEvent.key();
+        if (keyCode == 256) {
             this.requestClose();
             return true;
         }
-        if (n == 259 && !this.query.isEmpty()) {
+        if (keyCode == 259 && !this.query.isEmpty()) {
             this.query = this.query.substring(0, this.query.length() - 1);
             this.scrollList = 0.0f;
             this.targetScrollList = 0.0f;
@@ -316,9 +315,9 @@ extends Screen {
     }
 
     public boolean charTyped(CharacterEvent characterEvent) {
-        char c = (char)characterEvent.codepoint();
-        if (!Character.isISOControl(c)) {
-            this.query = this.query + c;
+        char ch = (char)characterEvent.codepoint();
+        if (!Character.isISOControl(ch)) {
+            this.query = this.query + ch;
             this.scrollList = 0.0f;
             this.targetScrollList = 0.0f;
             return true;

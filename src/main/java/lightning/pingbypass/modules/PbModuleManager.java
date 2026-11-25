@@ -18,8 +18,8 @@ public class PbModuleManager {
         this.modules.sort(Comparator.comparing(PbModule::getName));
     }
 
-    public PbModule getModule(String string) {
-        return this.modules.stream().filter(pbModule -> pbModule.getName().equalsIgnoreCase(string)).findFirst().orElse(null);
+    public PbModule getModule(String name) {
+        return this.modules.stream().filter(pbModule -> pbModule.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
     }
 
     public List<PbModule> getModules() {

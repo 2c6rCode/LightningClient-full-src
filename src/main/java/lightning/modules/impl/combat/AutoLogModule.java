@@ -32,14 +32,14 @@ extends Module {
         if (this.getNull()) {
             return;
         }
-        int n = AutoLogModule.mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
+        int currentTotems = AutoLogModule.mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
         if (this.healthCheck.getValue() && AutoLogModule.mc.player.getHealth() <= (float)this.health.getValue().intValue()) {
             mc.getConnection().onDisconnect(new DisconnectionDetails((Component)Component.literal((String)("Health was lower than or equal to " + this.health.getValue().intValue() + "."))));
             if (this.selfDisable.getValue()) {
                 this.setToggled(false);
             }
         }
-        if (this.totemCheck.getValue() && n <= this.totemCount.getValue().intValue()) {
+        if (this.totemCheck.getValue() && currentTotems <= this.totemCount.getValue().intValue()) {
             mc.getConnection().onDisconnect(new DisconnectionDetails((Component)Component.literal((String)"Couldn't find totems in your inventory.")));
             if (this.selfDisable.getValue()) {
                 this.setToggled(false);

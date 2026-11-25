@@ -16,58 +16,57 @@ import lightning.utils.chat.ChatUtils;
 public class StashFinderCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
             return List.of("webhook", "userid", "test", "reset");
         }
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public void execute(String[] args) {
+        if (args.length == 0) {
             this.messageSyntax();
             return;
         }
-        switch (stringArray[0].toLowerCase()) {
+        switch (args[0].toLowerCase()) {
             case "webhook": {
-                if (stringArray.length < 2) {
+                if (args.length < 2) {
                     Night.CHAT_MANAGER.tagged("Current webhook: " + String.valueOf(ChatUtils.getPrimary()) + (StashWebhook.getWebhookUrl().isBlank() ? "None" : StashWebhook.getWebhookUrl()), this.getTag());
                     return;
                 }
-                String string = stringArray[1];
-                StashWebhook.setWebhookUrl(string);
+                String webhookUrl = args[1];
+                StashWebhook.setWebhookUrl(webhookUrl);
                 StashFinderModule stashFinderModule = Night.MODULE_MANAGER.getModule(StashFinderModule.class);
                 if (stashFinderModule != null) {
-                    stashFinderModule.webhookUrl.setValue(string);
+                    stashFinderModule.webhookUrl.setValue(webhookUrl);
                 }
                 Night.CHAT_MANAGER.tagged("Webhook URL updated.", this.getTag());
                 break;
             }
             case "userid": {
-                if (stringArray.length < 2) {
+                if (args.length < 2) {
                     Night.CHAT_MANAGER.tagged("Current User ID: " + String.valueOf(ChatUtils.getPrimary()) + (StashWebhook.getUserId().isBlank() ? "None" : StashWebhook.getUserId()), this.getTag());
                     return;
                 }
-                String string = stringArray[1];
-                StashWebhook.setUserId(string);
+                String userId = args[1];
+                StashWebhook.setUserId(userId);
                 StashFinderModule stashFinderModule = Night.MODULE_MANAGER.getModule(StashFinderModule.class);
                 if (stashFinderModule != null) {
-                    stashFinderModule.userId.setValue(string);
+                    stashFinderModule.userId.setValue(userId);
                 }
                 Night.CHAT_MANAGER.tagged("User ID updated (will be pinged on stash finds).", this.getTag());
                 break;
             }
             case "test": {
                 StashFinderModule stashFinderModule = Night.MODULE_MANAGER.getModule(StashFinderModule.class);
-                String string = stashFinderModule != null && !stashFinderModule.webhookUrl.getValue().isBlank() ? stashFinderModule.webhookUrl.getValue() : StashWebhook.getWebhookUrl();
-                String string2 = stashFinderModule != null && !stashFinderModule.userId.getValue().isBlank() ? stashFinderModule.userId.getValue() : StashWebhook.getUserId();
-                String string3 = string2;
-                if (string.isBlank()) {
+                String webhookUrl = stashFinderModule != null && !stashFinderModule.webhookUrl.getValue().isBlank() ? stashFinderModule.webhookUrl.getValue() : StashWebhook.getWebhookUrl();
+                String userId = stashFinderModule != null && !stashFinderModule.userId.getValue().isBlank() ? stashFinderModule.userId.getValue() : StashWebhook.getUserId();
+                if (webhookUrl.isBlank()) {
                     Night.CHAT_MANAGER.tagged("No webhook URL configured. Use " + String.valueOf(ChatUtils.getPrimary()) + ".stashfinder webhook <url>" + String.valueOf(ChatUtils.getSecondary()) + " first.", this.getTag());
                     break;
                 }
-                StashWebhook.send(0, 0, "Test Dimension", Map.of("Chests", 25, "Shulkers", 8), string, string2);
+                StashWebhook.send(0, 0, "Test Dimension", Map.of("Chests", 25, "Shulkers", 8), webhookUrl, userId);
                 Night.CHAT_MANAGER.tagged("Test webhook dispatched.", this.getTag());
                 break;
             }

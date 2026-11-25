@@ -22,9 +22,9 @@ public class RenderPosition {
         this.startTime = System.currentTimeMillis();
     }
 
-    public boolean equals(Object object) {
-        if (object instanceof RenderPosition) {
-            return ((RenderPosition)object).pos.equals((Object)this.pos);
+    public boolean equals(Object other) {
+        if (other instanceof RenderPosition) {
+            return ((RenderPosition)other).pos.equals((Object)this.pos);
         }
         return false;
     }
@@ -39,8 +39,8 @@ public class RenderPosition {
     }
 
     @Generated
-    public void setStartTime(long l) {
-        this.startTime = l;
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
     }
 
     @Generated

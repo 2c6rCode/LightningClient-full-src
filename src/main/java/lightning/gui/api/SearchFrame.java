@@ -34,48 +34,47 @@ public class SearchFrame {
     private int width = 190;
     private int height = 16;
 
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         if (this.visible) {
-            String string;
-            int n3 = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-            int n4 = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-            int n5 = (n3 - this.width) / 2;
-            int n6 = n4 - this.height - 8;
+            int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+            int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+            int boxX = (screenWidth - this.width) / 2;
+            int boxY = screenHeight - this.height - 8;
             if (this.cursorTimer.hasTimeElapsed(400L)) {
                 this.showCursor = !this.showCursor;
                 this.cursorTimer.reset();
             }
-            LightningSkin.fq(guiGraphicsExtractor, n5, n6, n5 + this.width, n6 + this.height, new Color(14, 14, 14, 230));
-            Color color = this.focused ? ClickGuiScreen.getButtonColor(n6, 220) : ClickGuiScreen.getButtonColor(n6, 90);
-            LightningSkin.ol(guiGraphicsExtractor, n5, n6, n5 + this.width, n6 + this.height, color);
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "\u2315", n5 + 5, n6 + 4, Color.WHITE);
-            int n7 = 18;
+            LightningSkin.fq(guiGraphicsExtractor, boxX, boxY, boxX + this.width, boxY + this.height, new Color(14, 14, 14, 230));
+            Color color = this.focused ? ClickGuiScreen.getButtonColor(boxY, 220) : ClickGuiScreen.getButtonColor(boxY, 90);
+            LightningSkin.ol(guiGraphicsExtractor, boxX, boxY, boxX + this.width, boxY + this.height, color);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "\u2315", boxX + 5, boxY + 4, Color.WHITE);
+            int textOffset = 18;
             if (this.query.isEmpty() && !this.focused) {
-                string = "[ESC]";
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n5 + this.width - Night.FONT_MANAGER.getWidth(string) - 4, n6 + 4, new Color(120, 120, 130));
+                String escHint = "[ESC]";
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, escHint, boxX + this.width - Night.FONT_MANAGER.getWidth(escHint) - 4, boxY + 4, new Color(120, 120, 130));
             }
             if (this.query.isEmpty() && !this.focused) {
-                string = "Search modules...";
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n5 + n7, n6 + 4, new Color(140, 140, 150));
+                String placeholder = "Search modules...";
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, placeholder, boxX + textOffset, boxY + 4, new Color(140, 140, 150));
             } else {
-                string = this.focused && this.showCursor ? "|" : "";
-                String string2 = this.query.substring(0, this.cursorIndex);
-                String string3 = this.query.substring(this.cursorIndex);
-                String string4 = string2 + string + string3;
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string4, n5 + n7, n6 + 4, Color.WHITE);
+                String cursor = this.focused && this.showCursor ? "|" : "";
+                String beforeCursor = this.query.substring(0, this.cursorIndex);
+                String afterCursor = this.query.substring(this.cursorIndex);
+                String displayText = beforeCursor + cursor + afterCursor;
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, displayText, boxX + textOffset, boxY + 4, Color.WHITE);
             }
         }
     }
 
-    public boolean mouseClicked(double d, double d2, int n) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!this.visible) {
             return false;
         }
-        int n2 = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-        int n3 = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-        int n4 = (n2 - this.width) / 2;
-        int n5 = n3 - this.height - 6;
-        if (n == 0 && d >= (double)n4 && d <= (double)(n4 + this.width) && d2 >= (double)n5 && d2 <= (double)(n5 + this.height)) {
+        int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+        int boxX = (screenWidth - this.width) / 2;
+        int boxY = screenHeight - this.height - 6;
+        if (button == 0 && mouseX >= (double)boxX && mouseX <= (double)(boxX + this.width) && mouseY >= (double)boxY && mouseY <= (double)(boxY + this.height)) {
             this.focused = true;
             return true;
         }
@@ -83,13 +82,13 @@ public class SearchFrame {
         return false;
     }
 
-    public boolean keyPressed(int n, int n2, int n3) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!this.visible || !this.focused) {
             return false;
         }
         Window window = Minecraft.getInstance().getWindow();
-        boolean bl = InputConstants.isKeyDown((Window)window, (int)(Util.getPlatform() == Util.OS.OSX ? 343 : 341));
-        if (n == 256) {
+        boolean ctrlDown = InputConstants.isKeyDown((Window)window, (int)(Util.getPlatform() == Util.OS.OSX ? 343 : 341));
+        if (keyCode == 256) {
             if (!this.query.isEmpty()) {
                 this.query = "";
                 this.cursorIndex = 0;
@@ -99,72 +98,71 @@ public class SearchFrame {
             this.focused = false;
             return true;
         }
-        if (n == 259) {
+        if (keyCode == 259) {
             if (!this.query.isEmpty() && this.cursorIndex > 0) {
                 this.query = this.query.substring(0, this.cursorIndex - 1) + this.query.substring(this.cursorIndex);
                 --this.cursorIndex;
             }
             return true;
         }
-        if (n == 261) {
+        if (keyCode == 261) {
             if (this.cursorIndex < this.query.length()) {
                 this.query = this.query.substring(0, this.cursorIndex) + this.query.substring(this.cursorIndex + 1);
             }
             return true;
         }
-        if (n == 263) {
+        if (keyCode == 263) {
             if (this.cursorIndex > 0) {
                 --this.cursorIndex;
             }
             return true;
         }
-        if (n == 262) {
+        if (keyCode == 262) {
             if (this.cursorIndex < this.query.length()) {
                 ++this.cursorIndex;
             }
             return true;
         }
-        if (n == 268) {
+        if (keyCode == 268) {
             this.cursorIndex = 0;
             return true;
         }
-        if (n == 269) {
+        if (keyCode == 269) {
             this.cursorIndex = this.query.length();
             return true;
         }
-        if (bl && n == 86) {
+        if (ctrlDown && keyCode == 86) {
             try {
-                String string = Minecraft.getInstance().keyboardHandler.getClipboard();
-                this.query = this.query.substring(0, this.cursorIndex) + string + this.query.substring(this.cursorIndex);
-                this.cursorIndex += string.length();
+                String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
+                this.query = this.query.substring(0, this.cursorIndex) + clipboard + this.query.substring(this.cursorIndex);
+                this.cursorIndex += clipboard.length();
             }
             catch (Exception exception) {
                 // empty catch block
             }
             return true;
         }
-        if (bl && n == 65) {
+        if (ctrlDown && keyCode == 65) {
             this.cursorIndex = this.query.length();
             return true;
         }
         return true;
     }
 
-    public boolean charTyped(char c, int n) {
+    public boolean charTyped(char ch, int modifiers) {
         if (!this.visible || !this.focused) {
             return false;
         }
-        if (Character.isISOControl(c)) {
+        if (Character.isISOControl(ch)) {
             return false;
         }
-        this.query = this.query.substring(0, this.cursorIndex) + c + this.query.substring(this.cursorIndex);
+        this.query = this.query.substring(0, this.cursorIndex) + ch + this.query.substring(this.cursorIndex);
         ++this.cursorIndex;
         return true;
     }
 
     public void toggle() {
         this.visible = !this.visible;
-        boolean bl = this.visible;
         if (this.visible) {
             this.focused = true;
             this.query = "";
@@ -178,11 +176,11 @@ public class SearchFrame {
         return !this.query.isEmpty();
     }
 
-    public boolean matches(String string) {
+    public boolean matches(String text) {
         if (this.query.isEmpty()) {
             return true;
         }
-        return string.toLowerCase().contains(this.query.toLowerCase());
+        return text.toLowerCase().contains(this.query.toLowerCase());
     }
 
     @Generated
@@ -226,38 +224,38 @@ public class SearchFrame {
     }
 
     @Generated
-    public void setQuery(String string) {
-        this.query = string;
+    public void setQuery(String query) {
+        this.query = query;
     }
 
     @Generated
-    public void setVisible(boolean bl) {
-        this.visible = bl;
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 
     @Generated
-    public void setFocused(boolean bl) {
-        this.focused = bl;
+    public void setFocused(boolean focused) {
+        this.focused = focused;
     }
 
     @Generated
-    public void setCursorIndex(int n) {
-        this.cursorIndex = n;
+    public void setCursorIndex(int cursorIndex) {
+        this.cursorIndex = cursorIndex;
     }
 
     @Generated
-    public void setShowCursor(boolean bl) {
-        this.showCursor = bl;
+    public void setShowCursor(boolean showCursor) {
+        this.showCursor = showCursor;
     }
 
     @Generated
-    public void setWidth(int n) {
-        this.width = n;
+    public void setWidth(int width) {
+        this.width = width;
     }
 
     @Generated
-    public void setHeight(int n) {
-        this.height = n;
+    public void setHeight(int height) {
+        this.height = height;
     }
 }
 

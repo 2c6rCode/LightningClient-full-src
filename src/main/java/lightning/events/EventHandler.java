@@ -19,14 +19,14 @@ public class EventHandler {
     private final Map<Class<?>, List<Listener>> staticListeners = new ConcurrentHashMap();
     private final Map<Class<?>, List<Listener>> listenerMap = new ConcurrentHashMap();
 
-    public void subscribe(Object object) {
-        for (Listener listener : this.getListeners(object.getClass(), object)) {
+    public void subscribe(Object target) {
+        for (Listener listener : this.getListeners(target.getClass(), target)) {
             this.insert(this.listenerMap.computeIfAbsent(listener.getSubscriber(), clazz -> new CopyOnWriteArrayList<>()), listener);
         }
     }
 
-    public void unsubscribe(Object object) {
-        for (Listener listener : this.getListeners(object.getClass(), object)) {
+    public void unsubscribe(Object target) {
+        for (Listener listener : this.getListeners(target.getClass(), target)) {
             List<Listener> list = this.listenerMap.get(listener.getSubscriber());
             if (list == null) continue;
             list.remove(listener);
@@ -43,36 +43,36 @@ public class EventHandler {
         }
     }
 
-    public boolean isListening(Class<?> clazz) {
-        List<Listener> list = this.listenerMap.get(clazz);
+    public boolean isListening(Class<?> eventClass) {
+        List<Listener> list = this.listenerMap.get(eventClass);
         return list != null && !list.isEmpty();
     }
 
-    private List<Listener> getListeners(final Class<?> clazz, final Object object) {
-        Function<Object, List<Listener>> function = object2 -> {
+    private List<Listener> getListeners(final Class<?> targetClass, final Object target) {
+        Function<Object, List<Listener>> loader = ignored -> {
             CopyOnWriteArrayList<Listener> copyOnWriteArrayList = new CopyOnWriteArrayList<>();
-            this.processListeners(copyOnWriteArrayList, clazz, object);
+            this.processListeners(copyOnWriteArrayList, targetClass, target);
             return copyOnWriteArrayList;
         };
-        if (object == null) {
-            return this.staticListeners.computeIfAbsent(clazz, function);
+        if (target == null) {
+            return this.staticListeners.computeIfAbsent(targetClass, loader);
         }
-        for (Object object2 : this.listeners.keySet()) {
-            if (object2 != object) continue;
-            return this.listeners.get(object);
+        for (Object key : this.listeners.keySet()) {
+            if (key != target) continue;
+            return this.listeners.get(target);
         }
-        List list = (List)function.apply(object);
-        this.listeners.put(object, list);
-        return list;
+        List<Listener> resolved = loader.apply(target);
+        this.listeners.put(target, resolved);
+        return resolved;
     }
 
-    private void processListeners(List<Listener> list, Class<?> clazz, Object object) {
-        for (Method method : clazz.getDeclaredMethods()) {
+    private void processListeners(List<Listener> outListeners, Class<?> targetClass, Object target) {
+        for (Method method : targetClass.getDeclaredMethods()) {
             if (!this.isValid(method)) continue;
-            list.add(new Listener(clazz, object, method));
+            outListeners.add(new Listener(targetClass, target, method));
         }
-        if (clazz.getSuperclass() != null) {
-            this.processListeners(list, clazz.getSuperclass(), object);
+        if (targetClass.getSuperclass() != null) {
+            this.processListeners(outListeners, targetClass.getSuperclass(), target);
         }
     }
 
@@ -90,10 +90,10 @@ public class EventHandler {
     }
 
     private void insert(List<Listener> list, Listener listener) {
-        int n;
-        for (n = 0; n < list.size() && listener.getPriority() <= list.get(n).getPriority(); ++n) {
+        int index;
+        for (index = 0; index < list.size() && listener.getPriority() <= list.get(index).getPriority(); ++index) {
         }
-        list.add(n, listener);
+        list.add(index, listener);
     }
 }
 

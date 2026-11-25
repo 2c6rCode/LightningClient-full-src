@@ -122,9 +122,9 @@ extends Module {
     }
 
     public void applyEntityChams(LivingEntity livingEntity, IChamsCapture iChamsCapture) {
-        boolean bl = this.entityMode.getValue().equals("Fill") || this.entityMode.getValue().equals("Both");
-        boolean bl2 = this.entityMode.getValue().equals("Outline") || this.entityMode.getValue().equals("Both");
-        iChamsCapture.night$setChams(bl, this.pickEntityColor(livingEntity, this.entityFillColor.getColor(), this.friendFillColor.getColor()).getRGB(), bl2, this.pickEntityColor(livingEntity, this.entityOutlineColor.getColor(), this.friendOutlineColor.getColor()).getRGB(), this.entityShine.getValue());
+        boolean renderFill = this.entityMode.getValue().equals("Fill") || this.entityMode.getValue().equals("Both");
+        boolean renderOutline = this.entityMode.getValue().equals("Outline") || this.entityMode.getValue().equals("Both");
+        iChamsCapture.night$setChams(renderFill, this.pickEntityColor(livingEntity, this.entityFillColor.getColor(), this.friendFillColor.getColor()).getRGB(), renderOutline, this.pickEntityColor(livingEntity, this.entityOutlineColor.getColor(), this.friendOutlineColor.getColor()).getRGB(), this.entityShine.getValue());
         iChamsCapture.night$setChamsRealAlpha(this.entityOpacity.getValue().floatValue() / 100.0f);
         if (this.entityGlint.getValue()) {
             iChamsCapture.night$setChamsGlint(true, this.entityGlintColor.getColor().getRGB(), Glint.ENTITY);
@@ -132,11 +132,11 @@ extends Module {
     }
 
     public void applyCrystalChams(IChamsCapture iChamsCapture) {
-        boolean bl = this.crystalMode.getValue().equals("Fill") || this.crystalMode.getValue().equals("Both");
-        boolean bl2 = this.crystalMode.getValue().equals("Outline") || this.crystalMode.getValue().equals("Both");
-        Color color = this.crystalPulse.getValue() ? ColorUtils.getPulse(this.crystalFillColor.getColor()) : this.crystalFillColor.getColor();
-        Color color2 = this.crystalPulse.getValue() ? ColorUtils.getPulse(this.crystalOutlineColor.getColor()) : this.crystalOutlineColor.getColor();
-        iChamsCapture.night$setChams(bl, color.getRGB(), bl2, color2.getRGB(), this.crystalShine.getValue());
+        boolean renderFill = this.crystalMode.getValue().equals("Fill") || this.crystalMode.getValue().equals("Both");
+        boolean renderOutline = this.crystalMode.getValue().equals("Outline") || this.crystalMode.getValue().equals("Both");
+        Color fill = this.crystalPulse.getValue() ? ColorUtils.getPulse(this.crystalFillColor.getColor()) : this.crystalFillColor.getColor();
+        Color outline = this.crystalPulse.getValue() ? ColorUtils.getPulse(this.crystalOutlineColor.getColor()) : this.crystalOutlineColor.getColor();
+        iChamsCapture.night$setChams(renderFill, fill.getRGB(), renderOutline, outline.getRGB(), this.crystalShine.getValue());
         iChamsCapture.night$setChamsRealAlpha(this.crystalOpacity.getValue().floatValue() / 100.0f);
         if (this.crystalGlint.getValue()) {
             iChamsCapture.night$setChamsGlint(true, this.crystalGlintColor.getColor().getRGB(), Glint.CRYSTAL);
@@ -144,20 +144,19 @@ extends Module {
     }
 
     public void applyVehicleChams(IChamsCapture iChamsCapture) {
-        boolean bl = this.vehicleMode.getValue().equals("Fill") || this.vehicleMode.getValue().equals("Both");
-        boolean bl2 = this.vehicleMode.getValue().equals("Outline") || this.vehicleMode.getValue().equals("Both");
-        Color color = this.vehiclePulse.getValue() ? ColorUtils.getPulse(this.vehicleFillColor.getColor()) : this.vehicleFillColor.getColor();
-        Color color2 = this.vehiclePulse.getValue() ? ColorUtils.getPulse(this.vehicleOutlineColor.getColor()) : this.vehicleOutlineColor.getColor();
-        iChamsCapture.night$setChams(bl, color.getRGB(), bl2, color2.getRGB(), this.vehicleShine.getValue());
+        boolean renderFill = this.vehicleMode.getValue().equals("Fill") || this.vehicleMode.getValue().equals("Both");
+        boolean renderOutline = this.vehicleMode.getValue().equals("Outline") || this.vehicleMode.getValue().equals("Both");
+        Color fill = this.vehiclePulse.getValue() ? ColorUtils.getPulse(this.vehicleFillColor.getColor()) : this.vehicleFillColor.getColor();
+        Color outline = this.vehiclePulse.getValue() ? ColorUtils.getPulse(this.vehicleOutlineColor.getColor()) : this.vehicleOutlineColor.getColor();
+        iChamsCapture.night$setChams(renderFill, fill.getRGB(), renderOutline, outline.getRGB(), this.vehicleShine.getValue());
         iChamsCapture.night$setChamsRealAlpha(this.vehicleOpacity.getValue().floatValue() / 100.0f);
     }
 
-    private Color pickEntityColor(LivingEntity livingEntity, Color color, Color color2) {
+    private Color pickEntityColor(LivingEntity livingEntity, Color defaultColor, Color friendColor) {
         Player player;
-        boolean bl = this.damageModify.getValue() && livingEntity.hurtTime > 0;
-        boolean bl2 = bl;
-        Color color3 = livingEntity instanceof Player && Night.FRIEND_MANAGER.contains((player = (Player)livingEntity).getName().getString()) && !this.friendMode.getValue().equals("Sync") ? (bl ? ColorUtils.getColor(this.damageColor.getColor(), color2.getAlpha()) : (this.friendMode.getValue().equals("Default") ? Night.FRIEND_MANAGER.getDefaultFriendColor(color2.getAlpha()) : color2)) : (bl ? ColorUtils.getColor(this.damageColor.getColor(), color.getAlpha()) : color);
-        return this.entityPulse.getValue() ? ColorUtils.getPulse(color3) : color3;
+        boolean isDamaged = this.damageModify.getValue() && livingEntity.hurtTime > 0;
+        Color resolvedColor = livingEntity instanceof Player && Night.FRIEND_MANAGER.contains((player = (Player)livingEntity).getName().getString()) && !this.friendMode.getValue().equals("Sync") ? (isDamaged ? ColorUtils.getColor(this.damageColor.getColor(), friendColor.getAlpha()) : (this.friendMode.getValue().equals("Default") ? Night.FRIEND_MANAGER.getDefaultFriendColor(friendColor.getAlpha()) : friendColor)) : (isDamaged ? ColorUtils.getColor(this.damageColor.getColor(), defaultColor.getAlpha()) : defaultColor);
+        return this.entityPulse.getValue() ? ColorUtils.getPulse(resolvedColor) : resolvedColor;
     }
 }
 

@@ -27,8 +27,8 @@ implements IChatHudLineVisible {
     }
 
     @Override
-    public void night$setClientMessage(boolean bl) {
-        this.clientMessage = bl;
+    public void night$setClientMessage(boolean clientMessage) {
+        this.clientMessage = clientMessage;
     }
 
     @Override
@@ -37,8 +37,8 @@ implements IChatHudLineVisible {
     }
 
     @Override
-    public void night$setClientIdentifier(String string) {
-        this.clientIdentifier = string;
+    public void night$setClientIdentifier(String clientIdentifier) {
+        this.clientIdentifier = clientIdentifier;
     }
 }
 

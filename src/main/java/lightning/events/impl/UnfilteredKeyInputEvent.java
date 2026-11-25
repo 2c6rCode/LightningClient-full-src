@@ -37,11 +37,11 @@ extends Event {
     }
 
     @Generated
-    public UnfilteredKeyInputEvent(int n, int n2, int n3, int n4) {
-        this.key = n;
-        this.scancode = n2;
-        this.action = n3;
-        this.modifiers = n4;
+    public UnfilteredKeyInputEvent(int key, int scancode, int action, int modifiers) {
+        this.key = key;
+        this.scancode = scancode;
+        this.action = action;
+        this.modifiers = modifiers;
     }
 }
 

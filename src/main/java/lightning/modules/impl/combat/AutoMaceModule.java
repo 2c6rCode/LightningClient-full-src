@@ -128,14 +128,14 @@ extends Module {
         return this.freePitch;
     }
 
-    public void onMouseTurn(double d, double d2) {
+    public void onMouseTurn(double deltaX, double deltaY) {
         if (!this.freeLookInitialized && AutoMaceModule.mc.player != null) {
             this.freeYaw = AutoMaceModule.mc.player.getYRot();
             this.freePitch = AutoMaceModule.mc.player.getXRot();
             this.freeLookInitialized = true;
         }
-        this.freeYaw += (float)(d * 0.15);
-        this.freePitch = Mth.clamp((float)(this.freePitch + (float)(d2 * 0.15)), (float)-90.0f, (float)90.0f);
+        this.freeYaw += (float)(deltaX * 0.15);
+        this.freePitch = Mth.clamp((float)(this.freePitch + (float)(deltaY * 0.15)), (float)-90.0f, (float)90.0f);
     }
 
     @Override
@@ -209,11 +209,11 @@ extends Module {
 
     private void tickAscend(ElytraFlyModule elytraFlyModule) {
         this.reequipElytra();
-        double d = AutoMaceModule.mc.player.getY() - this.target.getY();
-        if (d >= this.minHeight.getValue().doubleValue()) {
-            double d2 = Math.hypot(AutoMaceModule.mc.player.getX() - this.target.getX(), AutoMaceModule.mc.player.getZ() - this.target.getZ());
-            Vec3 vec3 = AutoMaceModule.mc.player.getDeltaMovement();
-            Night.LOGGER.info("[MaceDbg] ASCEND->DIVE height={} horizDist={} vel=({},{},{})", new Object[]{d, d2, vec3.x, vec3.y, vec3.z});
+        double heightDiff = AutoMaceModule.mc.player.getY() - this.target.getY();
+        if (heightDiff >= this.minHeight.getValue().doubleValue()) {
+            double horizDist = Math.hypot(AutoMaceModule.mc.player.getX() - this.target.getX(), AutoMaceModule.mc.player.getZ() - this.target.getZ());
+            Vec3 velocity = AutoMaceModule.mc.player.getDeltaMovement();
+            Night.LOGGER.info("[MaceDbg] ASCEND->DIVE height={} horizDist={} vel=({},{},{})", new Object[]{heightDiff, horizDist, velocity.x, velocity.y, velocity.z});
             this.ascending = false;
             this.freefallTicks = 0;
             this.escapeStuckTicks = 0;
@@ -222,101 +222,97 @@ extends Module {
         if (!this.ensureFlying(elytraFlyModule)) {
             return;
         }
-        Vec3 vec3 = this.target.getBoundingBox().getCenter();
-        float f = (float)RotationUtils.getYRotToVec((Entity)AutoMaceModule.mc.player, vec3);
-        float f2 = f + 180.0f;
-        float f3 = -this.angle.getValue().floatValue();
+        Vec3 targetCenter = this.target.getBoundingBox().getCenter();
+        float yawToTarget = (float)RotationUtils.getYRotToVec((Entity)AutoMaceModule.mc.player, targetCenter);
+        float escapeYaw = yawToTarget + 180.0f;
+        float escapePitch = -this.angle.getValue().floatValue();
         if (this.escapeSteepTicks > 0) {
             --this.escapeSteepTicks;
-            f3 = -85.0f;
+            escapePitch = -85.0f;
         }
-        boolean bl = this.smartTerrain.getValue();
-        boolean bl2 = AutoMaceModule.mc.player.getDeltaMovement().horizontalDistanceSqr() < 0.0025;
-        float[] fArray = bl && !bl2 ? this.steerClear(f2, f3) : null;
-        float[] fArray2 = fArray;
-        if (fArray != null) {
+        boolean useSmartTerrain = this.smartTerrain.getValue();
+        boolean isStalled = AutoMaceModule.mc.player.getDeltaMovement().horizontalDistanceSqr() < 0.0025;
+        float[] steeredRotations = useSmartTerrain && !isStalled ? this.steerClear(escapeYaw, escapePitch) : null;
+        if (steeredRotations != null) {
             this.escapeStuckTicks = 0;
-            this.snapRotation(fArray[0], fArray[1]);
-            elytraFlyModule.tryUseGrimFirework(fArray[0], fArray[1]);
+            this.snapRotation(steeredRotations[0], steeredRotations[1]);
+            elytraFlyModule.tryUseGrimFirework(steeredRotations[0], steeredRotations[1]);
             return;
         }
-        boolean bl3 = bl && this.ceilingBlocked();
-        boolean bl4 = bl && (this.predictsCollision() || bl2);
-        boolean bl5 = bl4;
-        int n = this.escapeStuckTicks = bl3 || bl4 ? (this.escapeStuckTicks = this.escapeStuckTicks + 1) : 0;
-        if (bl3 || this.escapeStuckTicks > 20) {
-            f3 = -15.0f;
-            f2 += 90.0f * (float)(this.escapeStuckTicks / 20 % 4);
-        } else if (bl4) {
-            f3 = -85.0f;
+        boolean ceilingHit = useSmartTerrain && this.ceilingBlocked();
+        boolean obstacleAhead = useSmartTerrain && (this.predictsCollision() || isStalled);
+        this.escapeStuckTicks = ceilingHit || obstacleAhead ? this.escapeStuckTicks + 1 : 0;
+        if (ceilingHit || this.escapeStuckTicks > 20) {
+            escapePitch = -15.0f;
+            escapeYaw += 90.0f * (float)(this.escapeStuckTicks / 20 % 4);
+        } else if (obstacleAhead) {
+            escapePitch = -85.0f;
         }
-        this.snapRotation(f2, f3);
-        elytraFlyModule.tryUseGrimFirework(f2, f3);
+        this.snapRotation(escapeYaw, escapePitch);
+        elytraFlyModule.tryUseGrimFirework(escapeYaw, escapePitch);
     }
 
     private void tickDive(ElytraFlyModule elytraFlyModule) {
-        Vec3 vec3 = this.target.getBoundingBox().getCenter();
-        Vec3 vec32 = vec3.add(this.target.getDeltaMovement().scale(4.0));
-        float f = (float)RotationUtils.getYRotToVec((Entity)AutoMaceModule.mc.player, vec32);
-        float f2 = (float)RotationUtils.getXRotToVec((Entity)AutoMaceModule.mc.player, vec32);
+        Vec3 targetCenter = this.target.getBoundingBox().getCenter();
+        Vec3 predictedPos = targetCenter.add(this.target.getDeltaMovement().scale(4.0));
+        float aimYaw = (float)RotationUtils.getYRotToVec((Entity)AutoMaceModule.mc.player, predictedPos);
+        float aimPitch = (float)RotationUtils.getXRotToVec((Entity)AutoMaceModule.mc.player, predictedPos);
         if (!this.elytraUnequipped) {
-            double d = AutoMaceModule.mc.player.getY() - this.target.getY();
-            double d2 = this.attackRange.getValue().doubleValue() + 3.0;
-            double d3 = Math.sqrt(Math.pow(AutoMaceModule.mc.player.getX() - vec3.x, 2.0) + Math.pow(AutoMaceModule.mc.player.getZ() - vec3.z, 2.0));
-            double d4 = this.attackRange.getValue().doubleValue() * 1.5;
-            Vec3 vec33 = AutoMaceModule.mc.player.getDeltaMovement();
-            Night.LOGGER.info("[MaceDbg] DIVE-HOMING height={} horizDist={} cutHeight={} cutHorizDist={} vel=({},{},{})", new Object[]{d, d3, d2, d4, vec33.x, vec33.y, vec33.z});
-            if (d < 1.0 && d3 > d4) {
-                Night.LOGGER.info("[MaceDbg] DIVE ABORT-TO-ASCEND (ran out of height, still far) height={} horizDist={}", (Object)d, (Object)d3);
+            double heightDiff = AutoMaceModule.mc.player.getY() - this.target.getY();
+            double cutHeight = this.attackRange.getValue().doubleValue() + 3.0;
+            double horizDist = Math.sqrt(Math.pow(AutoMaceModule.mc.player.getX() - targetCenter.x, 2.0) + Math.pow(AutoMaceModule.mc.player.getZ() - targetCenter.z, 2.0));
+            double cutHorizDist = this.attackRange.getValue().doubleValue() * 1.5;
+            Vec3 vel = AutoMaceModule.mc.player.getDeltaMovement();
+            Night.LOGGER.info("[MaceDbg] DIVE-HOMING height={} horizDist={} cutHeight={} cutHorizDist={} vel=({},{},{})", new Object[]{heightDiff, horizDist, cutHeight, cutHorizDist, vel.x, vel.y, vel.z});
+            if (heightDiff < 1.0 && horizDist > cutHorizDist) {
+                Night.LOGGER.info("[MaceDbg] DIVE ABORT-TO-ASCEND (ran out of height, still far) height={} horizDist={}", (Object)heightDiff, (Object)horizDist);
                 this.ascending = true;
                 return;
             }
-            if (d > d2 || d3 > d4) {
+            if (heightDiff > cutHeight || horizDist > cutHorizDist) {
                 if (!this.ensureFlying(elytraFlyModule)) {
                     return;
                 }
-                float f3 = f2;
-                boolean bl = AutoMaceModule.mc.player.getDeltaMovement().horizontalDistanceSqr() < 0.0025;
-                float[] fArray = this.smartTerrain.getValue() && !bl ? this.steerClear(f, f2) : null;
-                float[] fArray2 = fArray;
-                if (fArray != null) {
+                float divePitch = aimPitch;
+                boolean isStalled = AutoMaceModule.mc.player.getDeltaMovement().horizontalDistanceSqr() < 0.0025;
+                float[] steeredRotations = this.smartTerrain.getValue() && !isStalled ? this.steerClear(aimYaw, aimPitch) : null;
+                if (steeredRotations != null) {
                     this.escapeStuckTicks = 0;
-                    this.snapRotation(fArray[0], fArray[1]);
-                    elytraFlyModule.tryUseGrimFirework(fArray[0], fArray[1]);
+                    this.snapRotation(steeredRotations[0], steeredRotations[1]);
+                    elytraFlyModule.tryUseGrimFirework(steeredRotations[0], steeredRotations[1]);
                     return;
                 }
-                boolean bl2 = this.smartTerrain.getValue() && (this.predictsCollision() || bl);
-                boolean bl3 = bl2;
-                if (bl2) {
+                boolean obstacleAhead = this.smartTerrain.getValue() && (this.predictsCollision() || isStalled);
+                if (obstacleAhead) {
                     ++this.escapeStuckTicks;
                     if (this.escapeStuckTicks > 20) {
                         this.ascending = true;
                         return;
                     }
-                    f3 = f2 < 0.0f ? -85.0f : 85.0f;
+                    divePitch = aimPitch < 0.0f ? -85.0f : 85.0f;
                 } else {
                     this.escapeStuckTicks = 0;
                 }
-                this.snapRotation(f, f3);
-                elytraFlyModule.tryUseGrimFirework(f, f3);
+                this.snapRotation(aimYaw, divePitch);
+                elytraFlyModule.tryUseGrimFirework(aimYaw, divePitch);
                 return;
             }
-            Vec3 vec34 = AutoMaceModule.mc.player.getDeltaMovement();
-            Night.LOGGER.info("[MaceDbg] CUT-ELYTRA (commit to freefall) height={} horizDist={} vel=({},{},{})", new Object[]{d, d3, vec34.x, vec34.y, vec34.z});
+            Vec3 cutVel = AutoMaceModule.mc.player.getDeltaMovement();
+            Night.LOGGER.info("[MaceDbg] CUT-ELYTRA (commit to freefall) height={} horizDist={} vel=({},{},{})", new Object[]{heightDiff, horizDist, cutVel.x, cutVel.y, cutVel.z});
             this.unequipElytra();
             this.freefallTicks = 0;
             this.freefallLastDistance = AutoMaceModule.mc.player.fallDistance;
             this.freefallLastTargetDist = -1.0;
             return;
         }
-        Vec3 vec35 = AutoMaceModule.mc.player.getEyePosition(1.0f);
-        Vec3 vec36 = RotationUtils.getClampClosestPoint(vec35, this.target.getBoundingBox());
-        Night.ROTATION_MANAGER.silentRotate(RotationUtils.getYRotToVec(vec35, vec36), RotationUtils.getXRotToVec(vec35, vec36));
+        Vec3 eyePos = AutoMaceModule.mc.player.getEyePosition(1.0f);
+        Vec3 closestPoint = RotationUtils.getClampClosestPoint(eyePos, this.target.getBoundingBox());
+        Night.ROTATION_MANAGER.silentRotate(RotationUtils.getYRotToVec(eyePos, closestPoint), RotationUtils.getXRotToVec(eyePos, closestPoint));
         ++this.freefallTicks;
-        double d = vec35.distanceTo(vec36);
-        Night.LOGGER.info("[MaceDbg] FREEFALL tick={} dist={} fallDistance={} y={} targetY={} onGround={}", new Object[]{this.freefallTicks, d, AutoMaceModule.mc.player.fallDistance, AutoMaceModule.mc.player.getY(), this.target.getY(), AutoMaceModule.mc.player.onGround()});
-        if (this.freefallTicks >= 3 && d <= this.attackRange.getValue().doubleValue() && AutoMaceModule.mc.player.fallDistance >= 1.5) {
-            Night.LOGGER.info("[MaceDbg] ATTACK dist={} attackRange={} fallDistance={} onGround={}", new Object[]{d, this.attackRange.getValue().doubleValue(), AutoMaceModule.mc.player.fallDistance, AutoMaceModule.mc.player.onGround()});
+        double distToTarget = eyePos.distanceTo(closestPoint);
+        Night.LOGGER.info("[MaceDbg] FREEFALL tick={} dist={} fallDistance={} y={} targetY={} onGround={}", new Object[]{this.freefallTicks, distToTarget, AutoMaceModule.mc.player.fallDistance, AutoMaceModule.mc.player.getY(), this.target.getY(), AutoMaceModule.mc.player.onGround()});
+        if (this.freefallTicks >= 3 && distToTarget <= this.attackRange.getValue().doubleValue() && AutoMaceModule.mc.player.fallDistance >= 1.5) {
+            Night.LOGGER.info("[MaceDbg] ATTACK dist={} attackRange={} fallDistance={} onGround={}", new Object[]{distToTarget, this.attackRange.getValue().doubleValue(), AutoMaceModule.mc.player.fallDistance, AutoMaceModule.mc.player.onGround()});
             this.attack(this.target);
             elytraFlyModule.resetFireworkCooldown();
             this.escapeSteepTicks = 10;
@@ -327,7 +323,7 @@ extends Module {
             return;
         }
         if (AutoMaceModule.mc.player.onGround()) {
-            Night.LOGGER.info("[MaceDbg] MISS-ONGROUND dist={} attackRange={} freefallTicks={}", new Object[]{d, this.attackRange.getValue().doubleValue(), this.freefallTicks});
+            Night.LOGGER.info("[MaceDbg] MISS-ONGROUND dist={} attackRange={} freefallTicks={}", new Object[]{distToTarget, this.attackRange.getValue().doubleValue(), this.freefallTicks});
             elytraFlyModule.resetFireworkCooldown();
             this.reequipElytra();
             elytraFlyModule.sendGlideStart();
@@ -340,93 +336,93 @@ extends Module {
             return;
         }
         this.freefallLastDistance = AutoMaceModule.mc.player.fallDistance;
-        if (this.freefallLastTargetDist >= 0.0 && d > this.freefallLastTargetDist + 0.05) {
-            Night.LOGGER.info("[MaceDbg] MISS-OVERSHOOT-DETECTOR dist={} prevDist={}", (Object)d, (Object)this.freefallLastTargetDist);
+        if (this.freefallLastTargetDist >= 0.0 && distToTarget > this.freefallLastTargetDist + 0.05) {
+            Night.LOGGER.info("[MaceDbg] MISS-OVERSHOOT-DETECTOR dist={} prevDist={}", (Object)distToTarget, (Object)this.freefallLastTargetDist);
             this.reequipElytra();
             this.freefallLastTargetDist = -1.0;
             return;
         }
-        this.freefallLastTargetDist = d;
+        this.freefallLastTargetDist = distToTarget;
     }
 
-    private void snapRotation(float f, float f2) {
-        AutoMaceModule.mc.player.setYRot(f);
-        AutoMaceModule.mc.player.setXRot(f2);
-        AutoMaceModule.mc.player.setYBodyRot(f);
-        AutoMaceModule.mc.player.setYHeadRot(f);
+    private void snapRotation(float yaw, float pitch) {
+        AutoMaceModule.mc.player.setYRot(yaw);
+        AutoMaceModule.mc.player.setXRot(pitch);
+        AutoMaceModule.mc.player.setYBodyRot(yaw);
+        AutoMaceModule.mc.player.setYHeadRot(yaw);
     }
 
     private boolean predictsCollision() {
         if (AutoMaceModule.mc.level == null) {
             return false;
         }
-        Vec3 vec3 = AutoMaceModule.mc.player.getDeltaMovement();
-        if (vec3.lengthSqr() < 1.0E-4) {
+        Vec3 velocity = AutoMaceModule.mc.player.getDeltaMovement();
+        if (velocity.lengthSqr() < 1.0E-4) {
             return false;
         }
-        Vec3 vec32 = AutoMaceModule.mc.player.position().add(0.0, (double)AutoMaceModule.mc.player.getBbHeight() * 0.5, 0.0);
-        double d = Math.max(3.0, vec3.length() * 6.0);
-        Vec3 vec33 = vec32.add(vec3.normalize().scale(d));
-        BlockHitResult blockHitResult = AutoMaceModule.mc.level.clip(new ClipContext(vec32, vec33, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)AutoMaceModule.mc.player));
+        Vec3 centerPos = AutoMaceModule.mc.player.position().add(0.0, (double)AutoMaceModule.mc.player.getBbHeight() * 0.5, 0.0);
+        double lookAheadDist = Math.max(3.0, velocity.length() * 6.0);
+        Vec3 endPos = centerPos.add(velocity.normalize().scale(lookAheadDist));
+        BlockHitResult blockHitResult = AutoMaceModule.mc.level.clip(new ClipContext(centerPos, endPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)AutoMaceModule.mc.player));
         return blockHitResult.getType() == HitResult.Type.BLOCK;
     }
 
     private boolean ceilingBlocked() {
-        Vec3 vec3;
+        Vec3 topPos;
         if (AutoMaceModule.mc.level == null) {
             return false;
         }
-        Vec3 vec32 = AutoMaceModule.mc.player.position().add(0.0, (double)AutoMaceModule.mc.player.getBbHeight(), 0.0);
-        BlockHitResult blockHitResult = AutoMaceModule.mc.level.clip(new ClipContext(vec32, vec3 = vec32.add(0.0, 5.0, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)AutoMaceModule.mc.player));
+        Vec3 headPos = AutoMaceModule.mc.player.position().add(0.0, (double)AutoMaceModule.mc.player.getBbHeight(), 0.0);
+        BlockHitResult blockHitResult = AutoMaceModule.mc.level.clip(new ClipContext(headPos, topPos = headPos.add(0.0, 5.0, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)AutoMaceModule.mc.player));
         return blockHitResult.getType() == HitResult.Type.BLOCK;
     }
 
-    private double rayClearDistance(float f, float f2) {
-        return this.rayClearDistance(f, f2, 8.0);
+    private double rayClearDistance(float yaw, float pitch) {
+        return this.rayClearDistance(yaw, pitch, 8.0);
     }
 
-    private double rayClearDistance(float f, float f2, double d) {
+    private double rayClearDistance(float yaw, float pitch, double maxDistance) {
         if (AutoMaceModule.mc.level == null) {
             return 0.0;
         }
-        double d2 = Math.toRadians(f);
-        double d3 = Math.toRadians(f2);
-        double d4 = Math.cos(d3);
-        Vec3 vec3 = new Vec3(-Math.sin(d2) * d4, -Math.sin(d3), Math.cos(d2) * d4);
-        Vec3 vec32 = AutoMaceModule.mc.player.position().add(0.0, (double)AutoMaceModule.mc.player.getBbHeight() * 0.5, 0.0);
-        BlockHitResult blockHitResult = AutoMaceModule.mc.level.clip(new ClipContext(vec32, vec32.add(vec3.scale(d)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)AutoMaceModule.mc.player));
-        return blockHitResult.getType() == HitResult.Type.BLOCK ? blockHitResult.getLocation().distanceTo(vec32) : d;
+        double yawRad = Math.toRadians(yaw);
+        double pitchRad = Math.toRadians(pitch);
+        double cosPitch = Math.cos(pitchRad);
+        Vec3 rayDir = new Vec3(-Math.sin(yawRad) * cosPitch, -Math.sin(pitchRad), Math.cos(yawRad) * cosPitch);
+        Vec3 centerPos = AutoMaceModule.mc.player.position().add(0.0, (double)AutoMaceModule.mc.player.getBbHeight() * 0.5, 0.0);
+        BlockHitResult blockHitResult = AutoMaceModule.mc.level.clip(new ClipContext(centerPos, centerPos.add(rayDir.scale(maxDistance)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)AutoMaceModule.mc.player));
+        return blockHitResult.getType() == HitResult.Type.BLOCK ? blockHitResult.getLocation().distanceTo(centerPos) : maxDistance;
     }
 
-    private float[] steerClear(float f, float f2) {
-        double d;
+    private float[] steerClear(float yaw, float pitch) {
+        double maxClimb;
         if (AutoMaceModule.mc.level == null) {
             return null;
         }
-        int n = this.terrainLookAhead.getValue().intValue();
-        double d2 = 8.0 / (double)n;
-        boolean bl = false;
-        for (int i = 1; i <= n; ++i) {
-            float f3 = f2 - (float)(this.terrainLift * (double)i / (double)n);
-            d = d2 * (double)i;
-            if (!(this.rayClearDistance(f, f3, d) < d - 0.001)) continue;
-            bl = true;
+        int steps = this.terrainLookAhead.getValue().intValue();
+        double stepDist = 8.0 / (double)steps;
+        boolean blocked = false;
+        for (int i = 1; i <= steps; ++i) {
+            float testPitch = pitch - (float)(this.terrainLift * (double)i / (double)steps);
+            double dist = stepDist * (double)i;
+            if (!(this.rayClearDistance(yaw, testPitch, dist) < dist - 0.001)) continue;
+            blocked = true;
             break;
         }
-        double d3 = this.terrainClimbRate.getValue().doubleValue();
-        d = this.terrainMaxClimb.getValue().doubleValue();
-        double d4 = this.terrainLift = bl ? Math.min(this.terrainLift + d3, d) : Math.max(0.0, this.terrainLift - d3 * 0.5);
-        if (!bl || this.terrainLift < d) {
-            return new float[]{f, f2 - (float)this.terrainLift};
+        double climbRate = this.terrainClimbRate.getValue().doubleValue();
+        maxClimb = this.terrainMaxClimb.getValue().doubleValue();
+        this.terrainLift = blocked ? Math.min(this.terrainLift + climbRate, maxClimb) : Math.max(0.0, this.terrainLift - climbRate * 0.5);
+        if (!blocked || this.terrainLift < maxClimb) {
+            return new float[]{yaw, pitch - (float)this.terrainLift};
         }
         return null;
     }
 
     private boolean ensureFlying(ElytraFlyModule elytraFlyModule) {
         if (AutoMaceModule.mc.player.onGround()) {
-            Vec3 vec3 = AutoMaceModule.mc.player.getDeltaMovement();
-            if (vec3.y < 0.42) {
-                AutoMaceModule.mc.player.setDeltaMovement(vec3.x, 0.45, vec3.z);
+            Vec3 velocity = AutoMaceModule.mc.player.getDeltaMovement();
+            if (velocity.y < 0.42) {
+                AutoMaceModule.mc.player.setDeltaMovement(velocity.x, 0.45, velocity.z);
             }
             this.launchKicked = true;
             return false;
@@ -463,22 +459,22 @@ extends Module {
     }
 
     private void ensureElytraWorn() {
-        int n;
+        int emptySlot;
         if (this.fakeFly.getValue()) {
             return;
         }
         if (AutoMaceModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() == Items.ELYTRA) {
             return;
         }
-        int n2 = InventoryUtils.find(Items.ELYTRA);
-        if (n2 == -1) {
+        int elytraSlot = InventoryUtils.find(Items.ELYTRA);
+        if (elytraSlot == -1) {
             return;
         }
-        if (this.armorParkedSlot == -1 && !AutoMaceModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).isEmpty() && (n = this.findEmptySlot()) != -1) {
-            InventoryUtils.swapEquipment(n, 6);
-            this.armorParkedSlot = n;
+        if (this.armorParkedSlot == -1 && !AutoMaceModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).isEmpty() && (emptySlot = this.findEmptySlot()) != -1) {
+            InventoryUtils.swapEquipment(emptySlot, 6);
+            this.armorParkedSlot = emptySlot;
         }
-        InventoryUtils.swapEquipment(n2, 6);
+        InventoryUtils.swapEquipment(elytraSlot, 6);
     }
 
     private void restoreArmorIfParked() {
@@ -500,12 +496,12 @@ extends Module {
         if (AutoMaceModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() != Items.ELYTRA) {
             return;
         }
-        int n = this.findEmptySlot();
-        if (n == -1) {
+        int emptySlot = this.findEmptySlot();
+        if (emptySlot == -1) {
             return;
         }
-        InventoryUtils.swapEquipment(n, 6);
-        this.elytraParkedSlot = n;
+        InventoryUtils.swapEquipment(emptySlot, 6);
+        this.elytraParkedSlot = emptySlot;
         this.elytraUnequipped = true;
     }
 
@@ -529,18 +525,18 @@ extends Module {
     }
 
     private void attack(Entity entity) {
-        int n = AutoMaceModule.mc.player.getInventory().getSelectedSlot();
-        int n2 = InventoryUtils.find(Items.MACE);
-        boolean bl = false;
-        if (n2 != -1 && n2 != n) {
+        int currentSlot = AutoMaceModule.mc.player.getInventory().getSelectedSlot();
+        int maceSlot = InventoryUtils.find(Items.MACE);
+        boolean silentSwapped = false;
+        if (maceSlot != -1 && maceSlot != currentSlot) {
             if (this.swap.getValue().equalsIgnoreCase("Normal")) {
                 if (this.originalSlot == -1) {
-                    this.originalSlot = n;
+                    this.originalSlot = currentSlot;
                 }
-                InventoryUtils.switchSlot("Normal", n2, n);
+                InventoryUtils.switchSlot("Normal", maceSlot, currentSlot);
             } else if (this.swap.getValue().equalsIgnoreCase("Silent")) {
-                InventoryUtils.switchSlot("Silent", n2, n);
-                bl = true;
+                InventoryUtils.switchSlot("Silent", maceSlot, currentSlot);
+                silentSwapped = true;
             }
         }
         mc.getConnection().send((Packet)new ServerboundAttackPacket(entity.getId()));
@@ -549,8 +545,8 @@ extends Module {
             AutoMaceModule.mc.player.swing(InteractionHand.MAIN_HAND);
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
         }
-        if (bl) {
-            InventoryUtils.switchBack("Silent", n2, n);
+        if (silentSwapped) {
+            InventoryUtils.switchBack("Silent", maceSlot, currentSlot);
         }
     }
 
@@ -558,32 +554,32 @@ extends Module {
         if (AutoMaceModule.mc.player == null || AutoMaceModule.mc.level == null) {
             return null;
         }
-        ArrayList<Entity> arrayList = new ArrayList<Entity>();
-        Vec3 vec3 = AutoMaceModule.mc.player.getEyePosition(1.0f);
-        double d = this.range.getValue().doubleValue();
-        for (Entity entity2 : AutoMaceModule.mc.level.entitiesForRendering()) {
-            if (entity2 == AutoMaceModule.mc.player || !entity2.isAlive() || EntityUtils.isGhost(entity2)) continue;
-            double d3 = vec3.distanceTo(RotationUtils.getClampClosestPoint(vec3, entity2.getBoundingBox()));
-            if (d3 > d) continue;
-            if (entity2 instanceof Player) {
-                Player player = (Player)entity2;
+        ArrayList<Entity> candidates = new ArrayList<Entity>();
+        Vec3 eyePos = AutoMaceModule.mc.player.getEyePosition(1.0f);
+        double maxRange = this.range.getValue().doubleValue();
+        for (Entity candidate : AutoMaceModule.mc.level.entitiesForRendering()) {
+            if (candidate == AutoMaceModule.mc.player || !candidate.isAlive() || EntityUtils.isGhost(candidate)) continue;
+            double dist = eyePos.distanceTo(RotationUtils.getClampClosestPoint(eyePos, candidate.getBoundingBox()));
+            if (dist > maxRange) continue;
+            if (candidate instanceof Player) {
+                Player player = (Player)candidate;
                 if (!this.players.getValue() || !this.friends.getValue() && Night.FRIEND_MANAGER.contains(player.getName().getString())) continue;
-                arrayList.add(entity2);
+                candidates.add(candidate);
                 continue;
             }
-            if (EntityUtils.isNeutral(entity2)) {
-                if (!this.neutrals.getValue() && !EntityUtils.isAngry(entity2)) continue;
-                arrayList.add(entity2);
+            if (EntityUtils.isNeutral(candidate)) {
+                if (!this.neutrals.getValue() && !EntityUtils.isAngry(candidate)) continue;
+                candidates.add(candidate);
                 continue;
             }
-            if (this.hostiles.getValue() && EntityUtils.isHostile(entity2)) {
-                arrayList.add(entity2);
+            if (this.hostiles.getValue() && EntityUtils.isHostile(candidate)) {
+                candidates.add(candidate);
                 continue;
             }
-            if (!this.animals.getValue() || !EntityUtils.isAnimal(entity2)) continue;
-            arrayList.add(entity2);
+            if (!this.animals.getValue() || !EntityUtils.isAnimal(candidate)) continue;
+            candidates.add(candidate);
         }
-        return arrayList.stream().min(Comparator.comparingDouble(entity -> vec3.distanceTo(RotationUtils.getClampClosestPoint(vec3, entity.getBoundingBox())))).orElse(null);
+        return candidates.stream().min(Comparator.comparingDouble(entity -> eyePos.distanceTo(RotationUtils.getClampClosestPoint(eyePos, entity.getBoundingBox())))).orElse(null);
     }
 
     @SubscribeEvent
@@ -591,32 +587,32 @@ extends Module {
         if (!this.render.getValue() || AutoMaceModule.mc.player == null || AutoMaceModule.mc.player.isDeadOrDying()) {
             return;
         }
-        Entity entity = this.target;
-        float f = 1.0f;
-        if (entity != null) {
-            this.lastTarget = entity;
+        Entity renderTarget = this.target;
+        float alphaFactor = 1.0f;
+        if (renderTarget != null) {
+            this.lastTarget = renderTarget;
             this.lastTargetTime = System.currentTimeMillis();
         } else if (this.lastTarget != null) {
-            long l = System.currentTimeMillis() - this.lastTargetTime;
-            if (l < 300L) {
-                entity = this.lastTarget;
-                f = 1.0f - (float)l / 300.0f;
+            long elapsedMs = System.currentTimeMillis() - this.lastTargetTime;
+            if (elapsedMs < 300L) {
+                renderTarget = this.lastTarget;
+                alphaFactor = 1.0f - (float)elapsedMs / 300.0f;
             } else {
                 this.lastTarget = null;
             }
         }
-        if (entity == null) {
+        if (renderTarget == null) {
             return;
         }
-        Color color = ColorUtils.getColor(this.boxColor.getColor(), (int)((float)this.boxColor.getColor().getAlpha() * f));
+        Color color = ColorUtils.getColor(this.boxColor.getColor(), (int)((float)this.boxColor.getColor().getAlpha() * alphaFactor));
         if (this.renderMode.getValue().equalsIgnoreCase("Box") || this.renderMode.getValue().equalsIgnoreCase("Both")) {
-            Vec3 vec3 = EntityUtils.getRenderPos(entity, renderWorldEvent.getTickDelta());
-            AABB aABB = entity.getBoundingBox().move(vec3.x - entity.getX(), vec3.y - entity.getY(), vec3.z - entity.getZ());
+            Vec3 renderPos = EntityUtils.getRenderPos(renderTarget, renderWorldEvent.getTickDelta());
+            AABB aABB = renderTarget.getBoundingBox().move(renderPos.x - renderTarget.getX(), renderPos.y - renderTarget.getY(), renderPos.z - renderTarget.getZ());
             Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, color);
             Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, color);
         }
         if (this.renderMode.getValue().equalsIgnoreCase("Circle") || this.renderMode.getValue().equalsIgnoreCase("Both")) {
-            Renderer3D.renderTargetCircle(renderWorldEvent.getMatrices(), entity, renderWorldEvent.getTickDelta(), color);
+            Renderer3D.renderTargetCircle(renderWorldEvent.getMatrices(), renderTarget, renderWorldEvent.getTickDelta(), color);
         }
     }
 }

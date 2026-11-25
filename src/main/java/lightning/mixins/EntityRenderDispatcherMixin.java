@@ -35,12 +35,12 @@ public class EntityRenderDispatcherMixin {
     private Map<EntityType<?>, EntityRenderer<?, ?>> renderers;
 
     @Inject(method={"shouldRender"}, at={@At(value="HEAD")}, cancellable=true)
-    private <T extends Entity> void night$safeShouldRender(T t, Frustum frustum, double d, double d2, double d3, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
-        if (t == null || t.getType() == null) {
+    private <T extends Entity> void night$safeShouldRender(T entity, Frustum frustum, double camX, double camY, double camZ, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
+        if (entity == null || entity.getType() == null) {
             callbackInfoReturnable.setReturnValue(false);
             return;
         }
-        if (!(t instanceof AbstractClientPlayer || this.renderers != null && this.renderers.containsKey(t.getType()))) {
+        if (!(entity instanceof AbstractClientPlayer || this.renderers != null && this.renderers.containsKey(entity.getType()))) {
             callbackInfoReturnable.setReturnValue(false);
         }
     }

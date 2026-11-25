@@ -206,14 +206,14 @@ extends Module {
         this.freeLookInitialized = false;
     }
 
-    public void onMouseTurn(double d, double d2) {
+    public void onMouseTurn(double deltaX, double deltaY) {
         if (!this.freeLookInitialized && ElytraFlyModule.mc.player != null) {
             this.freeYaw = ElytraFlyModule.mc.player.getYRot();
             this.freePitch = ElytraFlyModule.mc.player.getXRot();
             this.freeLookInitialized = true;
         }
-        this.freeYaw += (float)(d * 0.15);
-        this.freePitch = Mth.clamp((float)(this.freePitch + (float)(d2 * 0.15)), (float)-90.0f, (float)90.0f);
+        this.freeYaw += (float)(deltaX * 0.15);
+        this.freePitch = Mth.clamp((float)(this.freePitch + (float)(deltaY * 0.15)), (float)-90.0f, (float)90.0f);
     }
 
     public boolean isBounceActive() {
@@ -269,22 +269,22 @@ extends Module {
             if (ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() != Items.ELYTRA) {
                 return;
             }
-            int n = this.findChestplateSlot();
-            if (n != -1) {
-                InventoryUtils.swapEquipment(n, 6);
+            int chestplateSlot = this.findChestplateSlot();
+            if (chestplateSlot != -1) {
+                InventoryUtils.swapEquipment(chestplateSlot, 6);
             }
             return;
         }
         if (ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() == Items.ELYTRA) {
             return;
         }
-        int n = InventoryUtils.find(Items.ELYTRA);
-        if (n == -1) {
+        int elytraSlot = InventoryUtils.find(Items.ELYTRA);
+        if (elytraSlot == -1) {
             Night.CHAT_MANAGER.tagged("No elytra found in your inventory.", this.getName());
             this.setToggled(false);
             return;
         }
-        InventoryUtils.swapEquipment(n, 6);
+        InventoryUtils.swapEquipment(elytraSlot, 6);
     }
 
     @Override
@@ -363,13 +363,13 @@ extends Module {
                 ElytraFlyModule.mc.player.setDeltaMovement(new Vec3(0.0, ElytraFlyModule.mc.player.getDeltaMovement().y, 0.0));
             } else {
                 this.pitch = 12.0f;
-                double d = Math.cos(Math.toRadians(ElytraFlyModule.mc.player.getYRot() + 90.0f));
-                double d2 = Math.sin(Math.toRadians(ElytraFlyModule.mc.player.getYRot() + 90.0f));
-                ElytraFlyModule.mc.player.setDeltaMovement(new Vec3((double)ElytraFlyModule.mc.player.input.getMoveVector().y * this.horizontal.getValue().doubleValue() * d + (double)ElytraFlyModule.mc.player.input.getMoveVector().x * this.horizontal.getValue().doubleValue() * d2, ElytraFlyModule.mc.player.getDeltaMovement().y, (double)ElytraFlyModule.mc.player.input.getMoveVector().y * this.horizontal.getValue().doubleValue() * d2 - (double)ElytraFlyModule.mc.player.input.getMoveVector().x * this.horizontal.getValue().doubleValue() * d));
+                double cosYaw = Math.cos(Math.toRadians(ElytraFlyModule.mc.player.getYRot() + 90.0f));
+                double sinYaw = Math.sin(Math.toRadians(ElytraFlyModule.mc.player.getYRot() + 90.0f));
+                ElytraFlyModule.mc.player.setDeltaMovement(new Vec3((double)ElytraFlyModule.mc.player.input.getMoveVector().y * this.horizontal.getValue().doubleValue() * cosYaw + (double)ElytraFlyModule.mc.player.input.getMoveVector().x * this.horizontal.getValue().doubleValue() * sinYaw, ElytraFlyModule.mc.player.getDeltaMovement().y, (double)ElytraFlyModule.mc.player.input.getMoveVector().y * this.horizontal.getValue().doubleValue() * sinYaw - (double)ElytraFlyModule.mc.player.input.getMoveVector().x * this.horizontal.getValue().doubleValue() * cosYaw));
             }
             ElytraFlyModule.mc.player.setDeltaMovement(new Vec3(ElytraFlyModule.mc.player.getDeltaMovement().x, 0.0, ElytraFlyModule.mc.player.getDeltaMovement().z));
-            boolean bl = ((IFreecamModule)((Object)Night.MODULE_MANAGER.getModule("Freecam"))).isToggled();
-            if (this.moveVertically.getValue() && !bl) {
+            boolean freecamActive = ((IFreecamModule)((Object)Night.MODULE_MANAGER.getModule("Freecam"))).isToggled();
+            if (this.moveVertically.getValue() && !freecamActive) {
                 if (ElytraFlyModule.mc.options.keyJump.isDown()) {
                     ElytraFlyModule.mc.player.setDeltaMovement(new Vec3(ElytraFlyModule.mc.player.getDeltaMovement().x, this.vertical.getValue().doubleValue(), ElytraFlyModule.mc.player.getDeltaMovement().z));
                     this.pitch = -51.0f;
@@ -393,9 +393,8 @@ extends Module {
             Packet<?> packet2 = packetReceiveEvent.getPacket();
             if (packet2 instanceof ClientboundPingPacket) {
                 ClientboundPingPacket clientboundPingPacket = (ClientboundPingPacket)packet2;
-                boolean bl = this.bounceFakeLag.getValue() && this.isGlidingMasked() && this.isInDipWindow() || this.bounceBypass.getValue() && this.bounceBypassTicksLeft > 0;
-                boolean bl2 = bl;
-                if (bl) {
+                boolean shouldQueuePing = this.bounceFakeLag.getValue() && this.isGlidingMasked() && this.isInDipWindow() || this.bounceBypass.getValue() && this.bounceBypassTicksLeft > 0;
+                if (shouldQueuePing) {
                     this.bouncePingPacketQueue.add(clientboundPingPacket);
                     packetReceiveEvent.setCancelled(true);
                 }
@@ -410,20 +409,20 @@ extends Module {
                     this.debugLog("FLAG PAUSE: server corrected position, holding for " + this.bounceFlagPauseTicksLeft + " ticks");
                 }
                 if (this.bouncePassObstacles.getValue() && BaritoneUtils.isAvailable()) {
-                    Vec3 vec3 = this.getSnappedObstacleDir();
-                    Vec3 vec32 = this.findClosestPointOnObstacleLine(ElytraFlyModule.mc.player.position(), vec3);
+                    Vec3 obstacleDir = this.getSnappedObstacleDir();
+                    Vec3 closestPoint = this.findClosestPointOnObstacleLine(ElytraFlyModule.mc.player.position(), obstacleDir);
                     mc.execute(() -> {
                         if (ElytraFlyModule.mc.player == null) {
                             return;
                         }
-                        Vec3 vec33 = vec32.add(vec3.scale(this.bounceObstacleLookAhead.getValue().doubleValue()));
-                        this.pathToValidObstaclePoint(vec33, vec3, false);
+                        Vec3 targetPoint = closestPoint.add(obstacleDir.scale(this.bounceObstacleLookAhead.getValue().doubleValue()));
+                        this.pathToValidObstaclePoint(targetPoint, obstacleDir, false);
                     });
                 }
             }
         }
-        boolean bl = this.isAutoMaceFakeFlyActive();
-        if ((this.mode.getValue().equalsIgnoreCase("ControlRocket") && this.muteElytra.getValue() || bl) && !this.crLastSwapTimer.hasTimeElapsed(500) && (packet = packetReceiveEvent.getPacket()) instanceof ClientboundSoundPacket && ((SoundEvent)(clientboundSoundPacket = (ClientboundSoundPacket)packet).getSound().value()).location().getPath().startsWith("item.armor.equip")) {
+        boolean autoMaceActive = this.isAutoMaceFakeFlyActive();
+        if ((this.mode.getValue().equalsIgnoreCase("ControlRocket") && this.muteElytra.getValue() || autoMaceActive) && !this.crLastSwapTimer.hasTimeElapsed(500) && (packet = packetReceiveEvent.getPacket()) instanceof ClientboundSoundPacket && ((SoundEvent)(clientboundSoundPacket = (ClientboundSoundPacket)packet).getSound().value()).location().getPath().startsWith("item.armor.equip")) {
             packetReceiveEvent.setCancelled(true);
         }
         if (this.mode.getValue().equalsIgnoreCase("Control") && (packet = packetReceiveEvent.getPacket()) instanceof ServerboundMovePlayerPacket && (serverboundMovePlayerPacket = (ServerboundMovePlayerPacket)packet).hasRotation() && ElytraFlyModule.mc.player.isFallFlying()) {
@@ -454,11 +453,10 @@ extends Module {
         if (!packetSendEvent.getPacket().getClass().getSimpleName().startsWith("Serverbound")) {
             return;
         }
-        boolean bl = this.bounceFakeLag.getValue() && this.isGlidingMasked() && this.isInDipWindow();
-        boolean bl2 = this.bounceBypass.getValue() && this.bounceBypassTicksLeft > 0 && (packetSendEvent.getPacket() instanceof ServerboundMovePlayerPacket || packetSendEvent.getPacket() instanceof ServerboundPongPacket);
-        boolean bl3 = bl || bl2;
-        boolean bl4 = bl3;
-        if (bl3) {
+        boolean fakeLagActive = this.bounceFakeLag.getValue() && this.isGlidingMasked() && this.isInDipWindow();
+        boolean bypassActive = this.bounceBypass.getValue() && this.bounceBypassTicksLeft > 0 && (packetSendEvent.getPacket() instanceof ServerboundMovePlayerPacket || packetSendEvent.getPacket() instanceof ServerboundPongPacket);
+        boolean shouldQueue = fakeLagActive || bypassActive;
+        if (shouldQueue) {
             this.bounceSendPacketQueue.add(packetSendEvent.getPacket());
             packetSendEvent.setCancelled(true);
             return;
@@ -485,34 +483,33 @@ extends Module {
     }
 
     private void handleControlRocket() {
-        boolean bl;
+        boolean shouldLaunch;
         if (!this.crGrimSwap.getValue() && ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() != Items.ELYTRA) {
-            int n = InventoryUtils.find(Items.ELYTRA);
-            if (n != -1) {
-                InventoryUtils.swapEquipment(n, 6);
+            int elytraSlot = InventoryUtils.find(Items.ELYTRA);
+            if (elytraSlot != -1) {
+                InventoryUtils.swapEquipment(elytraSlot, 6);
                 if (!ElytraFlyModule.mc.player.onGround()) {
                     mc.getConnection().send((Packet)new ServerboundPlayerCommandPacket((Entity)ElytraFlyModule.mc.player, ServerboundPlayerCommandPacket.Action.START_FALL_FLYING));
                 }
             }
             return;
         }
-        boolean bl2 = ElytraFlyModule.mc.options.keyJump.isDown();
-        if (bl2 && !this.crLastJumpDown) {
-            bl = this.crSteerMode.getValue().equalsIgnoreCase("Key") || System.currentTimeMillis() - this.crLastJumpPressTime <= 300L;
-            boolean bl3 = bl;
-            if (bl && !ElytraFlyModule.mc.player.isFallFlying()) {
+        boolean jumpDown = ElytraFlyModule.mc.options.keyJump.isDown();
+        if (jumpDown && !this.crLastJumpDown) {
+            shouldLaunch = this.crSteerMode.getValue().equalsIgnoreCase("Key") || System.currentTimeMillis() - this.crLastJumpPressTime <= 300L;
+            if (shouldLaunch && !ElytraFlyModule.mc.player.isFallFlying()) {
                 this.crLaunchPending = true;
-                Vec3 vec3 = ElytraFlyModule.mc.player.getDeltaMovement();
-                ElytraFlyModule.mc.player.setDeltaMovement(vec3.x, Math.max(vec3.y, 0.45), vec3.z);
+                Vec3 velocity = ElytraFlyModule.mc.player.getDeltaMovement();
+                ElytraFlyModule.mc.player.setDeltaMovement(velocity.x, Math.max(velocity.y, 0.45), velocity.z);
             }
             this.crLastJumpPressTime = System.currentTimeMillis();
         }
-        this.crLastJumpDown = bl2;
+        this.crLastJumpDown = jumpDown;
         if (ElytraFlyModule.mc.player.onGround() && !this.crLaunchPending) {
-            bl = this.crGliding;
+            boolean wasGliding = this.crGliding;
             this.crGliding = false;
             this.crGrimTicks = 0;
-            if (bl && this.freeLookInitialized) {
+            if (wasGliding && this.freeLookInitialized) {
                 ElytraFlyModule.mc.player.setYRot(this.freeYaw);
                 ElytraFlyModule.mc.player.setXRot(this.freePitch);
             }
@@ -538,114 +535,111 @@ extends Module {
 
     private void tickGrimControl() {
         if (this.crSteerMode.getValue().equalsIgnoreCase("Key")) {
-            int n;
             if (!this.freeLookInitialized) {
                 this.freeYaw = ElytraFlyModule.mc.player.getYRot();
                 this.freePitch = ElytraFlyModule.mc.player.getXRot();
                 this.freeLookInitialized = true;
             }
-            Vec3 vec3 = this.grimMovementInput();
-            boolean bl = this.grimStill;
-            this.grimStill = vec3.lengthSqr() < 1.0E-4;
-            boolean bl2 = this.grimStill;
-            if (this.grimStill && !bl) {
+            Vec3 moveDir = this.grimMovementInput();
+            boolean wasStill = this.grimStill;
+            this.grimStill = moveDir.lengthSqr() < 1.0E-4;
+            if (this.grimStill && !wasStill) {
                 this.grimFlipBaseYaw = ElytraFlyModule.mc.player.getYRot();
                 this.grimFlipToggle = false;
             }
-            int n2 = 1;
+            boolean flipFlopActive = true;
             if (this.grimStill) {
                 boolean hasFirework = this.hasFireworkInInventory();
-                n2 = switch (this.crFlipFlopMode.getValue()) {
-                    case "Full" -> 1;
-                    case "WithFirework" -> hasFirework ? 1 : 0;
-                    case "None" -> 0;
-                    default -> 1;
+                flipFlopActive = switch (this.crFlipFlopMode.getValue()) {
+                    case "Full" -> true;
+                    case "WithFirework" -> hasFirework;
+                    case "None" -> false;
+                    default -> true;
                 };
             }
             this.grimStillTicks = this.grimStill ? this.grimStillTicks + 1 : 0;
-            n = this.grimStillTicks;
-            if (!this.grimStill || n2 != 0) {
+            if (!this.grimStill || flipFlopActive) {
                 this.tryUseGrimFirework();
             }
             if (this.grimStill) {
-                if (n2 != 0) {
-                    float f = this.grimFlipToggle ? this.grimFlipBaseYaw + 180.0f : this.grimFlipBaseYaw;
-                    this.applyGrimRotation(f, 0.0f);
+                if (flipFlopActive) {
+                    float flipYaw = this.grimFlipToggle ? this.grimFlipBaseYaw + 180.0f : this.grimFlipBaseYaw;
+                    this.applyGrimRotation(flipYaw, 0.0f);
                     this.grimFlipToggle = !this.grimFlipToggle;
                 }
             } else {
-                if (bl && !this.hasFireworkInInventory()) {
+                if (wasStill && !this.hasFireworkInInventory()) {
                     ElytraFlyModule.mc.player.setDeltaMovement(Vec3.ZERO);
                 }
                 Vec3 eyePos = ElytraFlyModule.mc.player.getEyePosition();
-                float[] fArray = RotationUtils.getRotations(eyePos.x + vec3.x, eyePos.y + vec3.y, eyePos.z + vec3.z);
-                this.applyGrimRotation(fArray[0], fArray[1]);
+                float[] rotations = RotationUtils.getRotations(eyePos.x + moveDir.x, eyePos.y + moveDir.y, eyePos.z + moveDir.z);
+                this.applyGrimRotation(rotations[0], rotations[1]);
             }
         } else {
             this.freeLookInitialized = false;
-            float f = ElytraFlyModule.mc.player.getYRot();
-            float f2 = ElytraFlyModule.mc.player.getXRot();
-            this.applyGrimRotation(f, f2);
+            float yaw = ElytraFlyModule.mc.player.getYRot();
+            float pitch = ElytraFlyModule.mc.player.getXRot();
+            this.applyGrimRotation(yaw, pitch);
             this.tryUseGrimFirework();
         }
     }
 
     private Vec3 grimMovementInput() {
-        float f = this.freeLookInitialized ? this.freeYaw : ElytraFlyModule.mc.player.getYRot();
-        Vec3 vec3 = Vec3.ZERO;
+        float yaw = this.freeLookInitialized ? this.freeYaw : ElytraFlyModule.mc.player.getYRot();
+        Vec3 direction = Vec3.ZERO;
         if (ElytraFlyModule.mc.options.keyUp.isDown()) {
-            vec3 = vec3.add(ElytraFlyModule.fromYaw(f));
+            direction = direction.add(ElytraFlyModule.fromYaw(yaw));
         }
         if (ElytraFlyModule.mc.options.keyDown.isDown()) {
-            vec3 = vec3.add(ElytraFlyModule.fromYaw(f + 180.0f));
+            direction = direction.add(ElytraFlyModule.fromYaw(yaw + 180.0f));
         }
         if (ElytraFlyModule.mc.options.keyLeft.isDown()) {
-            vec3 = vec3.add(ElytraFlyModule.fromYaw(f - 90.0f));
+            direction = direction.add(ElytraFlyModule.fromYaw(yaw - 90.0f));
         }
         if (ElytraFlyModule.mc.options.keyRight.isDown()) {
-            vec3 = vec3.add(ElytraFlyModule.fromYaw(f + 90.0f));
+            direction = direction.add(ElytraFlyModule.fromYaw(yaw + 90.0f));
         }
         if (ElytraFlyModule.mc.options.keyJump.isDown()) {
-            vec3 = vec3.add(0.0, 1.0, 0.0);
+            direction = direction.add(0.0, 1.0, 0.0);
         }
         if (ElytraFlyModule.mc.options.keyShift.isDown()) {
-            vec3 = vec3.add(0.0, -1.0, 0.0);
+            direction = direction.add(0.0, -1.0, 0.0);
         }
-        return vec3;
+        return direction;
     }
 
-    private static Vec3 fromYaw(float f) {
-        double d = Math.toRadians(f);
-        return new Vec3(-Math.sin(d), 0.0, Math.cos(d));
+    private static Vec3 fromYaw(float yaw) {
+        double yawRad = Math.toRadians(yaw);
+        return new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad));
     }
 
-    private void applyGrimRotation(float f, float f2) {
-        float f3 = this.crTurnSpeed.getValue().floatValue();
-        float f4 = ElytraFlyModule.mc.player.getYRot();
-        float f5 = ElytraFlyModule.mc.player.getXRot();
-        float f6 = Mth.clamp((float)Mth.wrapDegrees((float)(f - f4)), (float)(-f3), (float)f3);
-        float f7 = Mth.clamp((float)(f2 - f5), (float)(-f3), (float)f3);
-        ElytraFlyModule.mc.player.setYRot(f4 + f6);
-        ElytraFlyModule.mc.player.setXRot(f5 + f7);
-        ElytraFlyModule.mc.player.setYBodyRot(f4 + f6);
-        ElytraFlyModule.mc.player.setYHeadRot(f4 + f6);
+    private void applyGrimRotation(float targetYaw, float targetPitch) {
+        float turnSpeed = this.crTurnSpeed.getValue().floatValue();
+        float currentYaw = ElytraFlyModule.mc.player.getYRot();
+        float currentPitch = ElytraFlyModule.mc.player.getXRot();
+        float deltaYaw = Mth.clamp((float)Mth.wrapDegrees((float)(targetYaw - currentYaw)), (float)(-turnSpeed), (float)turnSpeed);
+        float deltaPitch = Mth.clamp((float)(targetPitch - currentPitch), (float)(-turnSpeed), (float)turnSpeed);
+        ElytraFlyModule.mc.player.setYRot(currentYaw + deltaYaw);
+        ElytraFlyModule.mc.player.setXRot(currentPitch + deltaPitch);
+        ElytraFlyModule.mc.player.setYBodyRot(currentYaw + deltaYaw);
+        ElytraFlyModule.mc.player.setYHeadRot(currentYaw + deltaYaw);
     }
 
     private boolean hasFireworkInInventory() {
-        int n;
+        int slot;
         if (ElytraFlyModule.mc.player == null) {
             return false;
         }
         if (ElytraFlyModule.mc.player.getOffhandItem().is(Items.FIREWORK_ROCKET) || ElytraFlyModule.mc.player.getMainHandItem().is(Items.FIREWORK_ROCKET)) {
             return true;
         }
-        for (n = 0; n <= 8; ++n) {
-            if (!ElytraFlyModule.mc.player.getInventory().getItem(n).is(Items.FIREWORK_ROCKET)) continue;
+        for (slot = 0; slot <= 8; ++slot) {
+            if (!ElytraFlyModule.mc.player.getInventory().getItem(slot).is(Items.FIREWORK_ROCKET)) continue;
             return true;
         }
         if (this.crInventory.getValue()) {
-            for (n = 9; n <= 35; ++n) {
-                if (!ElytraFlyModule.mc.player.getInventory().getItem(n).is(Items.FIREWORK_ROCKET)) continue;
+            for (slot = 9; slot <= 35; ++slot) {
+                if (!ElytraFlyModule.mc.player.getInventory().getItem(slot).is(Items.FIREWORK_ROCKET)) continue;
                 return true;
             }
         }
@@ -653,21 +647,21 @@ extends Module {
     }
 
     private int findFireworkSlot() {
-        int n;
+        int slot;
         if (ElytraFlyModule.mc.player == null) {
             return -1;
         }
         if (ElytraFlyModule.mc.player.getMainHandItem().is(Items.FIREWORK_ROCKET)) {
             return ElytraFlyModule.mc.player.getInventory().getSelectedSlot();
         }
-        for (n = 0; n <= 8; ++n) {
-            if (!ElytraFlyModule.mc.player.getInventory().getItem(n).is(Items.FIREWORK_ROCKET)) continue;
-            return n;
+        for (slot = 0; slot <= 8; ++slot) {
+            if (!ElytraFlyModule.mc.player.getInventory().getItem(slot).is(Items.FIREWORK_ROCKET)) continue;
+            return slot;
         }
         if (this.crInventory.getValue()) {
-            for (n = 9; n <= 35; ++n) {
-                if (!ElytraFlyModule.mc.player.getInventory().getItem(n).is(Items.FIREWORK_ROCKET)) continue;
-                return n;
+            for (slot = 9; slot <= 35; ++slot) {
+                if (!ElytraFlyModule.mc.player.getInventory().getItem(slot).is(Items.FIREWORK_ROCKET)) continue;
+                return slot;
             }
         }
         return -1;
@@ -685,57 +679,56 @@ extends Module {
         this.tryUseGrimFirework(ElytraFlyModule.mc.player.getYRot(), ElytraFlyModule.mc.player.getXRot());
     }
 
-    public void tryUseGrimFirework(float f, float f2) {
+    public void tryUseGrimFirework(float yaw, float pitch) {
         if (ElytraFlyModule.mc.player == null || mc.getConnection() == null) {
             return;
         }
         if (ElytraFlyModule.mc.player.isUsingItem() && ElytraFlyModule.mc.player.getUsedItemHand() == InteractionHand.MAIN_HAND) {
             return;
         }
-        double d = (double)(System.currentTimeMillis() - this.grimFireworkUsedAtMs) / 1000.0;
-        double d2 = this.grimLastFireworkDurationSeconds < 0.0 ? 0.0 : this.grimLastFireworkDurationSeconds + (double)this.crFireworkDelay.getValue().floatValue();
-        double d3 = d2;
-        if (this.grimFireworkUsedAtMs != 0L && d < d2 && this.fireworkBoostActive()) {
+        double elapsedSeconds = (double)(System.currentTimeMillis() - this.grimFireworkUsedAtMs) / 1000.0;
+        double requiredDelay = this.grimLastFireworkDurationSeconds < 0.0 ? 0.0 : this.grimLastFireworkDurationSeconds + (double)this.crFireworkDelay.getValue().floatValue();
+        if (this.grimFireworkUsedAtMs != 0L && elapsedSeconds < requiredDelay && this.fireworkBoostActive()) {
             return;
         }
         if (ElytraFlyModule.mc.player.getOffhandItem().is(Items.FIREWORK_ROCKET)) {
-            ItemStack itemStack = ElytraFlyModule.mc.player.getOffhandItem();
-            Fireworks fireworks = (Fireworks)itemStack.get(DataComponents.FIREWORKS);
-            int n2 = fireworks != null ? fireworks.flightDuration() : 1;
-            this.grimLastFireworkDurationSeconds = (double)n2 * 0.5 + 0.5;
+            ItemStack offhandStack = ElytraFlyModule.mc.player.getOffhandItem();
+            Fireworks fireworks = (Fireworks)offhandStack.get(DataComponents.FIREWORKS);
+            int duration = fireworks != null ? fireworks.flightDuration() : 1;
+            this.grimLastFireworkDurationSeconds = (double)duration * 0.5 + 0.5;
             if (!this.armServerGlide()) {
                 return;
             }
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.OFF_HAND, n, f, f2));
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.OFF_HAND, sequence, yaw, pitch));
             this.grimFireworkUsedAtMs = System.currentTimeMillis();
             return;
         }
-        int n3 = this.findFireworkSlot();
-        if (n3 == -1) {
+        int fireworkSlot = this.findFireworkSlot();
+        if (fireworkSlot == -1) {
             return;
         }
-        ItemStack itemStack = ElytraFlyModule.mc.player.getInventory().getItem(n3);
-        Fireworks fireworks = (Fireworks)itemStack.get(DataComponents.FIREWORKS);
-        int n4 = fireworks != null ? fireworks.flightDuration() : 1;
-        this.grimLastFireworkDurationSeconds = (double)n4 * 0.5 + 0.5;
-        if (n3 > 8 && !this.crInventory.getValue()) {
+        ItemStack fireworkStack = ElytraFlyModule.mc.player.getInventory().getItem(fireworkSlot);
+        Fireworks fireworks = (Fireworks)fireworkStack.get(DataComponents.FIREWORKS);
+        int duration = fireworks != null ? fireworks.flightDuration() : 1;
+        this.grimLastFireworkDurationSeconds = (double)duration * 0.5 + 0.5;
+        if (fireworkSlot > 8 && !this.crInventory.getValue()) {
             return;
         }
         if (!this.armServerGlide()) {
             return;
         }
-        int n5 = ElytraFlyModule.mc.player.getInventory().getSelectedSlot();
-        if (n3 >= 0 && n3 <= 8) {
-            if (InventoryUtils.switchSlot("Silent", n3, n5)) {
-                NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, f, f2));
-                InventoryUtils.switchBack("Silent", n3, n5);
+        int previousSlot = ElytraFlyModule.mc.player.getInventory().getSelectedSlot();
+        if (fireworkSlot >= 0 && fireworkSlot <= 8) {
+            if (InventoryUtils.switchSlot("Silent", fireworkSlot, previousSlot)) {
+                NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, yaw, pitch));
+                InventoryUtils.switchBack("Silent", fireworkSlot, previousSlot);
                 this.grimFireworkUsedAtMs = System.currentTimeMillis();
             }
         } else if (this.crInventory.getValue()) {
-            int n6 = ElytraFlyModule.mc.player.getInventory().getSelectedSlot();
-            InventoryUtils.swap("Swap", n3, n6);
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, f, f2));
-            InventoryUtils.swap("Swap", n3, n6);
+            int selectedSlot = ElytraFlyModule.mc.player.getInventory().getSelectedSlot();
+            InventoryUtils.swap("Swap", fireworkSlot, selectedSlot);
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, yaw, pitch));
+            InventoryUtils.swap("Swap", fireworkSlot, selectedSlot);
             this.grimFireworkUsedAtMs = System.currentTimeMillis();
         }
     }
@@ -774,7 +767,7 @@ extends Module {
         return this.sendGlideStart(false);
     }
 
-    public boolean sendGlideStart(boolean bl) {
+    public boolean sendGlideStart(boolean force) {
         this.crGliding = true;
         if (ElytraFlyModule.mc.player == null) {
             return false;
@@ -783,24 +776,24 @@ extends Module {
             mc.getConnection().send((Packet)new ServerboundPlayerCommandPacket((Entity)ElytraFlyModule.mc.player, ServerboundPlayerCommandPacket.Action.START_FALL_FLYING));
             return true;
         }
-        int n = ElytraFlyModule.mc.player.tickCount;
-        if (n >= this.lastGlideStartTick && n - this.lastGlideStartTick < 2) {
+        int currentTick = ElytraFlyModule.mc.player.tickCount;
+        if (currentTick >= this.lastGlideStartTick && currentTick - this.lastGlideStartTick < 2) {
             return false;
         }
-        int n2 = InventoryUtils.find(Items.ELYTRA);
-        if (n2 == -1) {
+        int elytraSlot = InventoryUtils.find(Items.ELYTRA);
+        if (elytraSlot == -1) {
             return false;
         }
-        this.lastGlideStartTick = n;
-        ItemStack itemStack = ElytraFlyModule.mc.player.getInventory().getItem(n2).copy();
-        ItemStack itemStack2 = ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).copy();
-        this.grimParkedSlot = n2;
-        this.grimHiddenElytra = itemStack;
-        this.grimParkedDisplaced = itemStack2;
+        this.lastGlideStartTick = currentTick;
+        ItemStack elytraCopy = ElytraFlyModule.mc.player.getInventory().getItem(elytraSlot).copy();
+        ItemStack chestCopy = ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).copy();
+        this.grimParkedSlot = elytraSlot;
+        this.grimHiddenElytra = elytraCopy;
+        this.grimParkedDisplaced = chestCopy;
         this.crLastSwapTimer.reset();
-        InventoryUtils.swapEquipment(n2, 6);
+        InventoryUtils.swapEquipment(elytraSlot, 6);
         mc.getConnection().send((Packet)new ServerboundPlayerCommandPacket((Entity)ElytraFlyModule.mc.player, ServerboundPlayerCommandPacket.Action.START_FALL_FLYING));
-        InventoryUtils.swapEquipment(n2, 6);
+        InventoryUtils.swapEquipment(elytraSlot, 6);
         this.grimParkedSlot = -1;
         this.grimHiddenElytra = null;
         this.grimParkedDisplaced = ItemStack.EMPTY;
@@ -844,13 +837,13 @@ extends Module {
         this.bounceSpeedPrevPos = this.bounceSpeedCurrPos;
         this.bounceSpeedCurrPos = ElytraFlyModule.mc.player.position();
         if (this.isBounceDebugOn() && this.bouncePrevSpeedSample >= 0.0) {
-            double d = this.bounceHorizontalSpeedometer();
-            double d2 = this.bouncePrevSpeedSample - d;
-            boolean bl = ElytraFlyModule.mc.player.horizontalCollision;
-            if (!bl && this.bouncePrevSpeedSample > 5.0 && d2 > this.bouncePrevSpeedSample * 0.25) {
-                this.debugLog(String.format("SPEED DROP: %.1f -> %.1f km/h (-%.0f%%) onGround=%b horizontalCollision=%b gliding=%b fallFlying=%b flagPauseTicksLeft=%d pos=%.2f,%.2f,%.2f", this.bouncePrevSpeedSample * 3.6, d * 3.6, d2 / this.bouncePrevSpeedSample * 100.0, ElytraFlyModule.mc.player.onGround(), bl, this.isGliding(), ElytraFlyModule.mc.player.isFallFlying(), this.bounceFlagPauseTicksLeft, ElytraFlyModule.mc.player.getX(), ElytraFlyModule.mc.player.getY(), ElytraFlyModule.mc.player.getZ()));
+            double currentSpeed = this.bounceHorizontalSpeedometer();
+            double speedDrop = this.bouncePrevSpeedSample - currentSpeed;
+            boolean horizontalCollision = ElytraFlyModule.mc.player.horizontalCollision;
+            if (!horizontalCollision && this.bouncePrevSpeedSample > 5.0 && speedDrop > this.bouncePrevSpeedSample * 0.25) {
+                this.debugLog(String.format("SPEED DROP: %.1f -> %.1f km/h (-%.0f%%) onGround=%b horizontalCollision=%b gliding=%b fallFlying=%b flagPauseTicksLeft=%d pos=%.2f,%.2f,%.2f", this.bouncePrevSpeedSample * 3.6, currentSpeed * 3.6, speedDrop / this.bouncePrevSpeedSample * 100.0, ElytraFlyModule.mc.player.onGround(), horizontalCollision, this.isGliding(), ElytraFlyModule.mc.player.isFallFlying(), this.bounceFlagPauseTicksLeft, ElytraFlyModule.mc.player.getX(), ElytraFlyModule.mc.player.getY(), ElytraFlyModule.mc.player.getZ()));
             }
-            this.bouncePrevSpeedSample = d;
+            this.bouncePrevSpeedSample = currentSpeed;
         } else {
             this.bouncePrevSpeedSample = this.isBounceDebugOn() ? this.bounceHorizontalSpeedometer() : -1.0;
         }
@@ -889,12 +882,12 @@ extends Module {
                 if (this.canStartGliding()) {
                     this.startFly();
                 } else {
-                    double d = Math.toRadians(ElytraFlyModule.mc.player.getYRot());
-                    double d2 = -Math.cos(d);
-                    double d3 = -Math.sin(d);
-                    Vec3 vec3 = ElytraFlyModule.mc.player.getDeltaMovement();
-                    double d4 = Math.abs(vec3.x * d2 + vec3.z * d3);
-                    if (d4 >= 0.001) {
+                    double yawRad = Math.toRadians(ElytraFlyModule.mc.player.getYRot());
+                    double lookX = -Math.cos(yawRad);
+                    double lookZ = -Math.sin(yawRad);
+                    Vec3 velocity = ElytraFlyModule.mc.player.getDeltaMovement();
+                    double forwardSpeed = Math.abs(velocity.x * lookX + velocity.z * lookZ);
+                    if (forwardSpeed >= 0.001) {
                         return;
                     }
                     this.bounceJumpThisTick = true;
@@ -902,8 +895,8 @@ extends Module {
             }
             return;
         }
-        boolean bl = ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeGetSharedFlag(EntityFlagAccessor.getFlagFallFlying());
-        if (this.bounceMinimizePackets.getValue() && bl) {
+        boolean fallFlyingFlag = ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeGetSharedFlag(EntityFlagAccessor.getFlagFallFlying());
+        if (this.bounceMinimizePackets.getValue() && fallFlyingFlag) {
             return;
         }
         this.startFly();
@@ -913,58 +906,58 @@ extends Module {
         if (ElytraFlyModule.mc.player == null || mc.getConnection() == null) {
             return;
         }
-        boolean bl = ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeGetSharedFlag(EntityFlagAccessor.getFlagFallFlying());
+        boolean rawFlying = ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeGetSharedFlag(EntityFlagAccessor.getFlagFallFlying());
         ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeSetSharedFlag(EntityFlagAccessor.getFlagFallFlying(), true);
         mc.getConnection().send((Packet)new ServerboundPlayerCommandPacket((Entity)ElytraFlyModule.mc.player, ServerboundPlayerCommandPacket.Action.START_FALL_FLYING));
         if (this.bounceBypass.getValue()) {
             this.bounceBypassTicksLeft = this.bounceBypassTicks.getValue().intValue();
         }
         if (this.isBounceDebugOn()) {
-            double d = this.bounceHorizontalSpeedometer();
-            this.debugLog(String.format("START FLY: %.2f m/s (%.1f km/h) onGround=%b rawFlying=%b flagPauseTicksLeft=%d", d, d * 3.6, ElytraFlyModule.mc.player.onGround(), bl, this.bounceFlagPauseTicksLeft));
+            double speed = this.bounceHorizontalSpeedometer();
+            this.debugLog(String.format("START FLY: %.2f m/s (%.1f km/h) onGround=%b rawFlying=%b flagPauseTicksLeft=%d", speed, speed * 3.6, ElytraFlyModule.mc.player.onGround(), rawFlying, this.bounceFlagPauseTicksLeft));
         }
     }
 
     private void onPutOnElytraTick() {
-        int n;
-        ItemStack itemStack;
+        int elytraSlot;
+        ItemStack carried;
         if (!this.bouncePutOnElytra.getValue()) {
             return;
         }
         if (ElytraFlyModule.mc.gameMode == null || ElytraFlyModule.mc.player == null || mc.getConnection() == null) {
             return;
         }
-        if (ElytraFlyModule.mc.player.containerMenu == ElytraFlyModule.mc.player.inventoryMenu && (itemStack = ElytraFlyModule.mc.player.inventoryMenu.getCarried()).getItem() == Items.ELYTRA) {
+        if (ElytraFlyModule.mc.player.containerMenu == ElytraFlyModule.mc.player.inventoryMenu && (carried = ElytraFlyModule.mc.player.inventoryMenu.getCarried()).getItem() == Items.ELYTRA) {
             this.resolveCarriedElytra();
             return;
         }
-        if (ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() != Items.ELYTRA && (n = this.findElytraInInventory()) != -1) {
-            this.swapIntoChestSlot(n);
+        if (ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() != Items.ELYTRA && (elytraSlot = this.findElytraInInventory()) != -1) {
+            this.swapIntoChestSlot(elytraSlot);
         }
     }
 
     private void resolveCarriedElytra() {
-        int n = ElytraFlyModule.mc.player.inventoryMenu.containerId;
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        int containerId = ElytraFlyModule.mc.player.inventoryMenu.containerId;
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
         if (ElytraFlyModule.mc.player.inventoryMenu.getCarried().getItem() != Items.ELYTRA) {
             return;
         }
-        int n2 = this.findEmptyInventorySlot();
-        if (n2 != -1) {
-            ElytraFlyModule.mc.gameMode.handleContainerInput(n, n2, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        int emptySlot = this.findEmptyInventorySlot();
+        if (emptySlot != -1) {
+            ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, emptySlot, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
             return;
         }
-        int n3 = this.findAnyInventorySlot();
-        if (n3 != -1) {
-            ElytraFlyModule.mc.gameMode.handleContainerInput(n, n3, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        int fallbackSlot = this.findAnyInventorySlot();
+        if (fallbackSlot != -1) {
+            ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, fallbackSlot, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
         }
     }
 
-    private void swapIntoChestSlot(int n) {
-        int n2 = ElytraFlyModule.mc.player.inventoryMenu.containerId;
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, n, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, n, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+    private void swapIntoChestSlot(int slot) {
+        int containerId = ElytraFlyModule.mc.player.inventoryMenu.containerId;
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, slot, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, slot, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
     }
 
     private int findElytraInInventory() {
@@ -995,12 +988,12 @@ extends Module {
         if (ElytraFlyModule.mc.player == null) {
             return false;
         }
-        boolean bl = ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeGetSharedFlag(EntityFlagAccessor.getFlagFallFlying());
+        boolean fallFlying = ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeGetSharedFlag(EntityFlagAccessor.getFlagFallFlying());
         if (this.bouncePrevGliding && !this.isFlightPaused()) {
             return true;
         }
-        this.bouncePrevGliding = bl;
-        return bl;
+        this.bouncePrevGliding = fallFlying;
+        return fallFlying;
     }
 
     public boolean isGlidingMasked() {
@@ -1041,85 +1034,85 @@ extends Module {
         if (ElytraFlyModule.mc.player == null) {
             return new Vec3(0.0, 0.0, 1.0);
         }
-        Vec3 vec3 = ElytraFlyModule.mc.player.position().subtract(this.bounceObstacleStartPos);
-        Vec3 vec32 = vec3.lengthSqr() > 1.0E-12 ? vec3.normalize() : new Vec3(0.0, 0.0, 1.0);
-        double d = vec32.x;
-        double d2 = vec32.z;
-        double d3 = Math.toDegrees(Math.atan2(d2, d));
-        double d4 = (d3 % 360.0 + 360.0) % 360.0;
-        double d5 = (double)Math.round(d4 / 45.0) * 45.0;
-        double d6 = Math.toRadians((d5 % 360.0 + 360.0) % 360.0);
-        double d7 = Math.sqrt(d * d + d2 * d2);
-        return new Vec3(Math.cos(d6) * d7, 0.0, Math.sin(d6) * d7);
+        Vec3 delta = ElytraFlyModule.mc.player.position().subtract(this.bounceObstacleStartPos);
+        Vec3 normalized = delta.lengthSqr() > 1.0E-12 ? delta.normalize() : new Vec3(0.0, 0.0, 1.0);
+        double dirX = normalized.x;
+        double dirZ = normalized.z;
+        double angleDeg = Math.toDegrees(Math.atan2(dirZ, dirX));
+        double wrappedAngle = (angleDeg % 360.0 + 360.0) % 360.0;
+        double snappedDeg = (double)Math.round(wrappedAngle / 45.0) * 45.0;
+        double snappedRad = Math.toRadians((snappedDeg % 360.0 + 360.0) % 360.0);
+        double horizLen = Math.sqrt(dirX * dirX + dirZ * dirZ);
+        return new Vec3(Math.cos(snappedRad) * horizLen, 0.0, Math.sin(snappedRad) * horizLen);
     }
 
-    private Vec3 findClosestPointOnObstacleLine(Vec3 vec3, Vec3 vec32) {
-        Vec3 vec33 = vec3.subtract(this.bounceObstacleStartPos);
-        double d = vec32.dot(vec32);
-        double d2 = d > 1.0E-9 ? vec33.dot(vec32) / d : 0.0;
-        return this.bounceObstacleStartPos.add(vec32.scale(d2));
+    private Vec3 findClosestPointOnObstacleLine(Vec3 pos, Vec3 dir) {
+        Vec3 offset = pos.subtract(this.bounceObstacleStartPos);
+        double dirLenSq = dir.dot(dir);
+        double proj = dirLenSq > 1.0E-9 ? offset.dot(dir) / dirLenSq : 0.0;
+        return this.bounceObstacleStartPos.add(dir.scale(proj));
     }
 
-    private boolean obstacleRayCastObstructed(Vec3 vec3, Vec3 vec32) {
+    private boolean obstacleRayCastObstructed(Vec3 startPos, Vec3 dir) {
         if (ElytraFlyModule.mc.level == null || ElytraFlyModule.mc.player == null) {
             return false;
         }
-        double d = this.bounceObstacleLookAhead.getValue().doubleValue();
-        if (d <= 0.0) {
+        double lookAhead = this.bounceObstacleLookAhead.getValue().doubleValue();
+        if (lookAhead <= 0.0) {
             return false;
         }
-        Vec3 vec33 = vec32.length() > 1.0E-6 ? vec32.normalize() : new Vec3(0.0, 0.0, 1.0);
-        Vec3 vec34 = vec3.add(vec33.scale(d));
-        BlockHitResult blockHitResult = ElytraFlyModule.mc.level.clip(new ClipContext(vec3, vec34, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)ElytraFlyModule.mc.player));
+        Vec3 unitDir = dir.length() > 1.0E-6 ? dir.normalize() : new Vec3(0.0, 0.0, 1.0);
+        Vec3 endPos = startPos.add(unitDir.scale(lookAhead));
+        BlockHitResult blockHitResult = ElytraFlyModule.mc.level.clip(new ClipContext(startPos, endPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)ElytraFlyModule.mc.player));
         return blockHitResult.getType() == HitResult.Type.BLOCK;
     }
 
-    private boolean isObstacleObstructed(Vec3 vec3, Vec3 vec32) {
+    private boolean isObstacleObstructed(Vec3 pos, Vec3 dir) {
         if (ElytraFlyModule.mc.level == null) {
             return false;
         }
-        BlockPos blockPos = BlockPos.containing((double)vec3.x, (double)vec3.y, (double)vec3.z).below();
+        BlockPos blockPos = BlockPos.containing((double)pos.x, (double)pos.y, (double)pos.z).below();
         if (!ElytraFlyModule.mc.level.getBlockState(blockPos).isFaceSturdy((BlockGetter)ElytraFlyModule.mc.level, blockPos, Direction.UP)) {
             return true;
         }
-        if (this.obstacleRayCastObstructed(vec3.add(0.0, 0.063, 0.0), vec32)) {
+        if (this.obstacleRayCastObstructed(pos.add(0.0, 0.063, 0.0), dir)) {
             return true;
         }
-        if (this.obstacleRayCastObstructed(vec3.add(0.0, 1.01, 0.0), vec32)) {
+        if (this.obstacleRayCastObstructed(pos.add(0.0, 1.01, 0.0), dir)) {
             return true;
         }
-        return this.obstacleRayCastObstructed(vec3.add(0.0, 1.99, 0.0), vec32);
+        return this.obstacleRayCastObstructed(pos.add(0.0, 1.99, 0.0), dir);
     }
 
-    private void pathToValidObstaclePoint(Vec3 vec3, Vec3 vec32, boolean bl) {
-        double d = Math.max(1.0, this.bounceObstacleLookAhead.getValue().doubleValue());
-        Vec3 vec33 = vec32.length() > 1.0E-6 ? vec32.normalize() : new Vec3(0.0, 0.0, 1.0);
-        boolean bl2 = !bl;
-        Vec3 vec34 = vec3;
-        int n = 0;
-        while ((bl2 || this.isObstacleObstructed(vec34, vec33)) && n++ < 200) {
-            vec34 = vec34.add(vec33.scale(d));
-            bl2 = false;
+    private void pathToValidObstaclePoint(Vec3 startPos, Vec3 dir, boolean checkStart) {
+        double stepSize = Math.max(1.0, this.bounceObstacleLookAhead.getValue().doubleValue());
+        Vec3 unitDir = dir.length() > 1.0E-6 ? dir.normalize() : new Vec3(0.0, 0.0, 1.0);
+        boolean forceStep = !checkStart;
+        Vec3 candidatePos = startPos;
+        int attempts = 0;
+        while ((forceStep || this.isObstacleObstructed(candidatePos, unitDir)) && attempts++ < 200) {
+            candidatePos = candidatePos.add(unitDir.scale(stepSize));
+            forceStep = false;
         }
-        this.passObstacleTo(vec34);
+        this.passObstacleTo(candidatePos);
     }
 
-    private void passObstacleTo(Vec3 vec3) {
+    private void passObstacleTo(Vec3 targetPos) {
         block5: {
-            this.bounceObstaclePassingToPos = vec3;
+            this.bounceObstaclePassingToPos = targetPos;
             if (this.bounceStandUpToPass.getValue()) {
                 this.forceStandUpForObstacle();
             }
             try {
-                Object object = BaritoneUtils.getPrimaryBaritone();
-                if (object == null) {
+                Object baritone = BaritoneUtils.getPrimaryBaritone();
+                if (baritone == null) {
                     return;
                 }
-                BlockPos blockPos = BlockPos.containing((double)vec3.x, (double)vec3.y, (double)vec3.z);
-                Class<?> clazz = Class.forName("baritone.api.pathing.goals.Goal");
-                Object obj = Class.forName("baritone.api.pathing.goals.GoalGetToBlock").getConstructor(BlockPos.class).newInstance(blockPos);
-                Object object2 = object.getClass().getMethod("getCustomGoalProcess", new Class[0]).invoke(object, new Object[0]);
-                object2.getClass().getMethod("setGoalAndPath", clazz).invoke(object2, obj);
+                BlockPos blockPos = BlockPos.containing((double)targetPos.x, (double)targetPos.y, (double)targetPos.z);
+                Class<?> goalClass = Class.forName("baritone.api.pathing.goals.Goal");
+                Object goal = Class.forName("baritone.api.pathing.goals.GoalGetToBlock").getConstructor(BlockPos.class).newInstance(blockPos);
+                Object customGoalProcess = baritone.getClass().getMethod("getCustomGoalProcess", new Class[0]).invoke(baritone, new Object[0]);
+                customGoalProcess.getClass().getMethod("setGoalAndPath", goalClass).invoke(customGoalProcess, goal);
                 if (this.isBounceDebugOn()) {
                     this.debugLog("OBSTACLE PASS: goal set to " + String.valueOf(blockPos));
                 }
@@ -1138,19 +1131,19 @@ extends Module {
         if (ElytraFlyModule.mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() != Items.ELYTRA) {
             return;
         }
-        int n = this.findEmptyInventorySlot();
-        if (n == -1) {
+        int emptySlot = this.findEmptyInventorySlot();
+        if (emptySlot == -1) {
             ((EntityFlagAccessor)ElytraFlyModule.mc.player).invokeSetSharedFlag(EntityFlagAccessor.getFlagFallFlying(), false);
             if (this.isBounceDebugOn()) {
                 this.debugLog("STAND-UP-TO-PASS: inventory full, fell back to flag-only clear");
             }
             return;
         }
-        int n2 = ElytraFlyModule.mc.player.inventoryMenu.containerId;
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, n, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, n, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
-        ElytraFlyModule.mc.gameMode.handleContainerInput(n2, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        int containerId = ElytraFlyModule.mc.player.inventoryMenu.containerId;
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, emptySlot, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, emptySlot, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
+        ElytraFlyModule.mc.gameMode.handleContainerInput(containerId, 6, 0, ContainerInput.PICKUP, (Player)ElytraFlyModule.mc.player);
         if (this.isBounceDebugOn()) {
             this.debugLog("STAND-UP-TO-PASS: unequipped/re-equipped elytra for obstacle passing");
         }
@@ -1158,12 +1151,12 @@ extends Module {
 
     private void cancelObstaclePath() {
         try {
-            Object object = BaritoneUtils.getPrimaryBaritone();
-            if (object == null) {
+            Object baritone = BaritoneUtils.getPrimaryBaritone();
+            if (baritone == null) {
                 return;
             }
-            Object object2 = object.getClass().getMethod("getPathingBehavior", new Class[0]).invoke(object, new Object[0]);
-            object2.getClass().getMethod("cancelEverything", new Class[0]).invoke(object2, new Object[0]);
+            Object pathingBehavior = baritone.getClass().getMethod("getPathingBehavior", new Class[0]).invoke(baritone, new Object[0]);
+            pathingBehavior.getClass().getMethod("cancelEverything", new Class[0]).invoke(pathingBehavior, new Object[0]);
         }
         catch (Throwable throwable) {
             // empty catch block
@@ -1183,47 +1176,46 @@ extends Module {
         if (!BaritoneUtils.isActive()) {
             this.bounceObstaclePassingToPos = null;
         }
-        Vec3 vec3 = ElytraFlyModule.mc.player.position();
-        double d = Math.sqrt(Math.pow(vec3.x - this.bounceObstacleStartPos.x, 2.0) + Math.pow(vec3.z - this.bounceObstacleStartPos.z, 2.0));
-        if (d <= 0.1) {
+        Vec3 playerPos = ElytraFlyModule.mc.player.position();
+        double distFromStart = Math.sqrt(Math.pow(playerPos.x - this.bounceObstacleStartPos.x, 2.0) + Math.pow(playerPos.z - this.bounceObstacleStartPos.z, 2.0));
+        if (distFromStart <= 0.1) {
             return false;
         }
-        Vec3 vec32 = this.getSnappedObstacleDir();
-        Vec3 vec33 = this.findClosestPointOnObstacleLine(vec3, vec32);
+        Vec3 obstacleDir = this.getSnappedObstacleDir();
+        Vec3 closestPoint = this.findClosestPointOnObstacleLine(playerPos, obstacleDir);
         if (this.bounceObstaclePassingToPos != null) {
             if (this.bounceStandUpToPass.getValue()) {
                 this.forceStandUpForObstacle();
             }
-            if (this.isObstacleObstructed(this.bounceObstaclePassingToPos, vec32)) {
-                this.pathToValidObstaclePoint(this.bounceObstaclePassingToPos, vec32, false);
+            if (this.isObstacleObstructed(this.bounceObstaclePassingToPos, obstacleDir)) {
+                this.pathToValidObstaclePoint(this.bounceObstaclePassingToPos, obstacleDir, false);
             }
             return true;
         }
         if (!ElytraFlyModule.mc.player.onGround()) {
             return false;
         }
-        boolean bl = this.bounceHorizontalSpeedometer() < 0.01;
-        boolean bl2 = bl;
-        if (this.isGliding() && bl) {
-            this.pathToValidObstaclePoint(vec33, vec32, false);
+        boolean isStopped = this.bounceHorizontalSpeedometer() < 0.01;
+        if (this.isGliding() && isStopped) {
+            this.pathToValidObstaclePoint(closestPoint, obstacleDir, false);
             return true;
         }
-        Vec3 vec34 = new Vec3(vec3.x, vec33.y, vec3.z);
-        double d2 = vec34.distanceTo(vec33) + Math.min(0.0, vec3.y - vec33.y);
-        if (d2 > 2.0) {
-            this.pathToValidObstaclePoint(vec33, vec32, true);
+        Vec3 projectedPos = new Vec3(playerPos.x, closestPoint.y, playerPos.z);
+        double deviation = projectedPos.distanceTo(closestPoint) + Math.min(0.0, playerPos.y - closestPoint.y);
+        if (deviation > 2.0) {
+            this.pathToValidObstaclePoint(closestPoint, obstacleDir, true);
             return true;
         }
-        if (this.isObstacleObstructed(vec34, vec32)) {
-            this.pathToValidObstaclePoint(vec33, vec32, false);
+        if (this.isObstacleObstructed(projectedPos, obstacleDir)) {
+            this.pathToValidObstaclePoint(closestPoint, obstacleDir, false);
             return true;
         }
         return BaritoneUtils.isActive();
     }
 
     private double bounceHorizontalSpeedometer() {
-        Vec3 vec3 = this.bounceSpeedCurrPos.subtract(this.bounceSpeedPrevPos);
-        return Math.sqrt(vec3.x * vec3.x + vec3.z * vec3.z) * 20.0;
+        Vec3 delta = this.bounceSpeedCurrPos.subtract(this.bounceSpeedPrevPos);
+        return Math.sqrt(delta.x * delta.x + delta.z * delta.z) * 20.0;
     }
 
     private boolean isInDipWindow() {
@@ -1234,30 +1226,30 @@ extends Module {
     }
 
     private boolean isNearingBounceLanding() {
-        Vec3 vec3;
         if (ElytraFlyModule.mc.level == null || ElytraFlyModule.mc.player == null) {
             return false;
         }
-        Vec3 vec32 = ElytraFlyModule.mc.player.getDeltaMovement();
-        if (vec32.y >= -0.01) {
+        Vec3 velocity = ElytraFlyModule.mc.player.getDeltaMovement();
+        if (velocity.y >= -0.01) {
             return false;
         }
-        Vec3 vec33 = ElytraFlyModule.mc.player.position();
-        BlockHitResult blockHitResult = ElytraFlyModule.mc.level.clip(new ClipContext(vec33, vec3 = vec33.add(0.0, -8.0, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)ElytraFlyModule.mc.player));
+        Vec3 startPos = ElytraFlyModule.mc.player.position();
+        Vec3 endPos = startPos.add(0.0, -8.0, 0.0);
+        BlockHitResult blockHitResult = ElytraFlyModule.mc.level.clip(new ClipContext(startPos, endPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)ElytraFlyModule.mc.player));
         if (blockHitResult.getType() != HitResult.Type.BLOCK) {
             return false;
         }
-        double d = vec33.y - blockHitResult.getLocation().y;
-        double d2 = d / Math.abs(vec32.y);
-        return d2 <= this.bounceBypassTicks.getValue().doubleValue();
+        double distToGround = startPos.y - blockHitResult.getLocation().y;
+        double ticksToLand = distToGround / Math.abs(velocity.y);
+        return ticksToLand <= this.bounceBypassTicks.getValue().doubleValue();
     }
 
     private double getBounceHorizontalSpeed() {
         if (ElytraFlyModule.mc.player == null) {
             return 0.0;
         }
-        Vec3 vec3 = ElytraFlyModule.mc.player.getDeltaMovement();
-        return Math.sqrt(vec3.x * vec3.x + vec3.z * vec3.z) * 20.0;
+        Vec3 velocity = ElytraFlyModule.mc.player.getDeltaMovement();
+        return Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * 20.0;
     }
 
     private void flushBouncePackets() {
@@ -1307,9 +1299,9 @@ extends Module {
         this.bounceBypassTicksLeft = 0;
     }
 
-    private void debugLog(String string) {
+    private void debugLog(String message) {
         if (ElytraFlyModule.mc.player != null) {
-            Night.CHAT_MANAGER.tagged(string, "EBounce+");
+            Night.CHAT_MANAGER.tagged(message, "EBounce+");
         }
     }
 

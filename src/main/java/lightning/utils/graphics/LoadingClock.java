@@ -16,24 +16,24 @@ public final class LoadingClock {
     private LoadingClock() {
     }
 
-    public static synchronized long tick(long l) {
-        if (last < 0L || l - last > 3000L) {
+    public static synchronized long tick(long nowMs) {
+        if (last < 0L || nowMs - last > 3000L) {
             acc = 0L;
             smooth = 0L;
-            last = l;
-            sessionStart = l;
+            last = nowMs;
+            sessionStart = nowMs;
             return 0L;
         }
-        long l2 = l - last;
-        if (l2 < 0L) {
-            l2 = 0L;
+        long deltaMs = nowMs - last;
+        if (deltaMs < 0L) {
+            deltaMs = 0L;
         }
-        last = l;
-        if (l2 > 150L) {
+        last = nowMs;
+        if (deltaMs > 150L) {
             smooth = 0L;
         } else {
-            acc += l2;
-            smooth += l2;
+            acc += deltaMs;
+            smooth += deltaMs;
         }
         return acc;
     }

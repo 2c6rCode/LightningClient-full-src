@@ -34,65 +34,65 @@ public final class ChestScanChain {
     private ChestScanChain() {
     }
 
-    public static Map<BlockPos, BlockPos> findEdges(Level level, Set<BlockPos> set, BlockPos blockPos, int n) {
-        HashMap<BlockPos, BlockPos> hashMap = new HashMap<BlockPos, BlockPos>();
-        double d = (double)n * (double)n;
-        ArrayDeque<BlockPos> arrayDeque = new ArrayDeque<BlockPos>(set);
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>(set);
-        while (!arrayDeque.isEmpty()) {
-            Direction direction;
-            BlockPos blockPos2;
-            BlockPos blockPos3 = arrayDeque.poll();
-            if (blockPos3.distSqr((Vec3i)blockPos) > d) continue;
-            BlockPos blockPos4 = blockPos3.below();
-            BlockState blockState = level.getBlockState(blockPos4);
-            if (blockState.getBlock() instanceof HopperBlock && ChestScanChain.isChest(level.getBlockState(blockPos2 = blockPos4.relative(direction = (Direction)blockState.getValue((Property)HopperBlock.FACING))))) {
-                hashMap.put(blockPos3, blockPos2);
-                if (hashSet.add(blockPos2)) {
-                    arrayDeque.add(blockPos2);
+    public static Map<BlockPos, BlockPos> findEdges(Level level, Set<BlockPos> seeds, BlockPos playerPos, int radius) {
+        HashMap<BlockPos, BlockPos> edges = new HashMap<BlockPos, BlockPos>();
+        double radiusSq = (double)radius * (double)radius;
+        ArrayDeque<BlockPos> queue = new ArrayDeque<BlockPos>(seeds);
+        HashSet<BlockPos> visited = new HashSet<BlockPos>(seeds);
+        while (!queue.isEmpty()) {
+            Direction hopperFacing;
+            BlockPos targetChest;
+            BlockPos currentPos = queue.poll();
+            if (currentPos.distSqr((Vec3i)playerPos) > radiusSq) continue;
+            BlockPos belowPos = currentPos.below();
+            BlockState blockState = level.getBlockState(belowPos);
+            if (blockState.getBlock() instanceof HopperBlock && ChestScanChain.isChest(level.getBlockState(targetChest = belowPos.relative(hopperFacing = (Direction)blockState.getValue((Property)HopperBlock.FACING))))) {
+                edges.put(currentPos, targetChest);
+                if (visited.add(targetChest)) {
+                    queue.add(targetChest);
                 }
             }
-            for (Direction direction2 : Direction.values()) {
-                BlockPos blockPos5;
-                BlockPos blockPos6 = blockPos3.relative(direction2);
-                BlockState blockState2 = level.getBlockState(blockPos6);
-                if (!(blockState2.getBlock() instanceof HopperBlock) || blockState2.getValue((Property)HopperBlock.FACING) != direction2.getOpposite() || !ChestScanChain.isChest(level.getBlockState(blockPos5 = blockPos6.above()))) continue;
-                hashMap.put(blockPos5, blockPos3);
-                if (!hashSet.add(blockPos5)) continue;
-                arrayDeque.add(blockPos5);
+            for (Direction dir : Direction.values()) {
+                BlockPos sourceChest;
+                BlockPos sidePos = currentPos.relative(dir);
+                BlockState sideState = level.getBlockState(sidePos);
+                if (!(sideState.getBlock() instanceof HopperBlock) || sideState.getValue((Property)HopperBlock.FACING) != dir.getOpposite() || !ChestScanChain.isChest(level.getBlockState(sourceChest = sidePos.above()))) continue;
+                edges.put(sourceChest, currentPos);
+                if (!visited.add(sourceChest)) continue;
+                queue.add(sourceChest);
             }
         }
-        return hashMap;
+        return edges;
     }
 
     private static boolean isChest(BlockState blockState) {
         return blockState.getBlock() instanceof ChestBlock;
     }
 
-    public static Set<BlockPos> inferEmpty(Map<BlockPos, BlockPos> map, Map<BlockPos, ChestScanStore.ChestStatus> map2) {
-        Map<BlockPos, List<BlockPos>> hashMap = new HashMap<>();
-        for (Map.Entry<BlockPos, BlockPos> entry : map.entrySet()) {
-            hashMap.computeIfAbsent(entry.getValue(), blockPos -> new ArrayList<>()).add(entry.getKey());
+    public static Set<BlockPos> inferEmpty(Map<BlockPos, BlockPos> edges, Map<BlockPos, ChestScanStore.ChestStatus> knownStatuses) {
+        Map<BlockPos, List<BlockPos>> reverseEdges = new HashMap<>();
+        for (Map.Entry<BlockPos, BlockPos> entry : edges.entrySet()) {
+            reverseEdges.computeIfAbsent(entry.getValue(), blockPos -> new ArrayList<>()).add(entry.getKey());
         }
-        Set<BlockPos> hashSet = new HashSet<>();
-        Set<BlockPos> hashSet2 = new HashSet<>();
-        for (Map.Entry<BlockPos, ChestScanStore.ChestStatus> entry : map2.entrySet()) {
-            BlockPos blockPos2;
-            if (entry.getValue() == ChestScanStore.ChestStatus.FULL || !hashSet2.add(blockPos2 = entry.getKey())) continue;
-            ArrayDeque<BlockPos> arrayDeque = new ArrayDeque<>();
-            arrayDeque.add(blockPos2);
-            while (!arrayDeque.isEmpty()) {
-                BlockPos blockPos3 = arrayDeque.poll();
-                for (BlockPos blockPos4 : hashMap.getOrDefault(blockPos3, List.of())) {
-                    if (!hashSet2.add(blockPos4)) continue;
-                    if (!map2.containsKey(blockPos4)) {
-                        hashSet.add(blockPos4);
+        Set<BlockPos> inferredEmpty = new HashSet<>();
+        Set<BlockPos> visited = new HashSet<>();
+        for (Map.Entry<BlockPos, ChestScanStore.ChestStatus> entry : knownStatuses.entrySet()) {
+            BlockPos startPos;
+            if (entry.getValue() == ChestScanStore.ChestStatus.FULL || !visited.add(startPos = entry.getKey())) continue;
+            ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+            queue.add(startPos);
+            while (!queue.isEmpty()) {
+                BlockPos currentPos = queue.poll();
+                for (BlockPos upstreamPos : reverseEdges.getOrDefault(currentPos, List.of())) {
+                    if (!visited.add(upstreamPos)) continue;
+                    if (!knownStatuses.containsKey(upstreamPos)) {
+                        inferredEmpty.add(upstreamPos);
                     }
-                    arrayDeque.add(blockPos4);
+                    queue.add(upstreamPos);
                 }
             }
         }
-        return hashSet;
+        return inferredEmpty;
     }
 }
 

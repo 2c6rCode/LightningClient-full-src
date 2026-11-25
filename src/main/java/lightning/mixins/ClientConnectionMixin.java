@@ -63,15 +63,15 @@ public class ClientConnectionMixin {
     private static final long PROTOCOL_TRANSITION_WINDOW_MS = 1000L;
 
     @Inject(method={"send(Lnet/minecraft/network/protocol/Packet;Lio/netty/channel/ChannelFutureListener;Z)V"}, at={@At(value="HEAD")}, cancellable=true)
-    private void send$HEAD(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean bl, CallbackInfo callbackInfo) {
+    private void send$HEAD(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean flush, CallbackInfo callbackInfo) {
         try {
-            NightBeacon.pre((Object)this, packet, (Object)channelFutureListener, (boolean)bl, (Object)callbackInfo);
+            NightBeacon.pre((Object)this, packet, (Object)channelFutureListener, (boolean)flush, (Object)callbackInfo);
             if (packet instanceof ClientIntentionPacket) {
                 Connection connection = (Connection)(Object)this;
                 PacketListener packetListener = connection.getPacketListener();
-                boolean bl2 = packetListener != null && packetListener.protocol() != ConnectionProtocol.HANDSHAKING;
-                boolean bl3 = bl2;
-                if (bl2) {
+                boolean pastHandshake = packetListener != null && packetListener.protocol() != ConnectionProtocol.HANDSHAKING;
+                boolean unusedPastHandshake = pastHandshake;
+                if (pastHandshake) {
                     LOGGER.error("[PB] Caught an outgoing ClientIntentionPacket on {} -- this connection is already past handshake, this send will crash it", (Object)connection.getLoggableAddress(false), (Object)new Throwable("call site"));
                 }
             }
@@ -88,7 +88,7 @@ public class ClientConnectionMixin {
     }
 
     @Inject(method={"send(Lnet/minecraft/network/protocol/Packet;Lio/netty/channel/ChannelFutureListener;Z)V"}, at={@At(value="TAIL")}, cancellable=true)
-    private void send$TAIL(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean bl, CallbackInfo callbackInfo) {
+    private void send$TAIL(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean flush, CallbackInfo callbackInfo) {
         try {
             Night.EVENT_HANDLER.post((Event)new PacketSendEvent.Post(packet));
             return;
@@ -99,13 +99,13 @@ public class ClientConnectionMixin {
     }
 
     @Inject(method={"doSendPacket"}, at={@At(value="HEAD")}, cancellable=true)
-    private void doSendPacket$HEAD(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean bl, CallbackInfo callbackInfo) {
+    private void doSendPacket$HEAD(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean flush, CallbackInfo callbackInfo) {
         try {
-            boolean bl2 = System.currentTimeMillis() - ProtocolTransitionTracker.lastTransitionAt() < 1000L;
-            String string = packet.getClass().getPackageName();
-            boolean bl3 = string.equals("net.minecraft.network.protocol.game") || string.equals("net.minecraft.network.protocol.handshake");
-            boolean bl4 = bl3;
-            if (bl2 && bl3) {
+            boolean inTransitionWindow = System.currentTimeMillis() - ProtocolTransitionTracker.lastTransitionAt() < 1000L;
+            String packageName = packet.getClass().getPackageName();
+            boolean isGameOrHandshake = packageName.equals("net.minecraft.network.protocol.game") || packageName.equals("net.minecraft.network.protocol.handshake");
+            boolean unusedIsGameOrHandshake = isGameOrHandshake;
+            if (inTransitionWindow && isGameOrHandshake) {
                 LOGGER.warn("[PB] Dropped {} queued right as the connection was mid protocol-transition -- would have crashed the session", (Object)packet.getClass().getSimpleName());
                 callbackInfo.cancel();
                 return;
@@ -113,9 +113,9 @@ public class ClientConnectionMixin {
             if (packet instanceof ClientIntentionPacket) {
                 Connection connection = (Connection)(Object)this;
                 PacketListener packetListener = connection.getPacketListener();
-                boolean bl5 = packetListener != null && packetListener.protocol() != ConnectionProtocol.HANDSHAKING;
-                boolean bl6 = bl5;
-                if (bl5) {
+                boolean pastHandshake = packetListener != null && packetListener.protocol() != ConnectionProtocol.HANDSHAKING;
+                boolean unusedPastHandshake = pastHandshake;
+                if (pastHandshake) {
                     return;
                 }
             }
@@ -151,17 +151,17 @@ public class ClientConnectionMixin {
     private void disconnect(DisconnectionDetails disconnectionDetails, CallbackInfo callbackInfo) {
         try {
             Connection connection = (Connection)(Object)this;
-            String string = disconnectionDetails.reason() != null ? disconnectionDetails.reason().getString() : "unknown";
-            boolean bl = Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() && Night.PROXY_SERVER != null && connection == Night.PROXY_SERVER.getServerConnection();
-            boolean bl2 = bl;
-            if (bl) {
-                LOGGER.warn("[PB] Proxy's connection to the real server dropped: {}", (Object)string);
+            String reason = disconnectionDetails.reason() != null ? disconnectionDetails.reason().getString() : "unknown";
+            boolean isProxyServerConnection = Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() && Night.PROXY_SERVER != null && connection == Night.PROXY_SERVER.getServerConnection();
+            boolean unusedIsProxyServerConnection = isProxyServerConnection;
+            if (isProxyServerConnection) {
+                LOGGER.warn("[PB] Proxy's connection to the real server dropped: {}", (Object)reason);
                 FakePlayerModule fakePlayerModule = (FakePlayerModule)Night.MODULE_MANAGER.getModule(FakePlayerModule.class);
                 if (fakePlayerModule != null && fakePlayerModule.isToggled()) {
                     fakePlayerModule.setToggled(false);
                 }
             } else {
-                LOGGER.info("Connection disconnected ({}): {}", (Object)connection.getLoggableAddress(false), (Object)string);
+                LOGGER.info("Connection disconnected ({}): {}", (Object)connection.getLoggableAddress(false), (Object)reason);
             }
             Night.EVENT_HANDLER.post((Event)new ClientDisconnectEvent());
             return;

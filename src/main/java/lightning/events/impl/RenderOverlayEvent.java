@@ -33,9 +33,9 @@ extends Event {
     }
 
     @Generated
-    public RenderOverlayEvent(GuiGraphicsExtractor guiGraphicsExtractor, float f) {
-        this.context = guiGraphicsExtractor;
-        this.tickDelta = f;
+    public RenderOverlayEvent(GuiGraphicsExtractor context, float tickDelta) {
+        this.context = context;
+        this.tickDelta = tickDelta;
     }
 }
 

@@ -15,14 +15,14 @@ extends Event {
     public boolean sneaking;
     public boolean sprinting;
 
-    public EventInput(boolean bl, boolean bl2, boolean bl3, boolean bl4, boolean bl5, boolean bl6, boolean bl7) {
-        this.forward = bl;
-        this.backward = bl2;
-        this.left = bl3;
-        this.right = bl4;
-        this.jumping = bl5;
-        this.sneaking = bl6;
-        this.sprinting = bl7;
+    public EventInput(boolean forward, boolean backward, boolean left, boolean right, boolean jumping, boolean sneaking, boolean sprinting) {
+        this.forward = forward;
+        this.backward = backward;
+        this.left = left;
+        this.right = right;
+        this.jumping = jumping;
+        this.sneaking = sneaking;
+        this.sprinting = sprinting;
     }
 }
 

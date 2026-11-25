@@ -19,8 +19,8 @@ extends Event {
     }
 
     @Generated
-    public MouseInputEvent(int n) {
-        this.button = n;
+    public MouseInputEvent(int button) {
+        this.button = button;
     }
 }
 

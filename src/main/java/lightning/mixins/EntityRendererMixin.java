@@ -62,10 +62,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value={EntityRenderer.class})
 public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> {
     @Inject(method={"getNameTag"}, at={@At(value="HEAD")}, cancellable=true)
-    private void getDisplayName(T t, CallbackInfoReturnable<Component> callbackInfoReturnable) {
+    private void getDisplayName(T entity, CallbackInfoReturnable<Component> callbackInfoReturnable) {
         try {
-            if (t instanceof RemotePlayer) {
-                RemotePlayer remotePlayer = (RemotePlayer)t;
+            if (entity instanceof RemotePlayer) {
+                RemotePlayer remotePlayer = (RemotePlayer)entity;
                 PopChamsModule popChamsModule = (PopChamsModule)Night.MODULE_MANAGER.getModule(PopChamsModule.class);
                 if (popChamsModule != null && popChamsModule.isToggled() && popChamsModule.isGhost((Entity)remotePlayer)) {
                     callbackInfoReturnable.setReturnValue(null);
@@ -77,7 +77,7 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
                     return;
                 }
             }
-            if (t instanceof Player && ((NameTagsModule)Night.MODULE_MANAGER.getModule(NameTagsModule.class)).isToggled()) {
+            if (entity instanceof Player && ((NameTagsModule)Night.MODULE_MANAGER.getModule(NameTagsModule.class)).isToggled()) {
                 callbackInfoReturnable.setReturnValue(null);
             }
             return;
@@ -88,27 +88,27 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
     }
 
     @Inject(method={"shouldRender"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$limitItemRendering(T t, Frustum frustum, double d, double d2, double d3, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
+    private void night$limitItemRendering(T entity, Frustum frustum, double camX, double camY, double camZ, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         try {
-            if (t instanceof RemotePlayer remotePlayer) {
+            if (entity instanceof RemotePlayer remotePlayer) {
                 PopChamsModule popChamsModule = Night.MODULE_MANAGER != null ? (PopChamsModule)Night.MODULE_MANAGER.getModule(PopChamsModule.class) : null;
                 if (popChamsModule != null && popChamsModule.isToggled() && popChamsModule.isGhost((Entity)(Object)remotePlayer)) {
                     callbackInfoReturnable.setReturnValue(true);
                     return;
                 }
             }
-            NoRenderModule noRenderModule2 = Night.MODULE_MANAGER != null ? (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class) : null;
-            if (noRenderModule2 != null && noRenderModule2.isToggled()) {
-                if (noRenderModule2.items.getValue() && t instanceof ItemEntity && !noRenderModule2.shouldRenderItem()) {
+            NoRenderModule noRenderModule = Night.MODULE_MANAGER != null ? (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class) : null;
+            if (noRenderModule != null && noRenderModule.isToggled()) {
+                if (noRenderModule.items.getValue() && entity instanceof ItemEntity && !noRenderModule.shouldRenderItem()) {
                     callbackInfoReturnable.setReturnValue(false);
                 }
-                if (noRenderModule2.displays.getValue() && t instanceof Display) {
+                if (noRenderModule.displays.getValue() && entity instanceof Display) {
                     callbackInfoReturnable.setReturnValue(false);
                 }
-                if (noRenderModule2.armorStand.getValue() && t instanceof ArmorStand) {
+                if (noRenderModule.armorStand.getValue() && entity instanceof ArmorStand) {
                     callbackInfoReturnable.setReturnValue(false);
                 }
-                if (noRenderModule2.minecart.getValue() && t instanceof AbstractMinecart) {
+                if (noRenderModule.minecart.getValue() && entity instanceof AbstractMinecart) {
                     callbackInfoReturnable.setReturnValue(false);
                 }
             }
@@ -123,56 +123,56 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
      * Unable to fully structure code
      */
     @Inject(method={"extractRenderState"}, at={@At(value="TAIL")})
-    private void night$chams(T var1_1, S var2_2, float var3_3, CallbackInfo var4_4) {
+    private void night$chams(T entity, S renderState, float partialTick, CallbackInfo callbackInfo) {
         try {
-            IChamsCapture var5_5 = (IChamsCapture)var2_2;
-            var5_5.night$setChams(false, 0, false, 0, false);
-            var5_5.night$setChamsYOffset(0.0f);
-            PopChamsModule var6_6 = (PopChamsModule)Night.MODULE_MANAGER.getModule(PopChamsModule.class);
-            LogoutSpotModule var7_7 = (LogoutSpotModule)Night.MODULE_MANAGER.getModule(LogoutSpotModule.class);
-            boolean var8_10 = false;
-            if (var1_1 instanceof RemotePlayer) {
-                RemotePlayer var9_8 = (RemotePlayer)var1_1;
-                if (var6_6 != null && var6_6.isGhost((Entity)var9_8)) {
-                    var8_10 = true;
+            IChamsCapture chamsCapture = (IChamsCapture)renderState;
+            chamsCapture.night$setChams(false, 0, false, 0, false);
+            chamsCapture.night$setChamsYOffset(0.0f);
+            PopChamsModule popChamsModule = (PopChamsModule)Night.MODULE_MANAGER.getModule(PopChamsModule.class);
+            LogoutSpotModule logoutSpotModule = (LogoutSpotModule)Night.MODULE_MANAGER.getModule(LogoutSpotModule.class);
+            boolean isPopChamGhost = false;
+            if (entity instanceof RemotePlayer) {
+                RemotePlayer remotePlayer = (RemotePlayer)entity;
+                if (popChamsModule != null && popChamsModule.isGhost((Entity)remotePlayer)) {
+                    isPopChamGhost = true;
                 }
             }
-            boolean var9_9 = false;
-            if (var1_1 instanceof RemotePlayer) {
-                RemotePlayer var10_11 = (RemotePlayer)var1_1;
-                if (var7_7 != null && var7_7.isGhost((Entity)var10_11)) {
-                    var9_9 = true;
+            boolean isLogoutGhost = false;
+            if (entity instanceof RemotePlayer) {
+                RemotePlayer remotePlayer = (RemotePlayer)entity;
+                if (logoutSpotModule != null && logoutSpotModule.isGhost((Entity)remotePlayer)) {
+                    isLogoutGhost = true;
                 }
             }
-            boolean var10_12 = var8_10 || var9_9;
-            if (!var10_12) {
+            boolean isGhost = isPopChamGhost || isLogoutGhost;
+            if (!isGhost) {
                 ChamsModule chams = (ChamsModule)Night.MODULE_MANAGER.getModule(ChamsModule.class);
                 if (chams != null && chams.isToggled()) {
-                    if (var1_1 instanceof LivingEntity living && chams.isValidEntity((Entity)(Object)living)) {
-                        chams.applyEntityChams((LivingEntity)(Object)living, var5_5);
-                    } else if (chams.crystals.getValue() && var1_1 instanceof EndCrystal crystal && chams.inRange((Entity)(Object)crystal)) {
-                        chams.applyCrystalChams(var5_5);
-                    } else if (chams.vehicles.getValue() && chams.inRange((Entity)var1_1) && (var1_1 instanceof AbstractBoat || var1_1 instanceof AbstractMinecart)) {
-                        chams.applyVehicleChams(var5_5);
+                    if (entity instanceof LivingEntity living && chams.isValidEntity((Entity)(Object)living)) {
+                        chams.applyEntityChams((LivingEntity)(Object)living, chamsCapture);
+                    } else if (chams.crystals.getValue() && entity instanceof EndCrystal crystal && chams.inRange((Entity)(Object)crystal)) {
+                        chams.applyCrystalChams(chamsCapture);
+                    } else if (chams.vehicles.getValue() && chams.inRange((Entity)entity) && (entity instanceof AbstractBoat || entity instanceof AbstractMinecart)) {
+                        chams.applyVehicleChams(chamsCapture);
                     }
                 }
                 ShadersModule shaders = (ShadersModule)Night.MODULE_MANAGER.getModule(ShadersModule.class);
-                if (shaders != null && shaders.isToggled() && shaders.isValidEntity((Entity)var1_1)) {
-                    var2_2.outlineColor = shaders.getFillColor((Entity)var1_1);
+                if (shaders != null && shaders.isToggled() && shaders.isValidEntity((Entity)entity)) {
+                    renderState.outlineColor = shaders.getFillColor((Entity)entity);
                 }
             }
-            if (var6_6 != null && var6_6.isToggled() && var8_10) {
-                RemotePlayer player = (RemotePlayer)var1_1;
-                var5_5.night$setChams(var6_6.shouldFill(), var6_6.getFillColor(player).getRGB(), var6_6.shouldOutline(), var6_6.getOutlineColor(player).getRGB(), false, true);
-                var5_5.night$setChamsYOffset(var6_6.getYOffset(player));
+            if (popChamsModule != null && popChamsModule.isToggled() && isPopChamGhost) {
+                RemotePlayer player = (RemotePlayer)entity;
+                chamsCapture.night$setChams(popChamsModule.shouldFill(), popChamsModule.getFillColor(player).getRGB(), popChamsModule.shouldOutline(), popChamsModule.getOutlineColor(player).getRGB(), false, true);
+                chamsCapture.night$setChamsYOffset(popChamsModule.getYOffset(player));
             }
-            if (var7_7 != null && var7_7.isToggled() && var9_9) {
-                RemotePlayer player = (RemotePlayer)var1_1;
-                var5_5.night$setChams(var7_7.shouldFill(), var7_7.getFillColor(player).getRGB(), var7_7.shouldOutline(), var7_7.getOutlineColor(player).getRGB(), false, true);
+            if (logoutSpotModule != null && logoutSpotModule.isToggled() && isLogoutGhost) {
+                RemotePlayer player = (RemotePlayer)entity;
+                chamsCapture.night$setChams(logoutSpotModule.shouldFill(), logoutSpotModule.getFillColor(player).getRGB(), logoutSpotModule.shouldOutline(), logoutSpotModule.getOutlineColor(player).getRGB(), false, true);
             }
             return;
         }
-        catch (NullPointerException v3) {
+        catch (NullPointerException nullPointerException) {
             return;
         }
     }

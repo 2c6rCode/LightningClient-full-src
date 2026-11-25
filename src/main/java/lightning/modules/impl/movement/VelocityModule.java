@@ -104,28 +104,22 @@ extends Module {
     }
 
     private void sendRotationFix() {
-        float f = Night.ROTATION_MANAGER.getServerYaw();
-        float f2 = Night.ROTATION_MANAGER.getServerPitch();
-        float f3 = (float)((Math.random() * 2.0 - 1.0) * (double)0.001f);
-        float f4 = Mth.clamp((float)(f2 + f3), (float)-90.0f, (float)90.0f);
-        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(VelocityModule.mc.player.getX(), VelocityModule.mc.player.getY(), VelocityModule.mc.player.getZ(), f, f4, VelocityModule.mc.player.onGround(), VelocityModule.mc.player.horizontalCollision));
+        float serverYaw = Night.ROTATION_MANAGER.getServerYaw();
+        float serverPitch = Night.ROTATION_MANAGER.getServerPitch();
+        float jitter = (float)((Math.random() * 2.0 - 1.0) * (double)0.001f);
+        float fixedPitch = Mth.clamp((float)(serverPitch + jitter), (float)-90.0f, (float)90.0f);
+        mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(VelocityModule.mc.player.getX(), VelocityModule.mc.player.getY(), VelocityModule.mc.player.getZ(), serverYaw, fixedPitch, VelocityModule.mc.player.onGround(), VelocityModule.mc.player.horizontalCollision));
     }
 
     @SubscribeEvent
     public void onPacketReceive(PacketReceiveEvent packetReceiveEvent) {
         if (VelocityModule.mc.player != null) {
             BlockPos blockPos;
-            ClientboundSetEntityMotionPacket clientboundSetEntityMotionPacket;
-            Object object;
-            if (this.fallDistance.getValue().doubleValue() > 0.0) {
-                double d = VelocityModule.mc.player.fallDistance - (double)this.fallDistance.getValue().floatValue();
-                int cfr_ignored_1 = d == 0.0 ? 0 : (d > 0.0 ? 1 : -1);
-            }
-            if (packetReceiveEvent.getPacket() instanceof ClientboundPlayerPositionPacket && this.conceal.getValue()) {
+            Packet<?> packet = packetReceiveEvent.getPacket();
+            if (packet instanceof ClientboundPlayerPositionPacket && this.conceal.getValue()) {
                 this.pendingConcealment = true;
             }
-            if ((object = packetReceiveEvent.getPacket()) instanceof ClientboundSetEntityMotionPacket) {
-                clientboundSetEntityMotionPacket = (ClientboundSetEntityMotionPacket)object;
+            if (packet instanceof ClientboundSetEntityMotionPacket clientboundSetEntityMotionPacket) {
                 if (clientboundSetEntityMotionPacket.id() != VelocityModule.mc.player.getId()) {
                     return;
                 }
@@ -173,7 +167,7 @@ extends Module {
                     }
                 }
             }
-            if ((object = packetReceiveEvent.getPacket()) instanceof ClientboundExplodePacket clientboundExplodePacket) {
+            if (packet instanceof ClientboundExplodePacket clientboundExplodePacket) {
                 if (this.explosions.getValue()) {
                     switch (this.mode.getValue()) {
                         case "Normal": {
@@ -221,13 +215,13 @@ extends Module {
     }
 
     private void scaleVelocity(PacketReceiveEvent packetReceiveEvent, ClientboundSetEntityMotionPacket clientboundSetEntityMotionPacket) {
-        Vec3 vec3 = VelocityModule.mc.player.getDeltaMovement();
-        Vec3 vec32 = clientboundSetEntityMotionPacket.movement();
-        double d = (vec32.x - vec3.x) * (this.horizontal.getValue().doubleValue() / 100.0) + vec3.x;
-        double d2 = (vec32.y - vec3.y) * (this.vertical.getValue().doubleValue() / 100.0) + vec3.y;
-        double d3 = (vec32.z - vec3.z) * (this.horizontal.getValue().doubleValue() / 100.0) + vec3.z;
+        Vec3 currentVelocity = VelocityModule.mc.player.getDeltaMovement();
+        Vec3 packetVelocity = clientboundSetEntityMotionPacket.movement();
+        double scaledX = (packetVelocity.x - currentVelocity.x) * (this.horizontal.getValue().doubleValue() / 100.0) + currentVelocity.x;
+        double scaledY = (packetVelocity.y - currentVelocity.y) * (this.vertical.getValue().doubleValue() / 100.0) + currentVelocity.y;
+        double scaledZ = (packetVelocity.z - currentVelocity.z) * (this.horizontal.getValue().doubleValue() / 100.0) + currentVelocity.z;
         packetReceiveEvent.setCancelled(true);
-        VelocityModule.mc.player.lerpMotion(new Vec3(d, d2, d3));
+        VelocityModule.mc.player.lerpMotion(new Vec3(scaledX, scaledY, scaledZ));
     }
 
     private void scaleExplosion(ClientboundExplodePacket clientboundExplodePacket) {
@@ -247,15 +241,15 @@ extends Module {
             return false;
         }
         AABB aABB = entity.getBoundingBox();
-        int n = Mth.floor((double)aABB.minX);
-        int n2 = Mth.ceil((double)aABB.maxX);
-        int n3 = Mth.floor((double)aABB.minY);
-        int n4 = Mth.ceil((double)aABB.maxY);
-        int n5 = Mth.floor((double)aABB.minZ);
-        int n6 = Mth.ceil((double)aABB.maxZ);
-        for (int i = n; i < n2; ++i) {
-            for (int j = n3; j < n4; ++j) {
-                for (int k = n5; k < n6; ++k) {
+        int minX = Mth.floor((double)aABB.minX);
+        int maxX = Mth.ceil((double)aABB.maxX);
+        int minY = Mth.floor((double)aABB.minY);
+        int maxY = Mth.ceil((double)aABB.maxY);
+        int minZ = Mth.floor((double)aABB.minZ);
+        int maxZ = Mth.ceil((double)aABB.maxZ);
+        for (int i = minX; i < maxX; ++i) {
+            for (int j = minY; j < maxY; ++j) {
+                for (int k = minZ; k < maxZ; ++k) {
                     BlockPos blockPos = new BlockPos(i, j, k);
                     VoxelShape voxelShape = VelocityModule.mc.level.getBlockState(blockPos).getCollisionShape((BlockGetter)VelocityModule.mc.level, blockPos);
                     if (voxelShape.isEmpty() || !voxelShape.bounds().move(blockPos).intersects(aABB)) continue;
@@ -278,9 +272,9 @@ extends Module {
     }
 
     private static void handleExplodePacket(ClientboundExplodePacket clientboundExplodePacket) {
-        Vec3 vec3 = clientboundExplodePacket.center();
-        mc.getSoundManager().play((SoundInstance)new SimpleSoundInstance((SoundEvent)clientboundExplodePacket.explosionSound().value(), SoundSource.BLOCKS, 4.0f, (1.0f + (VelocityModule.mc.level.getRandom().nextFloat() - VelocityModule.mc.level.getRandom().nextFloat()) * 0.2f) * 0.7f, VelocityModule.mc.level.getRandom(), vec3.x, vec3.y, vec3.z));
-        VelocityModule.mc.level.addParticle(clientboundExplodePacket.explosionParticle(), vec3.x, vec3.y, vec3.z, 1.0, 0.0, 0.0);
+        Vec3 center = clientboundExplodePacket.center();
+        mc.getSoundManager().play((SoundInstance)new SimpleSoundInstance((SoundEvent)clientboundExplodePacket.explosionSound().value(), SoundSource.BLOCKS, 4.0f, (1.0f + (VelocityModule.mc.level.getRandom().nextFloat() - VelocityModule.mc.level.getRandom().nextFloat()) * 0.2f) * 0.7f, VelocityModule.mc.level.getRandom(), center.x, center.y, center.z));
+        VelocityModule.mc.level.addParticle(clientboundExplodePacket.explosionParticle(), center.x, center.y, center.z, 1.0, 0.0, 0.0);
     }
 }
 

@@ -27,20 +27,20 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(value={ModelFeatureRenderer.class})
 public class ModelFeatureRendererMixin {
     @Redirect(method={"prepareModel"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/model/Model;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V")})
-    private <S> void night$captureChams(Model<S> model, PoseStack poseStack, VertexConsumer vertexConsumer, int n, int n2, int n3, ModelFeatureRenderer.Submit<S> submit) {
+    private <S> void night$captureChams(Model<S> model, PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color, ModelFeatureRenderer.Submit<S> submit) {
         IChamsCapture iChamsCapture;
-        Object object = submit.state();
-        if (object instanceof IChamsCapture && ((iChamsCapture = (IChamsCapture)object).night$chamsFill() || iChamsCapture.night$chamsOutline() || iChamsCapture.night$chamsGlint() || iChamsCapture.night$chamsRealAlpha() < 1.0f)) {
-            int n4 = n3;
-            float f = iChamsCapture.night$chamsRealAlpha();
-            if (f < 1.0f) {
-                int n5 = n3 >>> 24 & 0xFF;
-                int n6 = Math.round((float)n5 * f);
-                n4 = n3 & 0xFFFFFF | n6 << 24;
+        Object state = submit.state();
+        if (state instanceof IChamsCapture && ((iChamsCapture = (IChamsCapture)state).night$chamsFill() || iChamsCapture.night$chamsOutline() || iChamsCapture.night$chamsGlint() || iChamsCapture.night$chamsRealAlpha() < 1.0f)) {
+            int tintedColor = color;
+            float realAlpha = iChamsCapture.night$chamsRealAlpha();
+            if (realAlpha < 1.0f) {
+                int alpha = color >>> 24 & 0xFF;
+                int scaledAlpha = Math.round((float)alpha * realAlpha);
+                tintedColor = color & 0xFFFFFF | scaledAlpha << 24;
             }
-            model.renderToBuffer(poseStack, (VertexConsumer)new ChamsVertexConsumer(vertexConsumer, iChamsCapture.night$chamsFill(), iChamsCapture.night$chamsFillColor(), iChamsCapture.night$chamsOutline(), iChamsCapture.night$chamsOutlineColor(), iChamsCapture.night$chamsShine(), iChamsCapture.night$chamsGlint(), iChamsCapture.night$chamsGlintColor(), iChamsCapture.night$chamsGlintParams(), iChamsCapture.night$chamsSuppressReal(), f), n, n2, n4);
+            model.renderToBuffer(poseStack, (VertexConsumer)new ChamsVertexConsumer(vertexConsumer, iChamsCapture.night$chamsFill(), iChamsCapture.night$chamsFillColor(), iChamsCapture.night$chamsOutline(), iChamsCapture.night$chamsOutlineColor(), iChamsCapture.night$chamsShine(), iChamsCapture.night$chamsGlint(), iChamsCapture.night$chamsGlintColor(), iChamsCapture.night$chamsGlintParams(), iChamsCapture.night$chamsSuppressReal(), realAlpha), packedLight, packedOverlay, tintedColor);
         } else {
-            model.renderToBuffer(poseStack, vertexConsumer, n, n2, n3);
+            model.renderToBuffer(poseStack, vertexConsumer, packedLight, packedOverlay, color);
         }
     }
 }

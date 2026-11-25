@@ -170,16 +170,15 @@ implements IHoleSnapModule {
                 return;
             }
         }
-        boolean bl = Math.abs(HoleSnapModule.mc.player.getX() - this.hole.getCenter().x) < 0.03 && Math.abs(HoleSnapModule.mc.player.getY() - this.hole.minY) < 0.05 && Math.abs(HoleSnapModule.mc.player.getZ() - this.hole.getCenter().z) < 0.03;
-        boolean bl2 = bl;
-        if (!bl) {
+        boolean arrived = Math.abs(HoleSnapModule.mc.player.getX() - this.hole.getCenter().x) < 0.03 && Math.abs(HoleSnapModule.mc.player.getY() - this.hole.minY) < 0.05 && Math.abs(HoleSnapModule.mc.player.getZ() - this.hole.getCenter().z) < 0.03;
+        if (!arrived) {
             if (HoleSnapModule.mc.player.horizontalCollision && HoleSnapModule.mc.player.onGround() && !this.jumpPressed) {
-                double d = this.hole.getCenter().x - HoleSnapModule.mc.player.getX();
-                double d2 = this.hole.getCenter().z - HoleSnapModule.mc.player.getZ();
-                Vec3 vec3 = d == 0.0 && d2 == 0.0 ? Vec3.ZERO : new Vec3(d, 0.0, d2).normalize();
-                AABB aABB = HoleSnapModule.mc.player.getBoundingBox();
-                AABB aABB2 = new AABB(aABB.minX, HoleSnapModule.mc.player.getY() + 2.0, aABB.minZ, aABB.maxX, HoleSnapModule.mc.player.getY() + 2.5, aABB.maxZ).move(vec3.x * 0.5, 0.0, vec3.z * 0.5);
-                if (!HoleSnapModule.mc.level.noCollision(aABB2)) {
+                double deltaX = this.hole.getCenter().x - HoleSnapModule.mc.player.getX();
+                double deltaZ = this.hole.getCenter().z - HoleSnapModule.mc.player.getZ();
+                Vec3 direction = deltaX == 0.0 && deltaZ == 0.0 ? Vec3.ZERO : new Vec3(deltaX, 0.0, deltaZ).normalize();
+                AABB playerBox = HoleSnapModule.mc.player.getBoundingBox();
+                AABB headroomBox = new AABB(playerBox.minX, HoleSnapModule.mc.player.getY() + 2.0, playerBox.minZ, playerBox.maxX, HoleSnapModule.mc.player.getY() + 2.5, playerBox.maxZ).move(direction.x * 0.5, 0.0, direction.z * 0.5);
+                if (!HoleSnapModule.mc.level.noCollision(headroomBox)) {
                     this.unreachableHole = this.hole;
                     this.hole = null;
                     this.startingHole = null;
@@ -249,19 +248,19 @@ implements IHoleSnapModule {
         this.startingHole = null;
     }
 
-    private boolean isHoleReachable(AABB aABB) {
-        BlockPos blockPos;
-        int n;
-        BlockPos blockPos2 = BlockPos.containing((double)(aABB.minX + 0.5), (double)aABB.minY, (double)(aABB.minZ + 0.5));
-        int n2 = (int)Math.floor(HoleSnapModule.mc.player.getY());
-        if (n2 > (n = blockPos2.getY())) {
-            for (int i = n + 3; i <= n2 + 1; ++i) {
-                if (HoleSnapModule.mc.level.getBlockState(new BlockPos(blockPos2.getX(), i, blockPos2.getZ())).canBeReplaced()) continue;
+    private boolean isHoleReachable(AABB holeBox) {
+        BlockPos headPos;
+        int holeY;
+        BlockPos holePos = BlockPos.containing((double)(holeBox.minX + 0.5), (double)holeBox.minY, (double)(holeBox.minZ + 0.5));
+        int playerY = (int)Math.floor(HoleSnapModule.mc.player.getY());
+        if (playerY > (holeY = holePos.getY())) {
+            for (int i = holeY + 3; i <= playerY + 1; ++i) {
+                if (HoleSnapModule.mc.level.getBlockState(new BlockPos(holePos.getX(), i, holePos.getZ())).canBeReplaced()) continue;
                 return false;
             }
             return true;
         }
-        return n - n2 < 2 || HoleSnapModule.mc.level.getBlockState(blockPos = HoleSnapModule.mc.player.blockPosition().above(2)).canBeReplaced() && HoleSnapModule.mc.level.getBlockState(blockPos.above()).canBeReplaced();
+        return holeY - playerY < 2 || HoleSnapModule.mc.level.getBlockState(headPos = HoleSnapModule.mc.player.blockPosition().above(2)).canBeReplaced() && HoleSnapModule.mc.level.getBlockState(headPos.above()).canBeReplaced();
     }
 
     private boolean pickTarget() {
@@ -296,57 +295,57 @@ implements IHoleSnapModule {
         return true;
     }
 
-    private boolean isHoleStillValid(AABB aABB) {
-        HoleUtils.Hole hole;
-        HoleUtils.Hole hole2;
-        BlockPos blockPos = BlockPos.containing((double)(aABB.minX + 0.5), (double)aABB.minY, (double)(aABB.minZ + 0.5));
-        HoleUtils.Hole hole3 = HoleUtils.getSingleHole(blockPos, 1.0);
-        if (hole3 != null && hole3.box().equals((Object)aABB)) {
+    private boolean isHoleStillValid(AABB holeBox) {
+        HoleUtils.Hole quadHole;
+        HoleUtils.Hole doubleHole;
+        BlockPos holePos = BlockPos.containing((double)(holeBox.minX + 0.5), (double)holeBox.minY, (double)(holeBox.minZ + 0.5));
+        HoleUtils.Hole singleHole = HoleUtils.getSingleHole(holePos, 1.0);
+        if (singleHole != null && singleHole.box().equals((Object)holeBox)) {
             return true;
         }
-        if (this.doubleHoles.getValue() && (hole2 = HoleUtils.getDoubleHole(blockPos, 1.0)) != null && hole2.box().equals((Object)aABB)) {
+        if (this.doubleHoles.getValue() && (doubleHole = HoleUtils.getDoubleHole(holePos, 1.0)) != null && doubleHole.box().equals((Object)holeBox)) {
             return true;
         }
-        return this.quadHoles.getValue() && (hole = HoleUtils.getQuadHole(blockPos, 1.0)) != null && hole.box().equals((Object)aABB);
+        return this.quadHoles.getValue() && (quadHole = HoleUtils.getQuadHole(holePos, 1.0)) != null && quadHole.box().equals((Object)holeBox);
     }
 
     private HoleUtils.Hole currentHole() {
-        BlockPos blockPos = HoleSnapModule.mc.player.blockPosition();
-        double d = (double)blockPos.getX() + 0.5;
-        double d2 = (double)blockPos.getY() + 0.5;
-        double d3 = (double)blockPos.getZ() + 0.5;
+        BlockPos playerPos = HoleSnapModule.mc.player.blockPosition();
+        double centerX = (double)playerPos.getX() + 0.5;
+        double centerY = (double)playerPos.getY() + 0.5;
+        double centerZ = (double)playerPos.getZ() + 0.5;
         for (int i = -1; i <= 0; ++i) {
             for (int j = -1; j <= 0; ++j) {
-                HoleUtils.Hole hole;
-                HoleUtils.Hole hole2;
-                BlockPos blockPos2 = blockPos.offset(i, 0, j);
-                HoleUtils.Hole hole3 = HoleUtils.getSingleHole(blockPos2, 1.0);
-                if (hole3 != null && hole3.box().contains(d, d2, d3)) {
-                    return hole3;
+                HoleUtils.Hole quadHole;
+                HoleUtils.Hole doubleHole;
+                BlockPos checkPos = playerPos.offset(i, 0, j);
+                HoleUtils.Hole singleHole = HoleUtils.getSingleHole(checkPos, 1.0);
+                if (singleHole != null && singleHole.box().contains(centerX, centerY, centerZ)) {
+                    return singleHole;
                 }
-                if (this.doubleHoles.getValue() && (hole2 = HoleUtils.getDoubleHole(blockPos2, 1.0)) != null && hole2.box().contains(d, d2, d3)) {
-                    return hole2;
+                if (this.doubleHoles.getValue() && (doubleHole = HoleUtils.getDoubleHole(checkPos, 1.0)) != null && doubleHole.box().contains(centerX, centerY, centerZ)) {
+                    return doubleHole;
                 }
-                if (!this.quadHoles.getValue() || (hole = HoleUtils.getQuadHole(blockPos2, 1.0)) == null || !hole.box().contains(d, d2, d3)) continue;
-                return hole;
+                if (!this.quadHoles.getValue() || (quadHole = HoleUtils.getQuadHole(checkPos, 1.0)) == null || !quadHole.box().contains(centerX, centerY, centerZ)) continue;
+                return quadHole;
             }
         }
         return null;
     }
 
-    private List<HoleUtils.Hole> prioritizeSingle(List<HoleUtils.Hole> list) {
-        return list.stream().sorted(Comparator.comparingInt(hole -> hole.type() == HoleUtils.HoleType.SINGLE ? 0 : 1)).toList();
+    private List<HoleUtils.Hole> prioritizeSingle(List<HoleUtils.Hole> holes) {
+        return holes.stream().sorted(Comparator.comparingInt(hole -> hole.type() == HoleUtils.HoleType.SINGLE ? 0 : 1)).toList();
     }
 
-    private void queueFillPositions(AABB aABB) {
-        int n = (int)Math.floor(aABB.minX);
-        int n2 = (int)Math.ceil(aABB.maxX) - 1;
-        int n3 = (int)Math.floor(aABB.minZ);
-        int n4 = (int)Math.ceil(aABB.maxZ) - 1;
-        int n5 = (int)aABB.minY;
-        for (int i = n; i <= n2; ++i) {
-            for (int j = n3; j <= n4; ++j) {
-                this.fillQueue.add(new BlockPos(i, n5, j));
+    private void queueFillPositions(AABB holeBox) {
+        int minX = (int)Math.floor(holeBox.minX);
+        int maxX = (int)Math.ceil(holeBox.maxX) - 1;
+        int minZ = (int)Math.floor(holeBox.minZ);
+        int maxZ = (int)Math.ceil(holeBox.maxZ) - 1;
+        int y = (int)holeBox.minY;
+        for (int i = minX; i <= maxX; ++i) {
+            for (int j = minZ; j <= maxZ; ++j) {
+                this.fillQueue.add(new BlockPos(i, y, j));
             }
         }
     }
@@ -360,66 +359,66 @@ implements IHoleSnapModule {
             this.fillQueue.poll();
             return;
         }
-        boolean bl = this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup");
-        int n = InventoryUtils.findHardestBlock(0, bl ? 35 : 8);
-        if (n == -1) {
+        boolean altSwitch = this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup");
+        int blockSlot = InventoryUtils.findHardestBlock(0, altSwitch ? 35 : 8);
+        if (blockSlot == -1) {
             this.fillQueue.clear();
             return;
         }
-        int n2 = HoleSnapModule.mc.player.getInventory().getSelectedSlot();
+        int previousSlot = HoleSnapModule.mc.player.getInventory().getSelectedSlot();
         Direction direction = WorldUtils.getDirection(blockPos, this.filledPositions, this.strictDirection.getValue());
         if (direction == null) {
-            BlockPos blockPos2 = blockPos.offset(0, -1, 0);
-            if (!WorldUtils.isPlaceable(blockPos2)) {
+            BlockPos supportPos = blockPos.offset(0, -1, 0);
+            if (!WorldUtils.isPlaceable(supportPos)) {
                 this.fillQueue.poll();
                 return;
             }
-            Direction direction2 = WorldUtils.getDirection(blockPos2, this.filledPositions, this.strictDirection.getValue());
-            if (direction2 == null) {
+            Direction supportDirection = WorldUtils.getDirection(supportPos, this.filledPositions, this.strictDirection.getValue());
+            if (supportDirection == null) {
                 this.fillQueue.poll();
                 return;
             }
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-            boolean bl2 = WorldUtils.placeBlock(blockPos2, direction2, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
-            if (!bl2) {
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, previousSlot);
+            boolean placedSupport = WorldUtils.placeBlock(supportPos, supportDirection, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, previousSlot);
+            if (!placedSupport) {
                 return;
             }
-            this.filledPositions.add(blockPos2);
+            this.filledPositions.add(supportPos);
             direction = WorldUtils.getDirection(blockPos, this.filledPositions, this.strictDirection.getValue());
             if (direction == null) {
                 return;
             }
         }
-        InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-        boolean bl3 = WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
-        InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
-        if (bl3) {
+        InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, previousSlot);
+        boolean placed = WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
+        InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, previousSlot);
+        if (placed) {
             this.filledPositions.add(blockPos);
             this.fillQueue.poll();
         }
     }
 
     private List<HoleUtils.Hole> getHoles() {
-        ArrayList<HoleUtils.Hole> arrayList = new ArrayList<HoleUtils.Hole>();
+        ArrayList<HoleUtils.Hole> holes = new ArrayList<HoleUtils.Hole>();
         for (int i = 0; i < Night.WORLD_MANAGER.getRadius(this.range.getValue().doubleValue()); ++i) {
-            HoleUtils.Hole hole2;
-            HoleUtils.Hole hole3;
+            HoleUtils.Hole quadHole;
+            HoleUtils.Hole doubleHole;
             BlockPos blockPos = HoleSnapModule.mc.player.blockPosition().offset(Night.WORLD_MANAGER.getOffset(i));
             if ((double)blockPos.getY() > HoleSnapModule.mc.player.getY()) continue;
-            HoleUtils.Hole hole4 = HoleUtils.getSingleHole(blockPos, 1.0);
-            if (hole4 != null) {
-                arrayList.add(hole4);
+            HoleUtils.Hole singleHole = HoleUtils.getSingleHole(blockPos, 1.0);
+            if (singleHole != null) {
+                holes.add(singleHole);
                 continue;
             }
-            if (this.doubleHoles.getValue() && (hole3 = HoleUtils.getDoubleHole(blockPos, 1.0)) != null) {
-                arrayList.add(hole3);
+            if (this.doubleHoles.getValue() && (doubleHole = HoleUtils.getDoubleHole(blockPos, 1.0)) != null) {
+                holes.add(doubleHole);
                 continue;
             }
-            if (!this.quadHoles.getValue() || (hole2 = HoleUtils.getQuadHole(blockPos, 1.0)) == null) continue;
-            arrayList.add(hole2);
+            if (!this.quadHoles.getValue() || (quadHole = HoleUtils.getQuadHole(blockPos, 1.0)) == null) continue;
+            holes.add(quadHole);
         }
-        return arrayList.stream().sorted(Comparator.comparing(hole -> HoleSnapModule.mc.player.distanceToSqr(hole.box().getCenter().x, hole.box().getCenter().y, hole.box().getCenter().z))).toList();
+        return holes.stream().sorted(Comparator.comparing(hole -> HoleSnapModule.mc.player.distanceToSqr(hole.box().getCenter().x, hole.box().getCenter().y, hole.box().getCenter().z))).toList();
     }
 }
 

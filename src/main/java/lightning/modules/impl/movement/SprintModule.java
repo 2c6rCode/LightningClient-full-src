@@ -65,8 +65,8 @@ implements ISprintModule {
         } else {
             this.pendingYaw = null;
         }
-        boolean bl = this.shouldSprint();
-        if (bl) {
+        boolean canSprint = this.shouldSprint();
+        if (canSprint) {
             SprintModule.mc.player.setSprinting(true);
         } else if (SprintModule.mc.player.isSprinting()) {
             SprintModule.mc.player.setSprinting(false);
@@ -89,23 +89,22 @@ implements ISprintModule {
         if (holeSnapModule.isToggled() && holeSnapModule.hole != null) {
             return;
         }
-        boolean bl = !(SprintModule.mc.player.getFoodData().getFoodLevel() <= 6 || !this.instantLava.getValue() && SprintModule.mc.player.isInLava() || !this.instantWater.getValue() && SprintModule.mc.player.isInWater() || this.pauseOnSetback.getValue() && Night.SERVER_MANAGER != null && !Night.SERVER_MANAGER.getSetbackTimer().hasTimeElapsed(150L));
-        boolean bl2 = bl;
-        if (!bl) {
+        boolean canInstantSprint = !(SprintModule.mc.player.getFoodData().getFoodLevel() <= 6 || !this.instantLava.getValue() && SprintModule.mc.player.isInLava() || !this.instantWater.getValue() && SprintModule.mc.player.isInWater() || this.pauseOnSetback.getValue() && Night.SERVER_MANAGER != null && !Night.SERVER_MANAGER.getSetbackTimer().hasTimeElapsed(150L));
+        if (!canInstantSprint) {
             return;
         }
-        Vec2 vec2 = this.cachedMove;
-        if (vec2.x != 0.0f || vec2.y != 0.0f) {
-            double d = Math.sqrt(vec2.x * vec2.x + vec2.y * vec2.y);
-            double d2 = (double)vec2.x / d;
-            double d3 = (double)vec2.y / d;
-            double d4 = Math.toRadians(this.cachedYaw);
-            double d5 = Math.sin(d4);
-            double d6 = Math.cos(d4);
-            double d7 = d2 * d6 - d3 * d5;
-            double d8 = d2 * d5 + d3 * d6;
-            double d9 = this.instantSpeed.getValue().doubleValue();
-            playerMoveEvent.setMovement(new Vec3(d7 * d9, playerMoveEvent.getMovement().y, d8 * d9));
+        Vec2 moveVec = this.cachedMove;
+        if (moveVec.x != 0.0f || moveVec.y != 0.0f) {
+            double magnitude = Math.sqrt(moveVec.x * moveVec.x + moveVec.y * moveVec.y);
+            double strafe = (double)moveVec.x / magnitude;
+            double forward = (double)moveVec.y / magnitude;
+            double yawRad = Math.toRadians(this.cachedYaw);
+            double sinYaw = Math.sin(yawRad);
+            double cosYaw = Math.cos(yawRad);
+            double dirX = strafe * cosYaw - forward * sinYaw;
+            double dirZ = strafe * sinYaw + forward * cosYaw;
+            double targetSpeed = this.instantSpeed.getValue().doubleValue();
+            playerMoveEvent.setMovement(new Vec3(dirX * targetSpeed, playerMoveEvent.getMovement().y, dirZ * targetSpeed));
         } else {
             playerMoveEvent.setMovement(new Vec3(0.0, playerMoveEvent.getMovement().y, 0.0));
         }
@@ -127,7 +126,7 @@ implements ISprintModule {
     }
 
     private void grimUpdate() {
-        float f;
+        float targetYaw;
         this.grimQueued = false;
         this.pendingYaw = null;
         if (SprintModule.mc.player.isFallFlying() || SprintModule.mc.player.isPassenger()) {
@@ -139,22 +138,22 @@ implements ISprintModule {
         if (((IFreecamModule)((Object)Night.MODULE_MANAGER.getModule("Freecam"))).isToggled()) {
             return;
         }
-        int n = (SprintModule.mc.options.keyRight.isDown() ? 1 : 0) - (SprintModule.mc.options.keyLeft.isDown() ? 1 : 0);
-        int n2 = (SprintModule.mc.options.keyUp.isDown() ? 1 : 0) - (SprintModule.mc.options.keyDown.isDown() ? 1 : 0);
-        if (n == 0 && n2 == 0) {
+        int strafeInput = (SprintModule.mc.options.keyRight.isDown() ? 1 : 0) - (SprintModule.mc.options.keyLeft.isDown() ? 1 : 0);
+        int forwardInput = (SprintModule.mc.options.keyUp.isDown() ? 1 : 0) - (SprintModule.mc.options.keyDown.isDown() ? 1 : 0);
+        if (strafeInput == 0 && forwardInput == 0) {
             return;
         }
-        float f2 = (float)Math.toDegrees(Math.atan2(n, n2));
-        int n3 = 0;
-        if (n != 0 && n2 != 0) {
-            n3 = n < 0 ? 1 : -1;
-            f = Mth.wrapDegrees((float)(SprintModule.mc.player.getYRot() + f2 + (n3 > 0 ? 45.0f : -45.0f)));
+        float moveAngle = (float)Math.toDegrees(Math.atan2(strafeInput, forwardInput));
+        int strafeDir = 0;
+        if (strafeInput != 0 && forwardInput != 0) {
+            strafeDir = strafeInput < 0 ? 1 : -1;
+            targetYaw = Mth.wrapDegrees((float)(SprintModule.mc.player.getYRot() + moveAngle + (strafeDir > 0 ? 45.0f : -45.0f)));
         } else {
-            f = Mth.wrapDegrees((float)(SprintModule.mc.player.getYRot() + f2));
+            targetYaw = Mth.wrapDegrees((float)(SprintModule.mc.player.getYRot() + moveAngle));
         }
-        this.pendingYaw = Float.valueOf(f);
+        this.pendingYaw = Float.valueOf(targetYaw);
         this.pendingPitch = SprintModule.mc.player.getXRot();
-        this.grimStrafe = n3;
+        this.grimStrafe = strafeDir;
         this.grimQueued = true;
     }
 
@@ -223,7 +222,6 @@ implements ISprintModule {
         }
         if (SprintModule.mc.player.isFallFlying()) {
             ElytraFlyModule elytraFlyModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ElytraFlyModule.class) : null;
-            ElytraFlyModule elytraFlyModule2 = elytraFlyModule;
             if (elytraFlyModule == null || !elytraFlyModule.isToggled() || !elytraFlyModule.mode.getValue().equalsIgnoreCase("Bounce")) {
                 return false;
             }

@@ -33,12 +33,12 @@ import net.minecraft.world.item.component.ItemContainerContents;
 public class PeekCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
+    public List<String> getSuggestions(String[] args) {
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
+    public void execute(String[] args) {
         if (PeekCommand.mc.player == null) {
             return;
         }

@@ -95,34 +95,34 @@ extends Module {
         if (HoleESPModule.mc.player == null || HoleESPModule.mc.level == null) {
             return;
         }
-        BlockPos blockPos = HoleESPModule.mc.player.blockPosition();
-        int n = Night.WORLD_MANAGER.getRadius(this.range.getValue().doubleValue());
+        BlockPos playerPos = HoleESPModule.mc.player.blockPosition();
+        int radiusCount = Night.WORLD_MANAGER.getRadius(this.range.getValue().doubleValue());
         Runnable runnable = () -> {
-            ArrayList<HoleUtils.Hole> arrayList = new ArrayList<>();
-            for (int i = 0; i < n; ++i) {
-                HoleUtils.Hole hole;
-                HoleUtils.Hole hole2;
-                BlockPos blockPos2 = blockPos.offset(Night.WORLD_MANAGER.getOffset(i));
-                HoleUtils.Hole hole3 = HoleUtils.getSingleHole(blockPos2, 0.0);
-                if (hole3 != null) {
-                    arrayList.add(hole3);
+            ArrayList<HoleUtils.Hole> foundHoles = new ArrayList<>();
+            for (int i = 0; i < radiusCount; ++i) {
+                HoleUtils.Hole quadHole;
+                HoleUtils.Hole doubleHole;
+                BlockPos offsetPos = playerPos.offset(Night.WORLD_MANAGER.getOffset(i));
+                HoleUtils.Hole singleHole = HoleUtils.getSingleHole(offsetPos, 0.0);
+                if (singleHole != null) {
+                    foundHoles.add(singleHole);
                     continue;
                 }
-                if (this.doubleHoles.getValue() && (hole2 = HoleUtils.getDoubleHole(blockPos2, 0.0)) != null) {
-                    arrayList.add(hole2);
+                if (this.doubleHoles.getValue() && (doubleHole = HoleUtils.getDoubleHole(offsetPos, 0.0)) != null) {
+                    foundHoles.add(doubleHole);
                     continue;
                 }
-                if (this.quadHoles.getValue() && (hole = HoleUtils.getQuadHole(blockPos2, 0.0)) != null) {
-                    arrayList.add(hole);
+                if (this.quadHoles.getValue() && (quadHole = HoleUtils.getQuadHole(offsetPos, 0.0)) != null) {
+                    foundHoles.add(quadHole);
                     continue;
                 }
                 HoleUtils.Hole partialHole;
-                if (!this.partialHoles.getValue() || (partialHole = HoleUtils.getPartialHole(blockPos2, 0.0)) == null) continue;
-                arrayList.add(partialHole);
+                if (!this.partialHoles.getValue() || (partialHole = HoleUtils.getPartialHole(offsetPos, 0.0)) == null) continue;
+                foundHoles.add(partialHole);
             }
             synchronized (this.holes) {
                 this.holes.clear();
-                this.holes.addAll(arrayList);
+                this.holes.addAll(foundHoles);
             }
         };
         if (this.asynchronous.getValue()) {
@@ -137,86 +137,83 @@ extends Module {
      */
     @SubscribeEvent
     public void onRenderWorld(RenderWorldEvent renderWorldEvent) {
-        List<HoleUtils.Hole> list;
         if (HoleESPModule.mc.level == null) {
             return;
         }
-        List<HoleUtils.Hole> list2 = list = this.holes;
-        synchronized (list2) {
-            Object object;
+        synchronized (this.holes) {
+            EspShader.Settings shaderSettings;
             if (this.holes.isEmpty()) {
                 return;
             }
-            boolean bl = !this.safeShader.getValue().equalsIgnoreCase("None");
-            boolean bl2 = !this.unsafeShader.getValue().equalsIgnoreCase("None");
-            boolean bl3 = !this.partialShader.getValue().equalsIgnoreCase("None");
-            ArrayList<Renderer3D.VertexCollection> arrayList = new ArrayList<Renderer3D.VertexCollection>();
-            ArrayList<Renderer3D.VertexCollection> arrayList2 = new ArrayList<Renderer3D.VertexCollection>();
-            ArrayList<Renderer3D.VertexCollection> arrayList3 = new ArrayList<Renderer3D.VertexCollection>();
-            ArrayList<Renderer3D.VertexCollection> arrayList4 = new ArrayList<Renderer3D.VertexCollection>();
-            ArrayList<Renderer3D.VertexCollection> arrayList5 = new ArrayList<Renderer3D.VertexCollection>();
-            ArrayList<Renderer3D.VertexCollection> arrayList6 = new ArrayList<Renderer3D.VertexCollection>();
-            boolean bl4 = this.fill.getValue().equalsIgnoreCase("Normal");
-            boolean bl5 = this.fill.getValue().equalsIgnoreCase("Gradient");
-            boolean bl6 = this.outline.getValue().equalsIgnoreCase("Normal");
-            boolean bl7 = this.outline.getValue().equalsIgnoreCase("Gradient");
+            boolean useSafeShader = !this.safeShader.getValue().equalsIgnoreCase("None");
+            boolean useUnsafeShader = !this.unsafeShader.getValue().equalsIgnoreCase("None");
+            boolean usePartialShader = !this.partialShader.getValue().equalsIgnoreCase("None");
+            ArrayList<Renderer3D.VertexCollection> safeFillQuads = new ArrayList<Renderer3D.VertexCollection>();
+            ArrayList<Renderer3D.VertexCollection> safeOutlineQuads = new ArrayList<Renderer3D.VertexCollection>();
+            ArrayList<Renderer3D.VertexCollection> unsafeFillQuads = new ArrayList<Renderer3D.VertexCollection>();
+            ArrayList<Renderer3D.VertexCollection> unsafeOutlineQuads = new ArrayList<Renderer3D.VertexCollection>();
+            ArrayList<Renderer3D.VertexCollection> partialFillQuads = new ArrayList<Renderer3D.VertexCollection>();
+            ArrayList<Renderer3D.VertexCollection> partialOutlineQuads = new ArrayList<Renderer3D.VertexCollection>();
+            boolean normalFill = this.fill.getValue().equalsIgnoreCase("Normal");
+            boolean gradientFill = this.fill.getValue().equalsIgnoreCase("Gradient");
+            boolean normalOutline = this.outline.getValue().equalsIgnoreCase("Normal");
+            boolean gradientOutline = this.outline.getValue().equalsIgnoreCase("Gradient");
             for (HoleUtils.Hole hole : this.holes) {
                 if (!Renderer3D.isFrustumVisible(hole.box())) continue;
-                boolean bl8 = hole.safety() == HoleUtils.HoleSafety.SAFE;
-                boolean bl9 = hole.safety() == HoleUtils.HoleSafety.PARTIAL;
-                boolean bl10 = bl9;
-                boolean bl11 = bl8 ? bl : (bl9 ? bl3 : bl2);
-                AABB aABB = new AABB(hole.box().minX, hole.box().minY, hole.box().minZ, hole.box().maxX, hole.box().minY + this.fillHeight.getValue().doubleValue(), hole.box().maxZ);
-                AABB aABB2 = new AABB(hole.box().minX, hole.box().minY, hole.box().minZ, hole.box().maxX, hole.box().minY + this.outlineHeight.getValue().doubleValue(), hole.box().maxZ);
-                AABB aABB3 = new AABB(hole.box().minX, hole.box().minY, hole.box().minZ, hole.box().maxX, hole.box().minY, hole.box().maxZ);
-                Color color = this.getFillColor(hole);
-                Color color2 = this.getOutlineColor(hole);
-                Color color3 = this.getWireframeColor(hole);
-                if (bl11) {
-                    ArrayList<Renderer3D.VertexCollection> fillList = bl8 ? arrayList : (bl9 ? arrayList5 : arrayList3);
-                    ArrayList<Renderer3D.VertexCollection> outlineList = bl8 ? arrayList2 : (bl9 ? arrayList6 : arrayList4);
-                    if (bl4) {
-                        Renderer3D.renderGradientBox(fillList, renderWorldEvent.getMatrices(), aABB, color, color);
+                boolean isSafe = hole.safety() == HoleUtils.HoleSafety.SAFE;
+                boolean isPartial = hole.safety() == HoleUtils.HoleSafety.PARTIAL;
+                boolean hasShader = isSafe ? useSafeShader : (isPartial ? usePartialShader : useUnsafeShader);
+                AABB fillBox = new AABB(hole.box().minX, hole.box().minY, hole.box().minZ, hole.box().maxX, hole.box().minY + this.fillHeight.getValue().doubleValue(), hole.box().maxZ);
+                AABB outlineBox = new AABB(hole.box().minX, hole.box().minY, hole.box().minZ, hole.box().maxX, hole.box().minY + this.outlineHeight.getValue().doubleValue(), hole.box().maxZ);
+                AABB wireframeBox = new AABB(hole.box().minX, hole.box().minY, hole.box().minZ, hole.box().maxX, hole.box().minY, hole.box().maxZ);
+                Color fillCol = this.getFillColor(hole);
+                Color outlineCol = this.getOutlineColor(hole);
+                Color wireframeCol = this.getWireframeColor(hole);
+                if (hasShader) {
+                    ArrayList<Renderer3D.VertexCollection> fillList = isSafe ? safeFillQuads : (isPartial ? partialFillQuads : unsafeFillQuads);
+                    ArrayList<Renderer3D.VertexCollection> outlineList = isSafe ? safeOutlineQuads : (isPartial ? partialOutlineQuads : unsafeOutlineQuads);
+                    if (normalFill) {
+                        Renderer3D.renderGradientBox(fillList, renderWorldEvent.getMatrices(), fillBox, fillCol, fillCol);
                     }
-                    if (bl5) {
-                        Renderer3D.renderGradientBox(fillList, renderWorldEvent.getMatrices(), aABB, this.fillHeight.getValue().floatValue() < 0.0f ? color : new Color(0, 0, 0, 0), this.fillHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : color);
+                    if (gradientFill) {
+                        Renderer3D.renderGradientBox(fillList, renderWorldEvent.getMatrices(), fillBox, this.fillHeight.getValue().floatValue() < 0.0f ? fillCol : new Color(0, 0, 0, 0), this.fillHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : fillCol);
                     }
-                    if (bl6) {
-                        Renderer3D.renderGradientBoxOutline(outlineList, renderWorldEvent.getMatrices(), aABB2, color2, color2);
+                    if (normalOutline) {
+                        Renderer3D.renderGradientBoxOutline(outlineList, renderWorldEvent.getMatrices(), outlineBox, outlineCol, outlineCol);
                     }
-                    if (bl7) {
-                        Renderer3D.renderGradientBoxOutline(outlineList, renderWorldEvent.getMatrices(), aABB2, this.outlineHeight.getValue().floatValue() < 0.0f ? color2 : new Color(0, 0, 0, 0), this.outlineHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : color2);
+                    if (gradientOutline) {
+                        Renderer3D.renderGradientBoxOutline(outlineList, renderWorldEvent.getMatrices(), outlineBox, this.outlineHeight.getValue().floatValue() < 0.0f ? outlineCol : new Color(0, 0, 0, 0), this.outlineHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : outlineCol);
                     }
                     if (!this.wireframe.getValue()) continue;
-                    Renderer3D.renderBoxWireframe(outlineList, renderWorldEvent.getMatrices(), aABB3, color3, color3);
+                    Renderer3D.renderBoxWireframe(outlineList, renderWorldEvent.getMatrices(), wireframeBox, wireframeCol, wireframeCol);
                     continue;
                 }
-                if (bl4) {
-                    Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, color);
+                if (normalFill) {
+                    Renderer3D.renderBox(renderWorldEvent.getMatrices(), fillBox, fillCol);
                 }
-                if (bl5) {
-                    Renderer3D.renderGradientBox(renderWorldEvent.getMatrices(), aABB, this.fillHeight.getValue().floatValue() < 0.0f ? color : new Color(0, 0, 0, 0), this.fillHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : color);
+                if (gradientFill) {
+                    Renderer3D.renderGradientBox(renderWorldEvent.getMatrices(), fillBox, this.fillHeight.getValue().floatValue() < 0.0f ? fillCol : new Color(0, 0, 0, 0), this.fillHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : fillCol);
                 }
-                if (bl6) {
-                    Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB2, color2);
+                if (normalOutline) {
+                    Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), outlineBox, outlineCol);
                 }
-                if (bl7) {
-                    Renderer3D.renderGradientBoxOutline(renderWorldEvent.getMatrices(), aABB2, this.outlineHeight.getValue().floatValue() < 0.0f ? color2 : new Color(0, 0, 0, 0), this.outlineHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : color2);
+                if (gradientOutline) {
+                    Renderer3D.renderGradientBoxOutline(renderWorldEvent.getMatrices(), outlineBox, this.outlineHeight.getValue().floatValue() < 0.0f ? outlineCol : new Color(0, 0, 0, 0), this.outlineHeight.getValue().floatValue() < 0.0f ? new Color(0, 0, 0, 0) : outlineCol);
                 }
                 if (!this.wireframe.getValue()) continue;
-                Renderer3D.renderBoxWireframe(renderWorldEvent.getMatrices(), aABB3, color3);
+                Renderer3D.renderBoxWireframe(renderWorldEvent.getMatrices(), wireframeBox, wireframeCol);
             }
-            if (!(!bl || arrayList.isEmpty() && arrayList2.isEmpty())) {
-                object = EspShader.createSettings(this.safeShader.getValue(), this.safeShaderOpacity.getValue().floatValue(), this.safeShaderSpeed.getValue().floatValue(), this.safeShaderStep.getValue().floatValue(), this.safeShaderColor1.getColor(), this.safeShaderColor2.getColor(), this.safeShaderColor3.getColor(), this.safeShaderColor4.getColor(), this.safeShaderGlowColor.getColor(), null);
-                EspShader.draw(arrayList, arrayList2, (EspShader.Settings)object);
+            if (!(!useSafeShader || safeFillQuads.isEmpty() && safeOutlineQuads.isEmpty())) {
+                shaderSettings = EspShader.createSettings(this.safeShader.getValue(), this.safeShaderOpacity.getValue().floatValue(), this.safeShaderSpeed.getValue().floatValue(), this.safeShaderStep.getValue().floatValue(), this.safeShaderColor1.getColor(), this.safeShaderColor2.getColor(), this.safeShaderColor3.getColor(), this.safeShaderColor4.getColor(), this.safeShaderGlowColor.getColor(), null);
+                EspShader.draw(safeFillQuads, safeOutlineQuads, shaderSettings);
             }
-            if (!(!bl2 || arrayList3.isEmpty() && arrayList4.isEmpty())) {
-                object = EspShader.createSettings(this.unsafeShader.getValue(), this.unsafeShaderOpacity.getValue().floatValue(), this.unsafeShaderSpeed.getValue().floatValue(), this.unsafeShaderStep.getValue().floatValue(), this.unsafeShaderColor1.getColor(), this.unsafeShaderColor2.getColor(), this.unsafeShaderColor3.getColor(), this.unsafeShaderColor4.getColor(), this.unsafeShaderGlowColor.getColor(), null);
-                EspShader.draw(arrayList3, arrayList4, (EspShader.Settings)object);
+            if (!(!useUnsafeShader || unsafeFillQuads.isEmpty() && unsafeOutlineQuads.isEmpty())) {
+                shaderSettings = EspShader.createSettings(this.unsafeShader.getValue(), this.unsafeShaderOpacity.getValue().floatValue(), this.unsafeShaderSpeed.getValue().floatValue(), this.unsafeShaderStep.getValue().floatValue(), this.unsafeShaderColor1.getColor(), this.unsafeShaderColor2.getColor(), this.unsafeShaderColor3.getColor(), this.unsafeShaderColor4.getColor(), this.unsafeShaderGlowColor.getColor(), null);
+                EspShader.draw(unsafeFillQuads, unsafeOutlineQuads, shaderSettings);
             }
-            if (!(!bl3 || arrayList5.isEmpty() && arrayList6.isEmpty())) {
-                object = EspShader.createSettings(this.partialShader.getValue(), this.partialShaderOpacity.getValue().floatValue(), this.partialShaderSpeed.getValue().floatValue(), this.partialShaderStep.getValue().floatValue(), this.partialShaderColor1.getColor(), this.partialShaderColor2.getColor(), this.partialShaderColor3.getColor(), this.partialShaderColor4.getColor(), this.partialShaderGlowColor.getColor(), null);
-                EspShader.draw(arrayList5, arrayList6, (EspShader.Settings)object);
+            if (!(!usePartialShader || partialFillQuads.isEmpty() && partialOutlineQuads.isEmpty())) {
+                shaderSettings = EspShader.createSettings(this.partialShader.getValue(), this.partialShaderOpacity.getValue().floatValue(), this.partialShaderSpeed.getValue().floatValue(), this.partialShaderStep.getValue().floatValue(), this.partialShaderColor1.getColor(), this.partialShaderColor2.getColor(), this.partialShaderColor3.getColor(), this.partialShaderColor4.getColor(), this.partialShaderGlowColor.getColor(), null);
+                EspShader.draw(partialFillQuads, partialOutlineQuads, shaderSettings);
             }
         }
     }
@@ -238,7 +235,7 @@ extends Module {
                 break;
             }
             default: {
-                Color color2 = color = this.unsafeFillColor.getColor();
+                color = this.unsafeFillColor.getColor();
             }
         }
         if (!this.fade.getValue()) {
@@ -259,7 +256,7 @@ extends Module {
                 break;
             }
             default: {
-                Color color2 = color = this.unsafeOutlineColor.getColor();
+                color = this.unsafeOutlineColor.getColor();
             }
         }
         if (!this.fade.getValue()) {
@@ -280,7 +277,7 @@ extends Module {
                 break;
             }
             default: {
-                Color color2 = color = this.unsafeWireframeColor.getColor();
+                color = this.unsafeWireframeColor.getColor();
             }
         }
         if (!this.fade.getValue()) {
@@ -290,8 +287,8 @@ extends Module {
     }
 
     private float getEasing(HoleUtils.Hole hole) {
-        float f = (float)(1.0 - Mth.clamp((double)(Math.sqrt(HoleESPModule.mc.player.distanceToSqr(hole.box().getCenter())) / this.range.getValue().doubleValue()), (double)0.0, (double)1.0));
-        return Easing.ease(f, Easing.Method.EASE_OUT_CUBIC);
+        float distanceFactor = (float)(1.0 - Mth.clamp((double)(Math.sqrt(HoleESPModule.mc.player.distanceToSqr(hole.box().getCenter())) / this.range.getValue().doubleValue()), (double)0.0, (double)1.0));
+        return Easing.ease(distanceFactor, Easing.Method.EASE_OUT_CUBIC);
     }
 }
 

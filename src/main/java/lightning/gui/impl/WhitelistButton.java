@@ -61,24 +61,24 @@ extends Button {
     private final int scrollbarWidth = 5;
     private final int symbolWidth = 15;
 
-    public WhitelistButton(WhitelistSetting whitelistSetting, Frame frame, int n) {
-        super(whitelistSetting, frame, n, whitelistSetting.getDescription());
+    public WhitelistButton(WhitelistSetting whitelistSetting, Frame frame, int height) {
+        super(whitelistSetting, frame, height, whitelistSetting.getDescription());
         this.setting = whitelistSetting;
         this.allElements = this.getAllElements();
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        boolean bl = !this.searchQuery.equals(this.oldSearchQuery);
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        boolean queryChanged = !this.searchQuery.equals(this.oldSearchQuery);
         this.oldSearchQuery = this.searchQuery;
-        float f2 = 0.0f;
-        if (bl) {
-            f2 = this.getScrollRatio();
+        float savedRatio = 0.0f;
+        if (queryChanged) {
+            savedRatio = this.getScrollRatio();
         }
         this.updateVisibleElements();
         this.clampScrollValues();
-        if (bl) {
-            this.applyScrollRatio(f2);
+        if (queryChanged) {
+            this.applyScrollRatio(savedRatio);
             this.clampScrollValues();
         }
         this.scrollOffset += (this.targetScrollOffset - this.scrollOffset) * 0.5f;
@@ -87,142 +87,136 @@ extends Button {
         Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, this.setting.getTag(), this.getX() + this.getTextPadding() + 1, this.getY() + 2, Color.WHITE);
         Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, String.valueOf(ChatFormatting.GRAY) + this.setting.getWhitelist().size(), this.getX() + this.getWidth() - this.getTextPadding() - 1 - Night.FONT_MANAGER.getWidth("" + this.setting.getWhitelist().size()), this.getY() + 2, Color.WHITE);
         if (this.open) {
-            int n3;
-            String string;
-            int n4 = this.getY() + this.getParent().getHeight();
-            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding() + 1 + 2, n4, this.getX() + this.getWidth() - this.getPadding() - 1, n4 + 12, ClickGuiScreen.getButtonColor(this.getY(), 30));
-            Object object = this.searchQuery;
+            int searchY = this.getY() + this.getParent().getHeight();
+            Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding() + 1 + 2, searchY, this.getX() + this.getWidth() - this.getPadding() - 1, searchY + 12, ClickGuiScreen.getButtonColor(this.getY(), 30));
+            String searchDisplay = this.searchQuery;
             if (this.searching) {
-                string = Night.CLICK_GUI.isShowLine() ? "|" : " ";
-                String string2 = string;
-                if (this.cursorPos <= ((String)object).length()) {
-                    object = ((String)object).substring(0, this.cursorPos) + string + ((String)object).substring(this.cursorPos);
+                String caret = Night.CLICK_GUI.isShowLine() ? "|" : " ";
+                if (this.cursorPos <= searchDisplay.length()) {
+                    searchDisplay = searchDisplay.substring(0, this.cursorPos) + caret + searchDisplay.substring(this.cursorPos);
                 }
             } else {
-                object = "Search...";
+                searchDisplay = "Search...";
             }
             if (this.searching && this.searchQuery.isEmpty()) {
-                string = Night.CLICK_GUI.isShowLine() ? "|" : " ";
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, this.getX() + this.getTextPadding() + 2 + 2, n4 + 6 - Night.FONT_MANAGER.getHeight() / 2, Color.WHITE);
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "Search...", this.getX() + this.getTextPadding() + 2 + 2 + Night.FONT_MANAGER.getWidth(" "), n4 + 6 - Night.FONT_MANAGER.getHeight() / 2, Color.GRAY);
+                String caret = Night.CLICK_GUI.isShowLine() ? "|" : " ";
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, caret, this.getX() + this.getTextPadding() + 2 + 2, searchY + 6 - Night.FONT_MANAGER.getHeight() / 2, Color.WHITE);
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, "Search...", this.getX() + this.getTextPadding() + 2 + 2 + Night.FONT_MANAGER.getWidth(" "), searchY + 6 - Night.FONT_MANAGER.getHeight() / 2, Color.GRAY);
             } else {
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object, this.getX() + this.getTextPadding() + 2 + 2, n4 + 6 - Night.FONT_MANAGER.getHeight() / 2, this.searching ? (this.selecting ? ClickGuiScreen.getButtonColor(this.getY(), 255) : Color.WHITE) : Color.GRAY);
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, searchDisplay, this.getX() + this.getTextPadding() + 2 + 2, searchY + 6 - Night.FONT_MANAGER.getHeight() / 2, this.searching ? (this.selecting ? ClickGuiScreen.getButtonColor(this.getY(), 255) : Color.WHITE) : Color.GRAY);
             }
-            int n5 = n4 + 12;
-            int n6 = Math.min(this.visibleElements.size(), 6);
-            int n7 = this.getX() + this.getWidth() - this.getPadding() - 5 - 1;
-            int n8 = 72;
-            List<String> list = this.setting.getWhitelistIds();
-            String[] stringArray = this.searchQuery.isEmpty() ? new String[]{} : this.searchQuery.toLowerCase().split(" ");
-            for (int i = 0; i < n6; ++i) {
-                n3 = (int)((float)i + this.scrollOffset);
-                if (n3 < 0 || n3 >= this.visibleElements.size()) continue;
-                String string3 = this.visibleElements.get(n3);
-                boolean bl2 = list.contains(string3);
-                String string4 = string3.replace("minecraft:", "");
-                Color color = bl2 ? Color.WHITE : Color.GRAY;
-                Color color2 = bl2 ? Color.YELLOW : Color.LIGHT_GRAY;
-                int n9 = n5 + i * 12;
-                Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding() + 1 + 2, n9, this.getX() + this.getWidth() - this.getPadding() - 1, n9 + 12, ClickGuiScreen.getButtonColor(this.getY(), 30));
-                int n10 = this.getX() + this.getTextPadding() + 2 + 2;
-                int n11 = n7 - 15 + 5;
-                boolean bl3 = n >= n10 && n <= n11 && n2 >= n9 && n2 < n9 + 12;
-                List<ColoredSegment> list2 = this.highlightMatches(string4, stringArray, color, color2);
-                int n12 = 0;
-                for (ColoredSegment coloredSegment : list2) {
-                    n12 += Night.FONT_MANAGER.getWidth(coloredSegment.text);
+            int listTop = searchY + 12;
+            int visibleCount = Math.min(this.visibleElements.size(), 6);
+            int scrollbarX = this.getX() + this.getWidth() - this.getPadding() - 5 - 1;
+            int listHeight = 72;
+            List<String> whitelistIds = this.setting.getWhitelistIds();
+            String[] searchTokens = this.searchQuery.isEmpty() ? new String[]{} : this.searchQuery.toLowerCase().split(" ");
+            for (int i = 0; i < visibleCount; ++i) {
+                int elementIndex = (int)((float)i + this.scrollOffset);
+                if (elementIndex < 0 || elementIndex >= this.visibleElements.size()) continue;
+                String elementId = this.visibleElements.get(elementIndex);
+                boolean isWhitelisted = whitelistIds.contains(elementId);
+                String displayName = elementId.replace("minecraft:", "");
+                Color baseColor = isWhitelisted ? Color.WHITE : Color.GRAY;
+                Color highlightColor = isWhitelisted ? Color.YELLOW : Color.LIGHT_GRAY;
+                int rowY = listTop + i * 12;
+                Renderer2D.renderQuad(guiGraphicsExtractor, this.getX() + this.getPadding() + 1 + 2, rowY, this.getX() + this.getWidth() - this.getPadding() - 1, rowY + 12, ClickGuiScreen.getButtonColor(this.getY(), 30));
+                int textX = this.getX() + this.getTextPadding() + 2 + 2;
+                int textMaxX = scrollbarX - 15 + 5;
+                boolean isHoveringText = mouseX >= textX && mouseX <= textMaxX && mouseY >= rowY && mouseY < rowY + 12;
+                List<ColoredSegment> segments = this.highlightMatches(displayName, searchTokens, baseColor, highlightColor);
+                int totalWidth = 0;
+                for (ColoredSegment coloredSegment : segments) {
+                    totalWidth += Night.FONT_MANAGER.getWidth(coloredSegment.text);
                 }
-                int n13 = n11 - n10;
-                List<ColoredSegment> object22 = bl3 || n12 <= n13 ? list2 : this.truncateSegments(list2, n13);
-                int n14 = n10;
-                for (ColoredSegment coloredSegment : object22) {
-                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, coloredSegment.text, n14, n9 + 2, coloredSegment.color);
-                    n14 += Night.FONT_MANAGER.getWidth(coloredSegment.text);
+                int maxWidth = textMaxX - textX;
+                List<ColoredSegment> renderSegments = isHoveringText || totalWidth <= maxWidth ? segments : this.truncateSegments(segments, maxWidth);
+                int drawX = textX;
+                for (ColoredSegment coloredSegment : renderSegments) {
+                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, coloredSegment.text, drawX, rowY + 2, coloredSegment.color);
+                    drawX += Night.FONT_MANAGER.getWidth(coloredSegment.text);
                 }
-                String string2 = !this.searching || bl2 ? "-" : "+";
-                int n15 = n7 - 15 + 5;
-                boolean bl4 = n >= n15 && n <= n15 + 15 && n2 >= n9 && n2 < n9 + 12;
-                boolean bl5 = bl4;
-                Color color3 = string2.equals("+") ? (bl4 ? new Color(0, 255, 0) : Color.WHITE) : (bl4 ? new Color(255, 0, 0) : Color.WHITE);
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string2, n15, n9 + 2, color3);
+                String actionSymbol = !this.searching || isWhitelisted ? "-" : "+";
+                int actionX = scrollbarX - 15 + 5;
+                boolean isHoveringAction = mouseX >= actionX && mouseX <= actionX + 15 && mouseY >= rowY && mouseY < rowY + 12;
+                Color actionColor = actionSymbol.equals("+") ? (isHoveringAction ? new Color(0, 255, 0) : Color.WHITE) : (isHoveringAction ? new Color(255, 0, 0) : Color.WHITE);
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, actionSymbol, actionX, rowY + 2, actionColor);
             }
             if (this.visibleElements.size() > 6) {
-                float f3 = Math.max(0, this.visibleElements.size() - 6);
-                float f4 = f3 == 0.0f ? 0.0f : this.scrollOffset / f3;
-                n3 = (int)((float)n8 * (6.0f / (float)this.visibleElements.size()));
-                if (n3 < 20) {
-                    n3 = 20;
+                float maxScroll = Math.max(0, this.visibleElements.size() - 6);
+                float scrollRatio = maxScroll == 0.0f ? 0.0f : this.scrollOffset / maxScroll;
+                int thumbHeight = (int)((float)listHeight * (6.0f / (float)this.visibleElements.size()));
+                if (thumbHeight < 20) {
+                    thumbHeight = 20;
                 }
-                int n16 = (int)((float)(n8 - n3) * f4);
-                Renderer2D.renderQuad(guiGraphicsExtractor, n7, n5, n7 + 5, n5 + n8, ClickGuiScreen.getButtonColor(this.getY(), 40));
-                Renderer2D.renderQuad(guiGraphicsExtractor, n7, n5 + n16, n7 + 5, n5 + n16 + n3, ClickGuiScreen.getButtonColor(this.getY(), 200));
+                int thumbY = (int)((float)(listHeight - thumbHeight) * scrollRatio);
+                Renderer2D.renderQuad(guiGraphicsExtractor, scrollbarX, listTop, scrollbarX + 5, listTop + listHeight, ClickGuiScreen.getButtonColor(this.getY(), 40));
+                Renderer2D.renderQuad(guiGraphicsExtractor, scrollbarX, listTop + thumbY, scrollbarX + 5, listTop + thumbY + thumbHeight, ClickGuiScreen.getButtonColor(this.getY(), 200));
             }
         }
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        int n2;
-        if (this.isHovering(d, d2) && n == 1) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.isHovering(mouseX, mouseY) && button == 1) {
             this.open = !this.open;
-            n2 = this.open ? 1 : 0;
         }
-        if (this.isHovering(d, d2) && n == 0 && (!this.open || d2 < (double)(this.getY() + this.getParent().getHeight()))) {
+        if (this.isHovering(mouseX, mouseY) && button == 0 && (!this.open || mouseY < (double)(this.getY() + this.getParent().getHeight()))) {
             WhitelistButton.mc.gui.setScreen((Screen)new WhitelistEditorScreen(this.setting, WhitelistButton.mc.gui.screen()));
             return;
         }
         if (!this.open) {
             return;
         }
-        if (n == 0) {
-            int n3;
-            int n4 = this.getY() + this.getParent().getHeight();
-            if (d >= (double)(this.getX() + this.getPadding() + 1 + 2) && d <= (double)(this.getX() + this.getWidth() - this.getPadding() - 1) && d2 >= (double)n4 && d2 <= (double)(n4 + 12)) {
+        if (button == 0) {
+            int elementIndex;
+            int relY;
+            int searchY = this.getY() + this.getParent().getHeight();
+            if (mouseX >= (double)(this.getX() + this.getPadding() + 1 + 2) && mouseX <= (double)(this.getX() + this.getWidth() - this.getPadding() - 1) && mouseY >= (double)searchY && mouseY <= (double)(searchY + 12)) {
                 this.searching = true;
                 this.selecting = false;
                 this.cursorPos = this.searchQuery.length();
                 return;
             }
-            if (!this.isWithinOpenArea(d, d2)) {
+            if (!this.isWithinOpenArea(mouseX, mouseY)) {
                 this.searching = false;
                 this.selecting = false;
                 this.searchQuery = "";
                 this.cursorPos = 0;
             }
-            if (this.visibleElements.size() > 6 && this.isHoveringScrollbar(d, d2)) {
+            if (this.visibleElements.size() > 6 && this.isHoveringScrollbar(mouseX, mouseY)) {
                 this.draggingScrollbar = true;
-                this.dragStartY = (int)d2;
+                this.dragStartY = (int)mouseY;
                 this.dragStartScroll = this.scrollOffset;
                 return;
             }
-            if (!this.isWithinOpenArea(d, d2)) {
+            if (!this.isWithinOpenArea(mouseX, mouseY)) {
                 return;
             }
-            int n5 = this.getX() + this.getPadding() + 1 + 2;
-            int n6 = this.getX() + this.getWidth() - this.getPadding() - 1;
-            if (d < (double)n5 || d > (double)n6) {
+            int areaLeft = this.getX() + this.getPadding() + 1 + 2;
+            int areaRight = this.getX() + this.getWidth() - this.getPadding() - 1;
+            if (mouseX < (double)areaLeft || mouseX > (double)areaRight) {
                 return;
             }
-            int n7 = this.getY() + this.getParent().getHeight();
-            int n8 = n7 + 12;
-            if (d2 >= (double)n8 && d2 < (double)(n8 + 72) && (n3 = (int)this.scrollOffset + (n2 = (int)(d2 - (double)n8)) / 12) >= 0 && n3 < this.visibleElements.size()) {
-                String string = this.visibleElements.get(n3);
-                int n9 = this.getX() + this.getWidth() - this.getPadding() - 5 - 1;
-                int n10 = n9 - 15 + 5;
-                int n11 = n8 + n2 / 12 * 12;
-                if (d >= (double)n10 && d <= (double)(n10 + 15) && d2 >= (double)n11 && d2 < (double)(n11 + 12)) {
-                    boolean bl = this.setting.getWhitelistIds().contains(string);
-                    if (bl) {
+            int listTop = this.getY() + this.getParent().getHeight() + 12;
+            if (mouseY >= (double)listTop && mouseY < (double)(listTop + 72) && (elementIndex = (int)this.scrollOffset + (relY = (int)(mouseY - (double)listTop)) / 12) >= 0 && elementIndex < this.visibleElements.size()) {
+                String elementId = this.visibleElements.get(elementIndex);
+                int scrollbarX = this.getX() + this.getWidth() - this.getPadding() - 5 - 1;
+                int actionX = scrollbarX - 15 + 5;
+                int rowY = listTop + relY / 12 * 12;
+                if (mouseX >= (double)actionX && mouseX <= (double)(actionX + 15) && mouseY >= (double)rowY && mouseY < (double)(rowY + 12)) {
+                    boolean isWhitelisted = this.setting.getWhitelistIds().contains(elementId);
+                    if (isWhitelisted) {
                         if (this.setting.getType() == WhitelistSetting.Type.BLOCKS) {
-                            this.setting.remove(IdentifierUtils.getBlock(string));
+                            this.setting.remove(IdentifierUtils.getBlock(elementId));
                         } else {
-                            this.setting.remove(IdentifierUtils.getItem(string));
+                            this.setting.remove(IdentifierUtils.getItem(elementId));
                         }
-                        this.setting.remove(string);
+                        this.setting.remove(elementId);
                     } else if (this.setting.getType() == WhitelistSetting.Type.BLOCKS) {
-                        this.setting.add(IdentifierUtils.getBlock(string));
+                        this.setting.add(IdentifierUtils.getBlock(elementId));
                     } else {
-                        this.setting.add(IdentifierUtils.getItem(string));
+                        this.setting.add(IdentifierUtils.getItem(elementId));
                     }
                 }
             }
@@ -230,50 +224,50 @@ extends Button {
     }
 
     @Override
-    public void mouseReleased(double d, double d2, int n) {
-        if (n == 0 && this.draggingScrollbar) {
+    public void mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && this.draggingScrollbar) {
             this.draggingScrollbar = false;
         }
     }
 
     @Override
-    public void mouseDragged(double d, double d2, int n, double d3, double d4) {
+    public void mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (this.draggingScrollbar && this.visibleElements.size() > 6) {
-            int n2 = 72;
-            float f = Math.max(0, this.visibleElements.size() - 6);
-            float f2 = (float)(d2 - (double)this.dragStartY);
-            float f3 = f2 / (float)n2;
-            this.targetScrollOffset = this.dragStartScroll + f * f3;
+            int listHeight = 72;
+            float maxScroll = Math.max(0, this.visibleElements.size() - 6);
+            float dragDeltaY = (float)(mouseY - (double)this.dragStartY);
+            float scrollDelta = dragDeltaY / (float)listHeight;
+            this.targetScrollOffset = this.dragStartScroll + maxScroll * scrollDelta;
             this.clampScrollValues();
         }
     }
 
     @Override
-    public void mouseScrolled(double d, double d2, double d3, double d4) {
-        if (this.open && this.isWithinOpenArea(d, d2)) {
-            this.targetScrollOffset -= (float)d4;
+    public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (this.open && this.isWithinOpenArea(mouseX, mouseY)) {
+            this.targetScrollOffset -= (float)verticalAmount;
             this.clampScrollValues();
         }
     }
 
     @Override
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!this.searching) {
             return;
         }
         Window window = mc.getWindow();
-        boolean bl = InputConstants.isKeyDown((Window)window, (int)(Util.getPlatform() == Util.OS.OSX ? 343 : 341));
-        if (n == 256) {
+        boolean ctrlHeld = InputConstants.isKeyDown((Window)window, (int)(Util.getPlatform() == Util.OS.OSX ? 343 : 341));
+        if (keyCode == 256) {
             this.searching = false;
             this.selecting = false;
             this.searchQuery = "";
             this.cursorPos = 0;
-        } else if (n == 257) {
+        } else if (keyCode == 257) {
             this.searching = false;
             this.selecting = false;
             this.searchQuery = "";
             this.cursorPos = 0;
-        } else if (n == 259) {
+        } else if (keyCode == 259) {
             if (this.selecting) {
                 this.searchQuery = "";
                 this.cursorPos = 0;
@@ -282,38 +276,38 @@ extends Button {
                 this.searchQuery = this.searchQuery.substring(0, this.cursorPos - 1) + this.searchQuery.substring(this.cursorPos);
                 --this.cursorPos;
             }
-        } else if (n == 261) {
+        } else if (keyCode == 261) {
             if (this.cursorPos < this.searchQuery.length()) {
                 this.searchQuery = this.searchQuery.substring(0, this.cursorPos) + this.searchQuery.substring(this.cursorPos + 1);
             }
-        } else if (n == 263) {
+        } else if (keyCode == 263) {
             if (this.cursorPos > 0) {
                 --this.cursorPos;
             }
-        } else if (n == 262) {
+        } else if (keyCode == 262) {
             if (this.cursorPos < this.searchQuery.length()) {
                 ++this.cursorPos;
             }
-        } else if (bl) {
-            if (n == 86) {
+        } else if (ctrlHeld) {
+            if (keyCode == 86) {
                 try {
-                    String string = WhitelistButton.mc.keyboardHandler.getClipboard();
-                    if (string != null) {
-                        this.searchQuery = this.searchQuery.substring(0, this.cursorPos) + string + this.searchQuery.substring(this.cursorPos);
-                        this.cursorPos += string.length();
+                    String clipboard = WhitelistButton.mc.keyboardHandler.getClipboard();
+                    if (clipboard != null) {
+                        this.searchQuery = this.searchQuery.substring(0, this.cursorPos) + clipboard + this.searchQuery.substring(this.cursorPos);
+                        this.cursorPos += clipboard.length();
                     }
                 }
                 catch (Exception exception) {
                     Night.LOGGER.error("{}: Failed to process clipboard paste", (Object)exception.getClass().getName(), (Object)exception);
                 }
-            } else if (n == 67 && this.selecting) {
+            } else if (keyCode == 67 && this.selecting) {
                 try {
                     WhitelistButton.mc.keyboardHandler.setClipboard(this.searchQuery);
                 }
                 catch (Exception exception) {
                     Night.LOGGER.error("{}: Failed to process clipboard change", (Object)exception.getClass().getName(), (Object)exception);
                 }
-            } else if (n == 65) {
+            } else if (keyCode == 65) {
                 this.selecting = true;
                 this.cursorPos = this.searchQuery.length();
             }
@@ -321,14 +315,14 @@ extends Button {
     }
 
     @Override
-    public void charTyped(char c, int n) {
-        if (this.searching && !Character.isISOControl(c)) {
+    public void charTyped(char typedChar, int modifiers) {
+        if (this.searching && !Character.isISOControl(typedChar)) {
             if (this.selecting) {
-                this.searchQuery = String.valueOf(c);
+                this.searchQuery = String.valueOf(typedChar);
                 this.selecting = false;
                 this.cursorPos = 1;
             } else {
-                this.searchQuery = this.searchQuery.substring(0, this.cursorPos) + c + this.searchQuery.substring(this.cursorPos);
+                this.searchQuery = this.searchQuery.substring(0, this.cursorPos) + typedChar + this.searchQuery.substring(this.cursorPos);
                 ++this.cursorPos;
             }
         }
@@ -336,228 +330,228 @@ extends Button {
 
     @Override
     public int getHeight() {
-        int n = this.getParent().getHeight();
+        int baseHeight = this.getParent().getHeight();
         if (!this.open) {
-            return n;
+            return baseHeight;
         }
-        return n + 12 + 72;
+        return baseHeight + 12 + 72;
     }
 
     @Override
-    public boolean isHovering(double d, double d2) {
-        return (double)(this.getX() + this.getPadding()) <= d && (double)this.getY() <= d2 && (double)(this.getX() + this.getWidth() - this.getPadding()) > d && (double)(this.getY() + this.getParent().getHeight()) > d2;
+    public boolean isHovering(double mouseX, double mouseY) {
+        return (double)(this.getX() + this.getPadding()) <= mouseX && (double)this.getY() <= mouseY && (double)(this.getX() + this.getWidth() - this.getPadding()) > mouseX && (double)(this.getY() + this.getParent().getHeight()) > mouseY;
     }
 
-    public boolean isHandlingScroll(double d, double d2) {
-        return this.open && (this.isWithinOpenArea(d, d2) || this.draggingScrollbar);
+    public boolean isHandlingScroll(double mouseX, double mouseY) {
+        return this.open && (this.isWithinOpenArea(mouseX, mouseY) || this.draggingScrollbar);
     }
 
-    private boolean isWithinOpenArea(double d, double d2) {
-        int n = this.getY() + this.getParent().getHeight();
-        int n2 = 84;
-        return d >= (double)(this.getX() + this.getPadding() + 1 + 2) && d <= (double)(this.getX() + this.getWidth() - this.getPadding() - 1) && d2 >= (double)n && d2 <= (double)(n + n2);
+    private boolean isWithinOpenArea(double mouseX, double mouseY) {
+        int areaTop = this.getY() + this.getParent().getHeight();
+        int areaHeight = 84;
+        return mouseX >= (double)(this.getX() + this.getPadding() + 1 + 2) && mouseX <= (double)(this.getX() + this.getWidth() - this.getPadding() - 1) && mouseY >= (double)areaTop && mouseY <= (double)(areaTop + areaHeight);
     }
 
-    private boolean isHoveringScrollbar(double d, double d2) {
+    private boolean isHoveringScrollbar(double mouseX, double mouseY) {
         if (!this.open || this.visibleElements.size() <= 6) {
             return false;
         }
-        int n = this.getY() + this.getParent().getHeight();
-        int n2 = n + 12;
-        int n3 = this.getX() + this.getWidth() - this.getPadding() - 5 - 1;
-        int n4 = 72;
-        return d >= (double)n3 && d <= (double)(n3 + 5) && d2 >= (double)n2 && d2 <= (double)(n2 + n4);
+        int searchY = this.getY() + this.getParent().getHeight();
+        int listTop = searchY + 12;
+        int scrollbarX = this.getX() + this.getWidth() - this.getPadding() - 5 - 1;
+        int listHeight = 72;
+        return mouseX >= (double)scrollbarX && mouseX <= (double)(scrollbarX + 5) && mouseY >= (double)listTop && mouseY <= (double)(listTop + listHeight);
     }
 
     private void updateVisibleElements() {
-        List<String> list;
+        List<String> filtered;
         if (this.searchQuery.isEmpty()) {
             if (this.searching) {
-                list = new ArrayList<String>(this.allElements);
+                filtered = new ArrayList<String>(this.allElements);
             } else {
-                List<String> list2 = this.setting.getWhitelistIds();
-                list = this.allElements.stream().filter(list2::contains).collect(Collectors.toList());
+                List<String> whitelistIds = this.setting.getWhitelistIds();
+                filtered = this.allElements.stream().filter(whitelistIds::contains).collect(Collectors.toList());
             }
-            list.sort((string, string2) -> {
-                int n = string.compareToIgnoreCase((String)string2);
-                if (n == 0) {
-                    return Integer.compare(string.length(), string2.length());
+            filtered.sort((first, second) -> {
+                int cmp = first.compareToIgnoreCase(second);
+                if (cmp == 0) {
+                    return Integer.compare(first.length(), second.length());
                 }
-                return n;
+                return cmp;
             });
         } else {
-            String[] stringArray = this.searchQuery.toLowerCase().split(" ");
-            list = this.allElements.stream().filter(string -> {
-                String string2 = string.toLowerCase();
-                for (String string3 : stringArray) {
-                    if (string3.isEmpty() || string2.contains(string3)) continue;
+            String[] searchTokens = this.searchQuery.toLowerCase().split(" ");
+            filtered = this.allElements.stream().filter(element -> {
+                String lower = element.toLowerCase();
+                for (String token : searchTokens) {
+                    if (token.isEmpty() || lower.contains(token)) continue;
                     return false;
                 }
                 return true;
             }).collect(Collectors.toList());
-            list.sort((string, string2) -> {
-                int n = this.compareBySearchPriority((String)string, (String)string2, stringArray);
-                if (n != 0) {
-                    return n;
+            filtered.sort((first, second) -> {
+                int priorityCmp = this.compareBySearchPriority(first, second, searchTokens);
+                if (priorityCmp != 0) {
+                    return priorityCmp;
                 }
-                int n2 = string.compareToIgnoreCase((String)string2);
-                if (n2 == 0) {
-                    return Integer.compare(string.length(), string2.length());
+                int cmp = first.compareToIgnoreCase(second);
+                if (cmp == 0) {
+                    return Integer.compare(first.length(), second.length());
                 }
-                return n2;
+                return cmp;
             });
         }
-        this.visibleElements = list;
+        this.visibleElements = filtered;
     }
 
-    private int compareBySearchPriority(String string, String string2, String[] stringArray) {
-        int n = this.countStarts(string, stringArray);
-        int n2 = this.countStarts(string2, stringArray);
-        return Integer.compare(n, n2);
+    private int compareBySearchPriority(String first, String second, String[] searchTokens) {
+        int firstStart = this.countStarts(first, searchTokens);
+        int secondStart = this.countStarts(second, searchTokens);
+        return Integer.compare(firstStart, secondStart);
     }
 
-    private int countStarts(String string, String[] stringArray) {
-        int n = string.length();
-        String string2 = string.toLowerCase();
-        for (String string3 : stringArray) {
-            int n2;
-            if (string3.isEmpty() || !string2.contains(string3.toLowerCase()) || (n2 = string2.split(string3.toLowerCase())[0].length()) >= n) continue;
-            n = n2;
+    private int countStarts(String text, String[] searchTokens) {
+        int bestIndex = text.length();
+        String lower = text.toLowerCase();
+        for (String token : searchTokens) {
+            int matchIndex;
+            if (token.isEmpty() || !lower.contains(token.toLowerCase()) || (matchIndex = lower.split(token.toLowerCase())[0].length()) >= bestIndex) continue;
+            bestIndex = matchIndex;
         }
-        return n;
+        return bestIndex;
     }
 
     private float getScrollRatio() {
-        int n = this.visibleElements.size();
-        int n2 = Math.max(0, n - 6);
-        if (n2 == 0) {
+        int total = this.visibleElements.size();
+        int maxScroll = Math.max(0, total - 6);
+        if (maxScroll == 0) {
             return 0.0f;
         }
-        return this.scrollOffset / (float)n2;
+        return this.scrollOffset / (float)maxScroll;
     }
 
-    private void applyScrollRatio(float f) {
-        float f2;
-        int n = this.visibleElements.size();
-        int n2 = Math.max(0, n - 6);
-        this.scrollOffset = f2 = f * (float)n2;
-        this.targetScrollOffset = f2;
+    private void applyScrollRatio(float ratio) {
+        float offset;
+        int total = this.visibleElements.size();
+        int maxScroll = Math.max(0, total - 6);
+        this.scrollOffset = offset = ratio * (float)maxScroll;
+        this.targetScrollOffset = offset;
     }
 
     private void clampScrollValues() {
-        int n = this.visibleElements.size();
-        int n2 = Math.max(0, n - 6);
+        int total = this.visibleElements.size();
+        int maxScroll = Math.max(0, total - 6);
         if (this.targetScrollOffset < 0.0f) {
             this.targetScrollOffset = 0.0f;
         }
-        if (this.targetScrollOffset > (float)n2) {
-            this.targetScrollOffset = n2;
+        if (this.targetScrollOffset > (float)maxScroll) {
+            this.targetScrollOffset = maxScroll;
         }
         if (this.scrollOffset < 0.0f) {
             this.scrollOffset = 0.0f;
         }
-        if (this.scrollOffset > (float)n2) {
-            this.scrollOffset = n2;
+        if (this.scrollOffset > (float)maxScroll) {
+            this.scrollOffset = maxScroll;
         }
     }
 
     private List<String> getAllElements() {
-        ArrayList<String> arrayList = new ArrayList<String>();
+        ArrayList<String> elements = new ArrayList<String>();
         if (this.setting.getType() == WhitelistSetting.Type.BLOCKS) {
-            BuiltInRegistries.BLOCK.entrySet().forEach(entry -> arrayList.add(((ResourceKey)entry.getKey()).identifier().toString()));
+            BuiltInRegistries.BLOCK.entrySet().forEach(entry -> elements.add(((ResourceKey)entry.getKey()).identifier().toString()));
         } else {
-            BuiltInRegistries.ITEM.entrySet().forEach(entry -> arrayList.add(((ResourceKey)entry.getKey()).identifier().toString()));
+            BuiltInRegistries.ITEM.entrySet().forEach(entry -> elements.add(((ResourceKey)entry.getKey()).identifier().toString()));
         }
-        arrayList.sort((string, string2) -> {
-            int n = string.compareToIgnoreCase((String)string2);
-            if (n == 0) {
-                return Integer.compare(string.length(), string2.length());
+        elements.sort((first, second) -> {
+            int cmp = first.compareToIgnoreCase(second);
+            if (cmp == 0) {
+                return Integer.compare(first.length(), second.length());
             }
-            return n;
+            return cmp;
         });
-        return arrayList;
+        return elements;
     }
 
-    private List<ColoredSegment> truncateSegments(List<ColoredSegment> list, int n) {
-        ArrayList<ColoredSegment> arrayList = new ArrayList<ColoredSegment>();
-        int n2 = 0;
-        for (ColoredSegment coloredSegment : list) {
-            int n3 = Night.FONT_MANAGER.getWidth(coloredSegment.text);
-            if (n2 + n3 <= n) {
-                arrayList.add(coloredSegment);
-                n2 += n3;
+    private List<ColoredSegment> truncateSegments(List<ColoredSegment> segments, int maxWidth) {
+        ArrayList<ColoredSegment> truncated = new ArrayList<ColoredSegment>();
+        int currentWidth = 0;
+        for (ColoredSegment coloredSegment : segments) {
+            int segmentWidth = Night.FONT_MANAGER.getWidth(coloredSegment.text);
+            if (currentWidth + segmentWidth <= maxWidth) {
+                truncated.add(coloredSegment);
+                currentWidth += segmentWidth;
                 continue;
             }
-            int n4 = n - n2;
-            if (n4 > 0) {
-                char c;
-                int n5;
+            int remainingWidth = maxWidth - currentWidth;
+            if (remainingWidth > 0) {
+                char ch;
+                int charWidth;
                 StringBuilder stringBuilder = new StringBuilder();
-                for (int i = 0; i < coloredSegment.text.length() && (n5 = Night.FONT_MANAGER.getWidth(String.valueOf(c = coloredSegment.text.charAt(i)))) <= n4 - Night.FONT_MANAGER.getWidth("\u2026"); ++i) {
-                    stringBuilder.append(c);
-                    n4 -= n5;
+                for (int i = 0; i < coloredSegment.text.length() && (charWidth = Night.FONT_MANAGER.getWidth(String.valueOf(ch = coloredSegment.text.charAt(i)))) <= remainingWidth - Night.FONT_MANAGER.getWidth("\u2026"); ++i) {
+                    stringBuilder.append(ch);
+                    remainingWidth -= charWidth;
                 }
                 stringBuilder.append("\u2026");
-                arrayList.add(new ColoredSegment(stringBuilder.toString(), coloredSegment.color));
+                truncated.add(new ColoredSegment(stringBuilder.toString(), coloredSegment.color));
                 break;
             }
-            arrayList.add(new ColoredSegment("\u2026", Color.GRAY));
+            truncated.add(new ColoredSegment("\u2026", Color.GRAY));
             break;
         }
-        return arrayList;
+        return truncated;
     }
 
-    private List<ColoredSegment> highlightMatches(String string, String[] stringArray, Color color, Color color2) {
-        if (stringArray.length == 0) {
-            ArrayList<ColoredSegment> arrayList = new ArrayList<ColoredSegment>();
-            arrayList.add(new ColoredSegment(string, color));
-            return arrayList;
+    private List<ColoredSegment> highlightMatches(String text, String[] searchTokens, Color baseColor, Color highlightColor) {
+        if (searchTokens.length == 0) {
+            ArrayList<ColoredSegment> segments = new ArrayList<ColoredSegment>();
+            segments.add(new ColoredSegment(text, baseColor));
+            return segments;
         }
-        String string2 = string.toLowerCase();
-        List<Range> list = new ArrayList<Range>();
-        for (String object : stringArray) {
-            int n;
-            if (object.isEmpty()) continue;
-            int n2 = 0;
-            while ((n = string2.indexOf(object, n2)) != -1) {
-                list.add(new Range(n, n + object.length()));
-                n2 = n + object.length();
+        String lower = text.toLowerCase();
+        List<Range> ranges = new ArrayList<Range>();
+        for (String token : searchTokens) {
+            int matchIndex;
+            if (token.isEmpty()) continue;
+            int searchFrom = 0;
+            while ((matchIndex = lower.indexOf(token, searchFrom)) != -1) {
+                ranges.add(new Range(matchIndex, matchIndex + token.length()));
+                searchFrom = matchIndex + token.length();
             }
         }
-        list = this.mergeRanges(list);
-        ArrayList arrayList = new ArrayList();
-        int n = 0;
-        for (Range range : list) {
-            if (range.start > n) {
-                arrayList.add(new ColoredSegment(string.substring(n, range.start), color));
+        ranges = this.mergeRanges(ranges);
+        ArrayList<ColoredSegment> segments = new ArrayList<ColoredSegment>();
+        int cursor = 0;
+        for (Range range : ranges) {
+            if (range.start > cursor) {
+                segments.add(new ColoredSegment(text.substring(cursor, range.start), baseColor));
             }
-            arrayList.add(new ColoredSegment(string.substring(range.start, range.end), color2));
-            n = range.end;
+            segments.add(new ColoredSegment(text.substring(range.start, range.end), highlightColor));
+            cursor = range.end;
         }
-        if (n < string.length()) {
-            arrayList.add(new ColoredSegment(string.substring(n), color));
+        if (cursor < text.length()) {
+            segments.add(new ColoredSegment(text.substring(cursor), baseColor));
         }
-        return arrayList;
+        return segments;
     }
 
-    private List<Range> mergeRanges(List<Range> list) {
-        if (list.isEmpty()) {
-            return list;
+    private List<Range> mergeRanges(List<Range> ranges) {
+        if (ranges.isEmpty()) {
+            return ranges;
         }
-        list.sort(Comparator.comparingInt(range -> range.start));
-        ArrayList<Range> arrayList = new ArrayList<Range>();
-        Range range2 = list.getFirst();
-        for (int i = 1; i < list.size(); ++i) {
-            Range range3 = list.get(i);
-            if (range3.start <= range2.end) {
-                range2.end = Math.max(range2.end, range3.end);
+        ranges.sort(Comparator.comparingInt(range -> range.start));
+        ArrayList<Range> merged = new ArrayList<Range>();
+        Range current = ranges.getFirst();
+        for (int i = 1; i < ranges.size(); ++i) {
+            Range next = ranges.get(i);
+            if (next.start <= current.end) {
+                current.end = Math.max(current.end, next.end);
                 continue;
             }
-            arrayList.add(range2);
-            range2 = range3;
+            merged.add(current);
+            current = next;
         }
-        arrayList.add(range2);
-        return arrayList;
+        merged.add(current);
+        return merged;
     }
 
     private static class ColoredSegment {
@@ -565,8 +559,8 @@ extends Button {
         Color color;
 
         @Generated
-        public ColoredSegment(String string, Color color) {
-            this.text = string;
+        public ColoredSegment(String text, Color color) {
+            this.text = text;
             this.color = color;
         }
     }
@@ -576,9 +570,9 @@ extends Button {
         int end;
 
         @Generated
-        public Range(int n, int n2) {
-            this.start = n;
-            this.end = n2;
+        public Range(int start, int end) {
+            this.start = start;
+            this.end = end;
         }
     }
 }

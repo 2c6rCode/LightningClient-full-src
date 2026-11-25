@@ -40,7 +40,7 @@ public class MultiPackResourceManagerMixin {
     private void night$injectClientPack(PackType packType, List<PackResources> list, CallbackInfo callbackInfo) {
         try {
             if (packType == PackType.CLIENT_RESOURCES) {
-                FallbackResourceManager fallbackResourceManager = this.namespacedManagers.computeIfAbsent("lightning", string -> new FallbackResourceManager(packType, "lightning"));
+                FallbackResourceManager fallbackResourceManager = this.namespacedManagers.computeIfAbsent("lightning", namespace -> new FallbackResourceManager(packType, "lightning"));
                 fallbackResourceManager.push((PackResources)NightPackResources.INSTANCE);
             }
             return;

@@ -72,9 +72,9 @@ extends Module {
         return Night.MODULE_MANAGER == null ? null : Night.MODULE_MANAGER.getModule(AirStuckModule.class);
     }
 
-    public static Vec3 movementDisplacement(Vec3 vec3) {
+    public static Vec3 movementDisplacement(Vec3 displacement) {
         AirStuckModule airStuckModule = AirStuckModule.instance();
-        return airStuckModule != null && airStuckModule.isActive() ? new Vec3(0.0, -1.0E-10, 0.0) : vec3;
+        return airStuckModule != null && airStuckModule.isActive() ? new Vec3(0.0, -1.0E-10, 0.0) : displacement;
     }
 
     public static void localPlayerConstructed() {

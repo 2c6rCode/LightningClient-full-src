@@ -186,16 +186,16 @@ extends Module {
         if (playerMineEvent.getActorID() == SurroundModule.mc.player.getId()) {
             return;
         }
-        boolean bl = false;
+        boolean adjacent = false;
         for (BlockPos blockPos : this.ownFootCells()) {
             if (playerMineEvent.getPosition().getY() != blockPos.getY()) continue;
-            int n = playerMineEvent.getPosition().getX() - blockPos.getX();
-            int n2 = playerMineEvent.getPosition().getZ() - blockPos.getZ();
-            if (Math.abs(n) + Math.abs(n2) != 1) continue;
-            bl = true;
+            int dx = playerMineEvent.getPosition().getX() - blockPos.getX();
+            int dz = playerMineEvent.getPosition().getZ() - blockPos.getZ();
+            if (Math.abs(dx) + Math.abs(dz) != 1) continue;
+            adjacent = true;
             break;
         }
-        if (!bl) {
+        if (!adjacent) {
             return;
         }
         MineData mineData = this.activeMines.get(playerMineEvent.getActorID());
@@ -246,22 +246,22 @@ extends Module {
                             if (this.attack.getValue()) {
                                 this.attackTrapCrystals();
                             }
-                            Set<BlockPos> set = this.advoidHelp.getValue() ? this.computeHelpBlocked() : Set.of();
+                            Set<BlockPos> helpBlocked = this.advoidHelp.getValue() ? this.computeHelpBlocked() : Set.of();
                             this.targetPositions.stream().filter(blockPos -> SurroundModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(blockPos -> !WorldUtils.isPlaceable(blockPos) && WorldUtils.isInstantBreakable(blockPos)).forEach(blockPos -> WorldUtils.instantBreak(blockPos, Direction.UP));
                             HitboxDesyncModule hitboxDesyncModule = Night.MODULE_MANAGER.getModule(HitboxDesyncModule.class);
-                            ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>(this.targetPositions.stream().filter(blockPos -> SurroundModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(blockPos -> WorldUtils.isPlaceable(blockPos, hitboxDesyncModule != null && hitboxDesyncModule.isToggled() && !hitboxDesyncModule.close.getValue())).filter(blockPos -> !set.contains(blockPos)).toList());
-                            Vec3 vec3 = SurroundModule.mc.player.position().add(SurroundModule.mc.player.getDeltaMovement().scale(0.5));
-                            arrayList.sort((blockPos, blockPos2) -> {
-                                int yCompare = Integer.compare(blockPos.getY(), blockPos2.getY());
+                            ArrayList<BlockPos> placeablePositions = new ArrayList<BlockPos>(this.targetPositions.stream().filter(blockPos -> SurroundModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(blockPos -> WorldUtils.isPlaceable(blockPos, hitboxDesyncModule != null && hitboxDesyncModule.isToggled() && !hitboxDesyncModule.close.getValue())).filter(blockPos -> !helpBlocked.contains(blockPos)).toList());
+                            Vec3 predPos = SurroundModule.mc.player.position().add(SurroundModule.mc.player.getDeltaMovement().scale(0.5));
+                            placeablePositions.sort((posA, posB) -> {
+                                int yCompare = Integer.compare(posA.getY(), posB.getY());
                                 if (yCompare != 0) {
                                     return yCompare;
                                 }
-                                boolean bl2 = WorldUtils.getDirection(blockPos, false) != null;
-                                boolean bl3 = WorldUtils.getDirection(blockPos2, false) != null;
-                                if (bl2 != bl3) {
-                                    return bl2 ? -1 : 1;
+                                boolean hasSupportA = WorldUtils.getDirection(posA, false) != null;
+                                boolean hasSupportB = WorldUtils.getDirection(posB, false) != null;
+                                if (hasSupportA != hasSupportB) {
+                                    return hasSupportA ? -1 : 1;
                                 }
-                                return Double.compare(Vec3.atCenterOf((Vec3i)blockPos).distanceToSqr(vec3), Vec3.atCenterOf((Vec3i)blockPos2).distanceToSqr(vec3));
+                                return Double.compare(Vec3.atCenterOf((Vec3i)posA).distanceToSqr(predPos), Vec3.atCenterOf((Vec3i)posB).distanceToSqr(predPos));
                             });
                             KeyActionModule keyActionModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(KeyActionModule.class) : null;
                             if (this.pearlDisable.getValue() && (keyActionModule != null && keyActionModule.isPearlActive() || SurroundModule.mc.player.isUsingItem() && SurroundModule.mc.player.getUseItem().getItem() == Items.ENDER_PEARL)) {
@@ -269,7 +269,7 @@ extends Module {
                             } else if (this.chorusDisable.getValue() && SurroundModule.mc.player.isUsingItem() && SurroundModule.mc.player.getUseItem().getItem() == Items.CHORUS_FRUIT) {
                                 this.setToggled(false);
                             } else if (keyActionModule == null || !keyActionModule.isPearlActive()) {
-                                if (arrayList.isEmpty()) {
+                                if (placeablePositions.isEmpty()) {
                                     if (this.selfDisable.getValue()) {
                                         this.setToggled(false);
                                     }
@@ -282,26 +282,26 @@ extends Module {
                                     try {
                                         InventoryUtils.switchSlot(this.autoSwitch.getValue(), slot, selectedSlot);
                                         ArrayList<BlockPos> placedPositions = new ArrayList<BlockPos>();
-                                        for (BlockPos blockPos4 : arrayList) {
+                                        for (BlockPos pos : placeablePositions) {
                                             if (this.blocksPlaced >= this.bpt.getValue().intValue()) break;
                                             if (this.attack.getValue()) {
-                                                for (EndCrystal endCrystal : SurroundModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(blockPos4).inflate(0.5))) {
+                                                for (EndCrystal endCrystal : SurroundModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(pos).inflate(0.5))) {
                                                     if (!endCrystal.isAlive()) continue;
                                                     mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
                                                     if (!this.attackSwing.getValue()) continue;
                                                     mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
                                                 }
                                             }
-                                            List<Direction> directions = WorldUtils.getDirections(blockPos4, placedPositions, this.strictDirection.getValue());
+                                            List<Direction> directions = WorldUtils.getDirections(pos, placedPositions, this.strictDirection.getValue());
                                             if (directions.isEmpty()) {
                                                 if (this.airPlace.getValue() && !this.strictDirection.getValue()) {
-                                                    this.placeAirBlock(blockPos4);
-                                                    placedPositions.add(blockPos4);
+                                                    this.placeAirBlock(pos);
+                                                    placedPositions.add(pos);
                                                     this.lastPlacementTime = System.currentTimeMillis();
                                                     ++this.blocksPlaced;
                                                     continue;
                                                 }
-                                                BlockPos supportBlock = WorldUtils.findSupportBlock(blockPos4, placedPositions, this.strictDirection.getValue(), 2);
+                                                BlockPos supportBlock = WorldUtils.findSupportBlock(pos, placedPositions, this.strictDirection.getValue(), 2);
                                                 if (supportBlock == null) continue;
                                                 Direction supportDir = WorldUtils.getDirection(supportBlock, placedPositions, this.strictDirection.getValue());
                                                 if (supportDir == null || !WorldUtils.placeBlock(supportBlock, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
@@ -312,8 +312,8 @@ extends Module {
                                             }
                                             boolean placed = false;
                                             for (Direction dir : directions) {
-                                                if (!WorldUtils.placeBlock(blockPos4, dir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
-                                                placedPositions.add(blockPos4);
+                                                if (!WorldUtils.placeBlock(pos, dir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
+                                                placedPositions.add(pos);
                                                 this.lastPlacementTime = System.currentTimeMillis();
                                                 ++this.blocksPlaced;
                                                 placed = true;
@@ -321,13 +321,13 @@ extends Module {
                                             }
                                             if (placed) continue;
                                             if (this.airPlace.getValue() && !this.strictDirection.getValue()) {
-                                                this.placeAirBlock(blockPos4);
-                                                placedPositions.add(blockPos4);
+                                                this.placeAirBlock(pos);
+                                                placedPositions.add(pos);
                                                 this.lastPlacementTime = System.currentTimeMillis();
                                                 ++this.blocksPlaced;
                                                 continue;
                                             }
-                                            BlockPos supportBlock = WorldUtils.findSupportBlock(blockPos4, placedPositions, this.strictDirection.getValue(), 2);
+                                            BlockPos supportBlock = WorldUtils.findSupportBlock(pos, placedPositions, this.strictDirection.getValue(), 2);
                                             if (supportBlock == null) continue;
                                             Direction supportDir = WorldUtils.getDirection(supportBlock, placedPositions, this.strictDirection.getValue());
                                             if (supportDir == null || !WorldUtils.placeBlock(supportBlock, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
@@ -461,18 +461,18 @@ extends Module {
         for (EndCrystal endCrystal : SurroundModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(SurroundModule.mc.player.blockPosition()).inflate(this.attackRange.getValue().doubleValue() + 3.0))) {
             if (!endCrystal.isAlive() || endCrystal.isRemoved() || endCrystal.tickCount < this.attackAge.getValue().intValue()) continue;
             AABB aABB = endCrystal.getBoundingBox();
-            boolean bl = false;
+            boolean intersectsSurround = false;
             for (BlockPos blockPos : this.targetPositions) {
                 if (!SurroundModule.mc.level.getBlockState(blockPos).canBeReplaced() || !new AABB(blockPos).intersects(aABB)) continue;
-                bl = true;
+                intersectsSurround = true;
                 break;
             }
-            if (!bl || aABB.distanceToSqr(SurroundModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && SurroundModule.mc.player.isUsingItem()) continue;
+            if (!intersectsSurround || aABB.distanceToSqr(SurroundModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && SurroundModule.mc.player.isUsingItem()) continue;
             if (this.attackRotate.getValue()) {
                 float[] rotations = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
                 Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
-                boolean bl2 = aABB.contains(SurroundModule.mc.player.getEyePosition());
-                if (!bl2 && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
+                boolean insideEye = aABB.contains(SurroundModule.mc.player.getEyePosition());
+                if (!insideEye && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
             }
             mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
             if (!this.attackSwing.getValue()) continue;
@@ -489,68 +489,68 @@ extends Module {
         for (MineData mineData : this.activeMines.values()) {
             ++mineData.ticks;
             if (mineData.ticks < 2 && System.currentTimeMillis() - mineData.startTime < 100L) continue;
-            BlockPos blockPos = mineData.pos;
-            for (BlockPos blockPos2 : this.ownFootCells()) {
-                if (blockPos.getY() != blockPos2.getY()) continue;
-                int n = blockPos.getX() - blockPos2.getX();
-                int n2 = blockPos.getZ() - blockPos2.getZ();
-                if (Math.abs(n) + Math.abs(n2) != 1) continue;
+            BlockPos minePos = mineData.pos;
+            for (BlockPos footPos : this.ownFootCells()) {
+                if (minePos.getY() != footPos.getY()) continue;
+                int dx = minePos.getX() - footPos.getX();
+                int dz = minePos.getZ() - footPos.getZ();
+                if (Math.abs(dx) + Math.abs(dz) != 1) continue;
                 if (this.blockerUp.getValue()) {
-                    this.targetPositions.add(blockPos.above());
-                    this.targetPositions.add(blockPos.below());
+                    this.targetPositions.add(minePos.above());
+                    this.targetPositions.add(minePos.below());
                 }
                 if (this.blockerCorner.getValue()) {
-                    if (n != 0) {
-                        this.targetPositions.add(blockPos2.offset(n, 0, 1));
-                        this.targetPositions.add(blockPos2.offset(n, 0, -1));
+                    if (dx != 0) {
+                        this.targetPositions.add(footPos.offset(dx, 0, 1));
+                        this.targetPositions.add(footPos.offset(dx, 0, -1));
                     } else {
-                        this.targetPositions.add(blockPos2.offset(1, 0, n2));
-                        this.targetPositions.add(blockPos2.offset(-1, 0, n2));
+                        this.targetPositions.add(footPos.offset(1, 0, dz));
+                        this.targetPositions.add(footPos.offset(-1, 0, dz));
                     }
                 }
                 if (!this.blockerEdge.getValue()) continue;
-                if (n != 0) {
-                    this.targetPositions.add(blockPos2.offset(n * 2, 0, 0));
+                if (dx != 0) {
+                    this.targetPositions.add(footPos.offset(dx * 2, 0, 0));
                     continue;
                 }
-                this.targetPositions.add(blockPos2.offset(0, 0, n2 * 2));
+                this.targetPositions.add(footPos.offset(0, 0, dz * 2));
             }
         }
     }
 
     private Set<BlockPos> computeHelpBlocked() {
-        Set<BlockPos> set = this.ownFootCells();
+        Set<BlockPos> ownCells = this.ownFootCells();
         if (SurroundModule.mc.player.getHealth() < this.advoidHelpHealth.getValue().floatValue()) {
             return Set.of();
         }
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>();
+        HashSet<BlockPos> enemyCells = new HashSet<BlockPos>();
         for (Player player : SurroundModule.mc.level.players()) {
             if (player == SurroundModule.mc.player || Night.FRIEND_MANAGER.contains(player.getName().getString()) || SurroundModule.mc.player.distanceToSqr((Entity)player) > 25.0 || !SurroundModule.mc.level.getBlockState(player.blockPosition()).canBeReplaced()) continue;
             for (BlockPos blockPos : this.ownFootCells(player)) {
                 for (Direction direction : HORIZONTALS) {
-                    BlockPos blockPos2 = blockPos.relative(direction);
-                    if (this.ownFootCells(player).contains(blockPos2)) continue;
-                    hashSet.add(blockPos2);
+                    BlockPos sidePos = blockPos.relative(direction);
+                    if (this.ownFootCells(player).contains(sidePos)) continue;
+                    enemyCells.add(sidePos);
                 }
-                hashSet.add(blockPos.below());
-                hashSet.add(blockPos);
+                enemyCells.add(blockPos.below());
+                enemyCells.add(blockPos);
             }
         }
-        if (hashSet.isEmpty()) {
+        if (enemyCells.isEmpty()) {
             return Set.of();
         }
-        HashSet<BlockPos> hashSet2 = new HashSet<BlockPos>();
-        for (BlockPos blockPos : hashSet) {
-            boolean bl = false;
-            for (BlockPos blockPos3 : set) {
-                if (!blockPos.equals((Object)blockPos3) && !blockPos.equals((Object)blockPos3.above()) && !blockPos.equals((Object)blockPos3.below()) && !blockPos.equals((Object)blockPos3.north()) && !blockPos.equals((Object)blockPos3.south()) && !blockPos.equals((Object)blockPos3.east()) && !blockPos.equals((Object)blockPos3.west())) continue;
-                bl = true;
+        HashSet<BlockPos> blockedPositions = new HashSet<BlockPos>();
+        for (BlockPos blockPos : enemyCells) {
+            boolean touchesOwn = false;
+            for (BlockPos ownPos : ownCells) {
+                if (!blockPos.equals((Object)ownPos) && !blockPos.equals((Object)ownPos.above()) && !blockPos.equals((Object)ownPos.below()) && !blockPos.equals((Object)ownPos.north()) && !blockPos.equals((Object)ownPos.south()) && !blockPos.equals((Object)ownPos.east()) && !blockPos.equals((Object)ownPos.west())) continue;
+                touchesOwn = true;
                 break;
             }
-            if (bl) continue;
-            hashSet2.add(blockPos);
+            if (touchesOwn) continue;
+            blockedPositions.add(blockPos);
         }
-        return hashSet2;
+        return blockedPositions;
     }
 
     private Set<BlockPos> ownFootCells() {
@@ -558,19 +558,19 @@ extends Module {
     }
 
     private Set<BlockPos> ownFootCells(Player player) {
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>();
+        HashSet<BlockPos> cells = new HashSet<BlockPos>();
         AABB aABB = player.getBoundingBox();
-        int n = player.blockPosition().getY();
-        int n2 = (int)Math.floor(aABB.minX);
-        while ((double)n2 < Math.ceil(aABB.maxX)) {
-            int n3 = (int)Math.floor(aABB.minZ);
-            while ((double)n3 < Math.ceil(aABB.maxZ)) {
-                hashSet.add(new BlockPos(n2, n, n3));
-                ++n3;
+        int footY = player.blockPosition().getY();
+        int blockX = (int)Math.floor(aABB.minX);
+        while ((double)blockX < Math.ceil(aABB.maxX)) {
+            int blockZ = (int)Math.floor(aABB.minZ);
+            while ((double)blockZ < Math.ceil(aABB.maxZ)) {
+                cells.add(new BlockPos(blockX, footY, blockZ));
+                ++blockZ;
             }
-            ++n2;
+            ++blockX;
         }
-        return hashSet;
+        return cells;
     }
 
     @SubscribeEvent
@@ -585,32 +585,32 @@ extends Module {
         if (EntityUtils.isPhased((Entity)SurroundModule.mc.player)) {
             return true;
         }
-        HashSet<BlockPos> hashSet = HoleUtils.getFeetPositions((Player)SurroundModule.mc.player, this.extension.getValue(), this.floor.getValue(), this.underFeet.getValue(), false);
-        boolean bl = hashSet.stream().filter(WorldUtils::isPlaceable).anyMatch(blockPos -> WorldUtils.getDirection(blockPos, this.strictDirection.getValue()) != null || this.airPlace.getValue());
-        return !bl;
+        HashSet<BlockPos> feetPositions = HoleUtils.getFeetPositions((Player)SurroundModule.mc.player, this.extension.getValue(), this.floor.getValue(), this.underFeet.getValue(), false);
+        boolean hasOpenGap = feetPositions.stream().filter(WorldUtils::isPlaceable).anyMatch(blockPos -> WorldUtils.getDirection(blockPos, this.strictDirection.getValue()) != null || this.airPlace.getValue());
+        return !hasOpenGap;
     }
 
     private boolean isBlastProof(Block block) {
         return block == Blocks.OBSIDIAN || block == Blocks.ENDER_CHEST || block == Blocks.CRYING_OBSIDIAN || block == Blocks.NETHERITE_BLOCK || block == Blocks.RESPAWN_ANCHOR || block == Blocks.ANCIENT_DEBRIS || block == Blocks.ENCHANTING_TABLE || block == Blocks.ANVIL || block == Blocks.CHIPPED_ANVIL || block == Blocks.DAMAGED_ANVIL;
     }
 
-    private int findBlastProofBlock(int n, int n2) {
-        float f = -1.0f;
-        int n3 = -1;
-        for (int i = n; i <= n2; ++i) {
+    private int findBlastProofBlock(int startSlot, int endSlot) {
+        float bestHardness = -1.0f;
+        int bestSlot = -1;
+        for (int i = startSlot; i <= endSlot; ++i) {
             BlockItem blockItem;
             Block block;
             Item item = SurroundModule.mc.player.getInventory().getItem(i).getItem();
             if (!(item instanceof BlockItem) || !this.isBlastProof(block = (blockItem = (BlockItem)item).getBlock())) continue;
-            float f2 = block.defaultDestroyTime();
-            if (f2 == -1.0f) {
+            float destroyTime = block.defaultDestroyTime();
+            if (destroyTime == -1.0f) {
                 return i;
             }
-            if (!(f2 > f)) continue;
-            f = f2;
-            n3 = i;
+            if (!(destroyTime > bestHardness)) continue;
+            bestHardness = destroyTime;
+            bestSlot = i;
         }
-        return n3;
+        return bestSlot;
     }
 
     @SubscribeEvent

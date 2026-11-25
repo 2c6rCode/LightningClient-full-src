@@ -76,7 +76,7 @@ extends Module {
     private void doConnect() {
     }
 
-    private void scheduleReconnect(long l) {
+    private void scheduleReconnect(long delaySeconds) {
     }
 
     public synchronized void disconnect() {
@@ -97,44 +97,44 @@ extends Module {
         if (!this.isToggled()) {
             return;
         }
-        String string = chatInputEvent.getMessage();
-        if (string == null) {
+        String message = chatInputEvent.getMessage();
+        if (message == null) {
             return;
         }
-        String string2 = this.prefix.getValue();
-        if (string2 == null || string2.isEmpty()) {
-            string2 = "$";
+        String prefixValue = this.prefix.getValue();
+        if (prefixValue == null || prefixValue.isEmpty()) {
+            prefixValue = "$";
         }
-        if (string.startsWith(string2)) {
+        if (message.startsWith(prefixValue)) {
             chatInputEvent.setCancelled(true);
-            String string3 = string.substring(string2.length()).trim();
-            if (string3.isEmpty()) {
-                Night.CHAT_MANAGER.warn("Usage: " + string2 + "<message>");
+            String content = message.substring(prefixValue.length()).trim();
+            if (content.isEmpty()) {
+                Night.CHAT_MANAGER.warn("Usage: " + prefixValue + "<message>");
                 return;
             }
-            this.sendMessage(string3);
+            this.sendMessage(content);
         }
     }
 
-    public void sendMessage(String string) {
+    public void sendMessage(String message) {
         if (!this.connected || this.webSocket == null || this.webSocket.isOutputClosed()) {
             Night.CHAT_MANAGER.warn("IRC is currently not connected to server. Reconnecting...");
             this.connect();
             return;
         }
-        long l = System.currentTimeMillis();
-        long l2 = l - this.lastMessageTime;
-        if (l2 < 3000L) {
-            double d = (double)(3000L - l2) / 1000.0;
-            Night.CHAT_MANAGER.warn(String.format("Please wait %.1fs before sending another message", d));
+        long now = System.currentTimeMillis();
+        long elapsed = now - this.lastMessageTime;
+        if (elapsed < 3000L) {
+            double remainingSeconds = (double)(3000L - elapsed) / 1000.0;
+            Night.CHAT_MANAGER.warn(String.format("Please wait %.1fs before sending another message", remainingSeconds));
             return;
         }
         try {
             JsonObject jsonObject = new JsonObject();
             jsonObject.addProperty("type", "chat");
-            jsonObject.addProperty("content", string);
+            jsonObject.addProperty("content", message);
             this.webSocket.sendText(jsonObject.toString(), true);
-            this.lastMessageTime = l;
+            this.lastMessageTime = now;
         }
         catch (Exception exception) {
             Night.CHAT_MANAGER.error("Failed to send IRC message: " + exception.getMessage());
@@ -142,18 +142,18 @@ extends Module {
         }
     }
 
-    private void handleServerMessage(String string) {
+    private void handleServerMessage(String rawMessage) {
     }
 
-    private Component createRoleComponent(String string) {
-        String string2;
-        if (string == null || string.isBlank()) {
-            string = "stable";
+    private Component createRoleComponent(String role) {
+        String normalizedRole;
+        if (role == null || role.isBlank()) {
+            role = "stable";
         }
-        if ((string2 = string.toLowerCase()).equals("user") || string2.equals("member")) {
-            string2 = "stable";
+        if ((normalizedRole = role.toLowerCase()).equals("user") || normalizedRole.equals("member")) {
+            normalizedRole = "stable";
         }
-        TextColor textColor = switch (string2) {
+        TextColor textColor = switch (normalizedRole) {
             case "admin", "owner" -> TextColor.fromRgb((int)15277667);
             case "beta", "tester", "vip" -> TextColor.fromRgb((int)15277667);
             case "stable" -> TextColor.fromRgb((int)12616956);
@@ -161,17 +161,17 @@ extends Module {
             case "moderator", "mod" -> TextColor.fromRgb((int)0x55FF55);
             default -> TextColor.fromRgb((int)12616956);
         };
-        return Component.literal((String)"<").withStyle(ChatFormatting.DARK_GRAY).append((Component)Component.literal((String)string2).withStyle(Style.EMPTY.withColor(textColor))).append((Component)Component.literal((String)"> ").withStyle(ChatFormatting.DARK_GRAY));
+        return Component.literal((String)"<").withStyle(ChatFormatting.DARK_GRAY).append((Component)Component.literal((String)normalizedRole).withStyle(Style.EMPTY.withColor(textColor))).append((Component)Component.literal((String)"> ").withStyle(ChatFormatting.DARK_GRAY));
     }
 
-    private static Style getStyleForSetting(String string) {
-        if (string == null) {
+    private static Style getStyleForSetting(String colorName) {
+        if (colorName == null) {
             return Style.EMPTY;
         }
-        if ("client".equalsIgnoreCase(string) || "rainbow".equalsIgnoreCase(string)) {
+        if ("client".equalsIgnoreCase(colorName) || "rainbow".equalsIgnoreCase(colorName)) {
             return Style.EMPTY.withColor(TextColor.fromRgb((int)ColorUtils.getGlobalColor().getRGB()));
         }
-        ChatFormatting chatFormatting = switch (string.toLowerCase()) {
+        ChatFormatting chatFormatting = switch (colorName.toLowerCase()) {
             case "black" -> ChatFormatting.BLACK;
             case "blue" -> ChatFormatting.BLUE;
             case "dark blue" -> ChatFormatting.DARK_BLUE;
@@ -197,11 +197,11 @@ extends Module {
         private final StringBuilder buffer;
         final IRCModule this$0;
 
-        private IrcWebSocketListener(IRCModule iRCModule, IRCModule iRCModule2) {
-            Objects.requireNonNull(iRCModule);
-            IRCModule iRCModule3 = iRCModule2;
-            Objects.requireNonNull(iRCModule3);
-            this.this$0 = iRCModule3;
+        private IrcWebSocketListener(IRCModule outer, IRCModule owner) {
+            Objects.requireNonNull(outer);
+            IRCModule target = owner;
+            Objects.requireNonNull(target);
+            this.this$0 = target;
             this.buffer = new StringBuilder();
         }
 
@@ -211,19 +211,19 @@ extends Module {
         }
 
         @Override
-        public CompletionStage<?> onText(WebSocket webSocket, CharSequence charSequence, boolean bl) {
-            this.buffer.append(charSequence);
-            if (bl) {
-                String string = this.buffer.toString();
+        public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+            this.buffer.append(data);
+            if (last) {
+                String fullMessage = this.buffer.toString();
                 this.buffer.setLength(0);
-                this.this$0.handleServerMessage(string);
+                this.this$0.handleServerMessage(fullMessage);
             }
             webSocket.request(1L);
             return null;
         }
 
         @Override
-        public CompletionStage<?> onClose(WebSocket webSocket, int n, String string) {
+        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             this.this$0.connected = false;
             this.this$0.scheduleReconnect(3L);
             return null;

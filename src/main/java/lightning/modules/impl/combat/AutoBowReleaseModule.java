@@ -39,7 +39,7 @@ extends Module {
         }
         if ((AutoBowReleaseModule.mc.player.getOffhandItem().getItem() == Items.BOW || AutoBowReleaseModule.mc.player.getMainHandItem().getItem() == Items.BOW) && AutoBowReleaseModule.mc.player.isUsingItem() && AutoBowReleaseModule.mc.player.getTicksUsingItem() >= this.ticks.getValue().intValue()) {
             mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.RELEASE_USE_ITEM, BlockPos.ZERO, AutoBowReleaseModule.mc.player.getDirection()));
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(AutoBowReleaseModule.mc.player.getOffhandItem().getItem() == Items.BOW ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND, n, AutoBowReleaseModule.mc.player.getYRot(), AutoBowReleaseModule.mc.player.getXRot()));
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(AutoBowReleaseModule.mc.player.getOffhandItem().getItem() == Items.BOW ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND, sequence, AutoBowReleaseModule.mc.player.getYRot(), AutoBowReleaseModule.mc.player.getXRot()));
             AutoBowReleaseModule.mc.player.stopUsingItem();
         }
     }

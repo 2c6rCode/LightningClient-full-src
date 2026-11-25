@@ -18,50 +18,50 @@ public final class RefSkin {
     private RefSkin() {
     }
 
-    public static Color pick(int n) {
-        if (n == 253) {
+    public static Color pick(int alpha) {
+        if (alpha == 253) {
             return new Color(168, 140, 255);
         }
-        if (n == 254) {
+        if (alpha == 254) {
             return new Color(56, 242, 196);
         }
         return null;
     }
 
-    public static void fq(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        float f5 = f3 - f;
-        float f6 = f4 - f2;
-        if (f5 == 14.0f && f6 == 7.0f) {
-            boolean bl = color.getRed() == 40 && color.getGreen() == 40 && color.getBlue() == 50 && color.getAlpha() == 160;
-            Color color2 = bl ? new Color(60, 60, 60, 235) : new Color(127, 127, 127, 240);
-            trackX = f;
-            trackY = f2;
+    public static void fq(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        float width = x2 - x1;
+        float height = y2 - y1;
+        if (width == 14.0f && height == 7.0f) {
+            boolean isOffTrack = color.getRed() == 40 && color.getGreen() == 40 && color.getBlue() == 50 && color.getAlpha() == 160;
+            Color trackColor = isOffTrack ? new Color(60, 60, 60, 235) : new Color(127, 127, 127, 240);
+            trackX = x1;
+            trackY = y1;
             haveTrack = true;
-            LightningSkin.rrAll(guiGraphicsExtractor, f - 1.0f, f2 - 1.0f, f + 15.0f, f2 + 8.0f, 4.5f, color2);
+            LightningSkin.rrAll(guiGraphicsExtractor, x1 - 1.0f, y1 - 1.0f, x1 + 15.0f, y1 + 8.0f, 4.5f, trackColor);
             return;
         }
-        if (f5 == 5.0f && f6 == 9.0f && haveTrack) {
+        if (width == 5.0f && height == 9.0f && haveTrack) {
             haveTrack = false;
-            float f7 = (f - trackX) / 9.0f;
-            if (f7 < 0.0f) {
-                f7 = 0.0f;
+            float t = (x1 - trackX) / 9.0f;
+            if (t < 0.0f) {
+                t = 0.0f;
             }
-            if (f7 > 1.0f) {
-                f7 = 1.0f;
+            if (t > 1.0f) {
+                t = 1.0f;
             }
-            float f8 = trackX + f7 * 7.0f;
-            float f9 = trackY;
-            LightningSkin.rrAll(guiGraphicsExtractor, f8, f9, f8 + 7.0f, f9 + 7.0f, 3.5f, color);
+            float knobX = trackX + t * 7.0f;
+            float knobY = trackY;
+            LightningSkin.rrAll(guiGraphicsExtractor, knobX, knobY, knobX + 7.0f, knobY + 7.0f, 3.5f, color);
             return;
         }
-        LightningSkin.fq(guiGraphicsExtractor, f, f2, f3, f4, color);
+        LightningSkin.fq(guiGraphicsExtractor, x1, y1, x2, y2, color);
     }
 
-    public static void ol(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        if (f3 - f == 14.0f && f4 - f2 == 7.0f) {
+    public static void ol(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        if (x2 - x1 == 14.0f && y2 - y1 == 7.0f) {
             return;
         }
-        LightningSkin.ol(guiGraphicsExtractor, f, f2, f3, f4, color);
+        LightningSkin.ol(guiGraphicsExtractor, x1, y1, x2, y2, color);
     }
 }
 

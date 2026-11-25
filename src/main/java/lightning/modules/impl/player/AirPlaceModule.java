@@ -51,10 +51,10 @@ extends Module {
         }
         if (AirPlaceModule.mc.options.keyUse.isDown() && AirPlaceModule.mc.level.getBlockState(blockHitResult.getBlockPos()).isAir()) {
             if (this.grim.getValue()) {
-                int n = AirPlaceModule.mc.player.getInventory().getSelectedSlot();
-                InventoryUtils.swapEquipment(n, 45);
+                int selectedSlot = AirPlaceModule.mc.player.getInventory().getSelectedSlot();
+                InventoryUtils.swapEquipment(selectedSlot, 45);
                 WorldUtils.airPlaceBlock(blockHitResult.getBlockPos(), InteractionHand.OFF_HAND, "None", true);
-                InventoryUtils.swapEquipment(n, 45);
+                InventoryUtils.swapEquipment(selectedSlot, 45);
             } else {
                 WorldUtils.airPlaceBlock(blockHitResult.getBlockPos(), InteractionHand.MAIN_HAND, "None", true);
             }

@@ -74,7 +74,7 @@ implements ServerStatusPacketListener {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("\u00a7dLightning PingBypass\u00a7r\n");
         if (minecraft.getConnection() != null && minecraft.player != null && minecraft.level != null) {
-            String string = minecraft.getConnection().serverBrand();
+            String serverBrand = minecraft.getConnection().serverBrand();
             stringBuilder.append("\u00a7aConnected\u00a7r");
             if (this.proxyServer.getServerConnection() != null) {
                 stringBuilder.append(" \u2014 ").append(minecraft.getCurrentServer() != null ? minecraft.getCurrentServer().ip : "unknown");

@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(value={TextColor.class})
 public interface TextColorAccessor {
     @Invoker(value="<init>")
-    public static TextColor create(int n, String string) {
+    public static TextColor create(int value, String name) {
         throw new AssertionError();
     }
 }

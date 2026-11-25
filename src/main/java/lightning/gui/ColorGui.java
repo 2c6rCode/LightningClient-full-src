@@ -83,17 +83,17 @@ public final class ColorGui {
         return new Color(ColorGui.clamp255(r), ColorGui.clamp255(g), ColorGui.clamp255(b), ColorGui.clamp255(a));
     }
 
-    private static int clamp255(int n) {
-        return Math.max(0, Math.min(255, n));
+    private static int clamp255(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 
-    private static float clamp01(float f) {
-        return Math.max(0.0f, Math.min(1.0f, f));
+    private static float clamp01(float value) {
+        return Math.max(0.0f, Math.min(1.0f, value));
     }
 
-    private static Color lerp(Color a, Color b, float f) {
-        f = ColorGui.clamp01(f);
-        return new Color(Math.round((float)a.getRed() + (float)(b.getRed() - a.getRed()) * f), Math.round((float)a.getGreen() + (float)(b.getGreen() - a.getGreen()) * f), Math.round((float)a.getBlue() + (float)(b.getBlue() - a.getBlue()) * f), Math.round((float)a.getAlpha() + (float)(b.getAlpha() - a.getAlpha()) * f));
+    private static Color lerp(Color start, Color end, float progress) {
+        progress = ColorGui.clamp01(progress);
+        return new Color(Math.round((float)start.getRed() + (float)(end.getRed() - start.getRed()) * progress), Math.round((float)start.getGreen() + (float)(end.getGreen() - start.getGreen()) * progress), Math.round((float)start.getBlue() + (float)(end.getBlue() - start.getBlue()) * progress), Math.round((float)start.getAlpha() + (float)(end.getAlpha() - start.getAlpha()) * progress));
     }
 
     private static Frame findFrame(float x, float y) {
@@ -115,27 +115,27 @@ public final class ColorGui {
 
     private static boolean triangles() {
         try {
-            ClickGuiModule m = Night.MODULE_MANAGER.getModule(ClickGuiModule.class);
-            return m.triangles.getValue();
+            ClickGuiModule clickGuiModule = Night.MODULE_MANAGER.getModule(ClickGuiModule.class);
+            return clickGuiModule.triangles.getValue();
         }
-        catch (Throwable t) {
+        catch (Throwable ignored) {
             return true;
         }
     }
 
-    private static void r(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, float rad, Color c) {
-        LightningSkin.rrAll(g, x1, y1, x2, y2, rad, c);
+    private static void r(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, float radius, Color color) {
+        LightningSkin.rrAll(graphics, x1, y1, x2, y2, radius, color);
     }
 
-    private static Object poseOf(GuiGraphicsExtractor g) {
+    private static Object poseOf(GuiGraphicsExtractor graphics) {
         try {
             if (poseM == null) {
-                poseM = g.getClass().getMethod("pose", new Class[0]);
+                poseM = graphics.getClass().getMethod("pose", new Class[0]);
                 poseM.setAccessible(true);
             }
-            return poseM.invoke((Object)g, new Object[0]);
+            return poseM.invoke((Object)graphics, new Object[0]);
         }
-        catch (Throwable t) {
+        catch (Throwable ignored) {
             return null;
         }
     }
@@ -143,69 +143,69 @@ public final class ColorGui {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    private static void ts(GuiGraphicsExtractor g, FontManager fm, String text, float x, float y, float sc, Color c) {
-        Object st = ColorGui.poseOf(g);
+    private static void ts(GuiGraphicsExtractor graphics, FontManager fontManager, String text, float x, float y, float scale, Color color) {
+        Object poseStack = ColorGui.poseOf(graphics);
         boolean pushed = false;
-        if (st != null && !poseFail) {
+        if (poseStack != null && !poseFail) {
             try {
                 if (mPush == null) {
-                    Class<?> k = st.getClass();
-                    mPush = k.getMethod("pushMatrix", new Class[0]);
-                    mPop = k.getMethod("popMatrix", new Class[0]);
-                    mTrans = k.getMethod("translate", Float.TYPE, Float.TYPE);
-                    mScale = k.getMethod("scale", Float.TYPE, Float.TYPE);
+                    Class<?> poseClass = poseStack.getClass();
+                    mPush = poseClass.getMethod("pushMatrix", new Class[0]);
+                    mPop = poseClass.getMethod("popMatrix", new Class[0]);
+                    mTrans = poseClass.getMethod("translate", Float.TYPE, Float.TYPE);
+                    mScale = poseClass.getMethod("scale", Float.TYPE, Float.TYPE);
                 }
-                mPush.invoke(st, new Object[0]);
+                mPush.invoke(poseStack, new Object[0]);
                 pushed = true;
-                mTrans.invoke(st, Float.valueOf(x), Float.valueOf(y));
-                mScale.invoke(st, Float.valueOf(sc), Float.valueOf(sc));
-                fm.drawText(g, text, 0, 0, c);
+                mTrans.invoke(poseStack, Float.valueOf(x), Float.valueOf(y));
+                mScale.invoke(poseStack, Float.valueOf(scale), Float.valueOf(scale));
+                fontManager.drawText(graphics, text, 0, 0, color);
                 return;
             }
-            catch (Throwable t) {
+            catch (Throwable ignored) {
                 poseFail = true;
             }
             finally {
                 if (pushed) {
                     try {
-                        mPop.invoke(st, new Object[0]);
+                        mPop.invoke(poseStack, new Object[0]);
                     }
-                    catch (Throwable k) {}
+                    catch (Throwable ignored) {}
                 }
             }
         }
-        fm.drawText(g, text, Math.round(x), Math.round(y), c);
+        fontManager.drawText(graphics, text, Math.round(x), Math.round(y), color);
     }
 
-    public static void headerBg(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, Color color) {
+    public static void headerBg(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, Color color) {
         hx1 = x1;
         hy1 = y1;
         hx2 = x2;
         hy2 = y2;
         Frame frame = ColorGui.findFrame(x1, y1);
         boolean open = frame == null || frame.isOpen();
-        LightningSkin.rr(g, x1, y1, x2, y2, 8.0f, true, true, !open, !open, PANEL, PANEL);
+        LightningSkin.rr(graphics, x1, y1, x2, y2, 8.0f, true, true, !open, !open, PANEL, PANEL);
         float px1 = x1 + 4.0f;
         float py1 = y1 + 4.0f;
         float px2 = x2 - 4.0f;
         float py2 = y2 - 2.0f;
-        LightningSkin.rr(g, px1, py1, px2, py2, 6.0f, true, true, true, true, PILL, PILL);
-        LightningSkin.ring(g, px1, py1, px2, py2, 6.0f, 0.75f, PILL_EDGE);
+        LightningSkin.rr(graphics, px1, py1, px2, py2, 6.0f, true, true, true, true, PILL, PILL);
+        LightningSkin.ring(graphics, px1, py1, px2, py2, 6.0f, 0.75f, PILL_EDGE);
     }
 
-    public static void bodyBg(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, Color color) {
-        LightningSkin.rr(g, x1, y1, x2, y2, 8.0f, false, false, true, true, PANEL, PANEL);
+    public static void bodyBg(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.rr(graphics, x1, y1, x2, y2, 8.0f, false, false, true, true, PANEL, PANEL);
     }
 
-    public static void outline(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2) {
-        LightningSkin.ring(g, x1, y1, x2, y2, 8.0f, 0.75f, EDGE);
+    public static void outline(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2) {
+        LightningSkin.ring(graphics, x1, y1, x2, y2, 8.0f, 0.75f, EDGE);
     }
 
-    public static void panelOutline(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, Color color) {
-        ColorGui.outline(g, x1, y1, x2, y2);
+    public static void panelOutline(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, Color color) {
+        ColorGui.outline(graphics, x1, y1, x2, y2);
     }
 
-    public static void header(FontManager fm, GuiGraphicsExtractor g, String string, int x, int y, Color color) {
+    public static void header(FontManager fontManager, GuiGraphicsExtractor graphics, String rawTitle, int x, int y, Color color) {
         int i;
         Frame frame = ColorGui.findFrame(hx1, hy1);
         String label = null;
@@ -223,130 +223,130 @@ public final class ColorGui {
             } else if (frame.getCategory() == Module.Category.MISCELLANEOUS) {
                 label = "Misc";
             }
-            for (Button b : frame.getButtons()) {
-                if (!(b instanceof ModuleButton)) continue;
-                ModuleButton mb = (ModuleButton)b;
+            for (Button button : frame.getButtons()) {
+                if (!(button instanceof ModuleButton)) continue;
+                ModuleButton moduleButton = (ModuleButton)button;
                 ++tot;
-                if (!mb.getModule().isToggled()) continue;
+                if (!moduleButton.getModule().isToggled()) continue;
                 ++on;
             }
         }
-        String src = label == null || label.isEmpty() ? string : label;
+        String src = label == null || label.isEmpty() ? rawTitle : label;
         for (i = 0; i < src.length() && !Character.isLetter(src.charAt(i)); ++i) {
         }
-        Object name = src.substring(i);
-        if (((String)name).toLowerCase().startsWith("misc")) {
+        String name = src.substring(i);
+        if (name.toLowerCase().startsWith("misc")) {
             name = "Misc";
         }
-        if (!((String)name).isEmpty()) {
-            name = Character.toUpperCase(((String)name).charAt(0)) + ((String)name).substring(1).toLowerCase();
+        if (!name.isEmpty()) {
+            name = Character.toUpperCase(name.charAt(0)) + name.substring(1).toLowerCase();
         }
         float cy = (hy1 + 4.0f + hy2 - 2.0f) / 2.0f;
         int ix = Math.round(hx1) + 10;
-        ColorGui.drawIcon(g, cat, (float)ix + 6.5f, cy + -0.5f);
-        int ty = Math.round(cy - (float)fm.getHeight() / 2.0f);
-        fm.drawTextWithShadow(g, (String)name, ix + 19, ty, Color.WHITE);
+        ColorGui.drawIcon(graphics, cat, (float)ix + 6.5f, cy + -0.5f);
+        int ty = Math.round(cy - (float)fontManager.getHeight() / 2.0f);
+        fontManager.drawTextWithShadow(graphics, name, ix + 19, ty, Color.WHITE);
         if (tot > 0) {
             String cnt = on + "/" + tot;
-            float cw = (float)fm.getWidth(cnt) * 0.9f;
-            ColorGui.ts(g, fm, cnt, hx2 - 20.0f - cw, cy - (float)fm.getHeight() * 0.9f / 2.0f, 0.9f, TXT_DIM);
+            float cw = (float)fontManager.getWidth(cnt) * 0.9f;
+            ColorGui.ts(graphics, fontManager, cnt, hx2 - 20.0f - cw, cy - (float)fontManager.getHeight() * 0.9f / 2.0f, 0.9f, TXT_DIM);
         }
     }
 
-    private static void px(GuiGraphicsExtractor g, int x, int y, Color c) {
-        LightningSkin.fq(g, x, y, x + 1, y + 1, c);
+    private static void px(GuiGraphicsExtractor graphics, int x, int y, Color color) {
+        LightningSkin.fq(graphics, x, y, x + 1, y + 1, color);
     }
 
-    private static void il(float ox, float oy, float k, float x0, float y0, float x1, float y1, float sw, Color c) {
-        LightningSkin.lineQ(ox + x0 * k, oy + y0 * k, ox + x1 * k, oy + y1 * k, sw, c);
+    private static void il(float ox, float oy, float scale, float x0, float y0, float x1, float y1, float strokeWidth, Color color) {
+        LightningSkin.lineQ(ox + x0 * scale, oy + y0 * scale, ox + x1 * scale, oy + y1 * scale, strokeWidth, color);
     }
 
-    private static void idisc(float ox, float oy, float k, float x, float y, float rad, Color c) {
-        LightningSkin.arcQ(ox + x * k, oy + y * k, 0.0f, rad * k, 0.0f, (float)Math.PI * 2, c);
+    private static void idisc(float ox, float oy, float scale, float x, float y, float radius, Color color) {
+        LightningSkin.arcQ(ox + x * scale, oy + y * scale, 0.0f, radius * scale, 0.0f, (float)Math.PI * 2, color);
     }
 
-    private static void iring(float ox, float oy, float k, float x, float y, float rad, float sw, Color c) {
-        LightningSkin.arcQ(ox + x * k, oy + y * k, rad * k - sw / 2.0f, rad * k + sw / 2.0f, 0.0f, (float)Math.PI * 2, c);
+    private static void iring(float ox, float oy, float scale, float x, float y, float radius, float strokeWidth, Color color) {
+        LightningSkin.arcQ(ox + x * scale, oy + y * scale, radius * scale - strokeWidth / 2.0f, radius * scale + strokeWidth / 2.0f, 0.0f, (float)Math.PI * 2, color);
     }
 
-    public static void chevron(GuiGraphicsExtractor g, float cx, float cy, boolean up, Color c) {
-        float s = up ? 1.0f : -1.0f;
-        LightningSkin.lineQ(cx - 2.8f, cy + 1.3f * s, cx, cy - 1.3f * s, 1.05f, c);
-        LightningSkin.lineQ(cx, cy - 1.3f * s, cx + 2.8f, cy + 1.3f * s, 1.05f, c);
-        LightningSkin.commit(g);
+    public static void chevron(GuiGraphicsExtractor graphics, float cx, float cy, boolean up, Color color) {
+        float sign = up ? 1.0f : -1.0f;
+        LightningSkin.lineQ(cx - 2.8f, cy + 1.3f * sign, cx, cy - 1.3f * sign, 1.05f, color);
+        LightningSkin.lineQ(cx, cy - 1.3f * sign, cx + 2.8f, cy + 1.3f * sign, 1.05f, color);
+        LightningSkin.commit(graphics);
     }
 
-    public static void chevronRight(GuiGraphicsExtractor g, float cx, float cy, Color c) {
-        LightningSkin.lineQ(cx - 1.3f, cy - 2.8f, cx + 1.3f, cy, 1.05f, c);
-        LightningSkin.lineQ(cx + 1.3f, cy, cx - 1.3f, cy + 2.8f, 1.05f, c);
-        LightningSkin.commit(g);
+    public static void chevronRight(GuiGraphicsExtractor graphics, float cx, float cy, Color color) {
+        LightningSkin.lineQ(cx - 1.3f, cy - 2.8f, cx + 1.3f, cy, 1.05f, color);
+        LightningSkin.lineQ(cx + 1.3f, cy, cx - 1.3f, cy + 2.8f, 1.05f, color);
+        LightningSkin.commit(graphics);
     }
 
-    private static void drawIcon(GuiGraphicsExtractor g, int cat, float cx, float cy) {
-        Color c = ICON_PURPLE;
-        float k = 0.5416667f;
+    private static void drawIcon(GuiGraphicsExtractor graphics, int categoryIndex, float cx, float cy) {
+        Color iconColor = ICON_PURPLE;
+        float scale = 0.5416667f;
         float ox = cx - 6.5f;
         float oy = cy - 6.5f;
-        float sw = 2.2f * k;
-        switch (cat) {
+        float strokeWidth = 2.2f * scale;
+        switch (categoryIndex) {
             case 0: {
-                ColorGui.il(ox, oy, k, 4.0f, 4.0f, 16.0f, 16.0f, sw, c);
-                ColorGui.il(ox, oy, k, 13.0f, 19.0f, 19.0f, 13.0f, sw, c);
-                ColorGui.il(ox, oy, k, 16.0f, 16.0f, 20.0f, 20.0f, sw, c);
-                ColorGui.il(ox, oy, k, 19.0f, 21.0f, 21.0f, 19.0f, sw, c);
-                ColorGui.il(ox, oy, k, 20.0f, 4.0f, 8.0f, 16.0f, sw, c);
-                ColorGui.il(ox, oy, k, 11.0f, 19.0f, 5.0f, 13.0f, sw, c);
-                ColorGui.il(ox, oy, k, 8.0f, 16.0f, 4.0f, 20.0f, sw, c);
-                ColorGui.il(ox, oy, k, 5.0f, 21.0f, 3.0f, 19.0f, sw, c);
+                ColorGui.il(ox, oy, scale, 4.0f, 4.0f, 16.0f, 16.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 13.0f, 19.0f, 19.0f, 13.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 16.0f, 16.0f, 20.0f, 20.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 19.0f, 21.0f, 21.0f, 19.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 20.0f, 4.0f, 8.0f, 16.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 11.0f, 19.0f, 5.0f, 13.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 8.0f, 16.0f, 4.0f, 20.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 5.0f, 21.0f, 3.0f, 19.0f, strokeWidth, iconColor);
                 break;
             }
             case 1: {
-                ColorGui.idisc(ox, oy, k, 12.0f, 7.0f, 4.3f, c);
-                LightningSkin.arcQ(ox + 12.0f * k, oy + 22.0f * k, 0.0f, 9.5f * k, (float)Math.PI, (float)Math.PI * 2, c);
+                ColorGui.idisc(ox, oy, scale, 12.0f, 7.0f, 4.3f, iconColor);
+                LightningSkin.arcQ(ox + 12.0f * scale, oy + 22.0f * scale, 0.0f, 9.5f * scale, (float)Math.PI, (float)Math.PI * 2, iconColor);
                 break;
             }
             case 2: {
-                int n = 14;
-                for (int i = 0; i < n; ++i) {
-                    float t0 = -1.0f + 2.0f * (float)i / (float)n;
-                    float t1 = -1.0f + 2.0f * (float)(i + 1) / (float)n;
+                int steps = 14;
+                for (int i = 0; i < steps; ++i) {
+                    float t0 = -1.0f + 2.0f * (float)i / (float)steps;
+                    float t1 = -1.0f + 2.0f * (float)(i + 1) / (float)steps;
                     float a0 = 6.2f * (1.0f - t0 * t0);
                     float a1 = 6.2f * (1.0f - t1 * t1);
-                    ColorGui.il(ox, oy, k, 12.0f + 10.0f * t0, 12.0f - a0, 12.0f + 10.0f * t1, 12.0f - a1, sw, c);
-                    ColorGui.il(ox, oy, k, 12.0f + 10.0f * t0, 12.0f + a0, 12.0f + 10.0f * t1, 12.0f + a1, sw, c);
+                    ColorGui.il(ox, oy, scale, 12.0f + 10.0f * t0, 12.0f - a0, 12.0f + 10.0f * t1, 12.0f - a1, strokeWidth, iconColor);
+                    ColorGui.il(ox, oy, scale, 12.0f + 10.0f * t0, 12.0f + a0, 12.0f + 10.0f * t1, 12.0f + a1, strokeWidth, iconColor);
                 }
-                ColorGui.idisc(ox, oy, k, 12.0f, 12.0f, 3.4f, c);
+                ColorGui.idisc(ox, oy, scale, 12.0f, 12.0f, 3.4f, iconColor);
                 break;
             }
             case 3: {
-                float w2 = sw * 1.1f;
-                ColorGui.idisc(ox, oy, k, 15.5f, 4.2f, 2.5f, c);
-                ColorGui.il(ox, oy, k, 13.2f, 8.2f, 10.6f, 14.2f, w2, c);
-                ColorGui.il(ox, oy, k, 12.8f, 9.2f, 17.4f, 11.4f, w2, c);
-                ColorGui.il(ox, oy, k, 12.6f, 9.4f, 8.2f, 10.2f, w2, c);
-                ColorGui.il(ox, oy, k, 10.6f, 14.2f, 14.0f, 17.4f, w2, c);
-                ColorGui.il(ox, oy, k, 14.0f, 17.4f, 13.2f, 22.0f, w2, c);
-                ColorGui.il(ox, oy, k, 10.6f, 14.2f, 7.2f, 17.6f, w2, c);
-                ColorGui.il(ox, oy, k, 7.2f, 17.6f, 4.4f, 16.8f, w2, c);
+                float w2 = strokeWidth * 1.1f;
+                ColorGui.idisc(ox, oy, scale, 15.5f, 4.2f, 2.5f, iconColor);
+                ColorGui.il(ox, oy, scale, 13.2f, 8.2f, 10.6f, 14.2f, w2, iconColor);
+                ColorGui.il(ox, oy, scale, 12.8f, 9.2f, 17.4f, 11.4f, w2, iconColor);
+                ColorGui.il(ox, oy, scale, 12.6f, 9.4f, 8.2f, 10.2f, w2, iconColor);
+                ColorGui.il(ox, oy, scale, 10.6f, 14.2f, 14.0f, 17.4f, w2, iconColor);
+                ColorGui.il(ox, oy, scale, 14.0f, 17.4f, 13.2f, 22.0f, w2, iconColor);
+                ColorGui.il(ox, oy, scale, 10.6f, 14.2f, 7.2f, 17.6f, w2, iconColor);
+                ColorGui.il(ox, oy, scale, 7.2f, 17.6f, 4.4f, 16.8f, w2, iconColor);
                 break;
             }
             case 4: {
-                ColorGui.iring(ox, oy, k, 12.0f, 12.0f, 6.2f, 2.8f * k, c);
+                ColorGui.iring(ox, oy, scale, 12.0f, 12.0f, 6.2f, 2.8f * scale, iconColor);
                 for (int j = 0; j < 8; ++j) {
-                    float a = (float)j * ((float)Math.PI * 2) / 8.0f;
-                    float cs = (float)Math.cos(a);
-                    float sn = (float)Math.sin(a);
-                    ColorGui.il(ox, oy, k, 12.0f + cs * 7.0f, 12.0f + sn * 7.0f, 12.0f + cs * 10.0f, 12.0f + sn * 10.0f, 3.2f * k, c);
+                    float angle = (float)j * ((float)Math.PI * 2) / 8.0f;
+                    float cos = (float)Math.cos(angle);
+                    float sin = (float)Math.sin(angle);
+                    ColorGui.il(ox, oy, scale, 12.0f + cos * 7.0f, 12.0f + sin * 7.0f, 12.0f + cos * 10.0f, 12.0f + sin * 10.0f, 3.2f * scale, iconColor);
                 }
                 break;
             }
             case 6: {
-                ColorGui.il(ox, oy, k, 3.0f, 4.0f, 21.0f, 4.0f, sw, c);
-                ColorGui.il(ox, oy, k, 21.0f, 4.0f, 21.0f, 16.0f, sw, c);
-                ColorGui.il(ox, oy, k, 21.0f, 16.0f, 3.0f, 16.0f, sw, c);
-                ColorGui.il(ox, oy, k, 3.0f, 16.0f, 3.0f, 4.0f, sw, c);
-                ColorGui.il(ox, oy, k, 12.0f, 16.0f, 12.0f, 20.0f, sw, c);
-                ColorGui.il(ox, oy, k, 8.0f, 20.0f, 16.0f, 20.0f, sw, c);
+                ColorGui.il(ox, oy, scale, 3.0f, 4.0f, 21.0f, 4.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 21.0f, 4.0f, 21.0f, 16.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 21.0f, 16.0f, 3.0f, 16.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 3.0f, 16.0f, 3.0f, 4.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 12.0f, 16.0f, 12.0f, 20.0f, strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 8.0f, 20.0f, 16.0f, 20.0f, strokeWidth, iconColor);
                 break;
             }
             default: {
@@ -360,95 +360,93 @@ public final class ColorGui {
                 }
                 for (i = 0; i < 6; ++i) {
                     int j = (i + 1) % 6;
-                    ColorGui.il(ox, oy, k, hx[i], hy[i], hx[j], hy[j], sw, c);
+                    ColorGui.il(ox, oy, scale, hx[i], hy[i], hx[j], hy[j], strokeWidth, iconColor);
                 }
-                ColorGui.il(ox, oy, k, 12.0f, 12.0f, hx[1], hy[1], sw, c);
-                ColorGui.il(ox, oy, k, 12.0f, 12.0f, hx[3], hy[3], sw, c);
-                ColorGui.il(ox, oy, k, 12.0f, 12.0f, hx[5], hy[5], sw, c);
+                ColorGui.il(ox, oy, scale, 12.0f, 12.0f, hx[1], hy[1], strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 12.0f, 12.0f, hx[3], hy[3], strokeWidth, iconColor);
+                ColorGui.il(ox, oy, scale, 12.0f, 12.0f, hx[5], hy[5], strokeWidth, iconColor);
             }
         }
-        LightningSkin.commit(g);
+        LightningSkin.commit(graphics);
     }
 
-    public static void renderModule(ModuleButton mb, GuiGraphicsExtractor g, int mx, int my, float pt) {
-        int idx;
-        boolean showExtras;
+    public static void renderModule(ModuleButton moduleButton, GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         float open;
-        DescriptionFrame df;
-        FontManager fm = Night.FONT_MANAGER;
-        int x = mb.getX();
-        int y = mb.getY();
-        int w = mb.getWidth();
-        int h = mb.getHeight();
-        boolean hover = mb.isHovering(mx, my);
-        if (hover && (df = Night.CLICK_GUI.getDescriptionFrame()).getDescription().isEmpty()) {
-            df.setDescription(mb.getDescription());
+        DescriptionFrame descFrame;
+        FontManager fontManager = Night.FONT_MANAGER;
+        int x = moduleButton.getX();
+        int y = moduleButton.getY();
+        int w = moduleButton.getWidth();
+        int h = moduleButton.getHeight();
+        boolean hover = moduleButton.isHovering(mouseX, mouseY);
+        if (hover && (descFrame = Night.CLICK_GUI.getDescriptionFrame()).getDescription().isEmpty()) {
+            descFrame.setDescription(moduleButton.getDescription());
         }
-        Module m = mb.getModule();
-        float on = ColorGui.clamp01(mb.getFillAnim().get(m.isToggled() ? 1.0f : 0.0f));
-        int bgA = Math.round(Math.max(hover ? 62.0f : 0.0f, (open = ColorGui.clamp01(mb.getOpenAnim().get(mb.isOpen() ? 1.0f : 0.0f))) * 62.0f));
+        Module module = moduleButton.getModule();
+        float on = ColorGui.clamp01(moduleButton.getFillAnim().get(module.isToggled() ? 1.0f : 0.0f));
+        int bgA = Math.round(Math.max(hover ? 62.0f : 0.0f, (open = ColorGui.clamp01(moduleButton.getOpenAnim().get(moduleButton.isOpen() ? 1.0f : 0.0f))) * 62.0f));
         if (bgA > 0) {
-            ColorGui.r(g, x + 4, y + 1, x + w - 4, y + h - 1, 5.0f, ColorGui.col(120, 100, 220, bgA));
+            ColorGui.r(graphics, x + 4, y + 1, x + w - 4, y + h - 1, 5.0f, ColorGui.col(120, 100, 220, bgA));
         }
         float pr = (float)(x + w) - 9.0f;
         float pl = pr - 17.0f;
         float py = (float)y + ((float)h - 9.0f) / 2.0f;
-        ColorGui.r(g, pl, py, pr, py + 9.0f, 4.5f, ColorGui.lerp(OFF_PILL, PURPLE, on));
+        ColorGui.r(graphics, pl, py, pr, py + 9.0f, 4.5f, ColorGui.lerp(OFF_PILL, PURPLE, on));
         float kx = pl + 1.25f + 8.0f * on;
-        ColorGui.r(g, kx, py + 1.25f, kx + 6.5f, py + 7.75f, 3.25f, ColorGui.lerp(OFF_KNOB, Color.WHITE, on));
-        float lineH = (float)fm.getHeight() * 0.9f;
+        ColorGui.r(graphics, kx, py + 1.25f, kx + 6.5f, py + 7.75f, 3.25f, ColorGui.lerp(OFF_KNOB, Color.WHITE, on));
+        float lineH = (float)fontManager.getHeight() * 0.9f;
         float textY = (float)y + ((float)h - lineH) / 2.0f;
         float rightEdge = pl - 5.0f;
-        List<Button> kids = mb.getButtons();
-        boolean bl = showExtras = hover || mb.isOpen();
-        if (showExtras && m.getBind() != 0) {
-            String bind = KeyboardUtils.getKeyName(m.getBind()).toUpperCase();
-            float bw = (float)fm.getWidth(bind) * 0.9f;
-            ColorGui.ts(g, fm, bind, rightEdge - bw, textY, 0.9f, TXT_DIM);
+        List<Button> kids = moduleButton.getButtons();
+        boolean showExtras = hover || moduleButton.isOpen();
+        if (showExtras && module.getBind() != 0) {
+            String bind = KeyboardUtils.getKeyName(module.getBind()).toUpperCase();
+            float bw = (float)fontManager.getWidth(bind) * 0.9f;
+            ColorGui.ts(graphics, fontManager, bind, rightEdge - bw, textY, 0.9f, TXT_DIM);
             rightEdge -= bw + 5.0f;
         }
         if (showExtras && ColorGui.triangles() && !kids.isEmpty()) {
             float acx = rightEdge - 4.0f;
             float acy = (float)y + (float)h / 2.0f;
-            if (mb.isOpen()) {
-                ColorGui.chevron(g, acx, acy, false, PURPLE);
+            if (moduleButton.isOpen()) {
+                ColorGui.chevron(graphics, acx, acy, false, PURPLE);
             } else {
-                ColorGui.chevronRight(g, acx, acy, ColorGui.col(255, 255, 255, 190));
+                ColorGui.chevronRight(graphics, acx, acy, ColorGui.col(255, 255, 255, 190));
             }
             rightEdge -= 10.0f;
         }
-        String name = m.getName();
+        String name = module.getName();
         float nx = (float)x + 9.0f;
         Color tc = ColorGui.lerp(hover ? new Color(205, 203, 224) : TXT_OFF, Color.WHITE, on);
-        String q = mb.getSearchQuery();
-        int n = idx = q != null && !q.isEmpty() ? name.toLowerCase().indexOf(q.toLowerCase()) : -1;
+        String query = moduleButton.getSearchQuery();
+        int idx = query != null && !query.isEmpty() ? name.toLowerCase().indexOf(query.toLowerCase()) : -1;
         if (idx >= 0) {
             String pre = name.substring(0, idx);
-            String mid = name.substring(idx, idx + q.length());
-            String post = name.substring(idx + q.length());
-            ColorGui.ts(g, fm, pre, nx, textY, 0.9f, tc);
-            float mx2 = nx + (float)fm.getWidth(pre) * 0.9f;
-            ColorGui.ts(g, fm, mid, mx2, textY, 0.9f, PURPLE);
-            ColorGui.ts(g, fm, post, mx2 + (float)fm.getWidth(mid) * 0.9f, textY, 0.9f, tc);
+            String mid = name.substring(idx, idx + query.length());
+            String post = name.substring(idx + query.length());
+            ColorGui.ts(graphics, fontManager, pre, nx, textY, 0.9f, tc);
+            float mx2 = nx + (float)fontManager.getWidth(pre) * 0.9f;
+            ColorGui.ts(graphics, fontManager, mid, mx2, textY, 0.9f, PURPLE);
+            ColorGui.ts(graphics, fontManager, post, mx2 + (float)fontManager.getWidth(mid) * 0.9f, textY, 0.9f, tc);
         } else {
-            ColorGui.ts(g, fm, name, nx, textY, 0.9f, tc);
+            ColorGui.ts(graphics, fontManager, name, nx, textY, 0.9f, tc);
         }
-        if (mb.getRevealHeight() > 0) {
-            g.enableScissor(x, y + h, x + w, y + h + mb.getRevealHeight());
-            for (Button b : kids) {
-                DescriptionFrame d2;
-                if (!b.isVisible()) {
-                    ColorGui.prevOff(b);
+        if (moduleButton.getRevealHeight() > 0) {
+            graphics.enableScissor(x, y + h, x + w, y + h + moduleButton.getRevealHeight());
+            for (Button button : kids) {
+                DescriptionFrame childDescFrame;
+                if (!button.isVisible()) {
+                    ColorGui.prevOff(button);
                     continue;
                 }
-                b.render(g, mx, my, pt);
-                if (!b.isHovering(mx, my) || !(d2 = Night.CLICK_GUI.getDescriptionFrame()).getDescription().isEmpty()) continue;
-                d2.setDescription(b.getDescription());
+                button.render(graphics, mouseX, mouseY, partialTicks);
+                if (!button.isHovering(mouseX, mouseY) || !(childDescFrame = Night.CLICK_GUI.getDescriptionFrame()).getDescription().isEmpty()) continue;
+                childDescFrame.setDescription(button.getDescription());
             }
-            g.disableScissor();
+            graphics.disableScissor();
         } else {
-            for (Button b : kids) {
-                ColorGui.prevOff(b);
+            for (Button button : kids) {
+                ColorGui.prevOff(button);
             }
         }
     }
@@ -461,22 +459,22 @@ public final class ColorGui {
         }
     }
 
-    public static Color catAccent(int n) {
-        return CAT[Math.floorMod(n, CAT.length)];
+    public static Color catAccent(int index) {
+        return CAT[Math.floorMod(index, CAT.length)];
     }
 
     public static void resetCur() {
     }
 
-    public static Color accent(int n) {
+    public static Color accent(int index) {
         return PURPLE;
     }
 
-    public static int overviewRgb(String string) {
-        if (string == null) {
+    public static int overviewRgb(String categoryName) {
+        if (categoryName == null) {
             return 9133302;
         }
-        switch (string.toUpperCase()) {
+        switch (categoryName.toUpperCase()) {
             case "COMBAT": {
                 return 16486972;
             }
@@ -497,18 +495,18 @@ public final class ColorGui {
         return 8141549;
     }
 
-    public static void card(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, float rad, boolean tl, boolean tr, boolean br, boolean bl, Color c1, Color c2) {
-        LightningSkin.rr(g, x1, y1, x2, y2, 8.0f, tl, tr, br, bl, PANEL, PANEL);
-        LightningSkin.ring(g, x1, y1, x2, y2, 8.0f, 0.75f, EDGE);
+    public static void card(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, float radius, boolean tl, boolean tr, boolean br, boolean bl, Color c1, Color c2) {
+        LightningSkin.rr(graphics, x1, y1, x2, y2, 8.0f, tl, tr, br, bl, PANEL, PANEL);
+        LightningSkin.ring(graphics, x1, y1, x2, y2, 8.0f, 0.75f, EDGE);
     }
 
-    public static void noGlow(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, float rad, Color c) {
+    public static void noGlow(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, float radius, Color color) {
     }
 
-    public static void noRing(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, float rad, float t, Color c) {
+    public static void noRing(GuiGraphicsExtractor graphics, float x1, float y1, float x2, float y2, float radius, float thickness, Color color) {
     }
 
-    public static void noSparkle(GuiGraphicsExtractor g, float x, float y, float rad, Color c) {
+    public static void noSparkle(GuiGraphicsExtractor graphics, float x, float y, float radius, Color color) {
     }
 
     static ClickGuiScreen currentGui() {
@@ -524,7 +522,7 @@ public final class ColorGui {
         return Night.CLICK_GUI;
     }
 
-    public static Matrix3x2fStack poseHook(GuiGraphicsExtractor g) {
+    public static Matrix3x2fStack poseHook(GuiGraphicsExtractor graphics) {
         block9: {
             try {
                 ColorGui.relayout();
@@ -540,7 +538,7 @@ public final class ColorGui {
                 }
             }
         }
-        return HeaderFx.poseHook(g);
+        return HeaderFx.poseHook(graphics);
     }
 
     private static Frame byCat(ArrayList<Frame> list, Module.Category category) {
@@ -572,9 +570,9 @@ public final class ColorGui {
         Module.Category[] order = new Module.Category[]{Module.Category.COMBAT, Module.Category.PLAYER, Module.Category.VISUALS, Module.Category.MOVEMENT};
         ArrayList<Frame> out = new ArrayList<Frame>();
         for (Module.Category category : order) {
-            Frame f = ColorGui.byCat(list, category);
-            if (f == null) continue;
-            out.add(f);
+            Frame frame = ColorGui.byCat(list, category);
+            if (frame == null) continue;
+            out.add(frame);
         }
         Frame core2 = ColorGui.byCat(list, Module.Category.CORE);
         if (core2 != null) {
@@ -586,9 +584,9 @@ public final class ColorGui {
         if ((misc = ColorGui.byCat(list, Module.Category.MISCELLANEOUS)) != null) {
             out.add(misc);
         }
-        for (Frame f : list) {
-            if (out.contains(f)) continue;
-            out.add(f);
+        for (Frame frame : list) {
+            if (out.contains(frame)) continue;
+            out.add(frame);
         }
         list.clear();
         list.addAll(out);
@@ -596,11 +594,11 @@ public final class ColorGui {
 
     private static boolean deviates(ArrayList<Frame> list) {
         for (Frame frame : list) {
-            int[] p = placed.get(frame);
-            if (p == null) {
+            int[] pos = placed.get(frame);
+            if (pos == null) {
                 return true;
             }
-            if (frame.getX() == p[0] && frame.getY() == p[1] && frame.getWidth() == p[2] && frame.getMaxViewHeight() == p[3]) continue;
+            if (frame.getX() == pos[0] && frame.getY() == pos[1] && frame.getWidth() == pos[2] && frame.getMaxViewHeight() == pos[3]) continue;
             return true;
         }
         return false;
@@ -627,8 +625,8 @@ public final class ColorGui {
             ColorGui.split(frames);
             redo = true;
         }
-        for (Frame f : frames) {
-            if (!f.isDragging()) continue;
+        for (Frame frame : frames) {
+            if (!frame.isDragging()) continue;
             userMoved = true;
             return;
         }
@@ -644,16 +642,16 @@ public final class ColorGui {
         Frame movement = ColorGui.byCat(frames, Module.Category.MOVEMENT);
         Frame misc = ColorGui.byCat(frames, Module.Category.MISCELLANEOUS);
         Frame core = ColorGui.byCat(frames, Module.Category.CORE);
-        for (Frame f : main = new Frame[]{combat, player, visuals, movement, misc}) {
-            if (f != null) continue;
+        for (Frame frame : main = new Frame[]{combat, player, visuals, movement, misc}) {
+            if (frame != null) continue;
             return;
         }
         int w = 112;
-        for (Frame f : frames) {
-            w = Math.max(w, f.getRequiredWidth());
+        for (Frame frame : frames) {
+            w = Math.max(w, frame.getRequiredWidth());
         }
-        for (Frame f : frames) {
-            f.setWidth(w);
+        for (Frame frame : frames) {
+            frame.setWidth(w);
         }
         int lowRows = core != null || renderFrame != null ? 8 : 0;
         int lowBody = lowRows * 16;
@@ -684,8 +682,8 @@ public final class ColorGui {
             renderFrame.setY(lowY);
         }
         placed.clear();
-        for (Frame f : frames) {
-            placed.put(f, new int[]{f.getX(), f.getY(), f.getWidth(), f.getMaxViewHeight()});
+        for (Frame frame : frames) {
+            placed.put(frame, new int[]{frame.getX(), frame.getY(), frame.getWidth(), frame.getMaxViewHeight()});
         }
         laidW = sw;
         laidH = sh;

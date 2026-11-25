@@ -69,44 +69,42 @@ implements IMinecraft {
         return this.reservedPlacements;
     }
 
-    public void onCrystalAttacked(int n, Runnable runnable) {
-        this.pendingCrystalRetries.put(n, runnable);
+    public void onCrystalAttacked(int entityId, Runnable retryAction) {
+        this.pendingCrystalRetries.put(entityId, retryAction);
     }
 
     public WorldManager() {
-        int n;
-        int n2;
         Night.EVENT_HANDLER.subscribe(this);
-        final BlockPos blockPos = BlockPos.ZERO;
-        TreeSet<BlockPos> treeSet = new TreeSet<BlockPos>(new Comparator<BlockPos>(){
+        final BlockPos origin = BlockPos.ZERO;
+        TreeSet<BlockPos> sortedOffsets = new TreeSet<BlockPos>(new Comparator<BlockPos>(){
             @Override
-            public int compare(BlockPos blockPos3, BlockPos blockPos2) {
-                if (blockPos3.equals((Object)blockPos2)) {
+            public int compare(BlockPos first, BlockPos second) {
+                if (first.equals((Object)second)) {
                     return 0;
                 }
-                int n = Double.compare(blockPos.distSqr((Vec3i)blockPos3), blockPos.distSqr((Vec3i)blockPos2));
-                if (n == 0) {
-                    n = Integer.compare(Math.abs(blockPos3.getX()) + Math.abs(blockPos3.getY()) + Math.abs(blockPos3.getZ()), Math.abs(blockPos2.getX()) + Math.abs(blockPos2.getY()) + Math.abs(blockPos2.getZ()));
+                int cmp = Double.compare(origin.distSqr((Vec3i)first), origin.distSqr((Vec3i)second));
+                if (cmp == 0) {
+                    cmp = Integer.compare(Math.abs(first.getX()) + Math.abs(first.getY()) + Math.abs(first.getZ()), Math.abs(second.getX()) + Math.abs(second.getY()) + Math.abs(second.getZ()));
                 }
-                return n == 0 ? 1 : n;
+                return cmp == 0 ? 1 : cmp;
             }
         });
-        for (n2 = blockPos.getX() - 100; n2 <= blockPos.getX() + 100; ++n2) {
-            for (n = blockPos.getZ() - 100; n <= blockPos.getZ() + 100; ++n) {
-                for (int i = blockPos.getY() - 100; i < blockPos.getY() + 100; ++i) {
-                    double d = (blockPos.getX() - n2) * (blockPos.getX() - n2) + (blockPos.getZ() - n) * (blockPos.getZ() - n) + (blockPos.getY() - i) * (blockPos.getY() - i);
-                    if (!(d < (double)Mth.square((int)100))) continue;
-                    treeSet.add(new BlockPos(n2, i, n));
+        for (int x = origin.getX() - 100; x <= origin.getX() + 100; ++x) {
+            for (int z = origin.getZ() - 100; z <= origin.getZ() + 100; ++z) {
+                for (int y = origin.getY() - 100; y < origin.getY() + 100; ++y) {
+                    double distSq = (origin.getX() - x) * (origin.getX() - x) + (origin.getZ() - z) * (origin.getZ() - z) + (origin.getY() - y) * (origin.getY() - y);
+                    if (!(distSq < (double)Mth.square((int)100))) continue;
+                    sortedOffsets.add(new BlockPos(x, y, z));
                 }
             }
         }
-        n2 = 0;
-        n = 0;
-        for (BlockPos blockPos2 : treeSet) {
-            if (Math.sqrt(blockPos.distSqr((Vec3i)blockPos2)) > (double)n) {
-                WorldManager.INDICES[n++] = n2;
+        int sphereIndex = 0;
+        int radiusIndex = 0;
+        for (BlockPos offset : sortedOffsets) {
+            if (Math.sqrt(origin.distSqr((Vec3i)offset)) > (double)radiusIndex) {
+                WorldManager.INDICES[radiusIndex++] = sphereIndex;
             }
-            WorldManager.SPHERE[n2++] = blockPos2;
+            WorldManager.SPHERE[sphereIndex++] = offset;
         }
     }
 
@@ -149,9 +147,9 @@ implements IMinecraft {
         if (packet instanceof ClientboundEntityEventPacket clientboundEntityEventPacket && clientboundEntityEventPacket.getEventId() == 35) {
             Entity entity = clientboundEntityEventPacket.getEntity((Level)WorldManager.mc.level);
             if (entity instanceof Player player) {
-                int n = this.poppedTotems.getOrDefault(player.getUUID(), 0);
-                this.poppedTotems.put(player.getUUID(), ++n);
-                Night.EVENT_HANDLER.post(new PlayerPopEvent(player, n));
+                int pops = this.poppedTotems.getOrDefault(player.getUUID(), 0);
+                this.poppedTotems.put(player.getUUID(), ++pops);
+                Night.EVENT_HANDLER.post(new PlayerPopEvent(player, pops));
             }
         }
         if (this.pendingCrystalRetries.isEmpty()) return;
@@ -165,12 +163,12 @@ implements IMinecraft {
         }
     }
 
-    public int getRadius(double d) {
-        return INDICES[Mth.clamp((int)((int)Math.ceil(d)), (int)0, (int)INDICES.length)];
+    public int getRadius(double radius) {
+        return INDICES[Mth.clamp((int)((int)Math.ceil(radius)), (int)0, (int)INDICES.length)];
     }
 
-    public Vec3i getOffset(int n) {
-        return SPHERE[n];
+    public Vec3i getOffset(int index) {
+        return SPHERE[index];
     }
 
     @Generated
@@ -184,8 +182,8 @@ implements IMinecraft {
     }
 
     @Generated
-    public void setTimerMultiplier(float f) {
-        this.timerMultiplier = f;
+    public void setTimerMultiplier(float timerMultiplier) {
+        this.timerMultiplier = timerMultiplier;
     }
 
     @Generated

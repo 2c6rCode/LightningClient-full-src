@@ -35,47 +35,47 @@ implements IMinecraft {
     private final String description;
     private boolean visible = true;
 
-    public Button(Frame frame, int n, String string) {
+    public Button(Frame parent, int height, String description) {
         this.setting = null;
-        this.parent = frame;
-        this.height = n;
-        this.description = string;
+        this.parent = parent;
+        this.height = height;
+        this.description = description;
     }
 
-    public Button(Setting setting, Frame frame, int n, String string) {
+    public Button(Setting setting, Frame parent, int height, String description) {
         this.setting = setting;
-        this.parent = frame;
-        this.height = n;
-        this.description = string;
+        this.parent = parent;
+        this.height = height;
+        this.description = description;
     }
 
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
     }
 
-    public void mouseClicked(double d, double d2, int n) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
     }
 
-    public void mouseReleased(double d, double d2, int n) {
+    public void mouseReleased(double mouseX, double mouseY, int button) {
     }
 
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
     }
 
-    public void mouseScrolled(double d, double d2, double d3, double d4) {
+    public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
     }
 
-    public void mouseDragged(double d, double d2, int n, double d3, double d4) {
+    public void mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
     }
 
-    public void charTyped(char c, int n) {
+    public void charTyped(char ch, int modifiers) {
     }
 
     public int getWidth() {
         return this.parent.getWidth();
     }
 
-    public boolean isHovering(double d, double d2) {
-        return (double)(this.x + this.padding) <= d && (double)this.y <= d2 && (double)(this.x + this.getWidth() - this.padding) > d && (double)(this.y + this.getHeight()) > d2;
+    public boolean isHovering(double mouseX, double mouseY) {
+        return (double)(this.x + this.padding) <= mouseX && (double)this.y <= mouseY && (double)(this.x + this.getWidth() - this.padding) > mouseX && (double)(this.y + this.getHeight()) > mouseY;
     }
 
     public void playClickSound() {
@@ -130,33 +130,33 @@ implements IMinecraft {
     }
 
     @Generated
-    public void setX(int n) {
-        this.x = n;
+    public void setX(int x) {
+        this.x = x;
     }
 
     @Generated
-    public void setY(int n) {
-        this.y = n;
+    public void setY(int y) {
+        this.y = y;
     }
 
     @Generated
-    public void setHeight(int n) {
-        this.height = n;
+    public void setHeight(int height) {
+        this.height = height;
     }
 
     @Generated
-    public void setPadding(int n) {
-        this.padding = n;
+    public void setPadding(int padding) {
+        this.padding = padding;
     }
 
     @Generated
-    public void setTextPadding(int n) {
-        this.textPadding = n;
+    public void setTextPadding(int textPadding) {
+        this.textPadding = textPadding;
     }
 
     @Generated
-    public void setVisible(boolean bl) {
-        this.visible = bl;
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 }
 

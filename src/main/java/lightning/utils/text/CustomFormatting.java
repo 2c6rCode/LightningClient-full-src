@@ -17,18 +17,18 @@ public enum CustomFormatting implements StringRepresentable
 
     private final char code;
 
-    private CustomFormatting(char c) {
-        this.code = c;
+    private CustomFormatting(char code) {
+        this.code = code;
     }
 
     public String getName() {
         return this.name().toLowerCase();
     }
 
-    public static CustomFormatting byCode(char c) {
-        char c2 = Character.toLowerCase(c);
+    public static CustomFormatting byCode(char code) {
+        char lowerCode = Character.toLowerCase(code);
         for (CustomFormatting customFormatting : CustomFormatting.values()) {
-            if (customFormatting.code != c2) continue;
+            if (customFormatting.code != lowerCode) continue;
             return customFormatting;
         }
         return null;

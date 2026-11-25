@@ -175,12 +175,12 @@ implements ModInitializer {
     }
 
     public static void onPostInitialize() {
-        String string;
+        String activeImage;
         Night.initManagers();
         CONFIG_MANAGER = new ConfigManager();
         CLICK_GUI = new ClickGuiScreen();
-        if (IMAGE_MANAGER != null && (string = ImageManager.findSavedActiveImage()) != null && !string.equalsIgnoreCase("None") && !string.isEmpty()) {
-            IMAGE_MANAGER.setCurrentActiveImage(string);
+        if (IMAGE_MANAGER != null && (activeImage = ImageManager.findSavedActiveImage()) != null && !activeImage.equalsIgnoreCase("None") && !activeImage.isEmpty()) {
+            IMAGE_MANAGER.setCurrentActiveImage(activeImage);
         }
         LOGGER.info("{} {} has been initialized.", (Object)MOD_NAME, (Object)MOD_VERSION);
     }

@@ -92,7 +92,7 @@ public abstract class GameRendererMixin {
     }
 
     @Inject(method={"render(Lnet/minecraft/client/DeltaTracker;Z)V"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/renderer/LevelRenderer;doEntityOutline()V")})
-    private void night$resolveOutline(DeltaTracker deltaTracker, boolean bl, CallbackInfo callbackInfo) {
+    private void night$resolveOutline(DeltaTracker deltaTracker, boolean renderLevel, CallbackInfo callbackInfo) {
         try {
             Identifier identifier = ShadersModule.pickActiveOutlineChain();
             if (identifier == null) {
@@ -122,11 +122,11 @@ public abstract class GameRendererMixin {
     @Inject(method={"renderLevel"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/renderer/LevelRenderer;render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V", shift=At.Shift.AFTER)})
     private void renderWorld$swap(DeltaTracker deltaTracker, CallbackInfo callbackInfo, @Local(ordinal=0) Matrix4fc matrix4fc, @Local CameraRenderState cameraRenderState) {
         try {
-            float f = deltaTracker.getGameTimeDeltaPartialTick(false);
+            float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
             RenderSystem.getModelViewStack().pushMatrix();
             RenderSystem.getModelViewStack().mul(matrix4fc);
             PoseStack poseStack = new PoseStack();
-            Night.EVENT_HANDLER.post((Event)new RenderWorldEvent(poseStack, f));
+            Night.EVENT_HANDLER.post((Event)new RenderWorldEvent(poseStack, partialTick));
             if (!Renderer3D.QUADS.isEmpty() || !Renderer3D.DEBUG_LINES.isEmpty()) {
                 Renderer3D.draw((List)Renderer3D.QUADS, (List)Renderer3D.DEBUG_LINES, (boolean)false);
             }
@@ -139,7 +139,7 @@ public abstract class GameRendererMixin {
             if (!Glint.QUADS.isEmpty()) {
                 Glint.draw();
             }
-            Night.EVENT_HANDLER.post((Event)new RenderWorldEvent.Post(poseStack, f));
+            Night.EVENT_HANDLER.post((Event)new RenderWorldEvent.Post(poseStack, partialTick));
             if (!Renderer3D.QUADS.isEmpty() || !Renderer3D.DEBUG_LINES.isEmpty()) {
                 Renderer3D.draw((List)Renderer3D.QUADS, (List)Renderer3D.DEBUG_LINES, (boolean)false);
             }

@@ -63,36 +63,36 @@ public class Frame {
     private long lastScrollTime = System.currentTimeMillis();
     private final Animation openAnim = new Animation(1.0f, 1.0f, 220, Easing.Method.EASE_OUT_CUBIC);
 
-    public Frame(Module.Category category, int n, int n2, int n3, int n4) {
+    public Frame(Module.Category category, int x, int y, int width, int height) {
         this.category = category;
         this.headerLabel = null;
-        this.x = n;
-        this.y = n2;
-        this.width = n3;
-        this.height = n4;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
         for (Module module : Night.MODULE_MANAGER.getModules(category)) {
             if (module instanceof PingBypassModule) continue;
             this.buttons.add(new ModuleButton(module, this, 16));
         }
     }
 
-    public Frame(String string, List<Button> list, int n, int n2, int n3, int n4) {
+    public Frame(String headerLabel, List<Button> buttons, int x, int y, int width, int height) {
         this.category = null;
-        this.headerLabel = string;
-        this.x = n;
-        this.y = n2;
-        this.width = n3;
-        this.height = n4;
-        this.buttons.addAll(list);
+        this.headerLabel = headerLabel;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.buttons.addAll(buttons);
     }
 
     public int getRequiredWidth() {
-        int n = 0;
+        int maxWidth = 0;
         for (Button button : this.buttons) {
             if (!(button instanceof ModuleButton)) continue;
-            n = Math.max(n, ((ModuleButton)button).getRequiredWidth());
+            maxWidth = Math.max(maxWidth, ((ModuleButton)button).getRequiredWidth());
         }
-        return n;
+        return maxWidth;
     }
 
     private int visibleContentHeight() {
@@ -103,25 +103,25 @@ public class Frame {
         return this.maxViewHeight;
     }
 
-    public void setMaxViewHeight(int n) {
-        this.maxViewHeight = n;
+    public void setMaxViewHeight(int maxViewHeight) {
+        this.maxViewHeight = maxViewHeight;
     }
 
     private String getHeaderText() {
         return this.category != null ? this.category.getName() : this.headerLabel;
     }
 
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        this.render(guiGraphicsExtractor, n, n2, f, "");
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        this.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks, "");
     }
 
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, String string) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks, String searchQuery) {
         int shift;
         if (this.dragging) {
-            this.setX(n - this.dragX);
-            this.setY(n2 - this.dragY);
+            this.setX(mouseX - this.dragX);
+            this.setY(mouseY - this.dragY);
         }
-        boolean searching = string != null && !string.isEmpty();
+        boolean searching = searchQuery != null && !searchQuery.isEmpty();
         this.totalHeight = this.height;
         this.baseContentHeight = 0;
         ++this.totalHeight;
@@ -129,12 +129,12 @@ public class Frame {
         for (Button button : this.buttons) {
             if (searching && button instanceof ExpandableRow) {
                 row = (ExpandableRow)((Object)button);
-                if (!row.getRowName().toLowerCase().contains(string.toLowerCase())) {
+                if (!row.getRowName().toLowerCase().contains(searchQuery.toLowerCase())) {
                     button.setVisible(false);
                     continue;
                 }
                 button.setVisible(true);
-                row.setSearchQuery(string);
+                row.setSearchQuery(searchQuery);
             } else if (!searching && button instanceof ExpandableRow) {
                 row = (ExpandableRow)((Object)button);
                 button.setVisible(true);
@@ -148,10 +148,10 @@ public class Frame {
             if (!(button instanceof ExpandableRow)) continue;
             ExpandableRow expandableRow = (ExpandableRow)((Object)button);
             float openAmount = expandableRow.getOpenAmount();
-            List<Button> list = expandableRow.getButtons();
+            List<Button> childButtons = expandableRow.getButtons();
             float offset = 0.0f;
             float sum = 0.0f;
-            for (Button child : list) {
+            for (Button child : childButtons) {
                 child.getSetting().getVisibility().update();
                 boolean childVisible = child.getSetting().getVisibility().isVisible();
                 child.setVisible(childVisible);
@@ -159,11 +159,11 @@ public class Frame {
                 float amount = 1.0f;
                 Setting.Visibility visibility = child.getSetting().getVisibility();
                 if (visibility instanceof CategorySetting.Visibility) {
-                    CategorySetting.Visibility v = (CategorySetting.Visibility)visibility;
-                    amount = v.getValue().getOpenAmount();
+                    CategorySetting.Visibility vis = (CategorySetting.Visibility)visibility;
+                    amount = vis.getValue().getOpenAmount();
                 } else if (visibility instanceof BooleanSetting.Visibility) {
-                    BooleanSetting.Visibility v = (BooleanSetting.Visibility)visibility;
-                    amount = v.getOpenAmount();
+                    BooleanSetting.Visibility vis = (BooleanSetting.Visibility)visibility;
+                    amount = vis.getOpenAmount();
                 }
                 float childH = (float)child.getHeight() * amount;
                 child.setX(this.x);
@@ -226,9 +226,9 @@ public class Frame {
             for (Button button : this.buttons) {
                 boolean outside;
                 if (!button.isVisible()) continue;
-                boolean bl = outside = button.getY() + button.getHeight() < top || button.getY() > bottom;
+                outside = button.getY() + button.getHeight() < top || button.getY() > bottom;
                 if (outside && (!(button instanceof ExpandableRow) || ((ExpandableRow)((Object)button)).getOpenAmount() <= 0.001f)) continue;
-                button.render(guiGraphicsExtractor, n, n2, f);
+                button.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
             }
             guiGraphicsExtractor.disableScissor();
         }
@@ -271,63 +271,63 @@ public class Frame {
         return "\u25c6";
     }
 
-    public void mouseClicked(double d, double d2, int n) {
-        if (this.isHovering(d, d2)) {
-            if (n == 0) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.isHovering(mouseX, mouseY)) {
+            if (button == 0) {
                 this.dragging = true;
-                this.dragX = (int)(d - (double)this.getX());
-                this.dragY = (int)(d2 - (double)this.getY());
-            } else if (n == 1) {
-                boolean bl = this.open = !this.open;
+                this.dragX = (int)(mouseX - (double)this.getX());
+                this.dragY = (int)(mouseY - (double)this.getY());
+            } else if (button == 1) {
+                this.open = !this.open;
             }
         }
         if (this.open) {
             int top = this.y + this.height;
             int bottom = top + Math.round((float)this.visibleContentHeight() * this.openAnim.get(this.open ? 1.0f : 0.0f)) + 4;
-            if (d >= (double)this.x && d <= (double)(this.x + this.width) && d2 >= (double)top && d2 <= (double)bottom) {
-                for (Button button : this.buttons) {
-                    if (!button.isVisible()) continue;
-                    button.mouseClicked(d, d2, n);
+            if (mouseX >= (double)this.x && mouseX <= (double)(this.x + this.width) && mouseY >= (double)top && mouseY <= (double)bottom) {
+                for (Button child : this.buttons) {
+                    if (!child.isVisible()) continue;
+                    child.mouseClicked(mouseX, mouseY, button);
                 }
             }
         }
     }
 
-    public void mouseReleased(double d, double d2, int n) {
-        if (n == 0) {
+    public void mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0) {
             this.dragging = false;
         }
-        for (Button button : this.buttons) {
-            if (!button.isVisible()) continue;
-            button.mouseReleased(d, d2, n);
+        for (Button child : this.buttons) {
+            if (!child.isVisible()) continue;
+            child.mouseReleased(mouseX, mouseY, button);
         }
     }
 
-    public void mouseScrolled(double d, double d2, double d3, double d4) {
+    public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         int top = this.y;
         int bottom = this.y + this.height + (this.open ? Math.round((float)this.visibleContentHeight() * this.openAnim.get(this.open ? 1.0f : 0.0f)) + 4 : 0);
-        if (d >= (double)this.x && d <= (double)(this.x + this.width) && d2 >= (double)top && d2 <= (double)bottom) {
+        if (mouseX >= (double)this.x && mouseX <= (double)(this.x + this.width) && mouseY >= (double)top && mouseY <= (double)bottom) {
             boolean handled = false;
             for (Button rowButton : this.buttons) {
                 ExpandableRow expandableRow;
                 if (!(rowButton instanceof ExpandableRow) || !(expandableRow = (ExpandableRow)((Object)rowButton)).isOpen()) continue;
                 for (Button child : expandableRow.getButtons()) {
                     WhitelistButton whitelistButton;
-                    if (!(child instanceof WhitelistButton) || !(whitelistButton = (WhitelistButton)child).isHandlingScroll(d, d2)) continue;
-                    whitelistButton.mouseScrolled(d, d2, d3, d4);
+                    if (!(child instanceof WhitelistButton) || !(whitelistButton = (WhitelistButton)child).isHandlingScroll(mouseX, mouseY)) continue;
+                    whitelistButton.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
                     handled = true;
                     break;
                 }
                 if (!handled) continue;
                 break;
             }
-            if (!handled && d4 != 0.0) {
+            if (!handled && verticalAmount != 0.0) {
                 float speed = Night.MODULE_MANAGER.getModule(ClickGuiModule.class).scrollSpeed.getValue().floatValue();
                 float contentH = this.totalHeight - this.height - 1;
                 float viewH = this.visibleContentHeight();
                 float maxScroll = 0.0f;
                 float minScroll = -Math.max(0.0f, contentH - viewH);
-                float delta = (float)(d4 * (double)speed * 12.0);
+                float delta = (float)(verticalAmount * (double)speed * 12.0);
                 float damp = 1.0f;
                 if (this.targetScroll > maxScroll) {
                     damp = 1.0f / (1.0f + (this.targetScroll - maxScroll) * 0.05f);
@@ -339,32 +339,32 @@ public class Frame {
         }
     }
 
-    public void mouseDragged(double d, double d2, int n, double d3, double d4) {
-        for (Button button : this.buttons) {
-            button.mouseDragged(d, d2, n, d3, d4);
+    public void mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        for (Button child : this.buttons) {
+            child.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
     }
 
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
         if (this.open) {
-            for (Button button : this.buttons) {
-                if (!button.isVisible()) continue;
-                button.keyPressed(n, n2, n3);
+            for (Button child : this.buttons) {
+                if (!child.isVisible()) continue;
+                child.keyPressed(keyCode, scanCode, modifiers);
             }
         }
     }
 
-    public void charTyped(char c, int n) {
+    public void charTyped(char ch, int modifiers) {
         if (this.open) {
-            for (Button button : this.buttons) {
-                if (!button.isVisible()) continue;
-                button.charTyped(c, n);
+            for (Button child : this.buttons) {
+                if (!child.isVisible()) continue;
+                child.charTyped(ch, modifiers);
             }
         }
     }
 
-    public boolean isHovering(double d, double d2) {
-        return (double)this.x <= d && (double)this.y <= d2 && (double)(this.x + this.width) > d && (double)(this.y + this.height) > d2;
+    public boolean isHovering(double mouseX, double mouseY) {
+        return (double)this.x <= mouseX && (double)this.y <= mouseY && (double)(this.x + this.width) > mouseX && (double)(this.y + this.height) > mouseY;
     }
 
     public Module.Category getCategory() {
@@ -439,60 +439,60 @@ public class Frame {
         return this.openAnim;
     }
 
-    public void setX(int n) {
-        this.x = n;
+    public void setX(int x) {
+        this.x = x;
     }
 
-    public void setY(int n) {
-        this.y = n;
+    public void setY(int y) {
+        this.y = y;
     }
 
-    public void setWidth(int n) {
-        this.width = n;
+    public void setWidth(int width) {
+        this.width = width;
     }
 
-    public void setHeight(int n) {
-        this.height = n;
+    public void setHeight(int height) {
+        this.height = height;
     }
 
-    public void setTotalHeight(int n) {
-        this.totalHeight = n;
+    public void setTotalHeight(int totalHeight) {
+        this.totalHeight = totalHeight;
     }
 
-    public void setBaseContentHeight(int n) {
-        this.baseContentHeight = n;
+    public void setBaseContentHeight(int baseContentHeight) {
+        this.baseContentHeight = baseContentHeight;
     }
 
-    public void setDragX(int n) {
-        this.dragX = n;
+    public void setDragX(int dragX) {
+        this.dragX = dragX;
     }
 
-    public void setDragY(int n) {
-        this.dragY = n;
+    public void setDragY(int dragY) {
+        this.dragY = dragY;
     }
 
-    public void setTextPadding(int n) {
-        this.textPadding = n;
+    public void setTextPadding(int textPadding) {
+        this.textPadding = textPadding;
     }
 
-    public void setOpen(boolean bl) {
-        this.open = bl;
+    public void setOpen(boolean open) {
+        this.open = open;
     }
 
-    public void setDragging(boolean bl) {
-        this.dragging = bl;
+    public void setDragging(boolean dragging) {
+        this.dragging = dragging;
     }
 
-    public void setScrollOffset(float f) {
-        this.scrollOffset = f;
+    public void setScrollOffset(float scrollOffset) {
+        this.scrollOffset = scrollOffset;
     }
 
-    public void setTargetScroll(float f) {
-        this.targetScroll = f;
+    public void setTargetScroll(float targetScroll) {
+        this.targetScroll = targetScroll;
     }
 
-    public void setLastScrollTime(long l) {
-        this.lastScrollTime = l;
+    public void setLastScrollTime(long lastScrollTime) {
+        this.lastScrollTime = lastScrollTime;
     }
 }
 

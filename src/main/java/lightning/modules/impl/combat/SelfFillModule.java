@@ -106,12 +106,12 @@ extends Module {
         if (!SelfFillModule.mc.level.getEntities((Entity)null, new AABB(this.lastPosition), entity -> entity != SelfFillModule.mc.player && !(entity instanceof ExperienceOrb) && !(entity instanceof ItemEntity) && !(entity instanceof EndCrystal)).isEmpty()) {
             return;
         }
-        int n = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n2 = SelfFillModule.mc.player.getInventory().getSelectedSlot();
+        int blockSlot = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int oldSlot = SelfFillModule.mc.player.getInventory().getSelectedSlot();
         if (this.obsidianOnly.getValue()) {
-            n = InventoryUtils.find(Items.OBSIDIAN, 0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            blockSlot = InventoryUtils.find(Items.OBSIDIAN, 0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
         }
-        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && n == -1) {
+        if (!this.autoSwitch.getValue().equalsIgnoreCase("None") && blockSlot == -1) {
             Night.CHAT_MANAGER.tagged("There are currently no " + (this.obsidianOnly.getValue() ? "valid " : "") + "blocks in your hotbar.", this.getName());
             this.setToggled(false);
             return;
@@ -124,10 +124,10 @@ extends Module {
                 SelfFillModule.mc.player.connection.send((Packet)new ServerboundMovePlayerPacket.Pos(SelfFillModule.mc.player.getX(), SelfFillModule.mc.player.getY() + (this.jumpMode.getValue().equalsIgnoreCase("Packet") && this.burrow.getValue().equalsIgnoreCase("Bypass") ? 0.99999992 : 1.15), SelfFillModule.mc.player.getZ(), false, SelfFillModule.mc.player.horizontalCollision));
             });
         }
-        InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-        boolean bl = WorldUtils.placeBlock(this.lastPosition, direction, InteractionHand.MAIN_HAND, (!this.jumpMode.getValue().equalsIgnoreCase("Packet") || !this.burrow.getValue().equalsIgnoreCase("Bypass")) && this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
-        InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
-        if (!bl) {
+        InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
+        boolean placed = WorldUtils.placeBlock(this.lastPosition, direction, InteractionHand.MAIN_HAND, (!this.jumpMode.getValue().equalsIgnoreCase("Packet") || !this.burrow.getValue().equalsIgnoreCase("Bypass")) && this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
+        InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
+        if (!placed) {
             return;
         }
         if (this.jumpMode.getValue().equals("Packet") && this.burrow.getValue().equalsIgnoreCase("Bypass")) {
@@ -151,9 +151,9 @@ extends Module {
         if (direction == null) {
             return;
         }
-        float[] fArray = RotationUtils.getRotations(WorldUtils.getHitVector(this.lastPosition, direction));
-        clientRotationEvent.setYaw(fArray[0]);
-        clientRotationEvent.setPitch(fArray[1]);
+        float[] rotations = RotationUtils.getRotations(WorldUtils.getHitVector(this.lastPosition, direction));
+        clientRotationEvent.setYaw(rotations[0]);
+        clientRotationEvent.setPitch(rotations[1]);
     }
 
     @Override

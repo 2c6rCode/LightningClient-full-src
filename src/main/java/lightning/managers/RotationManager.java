@@ -141,22 +141,22 @@ implements IMinecraft {
         return -Integer.compare(legacyRotation.getPriority(), legacyRotation2.getPriority());
     }
 
-    public void legacyRotate(float[] fArray, int n) {
-        this.legacyRotate(fArray[0], fArray[1], n);
+    public void legacyRotate(float[] rotations, int priority) {
+        this.legacyRotate(rotations[0], rotations[1], priority);
     }
 
-    public void legacyRotate(float f, float f2, int n) {
-        this.legacyQueue.removeIf(legacyRotation -> legacyRotation.getModule() == null && legacyRotation.getPriority() == n);
-        this.legacyQueue.add(new LegacyRotation(f, f2, n));
+    public void legacyRotate(float yaw, float pitch, int priority) {
+        this.legacyQueue.removeIf(legacyRotation -> legacyRotation.getModule() == null && legacyRotation.getPriority() == priority);
+        this.legacyQueue.add(new LegacyRotation(yaw, pitch, priority));
     }
 
-    public void legacyRotate(float[] fArray, Module module, int n) {
-        this.legacyRotate(fArray[0], fArray[1], module, n);
+    public void legacyRotate(float[] rotations, Module module, int priority) {
+        this.legacyRotate(rotations[0], rotations[1], module, priority);
     }
 
-    public void legacyRotate(float f, float f2, Module module, int n) {
+    public void legacyRotate(float yaw, float pitch, Module module, int priority) {
         this.legacyQueue.removeIf(legacyRotation -> legacyRotation.getModule() == module);
-        this.legacyQueue.add(new LegacyRotation(f, f2, module, n));
+        this.legacyQueue.add(new LegacyRotation(yaw, pitch, module, priority));
     }
 
     @SubscribeEvent
@@ -185,13 +185,13 @@ implements IMinecraft {
         if (this.rotation == null) {
             return;
         }
-        float f = keyboardTickEvent.getMovementForward();
-        float f2 = keyboardTickEvent.getMovementSideways();
-        float f3 = (RotationManager.mc.player.getYRot() - this.rotation.getYaw()) * ((float)Math.PI / 180);
-        float f4 = Mth.cos((double)f3);
-        float f5 = Mth.sin((double)f3);
-        keyboardTickEvent.setMovementForward(Math.round(f * f4 + f2 * f5));
-        keyboardTickEvent.setMovementSideways(Math.round(f2 * f4 - f * f5));
+        float forward = keyboardTickEvent.getMovementForward();
+        float sideways = keyboardTickEvent.getMovementSideways();
+        float deltaRad = (RotationManager.mc.player.getYRot() - this.rotation.getYaw()) * ((float)Math.PI / 180);
+        float cos = Mth.cos((double)deltaRad);
+        float sin = Mth.sin((double)deltaRad);
+        keyboardTickEvent.setMovementForward(Math.round(forward * cos + sideways * sin));
+        keyboardTickEvent.setMovementSideways(Math.round(sideways * cos - forward * sin));
         keyboardTickEvent.setCancelled(true);
     }
 
@@ -240,59 +240,56 @@ implements IMinecraft {
         }
     }
 
-    public void packetRotate(float[] fArray) {
-        this.packetRotate(fArray[0], fArray[1]);
+    public void packetRotate(float[] rotations) {
+        this.packetRotate(rotations[0], rotations[1]);
     }
 
-    private float[] applyJitter(float f, float f2) {
-        if (f2 <= -89.5f || f2 >= 89.5f) {
-            return new float[]{f, f2};
+    private float[] applyJitter(float yaw, float pitch) {
+        if (pitch <= -89.5f || pitch >= 89.5f) {
+            return new float[]{yaw, pitch};
         }
-        String string = Night.MODULE_MANAGER.getModule(RotationsModule.class).jitter.getValue();
-        if ("Grim".equalsIgnoreCase(string)) {
-            float f3 = (float)((Math.random() * 2.0 - 1.0) * (double)0.001f);
-            f2 = Mth.clamp((float)(f2 + f3), (float)-90.0f, (float)90.0f);
-        } else if ("Normal".equalsIgnoreCase(string)) {
-            float f4 = 0.15f;
-            float f5 = 0.35f;
-            float f6 = f4 + (float)(Math.random() * (double)(f5 - f4));
-            float f7 = f4 + (float)(Math.random() * (double)(f5 - f4));
-            float f8 = Math.random() < 0.5 ? -1.0f : 1.0f;
-            f += (f6 *= Math.random() < 0.5 ? -1.0f : 1.0f);
-            f2 = Mth.clamp((float)(f2 + (f7 *= f8)), (float)-90.0f, (float)90.0f);
+        String jitterMode = Night.MODULE_MANAGER.getModule(RotationsModule.class).jitter.getValue();
+        if ("Grim".equalsIgnoreCase(jitterMode)) {
+            float pitchOffset = (float)((Math.random() * 2.0 - 1.0) * (double)0.001f);
+            pitch = Mth.clamp((float)(pitch + pitchOffset), (float)-90.0f, (float)90.0f);
+        } else if ("Normal".equalsIgnoreCase(jitterMode)) {
+            float minJitter = 0.15f;
+            float maxJitter = 0.35f;
+            float yawJitter = minJitter + (float)(Math.random() * (double)(maxJitter - minJitter));
+            float pitchJitter = minJitter + (float)(Math.random() * (double)(maxJitter - minJitter));
+            float pitchSign = Math.random() < 0.5 ? -1.0f : 1.0f;
+            yaw += (yawJitter *= Math.random() < 0.5 ? -1.0f : 1.0f);
+            pitch = Mth.clamp((float)(pitch + (pitchJitter *= pitchSign)), (float)-90.0f, (float)90.0f);
         }
-        return new float[]{f, f2};
+        return new float[]{yaw, pitch};
     }
 
     public boolean isPacketRotateActive() {
         return System.currentTimeMillis() - this.lastPacketRotateTime < 500L;
     }
 
-    public void packetRotate(float f, float f2) {
-        this.packetRotate(f, f2, false);
+    public void packetRotate(float yaw, float pitch) {
+        this.packetRotate(yaw, pitch, false);
     }
 
-    public void packetRotate(float f, float f2, boolean bl) {
-        if (!bl && this.lastPacketTargetYaw == f && this.lastPacketTargetPitch == f2) {
+    public void packetRotate(float yaw, float pitch, boolean force) {
+        if (!force && this.lastPacketTargetYaw == yaw && this.lastPacketTargetPitch == pitch) {
             return;
         }
-        this.lastPacketTargetYaw = f;
-        this.lastPacketTargetPitch = f2;
-        float[] fArray = this.applyJitter(f, f2);
-        float f3 = fArray[0];
-        float f4 = fArray[1];
+        this.lastPacketTargetYaw = yaw;
+        this.lastPacketTargetPitch = pitch;
+        float[] jittered = this.applyJitter(yaw, pitch);
+        float finalYaw = jittered[0];
+        float finalPitch = jittered[1];
         this.lastPacketRotateTime = System.currentTimeMillis();
-        this.serverYaw = f3;
-        this.serverPitch = f4;
-        double d = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.getServerX() : RotationManager.mc.player.getX();
-        double d2 = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.getServerY() : RotationManager.mc.player.getY();
-        double d3 = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.getServerZ() : RotationManager.mc.player.getZ();
-        boolean bl2 = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.isServerOnGround() : RotationManager.mc.player.onGround();
-        ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Rot(f3, f4, bl2, RotationManager.mc.player.horizontalCollision)));
+        this.serverYaw = finalYaw;
+        this.serverPitch = finalPitch;
+        boolean onGround = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.isServerOnGround() : RotationManager.mc.player.onGround();
+        ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Rot(finalYaw, finalPitch, onGround, RotationManager.mc.player.horizontalCollision)));
     }
 
-    public void silentRotate(float[] fArray) {
-        this.silentRotate(fArray[0], fArray[1]);
+    public void silentRotate(float[] rotations) {
+        this.silentRotate(rotations[0], rotations[1]);
     }
 
     public void beginBatchRotation() {
@@ -300,13 +297,13 @@ implements IMinecraft {
         this.batchHasPending = false;
     }
 
-    public void batchRotate(float f, float f2) {
-        this.batchYaw = f;
-        this.batchPitch = f2;
+    public void batchRotate(float yaw, float pitch) {
+        this.batchYaw = yaw;
+        this.batchPitch = pitch;
         this.batchHasPending = true;
-        float[] fArray = this.applyJitter(f, f2);
-        this.serverYaw = fArray[0];
-        this.serverPitch = fArray[1];
+        float[] jittered = this.applyJitter(yaw, pitch);
+        this.serverYaw = jittered[0];
+        this.serverPitch = jittered[1];
         this.silentSyncRequired = true;
     }
 
@@ -319,73 +316,71 @@ implements IMinecraft {
         this.silentRotate(this.batchYaw, this.batchPitch);
     }
 
-    public void silentRotate(float f, float f2) {
+    public void silentRotate(float yaw, float pitch) {
         if (this.batchingRotations) {
-            this.batchRotate(f, f2);
+            this.batchRotate(yaw, pitch);
             return;
         }
-        boolean bl = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer();
-        double d = bl ? Night.POSITION_MANAGER.getServerX() : RotationManager.mc.player.getX();
-        double d2 = bl ? Night.POSITION_MANAGER.getServerY() : RotationManager.mc.player.getY();
-        double d3 = bl ? Night.POSITION_MANAGER.getServerZ() : RotationManager.mc.player.getZ();
-        boolean bl2 = bl ? Night.POSITION_MANAGER.isServerOnGround() : RotationManager.mc.player.onGround();
-        boolean bl3 = bl2;
-        if (this.lastSilentTargetYaw == f && this.lastSilentTargetPitch == f2 && this.lastSilentX == d && this.lastSilentY == d2 && this.lastSilentZ == d3) {
+        boolean isServerProxy = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer();
+        double posX = isServerProxy ? Night.POSITION_MANAGER.getServerX() : RotationManager.mc.player.getX();
+        double posY = isServerProxy ? Night.POSITION_MANAGER.getServerY() : RotationManager.mc.player.getY();
+        double posZ = isServerProxy ? Night.POSITION_MANAGER.getServerZ() : RotationManager.mc.player.getZ();
+        boolean onGround = isServerProxy ? Night.POSITION_MANAGER.isServerOnGround() : RotationManager.mc.player.onGround();
+        if (this.lastSilentTargetYaw == yaw && this.lastSilentTargetPitch == pitch && this.lastSilentX == posX && this.lastSilentY == posY && this.lastSilentZ == posZ) {
             return;
         }
-        this.lastSilentTargetYaw = f;
-        this.lastSilentTargetPitch = f2;
-        this.lastSilentX = d;
-        this.lastSilentY = d2;
-        this.lastSilentZ = d3;
-        float[] fArray = this.applyJitter(f, f2);
-        float f3 = fArray[0];
-        float f4 = fArray[1];
+        this.lastSilentTargetYaw = yaw;
+        this.lastSilentTargetPitch = pitch;
+        this.lastSilentX = posX;
+        this.lastSilentY = posY;
+        this.lastSilentZ = posZ;
+        float[] jittered = this.applyJitter(yaw, pitch);
+        float finalYaw = jittered[0];
+        float finalPitch = jittered[1];
         this.lastPacketRotateTime = System.currentTimeMillis();
         this.silentSyncRequired = true;
-        this.serverYaw = f3;
-        this.serverPitch = f4;
-        ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(d, d2, d3, f3, f4, bl2, RotationManager.mc.player.horizontalCollision)));
+        this.serverYaw = finalYaw;
+        this.serverPitch = finalPitch;
+        ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.PosRot(posX, posY, posZ, finalYaw, finalPitch, onGround, RotationManager.mc.player.horizontalCollision)));
     }
 
     public void resetSilentRotation() {
         if (RotationManager.mc.player == null) {
             return;
         }
-        float f = this.rotation != null ? this.rotation.getYaw() : RotationManager.mc.player.getYRot();
-        float f2 = this.rotation != null ? this.rotation.getPitch() : RotationManager.mc.player.getXRot();
-        float f3 = f2;
-        if (this.serverYaw == f && this.serverPitch == f2) {
+        float targetYaw = this.rotation != null ? this.rotation.getYaw() : RotationManager.mc.player.getYRot();
+        float targetPitch = this.rotation != null ? this.rotation.getPitch() : RotationManager.mc.player.getXRot();
+        if (this.serverYaw == targetYaw && this.serverPitch == targetPitch) {
             return;
         }
-        this.silentRotate(f, f2);
+        this.silentRotate(targetYaw, targetPitch);
     }
 
-    public void packetRotateRot(float[] fArray) {
-        this.packetRotateRot(fArray[0], fArray[1]);
+    public void packetRotateRot(float[] rotations) {
+        this.packetRotateRot(rotations[0], rotations[1]);
     }
 
-    public void packetRotateRot(float f, float f2) {
-        if (this.lastPacketTargetYaw == f && this.lastPacketTargetPitch == f2) {
+    public void packetRotateRot(float yaw, float pitch) {
+        if (this.lastPacketTargetYaw == yaw && this.lastPacketTargetPitch == pitch) {
             return;
         }
-        this.lastPacketTargetYaw = f;
-        this.lastPacketTargetPitch = f2;
-        float[] fArray = this.applyJitter(f, f2);
-        float f3 = fArray[0];
-        float f4 = fArray[1];
+        this.lastPacketTargetYaw = yaw;
+        this.lastPacketTargetPitch = pitch;
+        float[] jittered = this.applyJitter(yaw, pitch);
+        float finalYaw = jittered[0];
+        float finalPitch = jittered[1];
         this.lastPacketRotateTime = System.currentTimeMillis();
-        this.serverYaw = f3;
-        this.serverPitch = f4;
-        boolean bl = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.isServerOnGround() : RotationManager.mc.player.onGround();
-        ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Rot(f3, f4, bl, RotationManager.mc.player.horizontalCollision)));
+        this.serverYaw = finalYaw;
+        this.serverPitch = finalPitch;
+        boolean onGround = PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() ? Night.POSITION_MANAGER.isServerOnGround() : RotationManager.mc.player.onGround();
+        ProxyServerTickListener.allowSend(() -> mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Rot(finalYaw, finalPitch, onGround, RotationManager.mc.player.horizontalCollision)));
     }
 
-    public void wireRotate(String string, float[] fArray) {
-        if ("Silent".equalsIgnoreCase(string)) {
-            this.silentRotate(fArray);
+    public void wireRotate(String mode, float[] rotations) {
+        if ("Silent".equalsIgnoreCase(mode)) {
+            this.silentRotate(rotations);
         } else {
-            this.packetRotate(fArray);
+            this.packetRotate(rotations);
         }
     }
 
@@ -394,19 +389,19 @@ implements IMinecraft {
     }
 
     public float[] getRenderRotations() {
-        float f = MathUtils.wrapAngle(this.prevRenderYaw);
-        float f2 = MathUtils.wrapAngle(this.rotation == null ? RotationManager.mc.player.getYRot() : this.getServerYaw());
-        float f3 = f2 - f;
-        if (f3 > 180.0f) {
-            f3 -= 380.0f;
-        } else if (f3 < -180.0f) {
-            f3 += 360.0f;
+        float prevYawWrapped = MathUtils.wrapAngle(this.prevRenderYaw);
+        float targetYawWrapped = MathUtils.wrapAngle(this.rotation == null ? RotationManager.mc.player.getYRot() : this.getServerYaw());
+        float deltaYaw = targetYawWrapped - prevYawWrapped;
+        if (deltaYaw > 180.0f) {
+            deltaYaw -= 380.0f;
+        } else if (deltaYaw < -180.0f) {
+            deltaYaw += 360.0f;
         }
-        float f4 = Mth.lerp((float)Easing.toDelta(this.lastRenderTime, 1000), (float)f, (float)(f + f3));
-        float f5 = Mth.lerp((float)Easing.toDelta(this.lastRenderTime, 1000), (float)this.prevRenderPitch, (float)(this.rotation == null ? RotationManager.mc.player.getXRot() : this.getServerPitch()));
-        this.prevRenderYaw = f4;
-        this.prevRenderPitch = f5;
-        return new float[]{f4, f5};
+        float lerpedYaw = Mth.lerp((float)Easing.toDelta(this.lastRenderTime, 1000), (float)prevYawWrapped, (float)(prevYawWrapped + deltaYaw));
+        float lerpedPitch = Mth.lerp((float)Easing.toDelta(this.lastRenderTime, 1000), (float)this.prevRenderPitch, (float)(this.rotation == null ? RotationManager.mc.player.getXRot() : this.getServerPitch()));
+        this.prevRenderYaw = lerpedYaw;
+        this.prevRenderPitch = lerpedPitch;
+        return new float[]{lerpedYaw, lerpedPitch};
     }
 
     @Generated
@@ -440,8 +435,8 @@ implements IMinecraft {
     }
 
     @Generated
-    public void setSilentSyncRequired(boolean bl) {
-        this.silentSyncRequired = bl;
+    public void setSilentSyncRequired(boolean silentSyncRequired) {
+        this.silentSyncRequired = silentSyncRequired;
     }
 
     static {

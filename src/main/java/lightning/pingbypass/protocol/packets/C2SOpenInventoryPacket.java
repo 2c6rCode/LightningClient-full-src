@@ -14,8 +14,8 @@ extends PbPacket {
     public static final int ID = 15;
     private final boolean open;
 
-    public C2SOpenInventoryPacket(boolean bl) {
-        this.open = bl;
+    public C2SOpenInventoryPacket(boolean open) {
+        this.open = open;
     }
 
     public C2SOpenInventoryPacket(FriendlyByteBuf friendlyByteBuf) {

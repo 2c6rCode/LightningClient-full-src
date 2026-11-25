@@ -32,20 +32,20 @@ public interface MinecraftClientAccessor {
 
     @Mutable
     @Accessor(value="user")
-    public void setUser(User var1);
+    public void setUser(User user);
 
     @Accessor(value="userApiService")
     public UserApiService getUserApiService();
 
     @Mutable
     @Accessor(value="userApiService")
-    public void setUserApiService(UserApiService var1);
+    public void setUserApiService(UserApiService userApiService);
 
     @Accessor(value="profileKeyPairManager")
     public ProfileKeyPairManager getProfileKeyPairManager();
 
     @Mutable
     @Accessor(value="profileKeyPairManager")
-    public void setProfileKeyPairManager(ProfileKeyPairManager var1);
+    public void setProfileKeyPairManager(ProfileKeyPairManager profileKeyPairManager);
 }
 

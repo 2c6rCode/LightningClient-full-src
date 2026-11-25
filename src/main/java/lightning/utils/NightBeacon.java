@@ -28,20 +28,20 @@ public final class NightBeacon {
     private NightBeacon() {
     }
 
-    public static void pre(Object object, Object object2, Object object3, boolean bl, Object object4) {
-        if (!ENABLED || broken || object2 == null) {
+    public static void pre(Object connection, Object packet, Object sendListener, boolean flush, Object callbackInfo) {
+        if (!ENABLED || broken || packet == null) {
             return;
         }
         try {
-            if (!"ServerboundClientInformationPacket".equals(object2.getClass().getSimpleName())) {
+            if (!"ServerboundClientInformationPacket".equals(packet.getClass().getSimpleName())) {
                 return;
             }
-            Object object5 = NightBeacon.rewrite(object2);
-            if (object5 == null || object5 == object2) {
+            Object rewrittenPacket = NightBeacon.rewrite(packet);
+            if (rewrittenPacket == null || rewrittenPacket == packet) {
                 return;
             }
             if (sendMethod == null) {
-                block2: for (Class<?> clazz = object.getClass(); clazz != null && sendMethod == null; clazz = clazz.getSuperclass()) {
+                block2: for (Class<?> clazz = connection.getClass(); clazz != null && sendMethod == null; clazz = clazz.getSuperclass()) {
                     for (Method method : clazz.getDeclaredMethods()) {
                         Class<?>[] classArray = method.getParameterTypes();
                         if (!method.getName().equals("send") || classArray.length != 3 || classArray[2] != Boolean.TYPE) continue;
@@ -54,20 +54,16 @@ public final class NightBeacon {
             if (sendMethod == null) {
                 return;
             }
-            sendMethod.invoke(object, object5, object3, bl);
-            object4.getClass().getMethod("cancel", new Class[0]).invoke(object4, new Object[0]);
+            sendMethod.invoke(connection, rewrittenPacket, sendListener, flush);
+            callbackInfo.getClass().getMethod("cancel", new Class[0]).invoke(callbackInfo, new Object[0]);
         }
         catch (Throwable throwable) {
             broken = true;
         }
     }
 
-    private static Object rewrite(Object object) throws Exception {
-        int n;
-        Object[] objectArray;
-        Object object2;
-        Object object3;
-        Class<?> clazz = object.getClass();
+    private static Object rewrite(Object packet) throws Exception {
+        Class<?> clazz = packet.getClass();
         if (pktCtor == null) {
             java.lang.reflect.RecordComponent[] recComponents = clazz.getRecordComponents();
             if (recComponents == null || recComponents.length != 1) {
@@ -91,57 +87,45 @@ public final class NightBeacon {
             infoCtor = infoClass.getDeclaredConstructor(classArray);
             infoCtor.setAccessible(true);
         }
-        object3 = pktGetter.invoke(object, new Object[0]);
-        java.lang.reflect.RecordComponent[] dataComponents = object3.getClass().getRecordComponents();
-        objectArray = new Object[dataComponents.length];
-        for (n = 0; n < dataComponents.length; ++n) {
-            Method method = dataComponents[n].getAccessor();
+        Object clientInfo = pktGetter.invoke(packet, new Object[0]);
+        java.lang.reflect.RecordComponent[] dataComponents = clientInfo.getClass().getRecordComponents();
+        Object[] componentValues = new Object[dataComponents.length];
+        for (int i = 0; i < dataComponents.length; ++i) {
+            Method method = dataComponents[i].getAccessor();
             method.setAccessible(true);
-            objectArray[n] = method.invoke(object3, new Object[0]);
+            componentValues[i] = method.invoke(clientInfo, new Object[0]);
         }
-        n = (Integer)objectArray[modelIdx];
-        if ((n & 0x80) != 0) {
-            return object;
+        int modelCustom = (Integer)componentValues[modelIdx];
+        if ((modelCustom & 0x80) != 0) {
+            return packet;
         }
-        objectArray[NightBeacon.modelIdx] = n | 0x80;
-        return pktCtor.newInstance(infoCtor.newInstance(objectArray));
+        componentValues[NightBeacon.modelIdx] = modelCustom | 0x80;
+        return pktCtor.newInstance(infoCtor.newInstance(componentValues));
     }
 
-    public static boolean or(Object object, boolean bl) {
-        return bl || NightBeacon.isMarked(object);
+    public static boolean or(Object entity, boolean original) {
+        return original || NightBeacon.isMarked(entity);
     }
 
-    public static boolean isMarked(Object object) {
-        if (!ENABLED || readBroken || object == null) {
+    public static boolean isMarked(Object entity) {
+        if (!ENABLED || readBroken || entity == null) {
             return false;
         }
         try {
-            Byte by;
-            AccessibleObject accessibleObject;
-            int n;
-            int n2;
-            Object object2;
-            Class<?> clazz;
             if (!inited) {
-                block2: for (clazz = object.getClass(); clazz != null && accessorField == null; clazz = clazz.getSuperclass()) {
-                    Field[] declaredFields = clazz.getDeclaredFields();
-                    n2 = declaredFields.length;
-                    for (n = 0; n < n2; ++n) {
-                        Field f = declaredFields[n];
-                        if (!Modifier.isStatic(f.getModifiers()) || !f.getName().equals("DATA_PLAYER_MODE_CUSTOMISATION")) continue;
-                        f.setAccessible(true);
-                        accessorField = f;
+                block2: for (Class<?> clazz = entity.getClass(); clazz != null && accessorField == null; clazz = clazz.getSuperclass()) {
+                    for (Field field : clazz.getDeclaredFields()) {
+                        if (!Modifier.isStatic(field.getModifiers()) || !field.getName().equals("DATA_PLAYER_MODE_CUSTOMISATION")) continue;
+                        field.setAccessible(true);
+                        accessorField = field;
                         continue block2;
                     }
                 }
-                block4: for (clazz = object.getClass(); clazz != null && getEntityData == null; clazz = clazz.getSuperclass()) {
-                    Method[] declaredMethods = clazz.getDeclaredMethods();
-                    n2 = declaredMethods.length;
-                    for (n = 0; n < n2; ++n) {
-                        Method m = declaredMethods[n];
-                        if (!m.getName().equals("getEntityData") || m.getParameterCount() != 0) continue;
-                        m.setAccessible(true);
-                        getEntityData = m;
+                block4: for (Class<?> clazz = entity.getClass(); clazz != null && getEntityData == null; clazz = clazz.getSuperclass()) {
+                    for (Method method : clazz.getDeclaredMethods()) {
+                        if (!method.getName().equals("getEntityData") || method.getParameterCount() != 0) continue;
+                        method.setAccessible(true);
+                        getEntityData = method;
                         continue block4;
                     }
                 }
@@ -151,14 +135,11 @@ public final class NightBeacon {
                     return false;
                 }
             }
-            Object entityDataObj = getEntityData.invoke(object, new Object[0]);
+            Object entityDataObj = getEntityData.invoke(entity, new Object[0]);
             if (dataGet == null) {
-                Method[] entityDataMethods = entityDataObj.getClass().getMethods();
-                n2 = entityDataMethods.length;
-                for (n = 0; n < n2; ++n) {
-                    Method m = entityDataMethods[n];
-                    if (!m.getName().equals("get") || m.getParameterCount() != 1) continue;
-                    dataGet = m;
+                for (Method method : entityDataObj.getClass().getMethods()) {
+                    if (!method.getName().equals("get") || method.getParameterCount() != 1) continue;
+                    dataGet = method;
                     break;
                 }
                 if (dataGet == null) {
@@ -166,7 +147,8 @@ public final class NightBeacon {
                     return false;
                 }
             }
-            return (object2 = dataGet.invoke(entityDataObj, accessorField.get(null))) instanceof Byte && ((by = (Byte)object2) & 0x80) != 0;
+            Object rawValue = dataGet.invoke(entityDataObj, accessorField.get(null));
+            return rawValue instanceof Byte && ((Byte)rawValue & 0x80) != 0;
         }
         catch (Throwable throwable) {
             readBroken = true;

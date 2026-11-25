@@ -36,39 +36,39 @@ public abstract class RenderPassMixin {
     public abstract void disableScissor();
 
     @Inject(method={"enableScissor"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$clampScissorToBounds(int n, int n2, int n3, int n4, CallbackInfo callbackInfo) {
+    private void night$clampScissorToBounds(int x, int y, int width, int height, CallbackInfo callbackInfo) {
         if (this.renderArea == null) {
             return;
         }
-        int n5 = this.renderArea.x();
-        int n6 = this.renderArea.y();
-        int n7 = this.renderArea.width();
-        int n8 = this.renderArea.height();
-        int n9 = n;
-        int n10 = n2;
-        int n11 = n + n3;
-        int n12 = n2 + n4;
-        if (n9 < n5) {
-            n9 = n5;
+        int areaX = this.renderArea.x();
+        int areaY = this.renderArea.y();
+        int areaWidth = this.renderArea.width();
+        int areaHeight = this.renderArea.height();
+        int x1 = x;
+        int y1 = y;
+        int x2 = x + width;
+        int y2 = y + height;
+        if (x1 < areaX) {
+            x1 = areaX;
         }
-        if (n10 < n6) {
-            n10 = n6;
+        if (y1 < areaY) {
+            y1 = areaY;
         }
-        if (n11 > n5 + n7) {
-            n11 = n5 + n7;
+        if (x2 > areaX + areaWidth) {
+            x2 = areaX + areaWidth;
         }
-        if (n12 > n6 + n8) {
-            n12 = n6 + n8;
+        if (y2 > areaY + areaHeight) {
+            y2 = areaY + areaHeight;
         }
-        int n13 = n11 - n9;
-        int n14 = n12 - n10;
-        if (n13 <= 0 || n14 <= 0) {
+        int clampedWidth = x2 - x1;
+        int clampedHeight = y2 - y1;
+        if (clampedWidth <= 0 || clampedHeight <= 0) {
             this.disableScissor();
             callbackInfo.cancel();
             return;
         }
-        if (n9 != n || n10 != n2 || n13 != n3 || n14 != n4) {
-            this.backend.enableScissor(n9, n10, n13, n14);
+        if (x1 != x || y1 != y || clampedWidth != width || clampedHeight != height) {
+            this.backend.enableScissor(x1, y1, clampedWidth, clampedHeight);
             callbackInfo.cancel();
         }
     }

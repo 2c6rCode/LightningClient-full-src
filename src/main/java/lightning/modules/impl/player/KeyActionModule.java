@@ -99,14 +99,14 @@ extends Module {
         if (this.shouldRunOnProxy() || this.getNull() || KeyActionModule.mc.gui != null && KeyActionModule.mc.gui.screen() != null) {
             return;
         }
-        int n = -mouseInputEvent.getButton() - 1;
-        if (this.fireworkBind.getValue() != 0 && n == this.fireworkBind.getValue() && this.fireworkBind.getMode().equals("Bind")) {
+        int mouseBind = -mouseInputEvent.getButton() - 1;
+        if (this.fireworkBind.getValue() != 0 && mouseBind == this.fireworkBind.getValue() && this.fireworkBind.getMode().equals("Bind")) {
             this.throwFirework();
         }
-        if (this.pearlsBind.getValue() != 0 && n == this.pearlsBind.getValue() && this.pearlsBind.getMode().equals("Bind")) {
+        if (this.pearlsBind.getValue() != 0 && mouseBind == this.pearlsBind.getValue() && this.pearlsBind.getMode().equals("Bind")) {
             this.throwPearl();
         }
-        if (this.xpBind.getValue() != 0 && n == this.xpBind.getValue() && this.xpBind.getMode().equals("Bind")) {
+        if (this.xpBind.getValue() != 0 && mouseBind == this.xpBind.getValue() && this.xpBind.getMode().equals("Bind")) {
             this.xpActive = !this.xpActive;
         }
     }
@@ -122,15 +122,15 @@ extends Module {
         if (KeyActionModule.mc.player.getCooldowns().isOnCooldown(new ItemStack((ItemLike)Items.FIREWORK_ROCKET))) {
             return;
         }
-        int n2 = InventoryUtils.find(Items.FIREWORK_ROCKET, 0, this.fireworkSwitch.getValue().equalsIgnoreCase("AltSwap") || this.fireworkSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n3 = KeyActionModule.mc.player.getInventory().getSelectedSlot();
-        if (n2 == -1) {
+        int fireworkSlot = InventoryUtils.find(Items.FIREWORK_ROCKET, 0, this.fireworkSwitch.getValue().equalsIgnoreCase("AltSwap") || this.fireworkSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int previousSlot = KeyActionModule.mc.player.getInventory().getSelectedSlot();
+        if (fireworkSlot == -1) {
             Night.CHAT_MANAGER.tagged("No fireworks could be found in your hotbar.", this.getName());
             return;
         }
-        InventoryUtils.switchSlot(this.fireworkSwitch.getValue(), n2, n3);
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, KeyActionModule.mc.player.getYRot(), KeyActionModule.mc.player.getXRot()));
-        InventoryUtils.switchBack(this.fireworkSwitch.getValue(), n2, n3);
+        InventoryUtils.switchSlot(this.fireworkSwitch.getValue(), fireworkSlot, previousSlot);
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, KeyActionModule.mc.player.getYRot(), KeyActionModule.mc.player.getXRot()));
+        InventoryUtils.switchBack(this.fireworkSwitch.getValue(), fireworkSlot, previousSlot);
     }
 
     public boolean isPearlActive() {
@@ -150,21 +150,21 @@ extends Module {
         }
         this.lastPearlTime = System.currentTimeMillis();
         MultiTaskModule multiTaskModule = Night.MODULE_MANAGER.getModule(MultiTaskModule.class);
-        boolean bl = multiTaskModule != null && multiTaskModule.isToggled() && multiTaskModule.pearl.getValue() && KeyActionModule.mc.player.isUsingItem();
-        String string = bl ? "AltSwap" : this.pearlsSwitch.getValue();
-        int n2 = InventoryUtils.find(Items.ENDER_PEARL, 0, string.equalsIgnoreCase("AltSwap") || string.equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n3 = KeyActionModule.mc.player.getInventory().getSelectedSlot();
-        if (n2 == -1) {
+        boolean useAltSwap = multiTaskModule != null && multiTaskModule.isToggled() && multiTaskModule.pearl.getValue() && KeyActionModule.mc.player.isUsingItem();
+        String switchMode = useAltSwap ? "AltSwap" : this.pearlsSwitch.getValue();
+        int pearlSlot = InventoryUtils.find(Items.ENDER_PEARL, 0, switchMode.equalsIgnoreCase("AltSwap") || switchMode.equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int previousSlot = KeyActionModule.mc.player.getInventory().getSelectedSlot();
+        if (pearlSlot == -1) {
             Night.CHAT_MANAGER.tagged("No pearls could be found in your hotbar.", this.getName());
             return;
         }
         if (this.pearlsRotate.getValue()) {
             Night.ROTATION_MANAGER.packetRotate(KeyActionModule.mc.player.getYRot(), KeyActionModule.mc.player.getXRot());
         }
-        InventoryUtils.switchSlot(string, n2, n3);
-        NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, KeyActionModule.mc.player.getYRot(), KeyActionModule.mc.player.getXRot()), this::serverSend);
+        InventoryUtils.switchSlot(switchMode, pearlSlot, previousSlot);
+        NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, KeyActionModule.mc.player.getYRot(), KeyActionModule.mc.player.getXRot()), this::serverSend);
         this.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-        InventoryUtils.switchBack(string, n2, n3);
+        InventoryUtils.switchBack(switchMode, pearlSlot, previousSlot);
     }
 
     @SubscribeEvent
@@ -175,8 +175,8 @@ extends Module {
         this.checkHoldBind(this.fireworkBind, this::throwFirework);
         this.checkHoldBind(this.pearlsBind, this::throwPearl);
         if (this.xpBind.getValue() != 0 && !this.xpBind.getMode().equals("Bind")) {
-            boolean bl = KeyboardUtils.isBindDown(this.xpBind.getValue());
-            this.xpActive = this.xpBind.getMode().equals("Hold") == bl;
+            boolean bindDown = KeyboardUtils.isBindDown(this.xpBind.getValue());
+            this.xpActive = this.xpBind.getMode().equals("Hold") == bindDown;
         }
         this.tickXp();
     }
@@ -185,8 +185,8 @@ extends Module {
         if (bindSetting.getValue() == 0 || bindSetting.getMode().equals("Bind")) {
             return;
         }
-        boolean bl = KeyboardUtils.isBindDown(bindSetting.getValue());
-        if (bindSetting.getMode().equals("Hold") == bl) {
+        boolean bindDown = KeyboardUtils.isBindDown(bindSetting.getValue());
+        if (bindSetting.getMode().equals("Hold") == bindDown) {
             runnable.run();
         }
     }
@@ -216,27 +216,25 @@ extends Module {
             }
             return;
         }
-        int n2 = InventoryUtils.find(Items.EXPERIENCE_BOTTLE, 0, this.xpSwitch.getValue().equalsIgnoreCase("AltSwap") || this.xpSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-        int n3 = KeyActionModule.mc.player.getInventory().getSelectedSlot();
-        if (n2 == -1) {
+        int xpSlot = InventoryUtils.find(Items.EXPERIENCE_BOTTLE, 0, this.xpSwitch.getValue().equalsIgnoreCase("AltSwap") || this.xpSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+        int previousSlot = KeyActionModule.mc.player.getInventory().getSelectedSlot();
+        if (xpSlot == -1) {
             Night.CHAT_MANAGER.tagged("No experience bottles could be found in your hotbar.", this.getName());
             this.xpActive = false;
             return;
         }
         SprintModule sprintModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(SprintModule.class) : null;
-        SprintModule sprintModule2 = sprintModule;
-        float f = sprintModule != null && sprintModule.isToggled() && sprintModule.isGrimCompensating() && sprintModule.getPendingYaw() != null ? sprintModule.getPendingYaw().floatValue() : (Night.ROTATION_MANAGER != null && Night.ROTATION_MANAGER.getRotation() != null ? Night.ROTATION_MANAGER.getRotation().getYaw() : KeyActionModule.mc.player.getYRot());
-        float f2 = this.xpRotate.getValue() ? 90.0f : KeyActionModule.mc.player.getXRot();
-        float f3 = f2;
+        float yaw = sprintModule != null && sprintModule.isToggled() && sprintModule.isGrimCompensating() && sprintModule.getPendingYaw() != null ? sprintModule.getPendingYaw().floatValue() : (Night.ROTATION_MANAGER != null && Night.ROTATION_MANAGER.getRotation() != null ? Night.ROTATION_MANAGER.getRotation().getYaw() : KeyActionModule.mc.player.getYRot());
+        float pitch = this.xpRotate.getValue() ? 90.0f : KeyActionModule.mc.player.getXRot();
         if (this.xpRotate.getValue() && Night.ROTATION_MANAGER != null) {
-            Night.ROTATION_MANAGER.silentRotate(f, f2);
+            Night.ROTATION_MANAGER.silentRotate(yaw, pitch);
         }
-        InventoryUtils.switchSlot(this.xpSwitch.getValue(), n2, n3);
+        InventoryUtils.switchSlot(this.xpSwitch.getValue(), xpSlot, previousSlot);
         for (int i = 0; i < this.xpBurst(); ++i) {
-            NetworkUtils.sendSequencedPacket(n -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, n, f, f2), this::serverSend);
+            NetworkUtils.sendSequencedPacket(sequence -> new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, sequence, yaw, pitch), this::serverSend);
         }
         this.serverSend((Packet<?>)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-        InventoryUtils.switchBack(this.xpSwitch.getValue(), n2, n3);
+        InventoryUtils.switchBack(this.xpSwitch.getValue(), xpSlot, previousSlot);
         this.xpTicks = 0;
     }
 
@@ -265,11 +263,11 @@ extends Module {
     }
 
     private int xpDelayInt() {
-        int n = this.xpDelay.getValue().intValue();
+        int delayTicks = this.xpDelay.getValue().intValue();
         if (this.xpFullRepair.getValue()) {
-            n = Math.max(n, 5);
+            delayTicks = Math.max(delayTicks, 5);
         }
-        return n;
+        return delayTicks;
     }
 
     private String xpAwValue() {

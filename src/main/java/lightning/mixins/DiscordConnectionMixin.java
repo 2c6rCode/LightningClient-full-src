@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(value={Connection.class})
 public class DiscordConnectionMixin {
     @ModifyArg(method={"open"}, at={@At(value="INVOKE", target="Llightning/shaded0/discordipc/connection/WinConnection;<init>(Ljava/lang/String;Ljava/util/function/Consumer;)V")}, index=0)
-    private static String night$fixWindowsPipePrefix(String string) {
-        return string.replace("\\\\?\\pipe\\", "\\\\.\\pipe\\");
+    private static String night$fixWindowsPipePrefix(String pipePath) {
+        return pipePath.replace("\\\\?\\pipe\\", "\\\\.\\pipe\\");
     }
 }
 

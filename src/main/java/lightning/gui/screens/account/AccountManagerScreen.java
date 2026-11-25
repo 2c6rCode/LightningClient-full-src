@@ -49,34 +49,33 @@ extends Screen {
     private Button loginButton;
     private Button deleteButton;
 
-    public AccountManagerScreen(Screen screen) {
+    public AccountManagerScreen(Screen parent) {
         super((Component)Component.literal((String)"Account Manager"));
-        this.parent = screen;
+        this.parent = parent;
     }
 
     protected void init() {
-        int n = this.width / 2;
-        int n2 = this.height - 55;
-        this.loginButton = Button.builder((Component)Component.literal((String)"Login"), button -> this.loginSelected()).bounds(n - 160, n2, 102, 20).build();
+        int centerX = this.width / 2;
+        int buttonY = this.height - 55;
+        this.loginButton = Button.builder((Component)Component.literal((String)"Login"), button -> this.loginSelected()).bounds(centerX - 160, buttonY, 102, 20).build();
         this.addRenderableWidget(this.loginButton);
-        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Add Microsoft"), button -> Minecraft.getInstance().gui.setScreen((Screen)new MicrosoftLoginScreen(this))).bounds(n - 52, n2, 104, 20).build());
-        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Add Offline"), button -> Minecraft.getInstance().gui.setScreen((Screen)new AddOfflineAccountScreen(this))).bounds(n + 58, n2, 102, 20).build());
+        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Add Microsoft"), button -> Minecraft.getInstance().gui.setScreen((Screen)new MicrosoftLoginScreen(this))).bounds(centerX - 52, buttonY, 104, 20).build());
+        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Add Offline"), button -> Minecraft.getInstance().gui.setScreen((Screen)new AddOfflineAccountScreen(this))).bounds(centerX + 58, buttonY, 102, 20).build());
         this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Random Offline"), button -> {
-            Account account;
-            String[] stringArray = new String[]{"Shadow", "Lightning", "Ghost", "Viper", "Phantom", "Raven", "Frost", "Nova", "Dark", "Storm"};
-            String string = stringArray[new Random().nextInt(stringArray.length)] + "_" + (100 + new Random().nextInt(900));
-            this.selectedAccount = account = Night.ACCOUNT_MANAGER.loginOffline(string);
-            this.setStatus("Logged in as " + string);
-        }).bounds(n - 160, n2 + 25, 102, 20).build());
+            String[] prefixes = new String[]{"Shadow", "Lightning", "Ghost", "Viper", "Phantom", "Raven", "Frost", "Nova", "Dark", "Storm"};
+            String username = prefixes[new Random().nextInt(prefixes.length)] + "_" + (100 + new Random().nextInt(900));
+            this.selectedAccount = Night.ACCOUNT_MANAGER.loginOffline(username);
+            this.setStatus("Logged in as " + username);
+        }).bounds(centerX - 160, buttonY + 25, 102, 20).build());
         this.deleteButton = Button.builder((Component)Component.literal((String)"Delete"), button -> {
             if (this.selectedAccount != null) {
                 Night.ACCOUNT_MANAGER.removeAccount(this.selectedAccount);
                 this.selectedAccount = null;
                 this.setStatus("Account deleted");
             }
-        }).bounds(n - 52, n2 + 25, 104, 20).build();
+        }).bounds(centerX - 52, buttonY + 25, 104, 20).build();
         this.addRenderableWidget(this.deleteButton);
-        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Back"), button -> this.onClose()).bounds(n + 58, n2 + 25, 102, 20).build());
+        this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Back"), button -> this.onClose()).bounds(centerX + 58, buttonY + 25, 102, 20).build());
         this.updateButtonStates();
     }
 
@@ -84,8 +83,8 @@ extends Screen {
         if (this.selectedAccount != null) {
             this.setStatus("Logging in to " + this.selectedAccount.getName() + "...");
             CompletableFuture.runAsync(() -> {
-                boolean bl = Night.ACCOUNT_MANAGER.login(this.selectedAccount);
-                if (bl) {
+                boolean success = Night.ACCOUNT_MANAGER.login(this.selectedAccount);
+                if (success) {
                     this.setStatus("Logged in as " + this.selectedAccount.getName());
                 } else {
                     this.setStatus("\u00a7cFailed to login to " + this.selectedAccount.getName());
@@ -97,147 +96,141 @@ extends Screen {
     private void updateButtonStates() {
         if (this.loginButton != null) {
             this.loginButton.active = this.selectedAccount != null;
-            boolean bl = this.loginButton.active;
         }
         if (this.deleteButton != null) {
             this.deleteButton.active = this.selectedAccount != null;
         }
     }
 
-    private void setStatus(String string) {
-        this.statusMessage = string;
+    private void setStatus(String message) {
+        this.statusMessage = message;
         this.statusMessageTime = System.currentTimeMillis();
     }
 
-    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         Renderer2D.renderGradient(guiGraphicsExtractor, 0.0f, 0.0f, this.width, this.height, new Color(24, 24, 24), new Color(12, 12, 12));
     }
 
-    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
-        int n3 = this.width / 2;
-        String string = "Account Manager";
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, n3 - Night.FONT_MANAGER.getWidth(string) / 2, 12, Color.WHITE);
-        String string2 = Night.ACCOUNT_MANAGER.getCurrentName();
+    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+        int centerX = this.width / 2;
+        String title = "Account Manager";
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, title, centerX - Night.FONT_MANAGER.getWidth(title) / 2, 12, Color.WHITE);
+        String currentName = Night.ACCOUNT_MANAGER.getCurrentName();
         if (System.currentTimeMillis() - this.statusMessageTime < 5000L && !this.statusMessage.isEmpty()) {
             Color statusColor = this.statusMessage.startsWith("\u00a7c") ? new Color(255, 100, 100) : (this.statusMessage.startsWith("Logging") ? new Color(200, 200, 200) : new Color(255, 255, 100));
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, this.statusMessage, n3 - Night.FONT_MANAGER.getWidth(this.statusMessage) / 2, 28, statusColor);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, this.statusMessage, centerX - Night.FONT_MANAGER.getWidth(this.statusMessage) / 2, 28, statusColor);
         } else {
-            String loggedInText = "Logged in as: \u00a7f" + string2;
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, loggedInText, n3 - Night.FONT_MANAGER.getWidth(loggedInText) / 2, 28, new Color(180, 180, 180));
+            String loggedInText = "Logged in as: \u00a7f" + currentName;
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, loggedInText, centerX - Night.FONT_MANAGER.getWidth(loggedInText) / 2, 28, new Color(180, 180, 180));
         }
-        int n4 = n3 - 160;
-        int n5 = 55;
-        int n6 = 320;
-        int n7 = this.height - 120;
-        Renderer2D.renderQuad(guiGraphicsExtractor, n4, n5, n4 + n6, n5 + n7, new Color(24, 24, 24, 230));
-        Renderer2D.renderOutline(guiGraphicsExtractor, n4, n5, n4 + n6, n5 + n7, new Color(60, 60, 60, 160));
+        int listX = centerX - 160;
+        int listY = 55;
+        int listWidth = 320;
+        int listHeight = this.height - 120;
+        Renderer2D.renderQuad(guiGraphicsExtractor, listX, listY, listX + listWidth, listY + listHeight, new Color(24, 24, 24, 230));
+        Renderer2D.renderOutline(guiGraphicsExtractor, listX, listY, listX + listWidth, listY + listHeight, new Color(60, 60, 60, 160));
         this.scrollOffset += (this.targetScroll - this.scrollOffset) * 0.3f;
-        List<Account> list = Night.ACCOUNT_MANAGER.getAccounts();
-        int n8 = 32;
-        int n9 = Math.max(0, list.size() * n8 - n7);
-        this.targetScroll = Mth.clamp((float)this.targetScroll, (float)(-n9), (float)0.0f);
-        guiGraphicsExtractor.enableScissor(n4, n5, n4 + n6, n5 + n7);
-        float f2 = (float)n5 + this.scrollOffset;
-        for (Account account : list) {
-            if (f2 + (float)n8 >= (float)n5 && f2 <= (float)(n5 + n7)) {
-                Object object;
-                Object object2;
-                float f3;
-                float f4;
-                boolean bl = account == this.selectedAccount;
-                boolean bl2 = account.getName().equalsIgnoreCase(string2);
-                boolean bl3 = n >= n4 + 4 && n <= n4 + n6 - 4 && (float)n2 >= f2 + 2.0f && (float)n2 <= f2 + (float)n8 - 2.0f && n2 >= n5 && n2 <= n5 + n7;
-                float f5 = bl3 ? 1.0f : 0.0f;
-                float f6 = this.hoverAnimations.getOrDefault(account, Float.valueOf(0.0f)).floatValue();
-                f6 += (f5 - f6) * 0.22f;
-                if (Math.abs(f5 - f6) < 0.005f) {
-                    f6 = f5;
+        List<Account> accounts = Night.ACCOUNT_MANAGER.getAccounts();
+        int rowHeight = 32;
+        int maxScroll = Math.max(0, accounts.size() * rowHeight - listHeight);
+        this.targetScroll = Mth.clamp((float)this.targetScroll, (float)(-maxScroll), (float)0.0f);
+        guiGraphicsExtractor.enableScissor(listX, listY, listX + listWidth, listY + listHeight);
+        float entryY = (float)listY + this.scrollOffset;
+        for (Account account : accounts) {
+            if (entryY + (float)rowHeight >= (float)listY && entryY <= (float)(listY + listHeight)) {
+                boolean isSelected = account == this.selectedAccount;
+                boolean isActive = account.getName().equalsIgnoreCase(currentName);
+                boolean isHovered = mouseX >= listX + 4 && mouseX <= listX + listWidth - 4 && (float)mouseY >= entryY + 2.0f && (float)mouseY <= entryY + (float)rowHeight - 2.0f && mouseY >= listY && mouseY <= listY + listHeight;
+                float targetHover = isHovered ? 1.0f : 0.0f;
+                float hoverAnim = this.hoverAnimations.getOrDefault(account, Float.valueOf(0.0f)).floatValue();
+                hoverAnim += (targetHover - hoverAnim) * 0.22f;
+                if (Math.abs(targetHover - hoverAnim) < 0.005f) {
+                    hoverAnim = targetHover;
                 }
-                this.hoverAnimations.put(account, Float.valueOf(f6));
-                Color color = bl ? new Color(50, 50, 50, 220) : (bl2 ? new Color(40, 40, 40, 180) : new Color(30, 30, 30, 150));
-                Renderer2D.renderQuad(guiGraphicsExtractor, n4 + 4, f2 + 2.0f, n4 + n6 - 4, f2 + (float)n8 - 2.0f, color);
-                Color color2 = this.getAccentColor();
-                if (f6 > 0.001f) {
-                    f3 = (float)(n6 - 8) * f6;
-                    Color color3 = new Color(color2.getRed(), color2.getGreen(), color2.getBlue(), (int)(90.0f * f6));
-                    object2 = new Color(color2.getRed(), color2.getGreen(), color2.getBlue(), (int)(20.0f * f6));
-                    Renderer2D.renderSidewaysGradient(guiGraphicsExtractor, n4 + 4, f2 + 2.0f, (float)(n4 + 4) + f3, f2 + (float)n8 - 2.0f, color3, (Color)object2);
-                    object = new Color(color2.getRed(), color2.getGreen(), color2.getBlue(), (int)(200.0f * f6));
-                    Renderer2D.renderQuad(guiGraphicsExtractor, (float)(n4 + 3) + f3, f2 + 2.0f, (float)(n4 + 5) + f3, f2 + (float)n8 - 2.0f, (Color)object);
+                this.hoverAnimations.put(account, Float.valueOf(hoverAnim));
+                Color cardColor = isSelected ? new Color(50, 50, 50, 220) : (isActive ? new Color(40, 40, 40, 180) : new Color(30, 30, 30, 150));
+                Renderer2D.renderQuad(guiGraphicsExtractor, listX + 4, entryY + 2.0f, listX + listWidth - 4, entryY + (float)rowHeight - 2.0f, cardColor);
+                Color accent = this.getAccentColor();
+                if (hoverAnim > 0.001f) {
+                    float fillWidth = (float)(listWidth - 8) * hoverAnim;
+                    Color leftGlow = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), (int)(90.0f * hoverAnim));
+                    Color rightGlow = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), (int)(20.0f * hoverAnim));
+                    Renderer2D.renderSidewaysGradient(guiGraphicsExtractor, listX + 4, entryY + 2.0f, (float)(listX + 4) + fillWidth, entryY + (float)rowHeight - 2.0f, leftGlow, rightGlow);
+                    Color edgeLine = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), (int)(200.0f * hoverAnim));
+                    Renderer2D.renderQuad(guiGraphicsExtractor, (float)(listX + 3) + fillWidth, entryY + 2.0f, (float)(listX + 5) + fillWidth, entryY + (float)rowHeight - 2.0f, edgeLine);
                 }
-                float f7 = bl ? 1.0f : f6;
-                f3 = f7;
-                if (f7 > 0.001f) {
-                    float f8 = bl ? 3.5f : 3.0f * f6;
-                    object2 = new Color(color2.getRed(), color2.getGreen(), color2.getBlue(), (int)(255.0f * f7));
-                    Renderer2D.renderQuad(guiGraphicsExtractor, n4 + 4, f2 + 2.0f, (float)(n4 + 4) + f8, f2 + (float)n8 - 2.0f, (Color)object2);
+                float barStrength = isSelected ? 1.0f : hoverAnim;
+                if (barStrength > 0.001f) {
+                    float barWidth = isSelected ? 3.5f : 3.0f * hoverAnim;
+                    Color barColor = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), (int)(255.0f * barStrength));
+                    Renderer2D.renderQuad(guiGraphicsExtractor, listX + 4, entryY + 2.0f, (float)(listX + 4) + barWidth, entryY + (float)rowHeight - 2.0f, barColor);
                 }
-                float f9 = 3.0f * f6;
-                object2 = (bl2 ? "\u00a7a\u2713 " : "") + account.getName();
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object2, (int)((float)(n4 + 14) + f9), (int)(f2 + 6.0f), bl2 ? Color.GREEN : Color.WHITE);
-                object = "[" + account.getType().getDisplayName() + "]";
-                Color color4 = switch (account.getType()) {
+                float textOffset = 3.0f * hoverAnim;
+                String nameText = (isActive ? "\u00a7a\u2713 " : "") + account.getName();
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, nameText, (int)((float)(listX + 14) + textOffset), (int)(entryY + 6.0f), isActive ? Color.GREEN : Color.WHITE);
+                String typeTag = "[" + account.getType().getDisplayName() + "]";
+                Color typeColor = switch (account.getType()) {
                     default -> throw new MatchException(null, null);
                     case AccountType.MICROSOFT -> new Color(0, 220, 255);
                     case AccountType.OFFLINE -> new Color(255, 200, 80);
                     case AccountType.SESSION -> new Color(220, 120, 255);
                 };
-                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object, (int)((float)(n4 + 14) + f9), (int)(f2 + 18.0f), color4);
-                if (bl2) {
-                    String string3 = "\u00a7aACTIVE";
-                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string3, n4 + n6 - Night.FONT_MANAGER.getWidth(string3) - 12, (int)(f2 + 11.0f), Color.GREEN);
+                Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, typeTag, (int)((float)(listX + 14) + textOffset), (int)(entryY + 18.0f), typeColor);
+                if (isActive) {
+                    String activeText = "\u00a7aACTIVE";
+                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, activeText, listX + listWidth - Night.FONT_MANAGER.getWidth(activeText) - 12, (int)(entryY + 11.0f), Color.GREEN);
                 }
             }
-            f2 += (float)n8;
+            entryY += (float)rowHeight;
         }
         guiGraphicsExtractor.disableScissor();
-        if (list.isEmpty()) {
-            String string4 = "No saved accounts. Click 'Add Offline' or 'Add Microsoft' below.";
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string4, n3 - Night.FONT_MANAGER.getWidth(string4) / 2, n5 + n7 / 2 - 5, new Color(140, 140, 160));
+        if (accounts.isEmpty()) {
+            String emptyText = "No saved accounts. Click 'Add Offline' or 'Add Microsoft' below.";
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, emptyText, centerX - Night.FONT_MANAGER.getWidth(emptyText) / 2, listY + listHeight / 2 - 5, new Color(140, 140, 160));
         }
         this.updateButtonStates();
-        super.extractRenderState(guiGraphicsExtractor, n, n2, f);
+        super.extractRenderState(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
     }
 
-    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean bl) {
-        double d = mouseButtonEvent.x();
-        double d2 = mouseButtonEvent.y();
-        int n = mouseButtonEvent.button();
-        int n2 = this.width / 2;
-        int n3 = n2 - 160;
-        int n4 = 55;
-        int n5 = 320;
-        int n6 = this.height - 120;
-        if (n == 0 && d >= (double)n3 && d <= (double)(n3 + n5) && d2 >= (double)n4 && d2 <= (double)(n4 + n6)) {
-            List<Account> list = Night.ACCOUNT_MANAGER.getAccounts();
-            float f = (float)(d2 - (double)n4 - (double)this.scrollOffset);
-            int n7 = 32;
-            int n8 = (int)(f / (float)n7);
-            if (n8 >= 0 && n8 < list.size()) {
-                Account account = list.get(n8);
-                long l = System.currentTimeMillis();
-                if (account == this.lastClickedAccount && (l - this.lastClickTime < 350L || bl)) {
+    public boolean mouseClicked(MouseButtonEvent mouseButtonEvent, boolean isDoubleClick) {
+        double mouseX = mouseButtonEvent.x();
+        double mouseY = mouseButtonEvent.y();
+        int button = mouseButtonEvent.button();
+        int centerX = this.width / 2;
+        int listX = centerX - 160;
+        int listY = 55;
+        int listWidth = 320;
+        int listHeight = this.height - 120;
+        if (button == 0 && mouseX >= (double)listX && mouseX <= (double)(listX + listWidth) && mouseY >= (double)listY && mouseY <= (double)(listY + listHeight)) {
+            List<Account> accounts = Night.ACCOUNT_MANAGER.getAccounts();
+            float relY = (float)(mouseY - (double)listY - (double)this.scrollOffset);
+            int rowHeight = 32;
+            int index = (int)(relY / (float)rowHeight);
+            if (index >= 0 && index < accounts.size()) {
+                Account account = accounts.get(index);
+                long now = System.currentTimeMillis();
+                if (account == this.lastClickedAccount && (now - this.lastClickTime < 350L || isDoubleClick)) {
                     this.selectedAccount = account;
                     this.loginSelected();
                 } else {
                     this.selectedAccount = account;
                 }
                 this.lastClickedAccount = account;
-                this.lastClickTime = l;
+                this.lastClickTime = now;
                 this.updateButtonStates();
                 return true;
             }
         }
-        return super.mouseClicked(mouseButtonEvent, bl);
+        return super.mouseClicked(mouseButtonEvent, isDoubleClick);
     }
 
-    public boolean mouseScrolled(double d, double d2, double d3, double d4) {
-        List<Account> list = Night.ACCOUNT_MANAGER.getAccounts();
-        int n = this.height - 120;
-        int n2 = 32;
-        int n3 = Math.max(0, list.size() * n2 - n);
-        this.targetScroll += (float)(d4 * 24.0);
-        this.targetScroll = Mth.clamp((float)this.targetScroll, (float)(-n3), (float)0.0f);
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        List<Account> accounts = Night.ACCOUNT_MANAGER.getAccounts();
+        int listHeight = this.height - 120;
+        int rowHeight = 32;
+        int maxScroll = Math.max(0, accounts.size() * rowHeight - listHeight);
+        this.targetScroll += (float)(verticalAmount * 24.0);
+        this.targetScroll = Mth.clamp((float)this.targetScroll, (float)(-maxScroll), (float)0.0f);
         return true;
     }
 

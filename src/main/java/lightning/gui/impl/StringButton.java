@@ -32,42 +32,42 @@ extends Button {
     private boolean selecting = false;
     private int cursorIndex = 0;
 
-    public StringButton(StringSetting stringSetting, Frame frame, int n) {
-        super(stringSetting, frame, n, stringSetting.getDescription());
+    public StringButton(StringSetting stringSetting, Frame frame, int height) {
+        super(stringSetting, frame, height, stringSetting.getDescription());
         this.setting = stringSetting;
     }
 
     @Override
-    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public void render(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), this.getX() + this.getWidth() - this.getPadding() - 1, this.getY() + this.getHeight() - 1, new Color(0, 0, 0, 40));
         LightningSkin.fq(guiGraphicsExtractor, this.getX() + this.getPadding() + 1, this.getY(), this.getX() + this.getWidth() - this.getPadding() - 1, this.getY() + this.getHeight() - 1, ClickGuiScreen.getButtonColor(this.getY(), 100));
-        Object object = this.currentString;
+        String displayText = this.currentString;
         if (this.listening) {
             if (this.selecting) {
-                object = this.currentString;
+                displayText = this.currentString;
             } else {
-                int n3 = Math.max(0, Math.min(this.cursorIndex, this.currentString.length()));
-                String string = this.currentString.substring(0, n3);
-                String string2 = this.currentString.substring(n3);
-                String string3 = Night.CLICK_GUI.isShowLine() ? "|" : " ";
-                object = string + string3 + string2;
+                int clampedCursor = Math.max(0, Math.min(this.cursorIndex, this.currentString.length()));
+                String before = this.currentString.substring(0, clampedCursor);
+                String after = this.currentString.substring(clampedCursor);
+                String cursor = Night.CLICK_GUI.isShowLine() ? "|" : " ";
+                displayText = before + cursor + after;
             }
         } else {
-            object = this.setting.getTag() + " " + String.valueOf(ChatFormatting.GRAY) + this.setting.getValue();
+            displayText = this.setting.getTag() + " " + String.valueOf(ChatFormatting.GRAY) + this.setting.getValue();
         }
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, (String)object, this.getX() + this.getTextPadding() + 1, this.getY() + 2, this.selecting ? ClickGuiScreen.getButtonColor(this.getY(), 255) : Color.WHITE);
+        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, displayText, this.getX() + this.getTextPadding() + 1, this.getY() + 2, this.selecting ? ClickGuiScreen.getButtonColor(this.getY(), 255) : Color.WHITE);
     }
 
     @Override
-    public void mouseClicked(double d, double d2, int n) {
-        if (n == 0) {
-            if (this.isHovering(d, d2) && !this.listening) {
+    public void mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            if (this.isHovering(mouseX, mouseY) && !this.listening) {
                 this.listening = true;
                 this.currentString = this.setting.getValue();
                 this.cursorIndex = this.currentString.length();
                 this.selecting = false;
                 this.playClickSound();
-            } else if (!this.isHovering(d, d2)) {
+            } else if (!this.isHovering(mouseX, mouseY)) {
                 this.listening = false;
                 this.selecting = false;
             }
@@ -75,23 +75,23 @@ extends Button {
     }
 
     @Override
-    public void keyPressed(int n, int n2, int n3) {
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!this.listening) {
             return;
         }
         Window window = mc.getWindow();
-        boolean bl = InputConstants.isKeyDown((Window)window, (int)(Util.getPlatform() == Util.OS.OSX ? 343 : 341));
-        if (n == 256) {
+        boolean ctrlDown = InputConstants.isKeyDown((Window)window, (int)(Util.getPlatform() == Util.OS.OSX ? 343 : 341));
+        if (keyCode == 256) {
             this.selecting = false;
             return;
         }
-        if (n == 257) {
+        if (keyCode == 257) {
             this.setting.setValue(this.currentString);
             this.selecting = false;
             this.listening = false;
             return;
         }
-        if (n == 263 && !this.currentString.isEmpty()) {
+        if (keyCode == 263 && !this.currentString.isEmpty()) {
             if (this.selecting) {
                 this.selecting = false;
                 this.cursorIndex = 0;
@@ -100,7 +100,7 @@ extends Button {
             }
             return;
         }
-        if (n == 262 && !this.currentString.isEmpty()) {
+        if (keyCode == 262 && !this.currentString.isEmpty()) {
             if (this.selecting) {
                 this.selecting = false;
                 this.cursorIndex = this.currentString.length();
@@ -109,7 +109,7 @@ extends Button {
             }
             return;
         }
-        if (n == 259) {
+        if (keyCode == 259) {
             if (this.selecting) {
                 this.currentString = "";
                 this.cursorIndex = 0;
@@ -120,7 +120,7 @@ extends Button {
             }
             return;
         }
-        if (n == 261) {
+        if (keyCode == 261) {
             if (this.selecting) {
                 this.currentString = "";
                 this.cursorIndex = 0;
@@ -130,17 +130,17 @@ extends Button {
             }
             return;
         }
-        if (bl) {
-            if (n == 86) {
+        if (ctrlDown) {
+            if (keyCode == 86) {
                 try {
-                    String string = StringButton.mc.keyboardHandler.getClipboard();
+                    String clipboard = StringButton.mc.keyboardHandler.getClipboard();
                     if (this.selecting) {
-                        this.currentString = string;
+                        this.currentString = clipboard;
                         this.cursorIndex = this.currentString.length();
                         this.selecting = false;
                     } else {
-                        this.currentString = this.currentString.substring(0, this.cursorIndex) + string + this.currentString.substring(this.cursorIndex);
-                        this.cursorIndex += string.length();
+                        this.currentString = this.currentString.substring(0, this.cursorIndex) + clipboard + this.currentString.substring(this.cursorIndex);
+                        this.cursorIndex += clipboard.length();
                     }
                 }
                 catch (Exception exception) {
@@ -148,7 +148,7 @@ extends Button {
                 }
                 return;
             }
-            if (n == 67 && this.selecting) {
+            if (keyCode == 67 && this.selecting) {
                 try {
                     StringButton.mc.keyboardHandler.setClipboard(this.currentString);
                 }
@@ -157,7 +157,7 @@ extends Button {
                 }
                 return;
             }
-            if (n == 65 && !this.currentString.isEmpty()) {
+            if (keyCode == 65 && !this.currentString.isEmpty()) {
                 this.selecting = true;
                 this.cursorIndex = this.currentString.length();
             }
@@ -165,19 +165,19 @@ extends Button {
     }
 
     @Override
-    public void charTyped(char c, int n) {
+    public void charTyped(char ch, int modifiers) {
         if (!this.listening) {
             return;
         }
-        if (Character.isISOControl(c)) {
+        if (Character.isISOControl(ch)) {
             return;
         }
         if (this.selecting) {
-            this.currentString = String.valueOf(c);
+            this.currentString = String.valueOf(ch);
             this.cursorIndex = 1;
             this.selecting = false;
         } else {
-            this.currentString = this.currentString.substring(0, this.cursorIndex) + c + this.currentString.substring(this.cursorIndex);
+            this.currentString = this.currentString.substring(0, this.cursorIndex) + ch + this.currentString.substring(this.cursorIndex);
             ++this.cursorIndex;
         }
     }

@@ -59,7 +59,7 @@ public class ScreenEffectRendererMixin {
     }
 
     @Inject(method={"submitBlockSprite"}, at={@At(value="HEAD")}, cancellable=true)
-    private static void night$renderTex(TextureAtlasSprite textureAtlasSprite, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int n, CallbackInfo callbackInfo) {
+    private static void night$renderTex(TextureAtlasSprite textureAtlasSprite, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightColor, CallbackInfo callbackInfo) {
         try {
             NoRenderModule noRenderModule = (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class);
             if (noRenderModule.isToggled() && noRenderModule.blockOverlay.getValue()) {

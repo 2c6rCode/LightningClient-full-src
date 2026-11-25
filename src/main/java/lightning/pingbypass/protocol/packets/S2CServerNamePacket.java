@@ -14,8 +14,8 @@ extends PbPacket {
     public static final int ID = 8;
     private final String serverIp;
 
-    public S2CServerNamePacket(String string) {
-        this.serverIp = string;
+    public S2CServerNamePacket(String serverIp) {
+        this.serverIp = serverIp;
     }
 
     public S2CServerNamePacket(FriendlyByteBuf friendlyByteBuf) {

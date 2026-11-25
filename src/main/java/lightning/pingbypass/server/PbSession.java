@@ -46,12 +46,12 @@ extends Connection {
         super(PacketFlow.SERVERBOUND);
     }
 
-    public <T extends PacketListener> void setupInboundProtocol(ProtocolInfo<T> protocolInfo, T t) {
+    public <T extends PacketListener> void setupInboundProtocol(ProtocolInfo<T> protocolInfo, T packetListener) {
         if (protocolInfo.flow() != this.getReceiving()) {
             throw new IllegalStateException("Invalid inbound protocol: " + String.valueOf(protocolInfo.id()));
         }
         ConnectionAccessor connectionAccessor = (ConnectionAccessor)this;
-        connectionAccessor.setPacketListener(t);
+        connectionAccessor.setPacketListener(packetListener);
         Channel channel = connectionAccessor.getChannel();
         Runnable runnable = () -> {
             try {

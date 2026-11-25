@@ -27,9 +27,9 @@ extends Event {
     }
 
     @Generated
-    public PlayerPopEvent(Player player, int n) {
+    public PlayerPopEvent(Player player, int pops) {
         this.player = player;
-        this.pops = n;
+        this.pops = pops;
     }
 }
 

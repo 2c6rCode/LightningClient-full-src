@@ -24,40 +24,40 @@ public final class JarClassScanner {
     private JarClassScanner() {
     }
 
-    public static List<Class<?>> findSubtypesOf(Class<?> clazz, Class<?> clazz2) {
-        Object object;
-        ArrayList arrayList = new ArrayList();
-        ClassLoader classLoader = clazz2.getClassLoader();
-        URL uRL = clazz2.getProtectionDomain().getCodeSource() != null ? clazz2.getProtectionDomain().getCodeSource().getLocation() : null;
-        List<String> list = new ArrayList<>();
-        if (uRL != null) {
-            Object object2;
+    public static List<Class<?>> findSubtypesOf(Class<?> baseClass, Class<?> anchorClass) {
+        ArrayList<Class<?>> subtypes = new ArrayList<>();
+        ClassLoader classLoader = anchorClass.getClassLoader();
+        URL codeSourceUrl = anchorClass.getProtectionDomain().getCodeSource() != null ? anchorClass.getProtectionDomain().getCodeSource().getLocation() : null;
+        List<String> classNames = new ArrayList<>();
+        if (codeSourceUrl != null) {
             try {
+                File locationFile;
                 try {
-                    object2 = new File(uRL.toURI());
+                    locationFile = new File(codeSourceUrl.toURI());
                 }
                 catch (Throwable throwable) {
-                    object2 = new File(uRL.getPath());
+                    locationFile = new File(codeSourceUrl.getPath());
                 }
-                if (((File)object2).isDirectory()) {
-                    list = JarClassScanner.scanDirectory((File)object2);
+                if (locationFile.isDirectory()) {
+                    classNames = JarClassScanner.scanDirectory(locationFile);
                 }
             }
             catch (Throwable throwable) {
                 // empty catch block
             }
-            if (list.isEmpty()) {
-                try (InputStream object3 = uRL.openStream()){
-                    object = new JarInputStream((InputStream)object3);
+            if (classNames.isEmpty()) {
+                try (InputStream stream = codeSourceUrl.openStream()){
+                    JarInputStream jarStream = new JarInputStream(stream);
                     try {
-                        while ((object2 = ((JarInputStream)object).getNextJarEntry()) != null) {
-                            String string = ((ZipEntry)object2).getName();
-                            if (((ZipEntry)object2).isDirectory() || !string.endsWith(".class") || string.contains("module-info")) continue;
-                            list.add(JarClassScanner.toClassName(string));
+                        JarEntry entry;
+                        while ((entry = jarStream.getNextJarEntry()) != null) {
+                            String entryName = entry.getName();
+                            if (entry.isDirectory() || !entryName.endsWith(".class") || entryName.contains("module-info")) continue;
+                            classNames.add(JarClassScanner.toClassName(entryName));
                         }
                     }
                     finally {
-                        ((ZipInputStream)object).close();
+                        jarStream.close();
                     }
                 }
                 catch (Throwable throwable) {
@@ -65,50 +65,51 @@ public final class JarClassScanner {
                 }
             }
         }
-        for (Object object3 : list) {
-            int n;
+        for (String className : classNames) {
+            Class<?> candidate;
+            int modifiers;
             try {
-                object = Class.forName((String)object3, false, classLoader);
+                candidate = Class.forName(className, false, classLoader);
             }
             catch (Throwable throwable) {
                 continue;
             }
-            if (object == clazz || !clazz.isAssignableFrom((Class<?>)object) || Modifier.isAbstract(n = ((Class)object).getModifiers()) || Modifier.isInterface(n)) continue;
-            arrayList.add((Class<?>)object);
+            if (candidate == baseClass || !baseClass.isAssignableFrom(candidate) || Modifier.isAbstract(modifiers = candidate.getModifiers()) || Modifier.isInterface(modifiers)) continue;
+            subtypes.add(candidate);
         }
-        return arrayList;
+        return subtypes;
     }
 
     private static List<String> scanJar(File file) {
-        ArrayList<String> arrayList = new ArrayList<String>();
+        ArrayList<String> classNames = new ArrayList<String>();
         try (JarFile jarFile = new JarFile(file);){
             Enumeration<JarEntry> enumeration = jarFile.entries();
             while (enumeration.hasMoreElements()) {
                 JarEntry jarEntry = enumeration.nextElement();
-                String string = jarEntry.getName();
-                if (jarEntry.isDirectory() || !string.endsWith(".class") || string.contains("module-info")) continue;
-                arrayList.add(JarClassScanner.toClassName(string));
+                String entryName = jarEntry.getName();
+                if (jarEntry.isDirectory() || !entryName.endsWith(".class") || entryName.contains("module-info")) continue;
+                classNames.add(JarClassScanner.toClassName(entryName));
             }
         }
         catch (Exception exception) {
             // empty catch block
         }
-        return arrayList;
+        return classNames;
     }
 
-    private static List<String> scanDirectory(File file) {
-        Path path3 = file.toPath();
-        try (Stream<Path> stream = Files.walk(path3, new FileVisitOption[0])) {
+    private static List<String> scanDirectory(File directory) {
+        Path rootPath = directory.toPath();
+        try (Stream<Path> stream = Files.walk(rootPath, new FileVisitOption[0])) {
             return stream.filter(path -> path.toString().endsWith(".class") && !path.toString().contains("module-info"))
-                .map(path2 -> JarClassScanner.toClassName(path3.relativize(path2).toString().replace(File.separatorChar, '/')))
+                .map(classPath -> JarClassScanner.toClassName(rootPath.relativize(classPath).toString().replace(File.separatorChar, '/')))
                 .toList();
         } catch (Exception exception) {
             return List.of();
         }
     }
 
-    private static String toClassName(String string) {
-        return string.substring(0, string.length() - ".class".length()).replace('/', '.');
+    private static String toClassName(String entryName) {
+        return entryName.substring(0, entryName.length() - ".class".length()).replace('/', '.');
     }
 }
 

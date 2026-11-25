@@ -137,18 +137,18 @@ extends Module {
         }
     }
 
-    private boolean combat(long l) {
+    private boolean combat(long now) {
         AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER.getModule(AutoCrystalModule.class);
         if (autoCrystalModule != null && autoCrystalModule.isToggled() && autoCrystalModule.getTarget() != null && autoCrystalModule.getTarget().isAlive()) {
-            this.targetSeen = l;
+            this.targetSeen = now;
         }
-        return this.targetSeen != 0L && l - this.targetSeen <= this.targetGrace.getValue().longValue() * 1000000L;
+        return this.targetSeen != 0L && now - this.targetSeen <= this.targetGrace.getValue().longValue() * 1000000L;
     }
 
-    private void expire(long l) {
-        this.pending.removeIf(pending -> l - pending.time > 2000000000L);
-        this.seen.entrySet().removeIf(entry -> l - (Long)entry.getValue() > 3000000000L);
-        this.state.expire(l, this.resetDelay.getValue().intValue());
+    private void expire(long now) {
+        this.pending.removeIf(pending -> now - pending.time > 2000000000L);
+        this.seen.entrySet().removeIf(entry -> now - (Long)entry.getValue() > 3000000000L);
+        this.state.expire(now, this.resetDelay.getValue().intValue());
     }
 
     @SubscribeEvent
@@ -158,15 +158,14 @@ extends Module {
         }
         this.context();
         if (CrystalWingsModule.mc.player != null && CrystalWingsModule.mc.level != null) {
-            long l = System.nanoTime();
-            this.combat(l);
-            this.expire(l);
+            long now = System.nanoTime();
+            this.combat(now);
+            this.expire(now);
         }
     }
 
     @SubscribeEvent
     public void onUse(PacketSendEvent.Post post) {
-        boolean bl;
         Packet<?> packet;
         if (!this.isToggled() || CrystalWingsModule.mc.player == null || CrystalWingsModule.mc.level == null || !((packet = post.getPacket()) instanceof ServerboundUseItemOnPacket)) {
             return;
@@ -177,7 +176,7 @@ extends Module {
         if (!isCrystal) {
             return;
         }
-        Vec3 vec3 = Vec3.atBottomCenterOf((Vec3i)serverboundUseItemOnPacket.getHitResult().getBlockPos().above());
+        Vec3 placePos = Vec3.atBottomCenterOf((Vec3i)serverboundUseItemOnPacket.getHitResult().getBlockPos().above());
         ClientLevel clientLevel = CrystalWingsModule.mc.level;
         LocalPlayer localPlayer = CrystalWingsModule.mc.player;
         mc.execute(() -> {
@@ -185,15 +184,15 @@ extends Module {
                 return;
             }
             this.context();
-            long l = System.nanoTime();
-            if (!this.combat(l)) {
+            long now = System.nanoTime();
+            if (!this.combat(now)) {
                 return;
             }
-            this.expire(l);
+            this.expire(now);
             while (this.pending.size() >= 64) {
                 this.pending.removeFirst();
             }
-            this.pending.addLast(new Pending(vec3, l));
+            this.pending.addLast(new Pending(placePos, now));
         });
     }
 
@@ -204,17 +203,17 @@ extends Module {
             return;
         }
         Vec3 pos = endCrystal.position();
-        UUID uUID = endCrystal.getUUID();
+        UUID crystalId = endCrystal.getUUID();
         ClientLevel clientLevel = CrystalWingsModule.mc.level;
         LocalPlayer localPlayer = CrystalWingsModule.mc.player;
-        mc.execute(() -> this.handleWingSpawn(clientLevel, localPlayer, uUID, pos));
+        mc.execute(() -> this.handleWingSpawn(clientLevel, localPlayer, crystalId, pos));
     }
 
     @SubscribeEvent
     public void onRender(RenderWorldEvent renderWorldEvent) {
-        Vec3 vec3;
-        Vec3 vec32;
-        double d;
+        Vec3 camPos;
+        Vec3 toAnchorFlat;
+        double flapRad;
         if (!this.isToggled()) {
             return;
         }
@@ -222,82 +221,82 @@ extends Module {
         if (CrystalWingsModule.mc.player == null || CrystalWingsModule.mc.level == null || !Renderer3D.RENDERING) {
             return;
         }
-        long l = System.nanoTime();
-        this.combat(l);
-        this.state.expire(l, this.resetDelay.getValue().intValue());
-        if (this.anchor == null || !this.state.visible(l, this.holdTime.getValue().intValue(), this.targetSeen, this.targetGrace.getValue().intValue()) || this.opacity.getValue().intValue() == 0) {
+        long now = System.nanoTime();
+        this.combat(now);
+        this.state.expire(now, this.resetDelay.getValue().intValue());
+        if (this.anchor == null || !this.state.visible(now, this.holdTime.getValue().intValue(), this.targetSeen, this.targetGrace.getValue().intValue()) || this.opacity.getValue().intValue() == 0) {
             return;
         }
-        double d2 = this.scale.getValue().doubleValue();
-        double d3 = d2 * (1.0 + this.overshoot.getValue().doubleValue()) * (Math.max(this.width.getValue().doubleValue() * 2.0, this.height.getValue().doubleValue() * 1.5) + this.gap.getValue().doubleValue()) + this.heightOffset.getValue().doubleValue() + this.backOffset.getValue().doubleValue() + 1.0;
-        if (CrystalWingsModule.mc.player.position().distanceToSqr(this.anchor) > Math.pow(this.range.getValue().doubleValue(), 2.0) || !Renderer3D.isFrustumVisible(new AABB(this.anchor.x - d3, this.anchor.y - d3, this.anchor.z - d3, this.anchor.x + d3, this.anchor.y + d3 + 3.0, this.anchor.z + d3))) {
+        double wingScale = this.scale.getValue().doubleValue();
+        double cullRadius = wingScale * (1.0 + this.overshoot.getValue().doubleValue()) * (Math.max(this.width.getValue().doubleValue() * 2.0, this.height.getValue().doubleValue() * 1.5) + this.gap.getValue().doubleValue()) + this.heightOffset.getValue().doubleValue() + this.backOffset.getValue().doubleValue() + 1.0;
+        if (CrystalWingsModule.mc.player.position().distanceToSqr(this.anchor) > Math.pow(this.range.getValue().doubleValue(), 2.0) || !Renderer3D.isFrustumVisible(new AABB(this.anchor.x - cullRadius, this.anchor.y - cullRadius, this.anchor.z - cullRadius, this.anchor.x + cullRadius, this.anchor.y + cullRadius + 3.0, this.anchor.z + cullRadius))) {
             return;
         }
-        String string = this.style.getValue();
-        if (this.mesh == null || !string.equals(this.cachedStyle)) {
-            this.mesh = CrystalWingsMath.model(string);
-            this.cachedStyle = string;
+        String activeStyle = this.style.getValue();
+        if (this.mesh == null || !activeStyle.equals(this.cachedStyle)) {
+            this.mesh = CrystalWingsMath.model(activeStyle);
+            this.cachedStyle = activeStyle;
         }
-        double d4 = CrystalWingsMath.progress(l - this.state.appearedAt(), this.appearDuration.getValue().intValue());
-        String string2 = this.appearStyle.getValue();
-        double d5 = this.opacity.getValue().doubleValue() / 100.0 * (string2.equals("None") ? 1.0 : CrystalWingsMath.ease(d4));
-        if (d5 < 0.001) {
+        double appearProgress = CrystalWingsMath.progress(now - this.state.appearedAt(), this.appearDuration.getValue().intValue());
+        String activeAppearStyle = this.appearStyle.getValue();
+        double wingOpacity = this.opacity.getValue().doubleValue() / 100.0 * (activeAppearStyle.equals("None") ? 1.0 : CrystalWingsMath.ease(appearProgress));
+        if (wingOpacity < 0.001) {
             return;
         }
-        d2 *= CrystalWingsMath.appearScale(string2, d4, this.startScale.getValue().doubleValue(), this.overshoot.getValue().doubleValue());
-        double d6 = d = this.animate.getValue() ? CrystalWingsMath.flap((double)(l - this.animationOrigin) / 1.0E9, this.flapSpeed.getValue().doubleValue(), this.flapAngle.getValue().doubleValue()) : 0.0;
-        if (string2.equals("Unfold")) {
-            d += Math.toRadians(65.0) * (1.0 - CrystalWingsMath.ease(d4));
+        wingScale *= CrystalWingsMath.appearScale(activeAppearStyle, appearProgress, this.startScale.getValue().doubleValue(), this.overshoot.getValue().doubleValue());
+        flapRad = this.animate.getValue() ? CrystalWingsMath.flap((double)(now - this.animationOrigin) / 1.0E9, this.flapSpeed.getValue().doubleValue(), this.flapAngle.getValue().doubleValue()) : 0.0;
+        if (activeAppearStyle.equals("Unfold")) {
+            flapRad += Math.toRadians(65.0) * (1.0 - CrystalWingsMath.ease(appearProgress));
         }
-        vec32 = (vec32 = this.anchor.subtract(vec3 = CrystalWingsModule.mc.gameRenderer.mainCamera().position()).multiply(1.0, 0.0, 1.0)).lengthSqr() < 1.0E-8 ? new Vec3(0.0, 0.0, 1.0) : vec32.normalize();
-        Vec3 vec33 = new Vec3(vec32.z, 0.0, -vec32.x);
-        Vec3 vec34 = this.anchor.add(0.0, this.heightOffset.getValue().doubleValue(), 0.0).add(vec32.scale(this.backOffset.getValue().doubleValue())).subtract(vec3);
+        toAnchorFlat = (toAnchorFlat = this.anchor.subtract(camPos = CrystalWingsModule.mc.gameRenderer.mainCamera().position()).multiply(1.0, 0.0, 1.0)).lengthSqr() < 1.0E-8 ? new Vec3(0.0, 0.0, 1.0) : toAnchorFlat.normalize();
+        Vec3 wingRight = new Vec3(toAnchorFlat.z, 0.0, -toAnchorFlat.x);
+        Vec3 wingCenter = this.anchor.add(0.0, this.heightOffset.getValue().doubleValue(), 0.0).add(toAnchorFlat.scale(this.backOffset.getValue().doubleValue())).subtract(camPos);
         Matrix4f matrix4f = renderWorldEvent.getMatrices().last().pose();
         Color color = this.color.getColor();
-        for (int n : new int[]{-1, 1}) {
-            if (!string.equals("Outline")) {
+        for (int side : new int[]{-1, 1}) {
+            if (!activeStyle.equals("Outline")) {
                 for (double[][] triangle : this.mesh.triangles()) {
-                    Renderer3D.Vertex vertex = this.vertex(matrix4f, vec34, vec33, vec32, triangle[0], n, d2, d, color, d5);
-                    Renderer3D.Vertex vertex2 = this.vertex(matrix4f, vec34, vec33, vec32, triangle[1], n, d2, d, color, d5);
-                    Renderer3D.Vertex vertex3 = this.vertex(matrix4f, vec34, vec33, vec32, triangle[2], n, d2, d, color, d5);
-                    Renderer3D.QUADS.add(new Renderer3D.VertexCollection(vertex, vertex2, vertex3, vertex3));
+                    Renderer3D.Vertex vertA = this.vertex(matrix4f, wingCenter, wingRight, toAnchorFlat, triangle[0], side, wingScale, flapRad, color, wingOpacity);
+                    Renderer3D.Vertex vertB = this.vertex(matrix4f, wingCenter, wingRight, toAnchorFlat, triangle[1], side, wingScale, flapRad, color, wingOpacity);
+                    Renderer3D.Vertex vertC = this.vertex(matrix4f, wingCenter, wingRight, toAnchorFlat, triangle[2], side, wingScale, flapRad, color, wingOpacity);
+                    Renderer3D.QUADS.add(new Renderer3D.VertexCollection(vertA, vertB, vertC, vertC));
                 }
             }
-            this.lines(matrix4f, vec34, vec33, vec32, this.mesh.outline(), true, n, d2, d, color, d5);
-            if (string.equals("Outline")) continue;
+            this.lines(matrix4f, wingCenter, wingRight, toAnchorFlat, this.mesh.outline(), true, side, wingScale, flapRad, color, wingOpacity);
+            if (activeStyle.equals("Outline")) continue;
             for (List<double[]> seam : this.mesh.seams()) {
-                this.lines(matrix4f, vec34, vec33, vec32, seam, false, n, d2, d, new Color(color.getRed() / 4, color.getGreen() / 4, color.getBlue() / 4, color.getAlpha()), d5 * 0.8);
+                this.lines(matrix4f, wingCenter, wingRight, toAnchorFlat, seam, false, side, wingScale, flapRad, new Color(color.getRed() / 4, color.getGreen() / 4, color.getBlue() / 4, color.getAlpha()), wingOpacity * 0.8);
             }
         }
     }
 
-    private Renderer3D.Vertex vertex(Matrix4f matrix4f, Vec3 vec3, Vec3 vec32, Vec3 vec33, double[] dArray, int n, double d, double d2, Color color, double d3) {
-        double d4 = (double)n * (this.gap.getValue().doubleValue() / 2.0 + dArray[0] * Math.cos(d2)) * d * this.width.getValue().doubleValue();
-        double d5 = dArray[1] * d * this.height.getValue().doubleValue();
-        double d6 = dArray[0] * Math.sin(d2) * d * this.width.getValue().doubleValue();
-        Vec3 vec34 = vec3.add(vec32.scale(d4)).add(0.0, d5, 0.0).add(vec33.scale(d6));
-        int n2 = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)Math.clamp((double)color.getAlpha() * d3, 0.0, 255.0)).getRGB();
-        return new Renderer3D.Vertex(matrix4f, (float)vec34.x, (float)vec34.y, (float)vec34.z, n2);
+    private Renderer3D.Vertex vertex(Matrix4f matrix4f, Vec3 origin, Vec3 rightVec, Vec3 backVec, double[] point, int side, double wingScale, double flapRad, Color wingColor, double wingOpacity) {
+        double localX = (double)side * (this.gap.getValue().doubleValue() / 2.0 + point[0] * Math.cos(flapRad)) * wingScale * this.width.getValue().doubleValue();
+        double localY = point[1] * wingScale * this.height.getValue().doubleValue();
+        double localZ = point[0] * Math.sin(flapRad) * wingScale * this.width.getValue().doubleValue();
+        Vec3 worldPos = origin.add(rightVec.scale(localX)).add(0.0, localY, 0.0).add(backVec.scale(localZ));
+        int rgba = new Color(wingColor.getRed(), wingColor.getGreen(), wingColor.getBlue(), (int)Math.clamp((double)wingColor.getAlpha() * wingOpacity, 0.0, 255.0)).getRGB();
+        return new Renderer3D.Vertex(matrix4f, (float)worldPos.x, (float)worldPos.y, (float)worldPos.z, rgba);
     }
 
-    private void lines(Matrix4f matrix4f, Vec3 vec3, Vec3 vec32, Vec3 vec33, List<double[]> list, boolean bl, int n, double d, double d2, Color color, double d3) {
-        for (int i = 0; i < (bl ? list.size() : list.size() - 1); ++i) {
-            double d4;
-            double[] dArray = list.get(i);
-            double[] dArray2 = list.get((i + 1) % list.size());
-            double d5 = dArray2[0] - dArray[0];
-            double d6 = Math.hypot(d5, d4 = dArray2[1] - dArray[1]);
-            if (d6 < 1.0E-8) continue;
-            double d7 = this.lineWidth.getValue().doubleValue() / 2.0;
-            this.band(matrix4f, vec3, vec32, vec33, dArray, dArray2, -d4 / d6 * d7, d5 / d6 * d7, n, d, d2, color, d3, false);
-            if (!this.glow.getValue() || !bl) continue;
-            this.band(matrix4f, vec3, vec32, vec33, dArray, dArray2, -d4 / d6 * d7 * 3.0, d5 / d6 * d7 * 3.0, n, d, d2, color, d3 * this.glowStrength.getValue().doubleValue(), true);
+    private void lines(Matrix4f matrix4f, Vec3 origin, Vec3 rightVec, Vec3 backVec, List<double[]> points, boolean closedLoop, int side, double wingScale, double flapRad, Color wingColor, double wingOpacity) {
+        for (int i = 0; i < (closedLoop ? points.size() : points.size() - 1); ++i) {
+            double dy;
+            double[] p1 = points.get(i);
+            double[] p2 = points.get((i + 1) % points.size());
+            double dx = p2[0] - p1[0];
+            double len = Math.hypot(dx, dy = p2[1] - p1[1]);
+            if (len < 1.0E-8) continue;
+            double halfWidth = this.lineWidth.getValue().doubleValue() / 2.0;
+            this.band(matrix4f, origin, rightVec, backVec, p1, p2, -dy / len * halfWidth, dx / len * halfWidth, side, wingScale, flapRad, wingColor, wingOpacity, false);
+            if (!this.glow.getValue() || !closedLoop) continue;
+            this.band(matrix4f, origin, rightVec, backVec, p1, p2, -dy / len * halfWidth * 3.0, dx / len * halfWidth * 3.0, side, wingScale, flapRad, wingColor, wingOpacity * this.glowStrength.getValue().doubleValue(), true);
         }
     }
 
-    private void band(Matrix4f matrix4f, Vec3 vec3, Vec3 vec32, Vec3 vec33, double[] dArray, double[] dArray2, double d, double d2, int n, double d3, double d4, Color color, double d5, boolean bl) {
-        List<Renderer3D.VertexCollection> list = bl ? Renderer3D.SHINE_QUADS : Renderer3D.QUADS;
-        list.add(new Renderer3D.VertexCollection(this.vertex(matrix4f, vec3, vec32, vec33, new double[]{dArray[0] - d, dArray[1] - d2}, n, d3, d4, color, d5), this.vertex(matrix4f, vec3, vec32, vec33, new double[]{dArray2[0] - d, dArray2[1] - d2}, n, d3, d4, color, d5), this.vertex(matrix4f, vec3, vec32, vec33, new double[]{dArray2[0] + d, dArray2[1] + d2}, n, d3, d4, color, d5), this.vertex(matrix4f, vec3, vec32, vec33, new double[]{dArray[0] + d, dArray[1] + d2}, n, d3, d4, color, d5)));
+    private void band(Matrix4f matrix4f, Vec3 origin, Vec3 rightVec, Vec3 backVec, double[] p1, double[] p2, double offsetX, double offsetY, int side, double wingScale, double flapRad, Color wingColor, double wingOpacity, boolean isGlow) {
+        List<Renderer3D.VertexCollection> targetQuads = isGlow ? Renderer3D.SHINE_QUADS : Renderer3D.QUADS;
+        targetQuads.add(new Renderer3D.VertexCollection(this.vertex(matrix4f, origin, rightVec, backVec, new double[]{p1[0] - offsetX, p1[1] - offsetY}, side, wingScale, flapRad, wingColor, wingOpacity), this.vertex(matrix4f, origin, rightVec, backVec, new double[]{p2[0] - offsetX, p2[1] - offsetY}, side, wingScale, flapRad, wingColor, wingOpacity), this.vertex(matrix4f, origin, rightVec, backVec, new double[]{p2[0] + offsetX, p2[1] + offsetY}, side, wingScale, flapRad, wingColor, wingOpacity), this.vertex(matrix4f, origin, rightVec, backVec, new double[]{p1[0] + offsetX, p1[1] + offsetY}, side, wingScale, flapRad, wingColor, wingOpacity)));
     }
 
     @Override
@@ -305,35 +304,35 @@ extends Module {
         return this.state.count() + "/" + this.crystalCount.getValue().intValue();
     }
 
-    private void handleWingSpawn(ClientLevel clientLevel, Object object, UUID uUID, Vec3 vec3) {
-        if (!this.isToggled() || CrystalWingsModule.mc.level != clientLevel || CrystalWingsModule.mc.player != object) {
+    private void handleWingSpawn(ClientLevel clientLevel, Object localPlayerObj, UUID crystalId, Vec3 pos) {
+        if (!this.isToggled() || CrystalWingsModule.mc.level != clientLevel || CrystalWingsModule.mc.player != localPlayerObj) {
             return;
         }
         this.context();
-        long l = System.nanoTime();
-        this.expire(l);
-        if (this.seen.containsKey(uUID) || !this.combat(l)) {
+        long now = System.nanoTime();
+        this.expire(now);
+        if (this.seen.containsKey(crystalId) || !this.combat(now)) {
             return;
         }
-        Pending pending = null;
-        for (Pending pending2 : this.pending) {
-            if (!(pending2.position.distanceToSqr(vec3) < 0.04)) continue;
-            pending = pending2;
+        Pending matchedPending = null;
+        for (Pending candidate : this.pending) {
+            if (!(candidate.position.distanceToSqr(pos) < 0.04)) continue;
+            matchedPending = candidate;
             break;
         }
-        if (pending == null) {
+        if (matchedPending == null) {
             return;
         }
-        this.pending.remove(pending);
-        if (CrystalWingsModule.mc.player.position().distanceToSqr(vec3) > Math.pow(this.range.getValue().doubleValue(), 2.0)) {
+        this.pending.remove(matchedPending);
+        if (CrystalWingsModule.mc.player.position().distanceToSqr(pos) > Math.pow(this.range.getValue().doubleValue(), 2.0)) {
             return;
         }
         while (this.seen.size() >= 128) {
             this.seen.remove(this.seen.keySet().iterator().next());
         }
-        this.seen.put(uUID, l);
-        this.state.record(BlockPos.containing((Position)vec3).asLong(), l, this.crystalCount.getValue().intValue(), this.resetDelay.getValue().intValue());
-        this.anchor = vec3;
+        this.seen.put(crystalId, now);
+        this.state.record(BlockPos.containing((Position)pos).asLong(), now, this.crystalCount.getValue().intValue(), this.resetDelay.getValue().intValue());
+        this.anchor = pos;
     }
 
     private record Pending(Vec3 position, long time) {

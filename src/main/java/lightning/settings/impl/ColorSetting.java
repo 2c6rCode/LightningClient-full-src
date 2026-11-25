@@ -18,45 +18,45 @@ extends Setting {
     private Color value;
     private final Color defaultValue;
 
-    public ColorSetting(String string, String string2, Color color) {
-        super(string, string, string2, new Setting.Visibility());
-        this.value = color;
-        this.defaultValue = new Color(color.getColor(), color.isSync(), color.isRainbow());
+    public ColorSetting(String name, String description, Color defaultValue) {
+        super(name, name, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = new Color(defaultValue.getColor(), defaultValue.isSync(), defaultValue.isRainbow());
     }
 
-    public ColorSetting(String string, String string2, String string3, Color color) {
-        super(string, string2, string3, new Setting.Visibility());
-        this.value = color;
-        this.defaultValue = new Color(color.getColor(), color.isSync(), color.isRainbow());
+    public ColorSetting(String name, String tag, String description, Color defaultValue) {
+        super(name, tag, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = new Color(defaultValue.getColor(), defaultValue.isSync(), defaultValue.isRainbow());
     }
 
-    public ColorSetting(String string, String string2, Setting.Visibility visibility, Color color) {
-        super(string, string, string2, visibility);
-        this.value = color;
-        this.defaultValue = new Color(color.getColor(), color.isSync(), color.isRainbow());
+    public ColorSetting(String name, String description, Setting.Visibility visibility, Color defaultValue) {
+        super(name, name, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = new Color(defaultValue.getColor(), defaultValue.isSync(), defaultValue.isRainbow());
     }
 
-    public ColorSetting(String string, String string2, String string3, Setting.Visibility visibility, Color color) {
-        super(string, string2, string3, visibility);
-        this.value = color;
-        this.defaultValue = new Color(color.getColor(), color.isSync(), color.isRainbow());
+    public ColorSetting(String name, String tag, String description, Setting.Visibility visibility, Color defaultValue) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = new Color(defaultValue.getColor(), defaultValue.isSync(), defaultValue.isRainbow());
     }
 
     public java.awt.Color getColor() {
         return this.getColor(0L);
     }
 
-    public java.awt.Color getColor(long l) {
+    public java.awt.Color getColor(long offset) {
         if (this.isSync()) {
-            return ColorUtils.getGlobalColor(this.getAlpha(), l);
+            return ColorUtils.getGlobalColor(this.getAlpha(), offset);
         }
         if (this.isRainbow()) {
             ColorModule colorModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(ColorModule.class) : null;
-            long l2 = colorModule != null ? colorModule.rainbowSpeed.getValue().longValue() : 6L;
-            float f = colorModule != null ? colorModule.rainbowSaturation.getValue().floatValue() / 100.0f : 1.0f;
-            float f2 = colorModule != null ? colorModule.rainbowBrightness.getValue().floatValue() / 100.0f : 1.0f;
-            float f3 = colorModule != null && colorModule.rainbowScale != null ? colorModule.rainbowScale.getValue().floatValue() / 100.0f : 1.0f;
-            return ColorUtils.getRainbow(l2, f, f2, this.getAlpha(), (long)((float)l * f3));
+            long speed = colorModule != null ? colorModule.rainbowSpeed.getValue().longValue() : 6L;
+            float saturation = colorModule != null ? colorModule.rainbowSaturation.getValue().floatValue() / 100.0f : 1.0f;
+            float brightness = colorModule != null ? colorModule.rainbowBrightness.getValue().floatValue() / 100.0f : 1.0f;
+            float scale = colorModule != null && colorModule.rainbowScale != null ? colorModule.rainbowScale.getValue().floatValue() / 100.0f : 1.0f;
+            return ColorUtils.getRainbow(speed, saturation, brightness, this.getAlpha(), (long)((float)offset * scale));
         }
         if (Night.MODULE_MANAGER != null && this == Night.MODULE_MANAGER.getModule(ColorModule.class).color) {
             return ColorUtils.getColor(this.value.getColor(), 255);
@@ -86,8 +86,8 @@ extends Setting {
         return this.value.isSync();
     }
 
-    public void setSync(boolean bl) {
-        this.value.setSync(bl);
+    public void setSync(boolean sync) {
+        this.value.setSync(sync);
         if (Night.EVENT_HANDLER != null) {
             Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
         }
@@ -97,8 +97,8 @@ extends Setting {
         return this.value.isRainbow();
     }
 
-    public void setRainbow(boolean bl) {
-        this.value.setRainbow(bl);
+    public void setRainbow(boolean rainbow) {
+        this.value.setRainbow(rainbow);
         if (Night.EVENT_HANDLER != null) {
             Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
         }
@@ -147,20 +147,20 @@ extends Setting {
         }
 
         @Generated
-        public void setSync(boolean bl) {
-            this.sync = bl;
+        public void setSync(boolean sync) {
+            this.sync = sync;
         }
 
         @Generated
-        public void setRainbow(boolean bl) {
-            this.rainbow = bl;
+        public void setRainbow(boolean rainbow) {
+            this.rainbow = rainbow;
         }
 
         @Generated
-        public Color(java.awt.Color color, boolean bl, boolean bl2) {
+        public Color(java.awt.Color color, boolean sync, boolean rainbow) {
             this.color = color;
-            this.sync = bl;
-            this.rainbow = bl2;
+            this.sync = sync;
+            this.rainbow = rainbow;
         }
     }
 
@@ -170,10 +170,10 @@ extends Setting {
         private final boolean targetValue;
         private final Target target;
 
-        public Visibility(ColorSetting colorSetting, boolean bl, Target target) {
+        public Visibility(ColorSetting colorSetting, boolean targetValue, Target target) {
             super(colorSetting);
             this.value = colorSetting;
-            this.targetValue = bl;
+            this.targetValue = targetValue;
             this.target = target;
         }
 

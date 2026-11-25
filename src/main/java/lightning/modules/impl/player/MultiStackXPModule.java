@@ -37,16 +37,15 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerUpdate(PlayerUpdateEvent playerUpdateEvent) {
-        boolean bl;
-        int n = this.throwBind.getValue();
-        boolean bl2 = bl = n != 0 && KeyboardUtils.isBindDown(n);
+        int bindKey = this.throwBind.getValue();
+        boolean bindDown = bindKey != 0 && KeyboardUtils.isBindDown(bindKey);
         if (this.getNull()) {
             if (this.active) {
                 this.finish(true);
             }
             return;
         }
-        if (bl && !this.active) {
+        if (bindDown && !this.active) {
             this.startOneStack();
         }
         if (this.active) {
@@ -56,31 +55,30 @@ extends Module {
 
     private void startOneStack() {
         try {
-            Object object = MultiStackXPModule.staticField("lightning.utils.IMinecraft", "mc");
-            Object object2 = MultiStackXPModule.field(object, "player");
-            if (object2 == null) {
+            Object mcInstance = MultiStackXPModule.staticField("lightning.utils.IMinecraft", "mc");
+            Object player = MultiStackXPModule.field(mcInstance, "player");
+            if (player == null) {
                 return;
             }
-            Object object3 = MultiStackXPModule.noArgs(object2, "getInventory");
-            this.oldSlot = ((Number)MultiStackXPModule.noArgs(object3, "getSelectedSlot")).intValue();
-            Object object4 = MultiStackXPModule.staticField("net.minecraft.world.item.Items", "EXPERIENCE_BOTTLE");
+            Object inventory = MultiStackXPModule.noArgs(player, "getInventory");
+            this.oldSlot = ((Number)MultiStackXPModule.noArgs(inventory, "getSelectedSlot")).intValue();
+            Object xpBottleItem = MultiStackXPModule.staticField("net.minecraft.world.item.Items", "EXPERIENCE_BOTTLE");
             this.runMode = this.switchMode.getValue();
-            int n = this.runMode.equalsIgnoreCase("AltSwap") ? 35 : 8;
-            this.xpSlot = MultiStackXPModule.findItemSlot(object3, object4, n);
+            int maxSlot = this.runMode.equalsIgnoreCase("AltSwap") ? 35 : 8;
+            this.xpSlot = MultiStackXPModule.findItemSlot(inventory, xpBottleItem, maxSlot);
             if (this.xpSlot < 0 || this.xpSlot > 8 && !this.runMode.equalsIgnoreCase("AltSwap")) {
                 this.notifyUser(this.runMode.equalsIgnoreCase("AltSwap") ? "No XP bottles found in the inventory." : "No XP bottles found in the hotbar.");
                 this.resetOperation();
                 return;
             }
-            Object object5 = MultiStackXPModule.intArg(object3, "getItem", this.xpSlot);
-            int n2 = ((Number)MultiStackXPModule.noArgs(object5, "getCount")).intValue();
-            this.remaining = Math.min(2, n2);
+            Object xpStack = MultiStackXPModule.intArg(inventory, "getItem", this.xpSlot);
+            int stackCount = ((Number)MultiStackXPModule.noArgs(xpStack, "getCount")).intValue();
+            this.remaining = Math.min(2, stackCount);
             if (this.remaining <= 0) {
                 this.resetOperation();
                 return;
             }
-            boolean bl = this.runMode.equalsIgnoreCase("AltSwap");
-            boolean bl2 = this.didSwitch = !false && this.xpSlot != this.oldSlot;
+            this.didSwitch = this.xpSlot != this.oldSlot;
             if (this.didSwitch && !MultiStackXPModule.switchSlot(this.runMode, this.xpSlot, this.oldSlot)) {
                 this.notifyUser("Could not select the XP bottle slot.");
                 this.resetOperation();
@@ -105,36 +103,35 @@ extends Module {
             return;
         }
         try {
-            Object object = MultiStackXPModule.staticField("lightning.utils.IMinecraft", "mc");
-            Object object2 = MultiStackXPModule.field(object, "player");
-            if (object2 == null) {
+            Object mcInstance = MultiStackXPModule.staticField("lightning.utils.IMinecraft", "mc");
+            Object player = MultiStackXPModule.field(mcInstance, "player");
+            if (player == null) {
                 this.finish(false);
                 return;
             }
-            float f = ((Number)MultiStackXPModule.noArgs(object2, "getYRot")).floatValue();
-            float f2 = ((Number)MultiStackXPModule.noArgs(object2, "getXRot")).floatValue();
-            Class<?> clazz = Class.forName("lightning.utils.minecraft.NetworkUtils$SequencedPacketCreator");
-            Class<?> clazz2 = Class.forName("lightning.utils.minecraft.NetworkUtils");
-            Method method = clazz2.getMethod("sendSequencedPacket", clazz);
+            float yaw = ((Number)MultiStackXPModule.noArgs(player, "getYRot")).floatValue();
+            float pitch = ((Number)MultiStackXPModule.noArgs(player, "getXRot")).floatValue();
+            Class<?> creatorClass = Class.forName("lightning.utils.minecraft.NetworkUtils$SequencedPacketCreator");
+            Class<?> networkUtilsClass = Class.forName("lightning.utils.minecraft.NetworkUtils");
+            Method sendSequencedMethod = networkUtilsClass.getMethod("sendSequencedPacket", creatorClass);
             if (this.clickRotate.getValue()) {
-                float[] fArray = MultiStackXPModule.keyActionFeetRotation(object2);
-                f = fArray[0];
-                f2 = fArray[1];
-                MultiStackXPModule.silentRotateLikeKeyAction(f, f2);
+                float[] rotations = MultiStackXPModule.keyActionFeetRotation(player);
+                yaw = rotations[0];
+                pitch = rotations[1];
+                MultiStackXPModule.silentRotateLikeKeyAction(yaw, pitch);
             }
             while (this.remaining > 0) {
-                boolean bl = this.runMode.equalsIgnoreCase("AltSwap") && this.xpSlot != this.oldSlot;
-                boolean bl2 = false;
+                boolean switched = false;
                 try {
-                    if (false && !(bl2 = MultiStackXPModule.switchSlot(this.runMode, this.xpSlot, this.oldSlot))) {
+                    if (false && !(switched = MultiStackXPModule.switchSlot(this.runMode, this.xpSlot, this.oldSlot))) {
                         throw new IllegalStateException("Could not AltSwap XP bottle for this packet.");
                     }
-                    Object object3 = MultiStackXPModule.packetCreator(clazz, f, f2);
-                    method.invoke(null, object3);
+                    Object creator = MultiStackXPModule.packetCreator(creatorClass, yaw, pitch);
+                    sendSequencedMethod.invoke(null, creator);
                     --this.remaining;
                 }
                 finally {
-                    if (!bl2) continue;
+                    if (!switched) continue;
                     MultiStackXPModule.switchBack(this.runMode, this.xpSlot, this.oldSlot);
                 }
             }
@@ -147,42 +144,42 @@ extends Module {
         }
     }
 
-    private static int findItemSlot(Object object, Object object2, int n) throws Exception {
-        for (int i = n; i >= 0; --i) {
-            Object object3 = MultiStackXPModule.intArg(object, "getItem", i);
-            Object object4 = MultiStackXPModule.noArgs(object3, "getItem");
-            if (object4 != object2) continue;
+    private static int findItemSlot(Object inventory, Object targetItem, int maxSlot) throws Exception {
+        for (int i = maxSlot; i >= 0; --i) {
+            Object stack = MultiStackXPModule.intArg(inventory, "getItem", i);
+            Object item = MultiStackXPModule.noArgs(stack, "getItem");
+            if (item != targetItem) continue;
             return i;
         }
         return -1;
     }
 
-    private static boolean switchSlot(String string, int n, int n2) throws Exception {
-        Class<?> clazz = Class.forName("lightning.utils.minecraft.InventoryUtils");
-        Method method = clazz.getMethod("switchSlot", String.class, Integer.TYPE, Integer.TYPE);
-        return Boolean.TRUE.equals(method.invoke(null, string, n, n2));
+    private static boolean switchSlot(String mode, int slot, int oldSlot) throws Exception {
+        Class<?> invUtilsClass = Class.forName("lightning.utils.minecraft.InventoryUtils");
+        Method method = invUtilsClass.getMethod("switchSlot", String.class, Integer.TYPE, Integer.TYPE);
+        return Boolean.TRUE.equals(method.invoke(null, mode, slot, oldSlot));
     }
 
-    private static void switchBack(String string, int n, int n2) throws Exception {
-        Class<?> clazz = Class.forName("lightning.utils.minecraft.InventoryUtils");
-        Method method = clazz.getMethod("switchBack", String.class, Integer.TYPE, Integer.TYPE);
-        method.invoke(null, string, n, n2);
+    private static void switchBack(String mode, int slot, int oldSlot) throws Exception {
+        Class<?> invUtilsClass = Class.forName("lightning.utils.minecraft.InventoryUtils");
+        Method method = invUtilsClass.getMethod("switchBack", String.class, Integer.TYPE, Integer.TYPE);
+        method.invoke(null, mode, slot, oldSlot);
     }
 
-    private static float[] keyActionFeetRotation(Object object) throws Exception {
-        Object object2;
-        Object object3;
-        Object object4;
-        float f = ((Number)MultiStackXPModule.noArgs(object, "getYRot")).floatValue();
+    private static float[] keyActionFeetRotation(Object player) throws Exception {
+        Object rotManager;
+        Object rotation;
+        Object yawObj;
+        float yaw = ((Number)MultiStackXPModule.noArgs(player, "getYRot")).floatValue();
         try {
-            object4 = MultiStackXPModule.staticField("lightning.Night", "MODULE_MANAGER");
-            if (object4 != null) {
-                Object object5;
-                object3 = Class.forName("lightning.modules.impl.movement.SprintModule");
-                object2 = object4.getClass().getMethod("getModule", Class.class);
-                Object object6 = ((Method)object2).invoke(object4, object3);
-                if (object6 != null && Boolean.TRUE.equals(MultiStackXPModule.noArgs(object6, "isToggled")) && Boolean.TRUE.equals(MultiStackXPModule.noArgs(object6, "isGrimCompensating")) && (object5 = MultiStackXPModule.noArgs(object6, "getPendingYaw")) instanceof Float) {
-                    f = ((Float)object5).floatValue();
+            Object moduleManager = MultiStackXPModule.staticField("lightning.Night", "MODULE_MANAGER");
+            if (moduleManager != null) {
+                Object pendingYaw;
+                Class<?> sprintClass = Class.forName("lightning.modules.impl.movement.SprintModule");
+                Method getModuleMethod = moduleManager.getClass().getMethod("getModule", Class.class);
+                Object sprintModule = getModuleMethod.invoke(moduleManager, sprintClass);
+                if (sprintModule != null && Boolean.TRUE.equals(MultiStackXPModule.noArgs(sprintModule, "isToggled")) && Boolean.TRUE.equals(MultiStackXPModule.noArgs(sprintModule, "isGrimCompensating")) && (pendingYaw = MultiStackXPModule.noArgs(sprintModule, "getPendingYaw")) instanceof Float) {
+                    yaw = ((Float)pendingYaw).floatValue();
                 }
             }
         }
@@ -190,23 +187,23 @@ extends Module {
             // empty catch block
         }
         try {
-            object4 = MultiStackXPModule.staticField("lightning.Night", "ROTATION_MANAGER");
-            if (object4 != null && (object3 = MultiStackXPModule.noArgs(object4, "getRotation")) != null && (object2 = MultiStackXPModule.noArgs(object3, "getYaw")) instanceof Number) {
-                f = ((Number)object2).floatValue();
+            rotManager = MultiStackXPModule.staticField("lightning.Night", "ROTATION_MANAGER");
+            if (rotManager != null && (rotation = MultiStackXPModule.noArgs(rotManager, "getRotation")) != null && (yawObj = MultiStackXPModule.noArgs(rotation, "getYaw")) instanceof Number) {
+                yaw = ((Number)yawObj).floatValue();
             }
         }
         catch (Throwable throwable) {
             // empty catch block
         }
-        return new float[]{f, 90.0f};
+        return new float[]{yaw, 90.0f};
     }
 
-    private static void silentRotateLikeKeyAction(float f, float f2) {
+    private static void silentRotateLikeKeyAction(float yaw, float pitch) {
         try {
-            Object object = MultiStackXPModule.staticField("lightning.Night", "ROTATION_MANAGER");
-            if (object != null) {
-                Method method = object.getClass().getMethod("silentRotate", Float.TYPE, Float.TYPE);
-                method.invoke(object, Float.valueOf(f), Float.valueOf(f2));
+            Object rotManager = MultiStackXPModule.staticField("lightning.Night", "ROTATION_MANAGER");
+            if (rotManager != null) {
+                Method method = rotManager.getClass().getMethod("silentRotate", Float.TYPE, Float.TYPE);
+                method.invoke(rotManager, Float.valueOf(yaw), Float.valueOf(pitch));
             }
         }
         catch (Throwable throwable) {
@@ -214,37 +211,37 @@ extends Module {
         }
     }
 
-    private static Object packetCreator(Class<?> clazz, float f, float f2) {
-        InvocationHandler invocationHandler = (object, method, objectArray) -> {
-            String string = method.getName();
-            if ("predict".equals(string) && objectArray != null && objectArray.length == 1) {
-                return MultiStackXPModule.useItemPacket(((Number)objectArray[0]).intValue(), f, f2);
+    private static Object packetCreator(Class<?> creatorClass, float yaw, float pitch) {
+        InvocationHandler invocationHandler = (proxy, method, args) -> {
+            String methodName = method.getName();
+            if ("predict".equals(methodName) && args != null && args.length == 1) {
+                return MultiStackXPModule.useItemPacket(((Number)args[0]).intValue(), yaw, pitch);
             }
-            if ("toString".equals(string)) {
+            if ("toString".equals(methodName)) {
                 return "MultiStack XP AltSwap packet creator";
             }
-            if ("hashCode".equals(string)) {
-                return System.identityHashCode(object);
+            if ("hashCode".equals(methodName)) {
+                return System.identityHashCode(proxy);
             }
-            if ("equals".equals(string)) {
-                return object == (objectArray == null || objectArray.length == 0 ? null : objectArray[0]);
+            if ("equals".equals(methodName)) {
+                return proxy == (args == null || args.length == 0 ? null : args[0]);
             }
             return null;
         };
-        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class[]{clazz}, invocationHandler);
+        return Proxy.newProxyInstance(creatorClass.getClassLoader(), new Class[]{creatorClass}, invocationHandler);
     }
 
-    private static Object useItemPacket(int n, float f, float f2) throws Exception {
-        Class<?> clazz = Class.forName("net.minecraft.world.InteractionHand");
-        Enum enum_ = Enum.valueOf(clazz.asSubclass(Enum.class), "MAIN_HAND");
-        Class<?> clazz2 = Class.forName("net.minecraft.network.protocol.game.ServerboundUseItemPacket");
-        Constructor<?> constructor = clazz2.getConstructor(clazz, Integer.TYPE, Float.TYPE, Float.TYPE);
-        return constructor.newInstance(enum_, n, Float.valueOf(f), Float.valueOf(f2));
+    private static Object useItemPacket(int sequence, float yaw, float pitch) throws Exception {
+        Class<?> handClass = Class.forName("net.minecraft.world.InteractionHand");
+        Enum mainHand = Enum.valueOf(handClass.asSubclass(Enum.class), "MAIN_HAND");
+        Class<?> packetClass = Class.forName("net.minecraft.network.protocol.game.ServerboundUseItemPacket");
+        Constructor<?> constructor = packetClass.getConstructor(handClass, Integer.TYPE, Float.TYPE, Float.TYPE);
+        return constructor.newInstance(mainHand, sequence, Float.valueOf(yaw), Float.valueOf(pitch));
     }
 
-    private void finish(boolean bl) {
+    private void finish(boolean shouldSwitchBack) {
         try {
-            if (bl && this.didSwitch && this.xpSlot >= 0 && this.oldSlot >= 0) {
+            if (shouldSwitchBack && this.didSwitch && this.xpSlot >= 0 && this.oldSlot >= 0) {
                 MultiStackXPModule.switchBack(this.runMode, this.xpSlot, this.oldSlot);
             }
         }
@@ -274,63 +271,63 @@ extends Module {
         super.onDisable();
     }
 
-    private static Object staticField(String string, String string2) throws Exception {
-        return Class.forName(string).getField(string2).get(null);
+    private static Object staticField(String className, String fieldName) throws Exception {
+        return Class.forName(className).getField(fieldName).get(null);
     }
 
-    private static Object field(Object object, String string) throws Exception {
-        for (Class<?> clazz = object.getClass(); clazz != null; clazz = clazz.getSuperclass()) {
+    private static Object field(Object target, String fieldName) throws Exception {
+        for (Class<?> clazz = target.getClass(); clazz != null; clazz = clazz.getSuperclass()) {
             try {
-                Field field = clazz.getDeclaredField(string);
+                Field field = clazz.getDeclaredField(fieldName);
                 field.setAccessible(true);
-                return field.get(object);
+                return field.get(target);
             }
             catch (NoSuchFieldException noSuchFieldException) {
                 continue;
             }
         }
-        throw new NoSuchFieldException(string);
+        throw new NoSuchFieldException(fieldName);
     }
 
-    private static Object noArgs(Object object, String string) throws Exception {
-        Method method = MultiStackXPModule.findMethod(object.getClass(), string, 0, null);
+    private static Object noArgs(Object target, String methodName) throws Exception {
+        Method method = MultiStackXPModule.findMethod(target.getClass(), methodName, 0, null);
         method.setAccessible(true);
-        return method.invoke(object, new Object[0]);
+        return method.invoke(target, new Object[0]);
     }
 
-    private static Object intArg(Object object, String string, int n) throws Exception {
-        Method method = MultiStackXPModule.findMethod(object.getClass(), string, 1, Integer.TYPE);
+    private static Object intArg(Object target, String methodName, int arg) throws Exception {
+        Method method = MultiStackXPModule.findMethod(target.getClass(), methodName, 1, Integer.TYPE);
         method.setAccessible(true);
-        return method.invoke(object, n);
+        return method.invoke(target, arg);
     }
 
-    private static Method findMethod(Class<?> clazz, String string, int n, Class<?> clazz2) throws NoSuchMethodException {
-        for (Class<?> clazz3 = clazz; clazz3 != null; clazz3 = clazz3.getSuperclass()) {
-            for (Method method : clazz3.getDeclaredMethods()) {
-                if (!method.getName().equals(string) || method.getParameterCount() != n || n != 0 && method.getParameterTypes()[0] != clazz2) continue;
+    private static Method findMethod(Class<?> targetClass, String methodName, int paramCount, Class<?> paramType) throws NoSuchMethodException {
+        for (Class<?> clazz = targetClass; clazz != null; clazz = clazz.getSuperclass()) {
+            for (Method method : clazz.getDeclaredMethods()) {
+                if (!method.getName().equals(methodName) || method.getParameterCount() != paramCount || paramCount != 0 && method.getParameterTypes()[0] != paramType) continue;
                 return method;
             }
         }
-        throw new NoSuchMethodException(string);
+        throw new NoSuchMethodException(methodName);
     }
 
     private void notifyFailure(Throwable throwable) {
-        Throwable throwable2;
+        Throwable rootCause;
         if (this.errorReported) {
             return;
         }
         this.errorReported = true;
-        for (throwable2 = throwable; throwable2.getCause() != null && throwable2.getCause() != throwable2; throwable2 = throwable2.getCause()) {
+        for (rootCause = throwable; rootCause.getCause() != null && rootCause.getCause() != rootCause; rootCause = rootCause.getCause()) {
         }
-        String string = throwable2.getMessage() == null ? "" : ": " + throwable2.getMessage();
-        this.notifyUser(throwable2.getClass().getSimpleName() + string);
+        String suffix = rootCause.getMessage() == null ? "" : ": " + rootCause.getMessage();
+        this.notifyUser(rootCause.getClass().getSimpleName() + suffix);
     }
 
-    private void notifyUser(String string) {
+    private void notifyUser(String message) {
         try {
-            Object object = MultiStackXPModule.staticField("lightning.Night", "CHAT_MANAGER");
-            Method method = object.getClass().getMethod("tagged", String.class, String.class);
-            method.invoke(object, string, this.getName());
+            Object chatManager = MultiStackXPModule.staticField("lightning.Night", "CHAT_MANAGER");
+            Method method = chatManager.getClass().getMethod("tagged", String.class, String.class);
+            method.invoke(chatManager, message, this.getName());
         }
         catch (Throwable throwable) {
             // empty catch block

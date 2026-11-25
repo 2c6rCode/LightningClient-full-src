@@ -35,13 +35,13 @@ public class ChestScanStore {
 
     public static String currentWorldKey() {
         Minecraft minecraft = Minecraft.getInstance();
-        Object object = minecraft.getCurrentServer() != null ? "server_" + minecraft.getCurrentServer().ip : (minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null ? "sp_" + minecraft.getSingleplayerServer().getWorldData().getLevelName() : "unknown");
-        String string = minecraft.level != null ? minecraft.level.dimension().identifier().toString() : "no_dimension";
-        return ChestScanStore.sanitize((String)object) + "__" + ChestScanStore.sanitize(string);
+        String worldPart = minecraft.getCurrentServer() != null ? "server_" + minecraft.getCurrentServer().ip : (minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null ? "sp_" + minecraft.getSingleplayerServer().getWorldData().getLevelName() : "unknown");
+        String dimension = minecraft.level != null ? minecraft.level.dimension().identifier().toString() : "no_dimension";
+        return ChestScanStore.sanitize(worldPart) + "__" + ChestScanStore.sanitize(dimension);
     }
 
-    private static String sanitize(String string) {
-        return string.replaceAll("[^a-zA-Z0-9_.-]", "_");
+    private static String sanitize(String input) {
+        return input.replaceAll("[^a-zA-Z0-9_.-]", "_");
     }
 
     public void loadForWorld() {
@@ -55,9 +55,9 @@ public class ChestScanStore {
             try (FileReader fileReader = new FileReader(this.file);){
                 Gson gson = new Gson();
                 Type type = new TypeToken<List<Entry>>(){}.getType();
-                List<Entry> list = gson.fromJson(fileReader, type);
-                if (list != null) {
-                    for (Entry entry : list) {
+                List<Entry> entries = gson.fromJson(fileReader, type);
+                if (entries != null) {
+                    for (Entry entry : entries) {
                         try {
                             this.records.put(new BlockPos(entry.x, entry.y, entry.z), ChestStatus.valueOf(entry.status));
                         }
@@ -76,16 +76,16 @@ public class ChestScanStore {
             return;
         }
         try (FileWriter fileWriter = new FileWriter(this.file);){
-            ArrayList<Entry> arrayList = new ArrayList<Entry>();
+            ArrayList<Entry> entries = new ArrayList<Entry>();
             for (Map.Entry<BlockPos, ChestStatus> entry : this.records.entrySet()) {
-                Entry entry2 = new Entry();
-                entry2.x = entry.getKey().getX();
-                entry2.y = entry.getKey().getY();
-                entry2.z = entry.getKey().getZ();
-                entry2.status = entry.getValue().name();
-                arrayList.add(entry2);
+                Entry dto = new Entry();
+                dto.x = entry.getKey().getX();
+                dto.y = entry.getKey().getY();
+                dto.z = entry.getKey().getZ();
+                dto.status = entry.getValue().name();
+                entries.add(dto);
             }
-            new GsonBuilder().setPrettyPrinting().create().toJson(arrayList, (Appendable)fileWriter);
+            new GsonBuilder().setPrettyPrinting().create().toJson(entries, (Appendable)fileWriter);
         }
         catch (Exception exception) {
             // empty catch block

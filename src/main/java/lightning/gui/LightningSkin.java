@@ -50,88 +50,88 @@ public final class LightningSkin {
     private LightningSkin() {
     }
 
-    public static Color accent(int n) {
-        float f = (float)(Math.abs(n) % 480) / 240.0f;
-        float f2 = f <= 1.0f ? f : 2.0f - f;
-        return LightningSkin.mix(f2, 255);
+    public static Color accent(int yOffset) {
+        float cyclePos = (float)(Math.abs(yOffset) % 480) / 240.0f;
+        float blend = cyclePos <= 1.0f ? cyclePos : 2.0f - cyclePos;
+        return LightningSkin.mix(blend, 255);
     }
 
-    private static int lerp(int n, int n2, float f) {
-        return Math.round((float)n + (float)(n2 - n) * f);
+    private static int lerp(int a, int b, float t) {
+        return Math.round((float)a + (float)(b - a) * t);
     }
 
-    private static Color mix(float f, int n) {
-        return new Color(LightningSkin.lerp(181, 56, f), LightningSkin.lerp(139, 242, f), LightningSkin.lerp(255, 196, f), n);
+    private static Color mix(float t, int alpha) {
+        return new Color(LightningSkin.lerp(181, 56, t), LightningSkin.lerp(139, 242, t), LightningSkin.lerp(255, 196, t), alpha);
     }
 
-    private static Color volt(int n) {
-        return new Color(181, 139, 255, n);
+    private static Color volt(int alpha) {
+        return new Color(181, 139, 255, alpha);
     }
 
-    private static Color arc(int n) {
-        return new Color(56, 242, 196, n);
+    private static Color arc(int alpha) {
+        return new Color(56, 242, 196, alpha);
     }
 
-    private static Color lerpC(Color color, Color color2, float f) {
-        f = Math.max(0.0f, Math.min(1.0f, f));
-        return new Color(LightningSkin.lerp(color.getRed(), color2.getRed(), f), LightningSkin.lerp(color.getGreen(), color2.getGreen(), f), LightningSkin.lerp(color.getBlue(), color2.getBlue(), f), LightningSkin.lerp(color.getAlpha(), color2.getAlpha(), f));
+    private static Color lerpC(Color color, Color color2, float t) {
+        t = Math.max(0.0f, Math.min(1.0f, t));
+        return new Color(LightningSkin.lerp(color.getRed(), color2.getRed(), t), LightningSkin.lerp(color.getGreen(), color2.getGreen(), t), LightningSkin.lerp(color.getBlue(), color2.getBlue(), t), LightningSkin.lerp(color.getAlpha(), color2.getAlpha(), t));
     }
 
-    private static void bq(float f, float f2, float f3, float f4, int n, int n2) {
-        if (f3 <= f || f4 <= f2) {
+    private static void bq(float x1, float y1, float x2, float y2, int leftColor, int rightColor) {
+        if (x2 <= x1 || y2 <= y1) {
             return;
         }
         if (bn + 4 > BX.length) {
-            int n3 = BX.length * 2;
-            BX = Arrays.copyOf(BX, n3);
-            BY = Arrays.copyOf(BY, n3);
-            BC = Arrays.copyOf(BC, n3);
+            int newCapacity = BX.length * 2;
+            BX = Arrays.copyOf(BX, newCapacity);
+            BY = Arrays.copyOf(BY, newCapacity);
+            BC = Arrays.copyOf(BC, newCapacity);
         }
-        LightningSkin.BX[LightningSkin.bn] = f;
-        LightningSkin.BY[LightningSkin.bn] = f2;
-        LightningSkin.BC[LightningSkin.bn] = n;
-        LightningSkin.BX[++LightningSkin.bn] = f;
-        LightningSkin.BY[LightningSkin.bn] = f4;
-        LightningSkin.BC[LightningSkin.bn] = n;
-        LightningSkin.BX[++LightningSkin.bn] = f3;
-        LightningSkin.BY[LightningSkin.bn] = f4;
-        LightningSkin.BC[LightningSkin.bn] = n2;
-        LightningSkin.BX[++LightningSkin.bn] = f3;
-        LightningSkin.BY[LightningSkin.bn] = f2;
-        LightningSkin.BC[LightningSkin.bn] = n2;
+        LightningSkin.BX[LightningSkin.bn] = x1;
+        LightningSkin.BY[LightningSkin.bn] = y1;
+        LightningSkin.BC[LightningSkin.bn] = leftColor;
+        LightningSkin.BX[++LightningSkin.bn] = x1;
+        LightningSkin.BY[LightningSkin.bn] = y2;
+        LightningSkin.BC[LightningSkin.bn] = leftColor;
+        LightningSkin.BX[++LightningSkin.bn] = x2;
+        LightningSkin.BY[LightningSkin.bn] = y2;
+        LightningSkin.BC[LightningSkin.bn] = rightColor;
+        LightningSkin.BX[++LightningSkin.bn] = x2;
+        LightningSkin.BY[LightningSkin.bn] = y1;
+        LightningSkin.BC[LightningSkin.bn] = rightColor;
         ++bn;
     }
 
-    private static void bqc(float f, float f2, float f3, float f4, Color color) {
-        int n = color.getRGB();
-        LightningSkin.bq(f, f2, f3, f4, n, n);
+    private static void bqc(float x1, float y1, float x2, float y2, Color color) {
+        int rgba = color.getRGB();
+        LightningSkin.bq(x1, y1, x2, y2, rgba, rgba);
     }
 
     private static void flush(GuiGraphicsExtractor guiGraphicsExtractor) {
         if (bn == 0) {
             return;
         }
-        int n = bn;
+        int count = bn;
         bn = 0;
         GuiRenderState guiRenderState = ((lightning.mixins.accessors.GuiGraphicsExtractorAccessor)guiGraphicsExtractor).night$getGuiRenderState();
-        guiRenderState.addGuiElement((GuiElementRenderState)new GuiQuadRenderState((Matrix3x2fc)new Matrix3x2f((Matrix3x2fc)guiGraphicsExtractor.pose()), Arrays.copyOf(BX, n), Arrays.copyOf(BY, n), Arrays.copyOf(BC, n), Renderer2D.peekScissor(guiGraphicsExtractor)));
+        guiRenderState.addGuiElement((GuiElementRenderState)new GuiQuadRenderState((Matrix3x2fc)new Matrix3x2f((Matrix3x2fc)guiGraphicsExtractor.pose()), Arrays.copyOf(BX, count), Arrays.copyOf(BY, count), Arrays.copyOf(BC, count), Renderer2D.peekScissor(guiGraphicsExtractor)));
     }
 
-    private static void strip(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, float f5, float f6, Color color, Color color2) {
-        if (f2 <= f || f4 <= f3) {
+    private static void strip(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float x2, float y1, float y2, float gradStartX, float gradEndX, Color colorLeft, Color colorRight) {
+        if (x2 <= x1 || y2 <= y1) {
             return;
         }
-        if (color == color2) {
-            LightningSkin.bqc(f, f3, f2, f4, color);
+        if (colorLeft == colorRight) {
+            LightningSkin.bqc(x1, y1, x2, y2, colorLeft);
             return;
         }
-        float f7 = f6 - f5;
-        LightningSkin.bq(f, f3, f2, f4, LightningSkin.lerpC(color, color2, (f - f5) / f7).getRGB(), LightningSkin.lerpC(color, color2, (f2 - f5) / f7).getRGB());
+        float gradSpan = gradEndX - gradStartX;
+        LightningSkin.bq(x1, y1, x2, y2, LightningSkin.lerpC(colorLeft, colorRight, (x1 - gradStartX) / gradSpan).getRGB(), LightningSkin.lerpC(colorLeft, colorRight, (x2 - gradStartX) / gradSpan).getRGB());
     }
 
-    private static float inset(float f, float f2) {
-        float f3 = f * f - f2 * f2;
-        return f - (float)Math.sqrt(Math.max(0.0f, f3));
+    private static float inset(float radius, float dy) {
+        float dxSq = radius * radius - dy * dy;
+        return radius - (float)Math.sqrt(Math.max(0.0f, dxSq));
     }
 
     static void rr(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, float rad, boolean tl, boolean tr, boolean br, boolean bl, Color color, Color color2) {
@@ -147,7 +147,7 @@ public final class LightningSkin {
         }
         rad = Math.min(rad, Math.min(w, h) / 2.0f);
         float top = tl || tr ? rad : 0.0f;
-        float f = bot = bl || br ? rad : 0.0f;
+        bot = bl || br ? rad : 0.0f;
         if (rad < 0.05f) {
             LightningSkin.strip(g, x1, x2, y1, y2, x1, x2, color, color2);
             LightningSkin.flush(g);
@@ -169,8 +169,8 @@ public final class LightningSkin {
         LightningSkin.flush(g);
     }
 
-    static void rrAll(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, float f5, Color color) {
-        LightningSkin.rr(guiGraphicsExtractor, f, f2, f3, f4, f5, true, true, true, true, color, color);
+    static void rrAll(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, float radius, Color color) {
+        LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, radius, true, true, true, true, color, color);
     }
 
     static void ring(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, float rad, float thick, Color color) {
@@ -223,25 +223,25 @@ public final class LightningSkin {
         LightningSkin.flush(g);
     }
 
-    public static void fq(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        float f5 = f3 - f;
-        float f6 = f4 - f2;
+    public static void fq(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        float width = x2 - x1;
+        float height = y2 - y1;
         if (color.getAlpha() == 0) {
             return;
         }
-        if (f6 <= 1.01f && f5 > 20.0f) {
+        if (height <= 1.01f && width > 20.0f) {
             return;
         }
-        if (f5 >= 4.0f && f6 >= 4.0f) {
-            LightningSkin.rrAll(guiGraphicsExtractor, f, f2, f3, f4, Math.min(3.5f, Math.min(f5, f6) / 2.0f), color);
+        if (width >= 4.0f && height >= 4.0f) {
+            LightningSkin.rrAll(guiGraphicsExtractor, x1, y1, x2, y2, Math.min(3.5f, Math.min(width, height) / 2.0f), color);
         } else {
-            Renderer2D.renderQuad(guiGraphicsExtractor, f, f2, f3, f4, color);
+            Renderer2D.renderQuad(guiGraphicsExtractor, x1, y1, x2, y2, color);
         }
     }
 
-    public static void ol(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        LightningSkin.glow(guiGraphicsExtractor, f, f2, f3, f4, color);
-        ColorGui.panelOutline(guiGraphicsExtractor, f, f2, f3, f4, color);
+    public static void ol(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.glow(guiGraphicsExtractor, x1, y1, x2, y2, color);
+        ColorGui.panelOutline(guiGraphicsExtractor, x1, y1, x2, y2, color);
     }
 
     public static void glow(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2, Color c) {
@@ -260,19 +260,19 @@ public final class LightningSkin {
         }
     }
 
-    public static void dfTop(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        LightningSkin.rr(guiGraphicsExtractor, f, f2, f3, f4, 4.5f, true, true, false, false, color, color);
+    public static void dfTop(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, 4.5f, true, true, false, false, color, color);
     }
 
-    public static void dfBottom(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        LightningSkin.rr(guiGraphicsExtractor, f, f2, f3, f4, 4.5f, false, false, true, true, color, color);
+    public static void dfBottom(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, 4.5f, false, false, true, true, color, color);
     }
 
-    public static void nop(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
+    public static void nop(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
     }
 
-    public static void bolt(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, int n) {
-        LightningSkin.boltFlat(guiGraphicsExtractor, f, f2, f3, RefSkin.pick(n), n);
+    public static void bolt(GuiGraphicsExtractor guiGraphicsExtractor, float x, float y, float size, int alpha) {
+        LightningSkin.boltFlat(guiGraphicsExtractor, x, y, size, RefSkin.pick(alpha), alpha);
     }
 
     private static int boltCross(float scanY, float[] xs) {
@@ -331,56 +331,56 @@ public final class LightningSkin {
         LightningSkin.flush(g);
     }
 
-    public static void headerBg(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        LightningSkin.rr(guiGraphicsExtractor, f, f2, f3, f4, 4.5f, true, true, false, false, PANEL, PANEL);
-        float f5 = f + 2.0f;
-        float f6 = f3 - 2.0f;
-        float f7 = f2 + 1.5f;
-        float f8 = f4 - 1.5f;
-        float f9 = Math.min(4.0f, (f8 - f7) / 2.0f);
-        LightningSkin.rr(guiGraphicsExtractor, f5, f7, f6, f8, f9, true, true, true, true, LightningSkin.volt(120), LightningSkin.arc(60));
-        LightningSkin.ring(guiGraphicsExtractor, f5, f7, f6, f8, f9, 0.5f, LightningSkin.mix(0.35f, 150));
-        float f10 = f8 - f7 - 2.5f;
-        float f11 = f6 - 1.2f - f10;
-        float f12 = f7 + (f8 - f7 - f10) / 2.0f;
-        LightningSkin.rr(guiGraphicsExtractor, f11, f12, f11 + f10, f12 + f10, f10 / 2.0f, true, true, true, true, LightningSkin.volt(255), LightningSkin.arc(255));
-        float f13 = f10 * 0.68f;
-        LightningSkin.boltFlat(guiGraphicsExtractor, f11 + (f10 - f13 * 0.561f) / 2.0f, f12 + (f10 - f13) / 2.0f, f13, new Color(12, 12, 12, 235), 255);
+    public static void headerBg(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, 4.5f, true, true, false, false, PANEL, PANEL);
+        float innerX1 = x1 + 2.0f;
+        float innerX2 = x2 - 2.0f;
+        float innerY1 = y1 + 1.5f;
+        float innerY2 = y2 - 1.5f;
+        float innerRadius = Math.min(4.0f, (innerY2 - innerY1) / 2.0f);
+        LightningSkin.rr(guiGraphicsExtractor, innerX1, innerY1, innerX2, innerY2, innerRadius, true, true, true, true, LightningSkin.volt(120), LightningSkin.arc(60));
+        LightningSkin.ring(guiGraphicsExtractor, innerX1, innerY1, innerX2, innerY2, innerRadius, 0.5f, LightningSkin.mix(0.35f, 150));
+        float badgeSize = innerY2 - innerY1 - 2.5f;
+        float badgeX = innerX2 - 1.2f - badgeSize;
+        float badgeY = innerY1 + (innerY2 - innerY1 - badgeSize) / 2.0f;
+        LightningSkin.rr(guiGraphicsExtractor, badgeX, badgeY, badgeX + badgeSize, badgeY + badgeSize, badgeSize / 2.0f, true, true, true, true, LightningSkin.volt(255), LightningSkin.arc(255));
+        float boltSize = badgeSize * 0.68f;
+        LightningSkin.boltFlat(guiGraphicsExtractor, badgeX + (badgeSize - boltSize * 0.561f) / 2.0f, badgeY + (badgeSize - boltSize) / 2.0f, boltSize, new Color(12, 12, 12, 235), 255);
     }
 
-    public static void headerLine(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
+    public static void headerLine(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
     }
 
-    public static void bodyBg(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        LightningSkin.rr(guiGraphicsExtractor, f, f2, f3, f4, 4.5f, false, false, true, true, PANEL, PANEL);
+    public static void bodyBg(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.rr(guiGraphicsExtractor, x1, y1, x2, y2, 4.5f, false, false, true, true, PANEL, PANEL);
     }
 
-    public static void idleRow(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        LightningSkin.rrAll(guiGraphicsExtractor, f, f2 + 0.5f, f3, f4, 3.5f, ROW);
+    public static void idleRow(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        LightningSkin.rrAll(guiGraphicsExtractor, x1, y1 + 0.5f, x2, y2, 3.5f, ROW);
     }
 
-    public static void chargeFill(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        float f5 = f3 - f;
-        if (f5 <= 0.0f) {
+    public static void chargeFill(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        float fillWidth = x2 - x1;
+        if (fillWidth <= 0.0f) {
             return;
         }
-        float f6 = f2 + 0.5f;
-        float f7 = f4 - f6;
-        LightningSkin.rr(guiGraphicsExtractor, f, f6, f3, f4, 3.5f, true, true, true, true, new Color(127, 127, 127, 175), new Color(127, 127, 127, 80));
-        LightningSkin.rr(guiGraphicsExtractor, f + 0.5f, f6 + 0.5f, f3 - 0.5f, f6 + f7 / 2.0f, 3.0f, true, true, false, false, new Color(255, 255, 255, 30), new Color(255, 255, 255, 6));
-        if (f5 > 6.0f) {
-            LightningSkin.ring(guiGraphicsExtractor, f, f6, f3, f4, 3.5f, 0.5f, LightningSkin.mix(0.2f, 190));
-            float f8 = Math.min(6.0f, f7 - 3.0f);
-            LightningSkin.rr(guiGraphicsExtractor, f + 0.45f, f6 + (f7 - f8) / 2.0f, f + 1.25f, f6 + (f7 + f8) / 2.0f, 0.4f, true, true, true, true, new Color(255, 255, 255, 235), new Color(255, 255, 255, 235));
+        float fillTop = y1 + 0.5f;
+        float fillHeight = y2 - fillTop;
+        LightningSkin.rr(guiGraphicsExtractor, x1, fillTop, x2, y2, 3.5f, true, true, true, true, new Color(127, 127, 127, 175), new Color(127, 127, 127, 80));
+        LightningSkin.rr(guiGraphicsExtractor, x1 + 0.5f, fillTop + 0.5f, x2 - 0.5f, fillTop + fillHeight / 2.0f, 3.0f, true, true, false, false, new Color(255, 255, 255, 30), new Color(255, 255, 255, 6));
+        if (fillWidth > 6.0f) {
+            LightningSkin.ring(guiGraphicsExtractor, x1, fillTop, x2, y2, 3.5f, 0.5f, LightningSkin.mix(0.2f, 190));
+            float pipHeight = Math.min(6.0f, fillHeight - 3.0f);
+            LightningSkin.rr(guiGraphicsExtractor, x1 + 0.45f, fillTop + (fillHeight - pipHeight) / 2.0f, x1 + 1.25f, fillTop + (fillHeight + pipHeight) / 2.0f, 0.4f, true, true, true, true, new Color(255, 255, 255, 235), new Color(255, 255, 255, 235));
         }
     }
 
-    public static void rowLine(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
+    public static void rowLine(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
     }
 
-    private static float hash(float f) {
-        float f2 = (float)Math.sin(f * 127.1f + 311.7f) * 43758.547f;
-        return f2 - (float)Math.floor(f2);
+    private static float hash(float seed) {
+        float val = (float)Math.sin(seed * 127.1f + 311.7f) * 43758.547f;
+        return val - (float)Math.floor(val);
     }
 
     private static void boltStep(GuiGraphicsExtractor g, float x, float y, float size, int alpha, float step, float grow) {
@@ -403,88 +403,88 @@ public final class LightningSkin {
         }
     }
 
-    private static void strike(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, long l, float f, float f2) {
-        int n3;
-        Random random = new Random(l * 7919L + 13L);
-        float f3 = (float)n * (0.1f + 0.8f * random.nextFloat());
-        float f4 = (float)n2 * (0.55f + 0.3f * random.nextFloat());
-        int n4 = 18;
-        float[] fArray = new float[n4 + 1];
-        float[] fArray2 = new float[n4 + 1];
-        for (n3 = 0; n3 <= n4; ++n3) {
-            fArray2[n3] = f4 * (float)n3 / (float)n4;
-            fArray[n3] = f3;
-            f3 += (random.nextFloat() - 0.5f) * (float)n2 * 0.075f;
+    private static void strike(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, long cycleIndex, float intensity, float screenAlpha) {
+        int idx;
+        Random random = new Random(cycleIndex * 7919L + 13L);
+        float curX = (float)width * (0.1f + 0.8f * random.nextFloat());
+        float strikeHeight = (float)height * (0.55f + 0.3f * random.nextFloat());
+        int segments = 18;
+        float[] xs = new float[segments + 1];
+        float[] ys = new float[segments + 1];
+        for (idx = 0; idx <= segments; ++idx) {
+            ys[idx] = strikeHeight * (float)idx / (float)segments;
+            xs[idx] = curX;
+            curX += (random.nextFloat() - 0.5f) * (float)height * 0.075f;
         }
-        LightningSkin.boltPath(guiGraphicsExtractor, fArray, fArray2, f, f2, 1.0f);
-        n3 = 3 + random.nextInt(8);
-        float f5 = random.nextBoolean() ? 1.0f : -1.0f;
-        int n5 = 7;
-        float[] fArray3 = new float[n5 + 1];
-        float[] fArray4 = new float[n5 + 1];
-        fArray3[0] = fArray[n3];
-        fArray4[0] = fArray2[n3];
-        for (int i = 1; i <= n5; ++i) {
-            fArray3[i] = fArray3[i - 1] + f5 * (float)n2 * (0.02f + 0.03f * random.nextFloat());
-            fArray4[i] = fArray4[i - 1] + (float)n2 * (0.02f + 0.03f * random.nextFloat());
+        LightningSkin.boltPath(guiGraphicsExtractor, xs, ys, intensity, screenAlpha, 1.0f);
+        idx = 3 + random.nextInt(8);
+        float branchDir = random.nextBoolean() ? 1.0f : -1.0f;
+        int branchSegments = 7;
+        float[] branchXs = new float[branchSegments + 1];
+        float[] branchYs = new float[branchSegments + 1];
+        branchXs[0] = xs[idx];
+        branchYs[0] = ys[idx];
+        for (int i = 1; i <= branchSegments; ++i) {
+            branchXs[i] = branchXs[i - 1] + branchDir * (float)height * (0.02f + 0.03f * random.nextFloat());
+            branchYs[i] = branchYs[i - 1] + (float)height * (0.02f + 0.03f * random.nextFloat());
         }
-        LightningSkin.boltPath(guiGraphicsExtractor, fArray3, fArray4, f, f2, 0.55f);
+        LightningSkin.boltPath(guiGraphicsExtractor, branchXs, branchYs, intensity, screenAlpha, 0.55f);
     }
 
-    private static void boltPath(GuiGraphicsExtractor guiGraphicsExtractor, float[] fArray, float[] fArray2, float f, float f2, float f3) {
-        float f4 = 2.0f * f3;
-        for (int i = 0; i < fArray.length - 1; ++i) {
-            float f5 = fArray2[i];
-            float f6 = fArray2[i + 1];
-            float f7 = fArray[i];
-            float f8 = fArray[i + 1];
-            int n = Math.max(1, (int)Math.ceil((f6 - f5) / 2.0f));
-            for (int j = 0; j < n; ++j) {
-                float f9 = (float)j / (float)n;
-                float f10 = f7 + (f8 - f7) * f9;
-                float f11 = f5 + (f6 - f5) * f9;
-                Color color = new Color(56, 242, 196, Math.round(46.0f * f * f2));
-                Color color2 = new Color(245, 240, 255, Math.round(235.0f * f * f2));
-                Renderer2D.renderQuad(guiGraphicsExtractor, f10 - f4 * 3.0f, f11, f10 + f4 * 3.0f, f11 + 2.0f, color);
-                Renderer2D.renderQuad(guiGraphicsExtractor, f10 - f4 * 0.5f, f11, f10 + f4 * 0.5f, f11 + 2.0f, color2);
+    private static void boltPath(GuiGraphicsExtractor guiGraphicsExtractor, float[] xs, float[] ys, float intensity, float screenAlpha, float scale) {
+        float halfWidth = 2.0f * scale;
+        for (int i = 0; i < xs.length - 1; ++i) {
+            float y0 = ys[i];
+            float y1 = ys[i + 1];
+            float x0 = xs[i];
+            float x1 = xs[i + 1];
+            int steps = Math.max(1, (int)Math.ceil((y1 - y0) / 2.0f));
+            for (int j = 0; j < steps; ++j) {
+                float t = (float)j / (float)steps;
+                float px = x0 + (x1 - x0) * t;
+                float py = y0 + (y1 - y0) * t;
+                Color glowColor = new Color(56, 242, 196, Math.round(46.0f * intensity * screenAlpha));
+                Color coreColor = new Color(245, 240, 255, Math.round(235.0f * intensity * screenAlpha));
+                Renderer2D.renderQuad(guiGraphicsExtractor, px - halfWidth * 3.0f, py, px + halfWidth * 3.0f, py + 2.0f, glowColor);
+                Renderer2D.renderQuad(guiGraphicsExtractor, px - halfWidth * 0.5f, py, px + halfWidth * 0.5f, py + 2.0f, coreColor);
             }
         }
     }
 
-    public static void menuFx(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    public static void menuFx(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, float alpha) {
         try {
-            float f2 = Math.max(0.0f, Math.min(1.0f, f));
-            float f3 = timeOverride >= 0.0f ? timeOverride : (float)(System.currentTimeMillis() - T0) / 1000.0f;
-            float f4 = 4.2f;
-            long l = (long)Math.floor(f3 / f4);
-            float f5 = f3 - (float)l * f4;
-            float f6 = (float)(Math.exp(-f5 * 6.0f) + 0.5 * Math.exp(-Math.abs(f5 - 0.25f) * 25.0f));
-            if (f5 > 1.5f) {
-                f6 = 0.0f;
+            float clampedAlpha = Math.max(0.0f, Math.min(1.0f, alpha));
+            float timeSec = timeOverride >= 0.0f ? timeOverride : (float)(System.currentTimeMillis() - T0) / 1000.0f;
+            float cyclePeriod = 4.2f;
+            long cycleIndex = (long)Math.floor(timeSec / cyclePeriod);
+            float cycleTime = timeSec - (float)cycleIndex * cyclePeriod;
+            float flash = (float)(Math.exp(-cycleTime * 6.0f) + 0.5 * Math.exp(-Math.abs(cycleTime - 0.25f) * 25.0f));
+            if (cycleTime > 1.5f) {
+                flash = 0.0f;
             }
-            f6 = Math.min(1.0f, f6);
-            Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, n, n2, new Color(6, 4, 20, Math.round(165.0f * f2)));
-            Renderer2D.renderGradient(guiGraphicsExtractor, 0.0f, 0.0f, n, n2, new Color(56, 242, 196, Math.round(40.0f * f2)), new Color(181, 139, 255, Math.round(34.0f * f2)));
-            float f7 = (float)n2 * 0.84f;
-            float f8 = (float)n * 0.5f - f7 * 0.561f * 0.5f;
-            float f9 = (float)n2 * 0.08f;
-            float f10 = 0.5f + 0.5f * (float)Math.sin(f3 * 0.9f);
-            LightningSkin.boltStep(guiGraphicsExtractor, f8, f9, f7, Math.round((20.0f + 18.0f * f10 + 120.0f * f6) * f2), 2.0f, 5.0f);
-            LightningSkin.boltStep(guiGraphicsExtractor, f8, f9, f7, Math.round((34.0f + 26.0f * f10 + 110.0f * f6) * f2), 2.0f, 0.0f);
-            if (f5 < 0.55f) {
-                float f11 = 0.65f + 0.35f * (float)((int)(f5 * 22.0f) % 2);
-                LightningSkin.strike(guiGraphicsExtractor, n, n2, l, f11 * (1.0f - f5 / 0.55f * 0.35f), f2);
+            flash = Math.min(1.0f, flash);
+            Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, width, height, new Color(6, 4, 20, Math.round(165.0f * clampedAlpha)));
+            Renderer2D.renderGradient(guiGraphicsExtractor, 0.0f, 0.0f, width, height, new Color(56, 242, 196, Math.round(40.0f * clampedAlpha)), new Color(181, 139, 255, Math.round(34.0f * clampedAlpha)));
+            float boltSize = (float)height * 0.84f;
+            float boltX = (float)width * 0.5f - boltSize * 0.561f * 0.5f;
+            float boltY = (float)height * 0.08f;
+            float pulse = 0.5f + 0.5f * (float)Math.sin(timeSec * 0.9f);
+            LightningSkin.boltStep(guiGraphicsExtractor, boltX, boltY, boltSize, Math.round((20.0f + 18.0f * pulse + 120.0f * flash) * clampedAlpha), 2.0f, 5.0f);
+            LightningSkin.boltStep(guiGraphicsExtractor, boltX, boltY, boltSize, Math.round((34.0f + 26.0f * pulse + 110.0f * flash) * clampedAlpha), 2.0f, 0.0f);
+            if (cycleTime < 0.55f) {
+                float strikeIntensity = 0.65f + 0.35f * (float)((int)(cycleTime * 22.0f) % 2);
+                LightningSkin.strike(guiGraphicsExtractor, width, height, cycleIndex, strikeIntensity * (1.0f - cycleTime / 0.55f * 0.35f), clampedAlpha);
             }
-            if (f6 > 0.01f) {
-                Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, n, n2, new Color(200, 190, 255, Math.round(70.0f * f6 * f2)));
+            if (flash > 0.01f) {
+                Renderer2D.renderQuad(guiGraphicsExtractor, 0.0f, 0.0f, width, height, new Color(200, 190, 255, Math.round(70.0f * flash * clampedAlpha)));
             }
             for (int i = 0; i < 38; ++i) {
-                float f12 = (LightningSkin.hash((float)i * 1.3f) * (float)n + (float)Math.sin(f3 * 0.35f + (float)i) * 14.0f + (float)n) % (float)n;
-                float f13 = 8.0f + 20.0f * LightningSkin.hash((float)i * 2.7f + 5.0f);
-                float f14 = (float)n2 - (f3 * f13 + LightningSkin.hash((float)i * 4.1f) * (float)n2) % (float)n2;
-                float f15 = 1.0f + 1.6f * LightningSkin.hash((float)i * 9.9f);
-                int n3 = Math.round((50.0f + 150.0f * (0.5f + 0.5f * (float)Math.sin(f3 * 2.4f + (float)i * 1.7f))) * f2);
-                Renderer2D.renderQuad(guiGraphicsExtractor, f12, f14, f12 + f15, f14 + f15, i % 3 == 0 ? LightningSkin.volt(n3) : LightningSkin.arc(n3));
+                float px = (LightningSkin.hash((float)i * 1.3f) * (float)width + (float)Math.sin(timeSec * 0.35f + (float)i) * 14.0f + (float)width) % (float)width;
+                float speed = 8.0f + 20.0f * LightningSkin.hash((float)i * 2.7f + 5.0f);
+                float py = (float)height - (timeSec * speed + LightningSkin.hash((float)i * 4.1f) * (float)height) % (float)height;
+                float size = 1.0f + 1.6f * LightningSkin.hash((float)i * 9.9f);
+                int sparkAlpha = Math.round((50.0f + 150.0f * (0.5f + 0.5f * (float)Math.sin(timeSec * 2.4f + (float)i * 1.7f))) * clampedAlpha);
+                Renderer2D.renderQuad(guiGraphicsExtractor, px, py, px + size, py + size, i % 3 == 0 ? LightningSkin.volt(sparkAlpha) : LightningSkin.arc(sparkAlpha));
             }
         }
         catch (Throwable throwable) {
@@ -492,28 +492,28 @@ public final class LightningSkin {
         }
     }
 
-    public static void signature(FontManager fontManager, GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color) {
-        int n3 = 7;
-        int n4 = Math.min(255, color.getAlpha() + 70);
-        int n5 = fontManager.getWidth(string);
-        int n6 = fontManager.getHeight();
-        fontManager.drawTextWithShadow(guiGraphicsExtractor, string, n, n3, new Color(181, 139, 255, n4));
-        Renderer2D.renderSidewaysGradient(guiGraphicsExtractor, n, n3 + n6 + 1, n + n5, n3 + n6 + 2, LightningSkin.volt(n4), LightningSkin.arc(n4));
-        float f = (float)n6 + 3.0f;
-        LightningSkin.boltStep(guiGraphicsExtractor, (float)n - 5.0f - f * 0.561f, (float)n3 - 1.0f, f, n4, 1.0f, 0.0f);
-        LightningSkin.boltStep(guiGraphicsExtractor, (float)(n + n5) + 5.0f, (float)n3 - 1.0f, f, n4, 1.0f, 0.0f);
+    public static void signature(FontManager fontManager, GuiGraphicsExtractor guiGraphicsExtractor, String text, int x, int y, Color color) {
+        int textY = 7;
+        int alpha = Math.min(255, color.getAlpha() + 70);
+        int textWidth = fontManager.getWidth(text);
+        int textHeight = fontManager.getHeight();
+        fontManager.drawTextWithShadow(guiGraphicsExtractor, text, x, textY, new Color(181, 139, 255, alpha));
+        Renderer2D.renderSidewaysGradient(guiGraphicsExtractor, x, textY + textHeight + 1, x + textWidth, textY + textHeight + 2, LightningSkin.volt(alpha), LightningSkin.arc(alpha));
+        float boltSize = (float)textHeight + 3.0f;
+        LightningSkin.boltStep(guiGraphicsExtractor, (float)x - 5.0f - boltSize * 0.561f, (float)textY - 1.0f, boltSize, alpha, 1.0f, 0.0f);
+        LightningSkin.boltStep(guiGraphicsExtractor, (float)(x + textWidth) + 5.0f, (float)textY - 1.0f, boltSize, alpha, 1.0f, 0.0f);
     }
 
-    public static void skipText(FontManager fontManager, GuiGraphicsExtractor guiGraphicsExtractor, String string, int n, int n2, Color color) {
+    public static void skipText(FontManager fontManager, GuiGraphicsExtractor guiGraphicsExtractor, String text, int x, int y, Color color) {
     }
 
-    public static void screenBg(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        MenuShader.render(guiGraphicsExtractor, Math.round(f3), Math.round(f4), 1.0f, 1.0f);
-        Renderer2D.renderQuad(guiGraphicsExtractor, f, f2, f3, f4, new Color(5, 5, 5, 95));
+    public static void screenBg(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        MenuShader.render(guiGraphicsExtractor, Math.round(x2), Math.round(y2), 1.0f, 1.0f);
+        Renderer2D.renderQuad(guiGraphicsExtractor, x1, y1, x2, y2, new Color(5, 5, 5, 95));
     }
 
-    public static void topLine(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, Color color) {
-        Renderer2D.renderQuad(guiGraphicsExtractor, f, f2, f3, f4 + 1.0f, LightningSkin.accent((int)f));
+    public static void topLine(GuiGraphicsExtractor guiGraphicsExtractor, float x1, float y1, float x2, float y2, Color color) {
+        Renderer2D.renderQuad(guiGraphicsExtractor, x1, y1, x2, y2 + 1.0f, LightningSkin.accent((int)x1));
     }
 
     private static int fade(Color c, float k) {
@@ -531,10 +531,10 @@ public final class LightningSkin {
     private static void qv(float x0, float y0, int c0, float x1, float y1, int c1, float x2, float y2, int c2, float x3, float y3, int c3) {
         float area;
         if (bn + 4 > BX.length) {
-            int n = BX.length * 2;
-            BX = Arrays.copyOf(BX, n);
-            BY = Arrays.copyOf(BY, n);
-            BC = Arrays.copyOf(BC, n);
+            int newCapacity = BX.length * 2;
+            BX = Arrays.copyOf(BX, newCapacity);
+            BY = Arrays.copyOf(BY, newCapacity);
+            BC = Arrays.copyOf(BC, newCapacity);
         }
         if ((area = x0 * y1 - x1 * y0 + x1 * y2 - x2 * y1 + x2 * y3 - x3 * y2 + x3 * y0 - x0 * y3) > 0.0f) {
             LightningSkin.pv(x0, y0, c0);

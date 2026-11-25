@@ -78,17 +78,17 @@ extends Module {
                 this.mine = null;
                 return;
             }
-            int n = 0;
+            int placedCount = 0;
             if (this.ticks < this.delay.getValue().intValue()) {
                 ++this.ticks;
                 return;
             }
-            HashSet<BlockPos> hashSet = HoleUtils.getFeetPositions((Player)BlockerModule.mc.player, true, false, false);
-            List<BlockPos> list = HoleUtils.getInsidePositions((Entity)BlockerModule.mc.player);
+            HashSet<BlockPos> feetPositions = HoleUtils.getFeetPositions((Player)BlockerModule.mc.player, true, false, false);
+            List<BlockPos> insidePositions = HoleUtils.getInsidePositions((Entity)BlockerModule.mc.player);
             if (this.mine != null && this.mine.timer().hasTimeElapsed(Float.valueOf(Math.max(this.mine.breakTime() - 200.0f, 0.0f)))) {
                 BlockPos blockPos = this.mine.position();
                 if (this.mine.type() == MineType.FEET && this.feet.getValue()) {
-                    if (hashSet.contains(this.mine.position())) {
+                    if (feetPositions.contains(this.mine.position())) {
                         this.targetPositions.add(new Position(blockPos, blockPos.above()));
                         for (Direction direction : Direction.values()) {
                             if (!direction.getAxis().isHorizontal()) continue;
@@ -97,7 +97,7 @@ extends Module {
                     }
                     this.mine = null;
                 } else if ((this.mine.type() == MineType.HEAD || this.mine.type() == MineType.SIDE) && this.head.getValue()) {
-                    if (this.mine.type() == MineType.HEAD && list.contains(this.mine.position().below().below()) || this.mine.type() == MineType.SIDE && hashSet.contains(this.mine.position().below())) {
+                    if (this.mine.type() == MineType.HEAD && insidePositions.contains(this.mine.position().below().below()) || this.mine.type() == MineType.SIDE && feetPositions.contains(this.mine.position().below())) {
                         this.targetPositions.add(new Position(blockPos, blockPos.above()));
                     }
                     this.mine = null;
@@ -105,29 +105,29 @@ extends Module {
             }
             this.targetPositions.removeIf(position -> !WorldUtils.isPlaceable(position.position()));
             this.targetPositions.removeIf(position -> BlockerModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)position.position())) > Mth.square((double)this.range.getValue().doubleValue()));
-            this.targetPositions.removeIf(position -> !hashSet.contains(position.original()) && !hashSet.contains(position.original().below()) && !list.contains(position.original().below().below()));
+            this.targetPositions.removeIf(position -> !feetPositions.contains(position.original()) && !feetPositions.contains(position.original().below()) && !insidePositions.contains(position.original().below().below()));
             if (this.targetPositions.isEmpty()) {
                 return;
             }
-            int n2 = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            int n3 = BlockerModule.mc.player.getInventory().getSelectedSlot();
-            if (n2 == -1) {
+            int blockSlot = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            int oldSlot = BlockerModule.mc.player.getInventory().getSelectedSlot();
+            if (blockSlot == -1) {
                 this.targetPositions.clear();
                 return;
             }
             Night.ROTATION_MANAGER.beginBatchRotation();
             try {
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n2, n3);
-                for (Position position2 : new ArrayList<Position>(this.targetPositions)) {
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
+                for (Position targetPos : new ArrayList<Position>(this.targetPositions)) {
                     Direction direction;
-                    if (n >= this.limit.getValue().intValue()) break;
-                    direction = WorldUtils.getDirection(position2.position(), null, this.strictDirection.getValue());
+                    if (placedCount >= this.limit.getValue().intValue()) break;
+                    direction = WorldUtils.getDirection(targetPos.position(), null, this.strictDirection.getValue());
                     if (direction == null) continue;
-                    WorldUtils.placeBlock(position2.position(), direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
-                    this.targetPositions.remove(position2);
-                    ++n;
+                    WorldUtils.placeBlock(targetPos.position(), direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.crystalDestruction.getValue(), this.render.getValue());
+                    this.targetPositions.remove(targetPos);
+                    ++placedCount;
                 }
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n2, n3);
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
             }
             finally {
                 Night.ROTATION_MANAGER.endBatchRotation();
@@ -167,17 +167,17 @@ extends Module {
         if (Night.FRIEND_MANAGER.contains(player.getName().getString())) {
             return;
         }
-        HashSet<BlockPos> hashSet = HoleUtils.getFeetPositions((Player)BlockerModule.mc.player, true, false, false);
-        List<BlockPos> list = HoleUtils.getInsidePositions((Entity)BlockerModule.mc.player);
-        if (this.feet.getValue() && hashSet.contains(playerMineEvent.getPosition())) {
+        HashSet<BlockPos> feetPositions = HoleUtils.getFeetPositions((Player)BlockerModule.mc.player, true, false, false);
+        List<BlockPos> insidePositions = HoleUtils.getInsidePositions((Entity)BlockerModule.mc.player);
+        if (this.feet.getValue() && feetPositions.contains(playerMineEvent.getPosition())) {
             this.mine = new Mine(playerMineEvent.getPosition(), new Timer(), WorldUtils.getBreakTime(player, BlockerModule.mc.level.getBlockState(playerMineEvent.getPosition())), MineType.FEET);
             return;
         }
         if (this.head.getValue()) {
-            if (hashSet.contains(playerMineEvent.getPosition().below())) {
+            if (feetPositions.contains(playerMineEvent.getPosition().below())) {
                 this.mine = new Mine(playerMineEvent.getPosition(), new Timer(), WorldUtils.getBreakTime(player, BlockerModule.mc.level.getBlockState(playerMineEvent.getPosition())), MineType.SIDE);
             }
-            if (list.contains(playerMineEvent.getPosition().below().below())) {
+            if (insidePositions.contains(playerMineEvent.getPosition().below().below())) {
                 this.mine = new Mine(playerMineEvent.getPosition(), new Timer(), WorldUtils.getBreakTime(player, BlockerModule.mc.level.getBlockState(playerMineEvent.getPosition())), MineType.HEAD);
             }
         }

@@ -45,8 +45,8 @@ public class GuiRenderStateMixin {
                 GuiTextRenderStateAccessor guiTextRenderStateAccessor = (GuiTextRenderStateAccessor)(Object)guiTextRenderState;
                 GuiRenderState guiRenderState = (GuiRenderState)(Object)this;
                 if (guiTextRenderStateAccessor.isDropShadow()) {
-                    float f = 1.0f;
-                    Night.FONT_MANAGER.getFontRenderer().submitGlyphs(guiRenderState, guiTextRenderStateAccessor.getPose(), guiTextRenderStateAccessor.getScissor(), guiTextRenderStateAccessor.getText(), (float)guiTextRenderStateAccessor.getX() + f, (float)guiTextRenderStateAccessor.getY() + f, guiTextRenderStateAccessor.getColor(), true);
+                    float shadowOffset = 1.0f;
+                    Night.FONT_MANAGER.getFontRenderer().submitGlyphs(guiRenderState, guiTextRenderStateAccessor.getPose(), guiTextRenderStateAccessor.getScissor(), guiTextRenderStateAccessor.getText(), (float)guiTextRenderStateAccessor.getX() + shadowOffset, (float)guiTextRenderStateAccessor.getY() + shadowOffset, guiTextRenderStateAccessor.getColor(), true);
                 }
                 Night.FONT_MANAGER.getFontRenderer().submitGlyphs(guiRenderState, guiTextRenderStateAccessor.getPose(), guiTextRenderStateAccessor.getScissor(), guiTextRenderStateAccessor.getText(), (float)guiTextRenderStateAccessor.getX(), (float)guiTextRenderStateAccessor.getY(), guiTextRenderStateAccessor.getColor(), false);
                 callbackInfo.cancel();

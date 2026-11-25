@@ -27,14 +27,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value={Font.class})
 public class FontMixin {
     @Inject(method={"width(Ljava/lang/String;)I"}, at={@At(value="HEAD")}, cancellable=true)
-    private void width$String(String string, CallbackInfoReturnable<Integer> callbackInfoReturnable) {
+    private void width$String(String text, CallbackInfoReturnable<Integer> callbackInfoReturnable) {
         try {
             if (Night.MODULE_MANAGER == null) {
                 return;
             }
             FontModule fontModule = (FontModule)Night.MODULE_MANAGER.getModule(FontModule.class);
             if (fontModule != null && fontModule.isToggled() && fontModule.customFont.getValue() && fontModule.global.getValue() && Night.FONT_MANAGER.getFontRenderer() != null) {
-                callbackInfoReturnable.setReturnValue((int)Night.FONT_MANAGER.getFontRenderer().getTextWidth(string));
+                callbackInfoReturnable.setReturnValue((int)Night.FONT_MANAGER.getFontRenderer().getTextWidth(text));
             }
             return;
         }

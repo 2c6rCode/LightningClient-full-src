@@ -108,7 +108,7 @@ extends Module {
         if (!this.whileEating.getValue() && EntityUtils.isEating()) {
             return;
         }
-        List list = AutoTrapModule.mc.level.players();
+        List players = AutoTrapModule.mc.level.players();
         Runnable runnable = () -> {
             this.blocksPlaced = 0;
             if (this.autoSwitch.getValue().equalsIgnoreCase("None") && !(AutoTrapModule.mc.player.getMainHandItem().getItem() instanceof BlockItem)) {
@@ -119,9 +119,9 @@ extends Module {
                 this.positions = new ArrayList<BlockPos>();
                 return;
             }
-            int n = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
-            int n2 = AutoTrapModule.mc.player.getInventory().getSelectedSlot();
-            if (n == -1) {
+            int blockSlot = InventoryUtils.findHardestBlock(0, this.autoSwitch.getValue().equalsIgnoreCase("AltSwap") || this.autoSwitch.getValue().equalsIgnoreCase("AltPickup") ? 35 : 8);
+            int oldSlot = AutoTrapModule.mc.player.getInventory().getSelectedSlot();
+            if (blockSlot == -1) {
                 if (this.itemDisable.getValue()) {
                     Night.CHAT_MANAGER.tagged("No blocks could be found in your hotbar.", this.getName());
                     this.setToggled(false);
@@ -129,7 +129,7 @@ extends Module {
                 this.positions = new ArrayList<BlockPos>();
                 return;
             }
-            Target target = this.getTarget(list);
+            Target target = this.getTarget(players);
             if (target == null) {
                 if (this.selfDisable.getValue()) {
                     this.setToggled(false);
@@ -141,16 +141,16 @@ extends Module {
             if (this.attack.getValue()) {
                 this.attackTrapCrystals();
             }
-            int n3 = target.player().getBlockY();
+            int targetY = target.player().getBlockY();
             Night.ROTATION_MANAGER.beginBatchRotation();
             try {
-                InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
                 AutoCrystalModule autoCrystalModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(AutoCrystalModule.class) : null;
-                int n4 = Mth.floor((double)target.player().getY()) + 2;
-                ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
+                int headY = Mth.floor((double)target.player().getY()) + 2;
+                ArrayList<BlockPos> placedPositions = new ArrayList<BlockPos>();
                 for (BlockPos blockPos : this.positions) {
                     if (this.blocksPlaced >= this.bpt.getValue().intValue()) break;
-                    if (blockPos.getY() == n4 && autoCrystalModule != null && autoCrystalModule.isToggled() && autoCrystalModule.hasLiveCrystalNear(blockPos.above())) continue;
+                    if (blockPos.getY() == headY && autoCrystalModule != null && autoCrystalModule.isToggled() && autoCrystalModule.hasLiveCrystalNear(blockPos.above())) continue;
                     if (this.attack.getValue()) {
                         for (EndCrystal crystal : AutoTrapModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(blockPos).inflate(0.5))) {
                             if (!crystal.isAlive()) continue;
@@ -160,29 +160,29 @@ extends Module {
                         }
                     }
                     Direction direction;
-                    if ((direction = WorldUtils.getDirection(blockPos, arrayList, this.strictDirection.getValue())) == null) {
+                    if ((direction = WorldUtils.getDirection(blockPos, placedPositions, this.strictDirection.getValue())) == null) {
                         if (this.airPlace.getValue()) {
                             WorldUtils.airPlaceBlock(blockPos, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.render.getValue());
-                            arrayList.add(blockPos);
+                            placedPositions.add(blockPos);
                             ++this.blocksPlaced;
-                            if (blockPos.getY() != n3) continue;
+                            if (blockPos.getY() != targetY) continue;
                             this.feetTrappedOnce = true;
                             continue;
                         }
-                        BlockPos supportBlock = WorldUtils.findSupportBlock(blockPos, arrayList, this.strictDirection.getValue(), 2);
+                        BlockPos supportBlock = WorldUtils.findSupportBlock(blockPos, placedPositions, this.strictDirection.getValue(), 2);
                         Direction supportDir;
-                        if (supportBlock == null || (supportDir = WorldUtils.getDirection(supportBlock, arrayList, this.strictDirection.getValue())) == null || !WorldUtils.placeBlock(supportBlock, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
-                        arrayList.add(supportBlock);
+                        if (supportBlock == null || (supportDir = WorldUtils.getDirection(supportBlock, placedPositions, this.strictDirection.getValue())) == null || !WorldUtils.placeBlock(supportBlock, supportDir, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
+                        placedPositions.add(supportBlock);
                         ++this.blocksPlaced;
                         continue;
                     }
                     WorldUtils.placeBlock(blockPos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue());
-                    arrayList.add(blockPos);
+                    placedPositions.add(blockPos);
                     ++this.blocksPlaced;
-                    if (blockPos.getY() != n3) continue;
+                    if (blockPos.getY() != targetY) continue;
                     this.feetTrappedOnce = true;
                 }
-                InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+                InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
             }
             finally {
                 Night.ROTATION_MANAGER.endBatchRotation();
@@ -203,15 +203,15 @@ extends Module {
             return;
         }
         if (this.attack.getValue() && (packet = packetReceiveEvent.getPacket()) instanceof ClientboundAddEntityPacket && (clientboundAddEntityPacket = (ClientboundAddEntityPacket)packet).getType() == EntityTypes.END_CRYSTAL) {
-            Vec3 vec3 = new Vec3(clientboundAddEntityPacket.getX(), clientboundAddEntityPacket.getY(), clientboundAddEntityPacket.getZ());
-            AABB aABB = new AABB(vec3.x - 1.0, vec3.y, vec3.z - 1.0, vec3.x + 1.0, vec3.y + 2.0, vec3.z + 1.0);
-            boolean bl = false;
+            Vec3 crystalPos = new Vec3(clientboundAddEntityPacket.getX(), clientboundAddEntityPacket.getY(), clientboundAddEntityPacket.getZ());
+            AABB aABB = new AABB(crystalPos.x - 1.0, crystalPos.y, crystalPos.z - 1.0, crystalPos.x + 1.0, crystalPos.y + 2.0, crystalPos.z + 1.0);
+            boolean intersectsTrap = false;
             for (BlockPos blockPos : this.positions) {
-                if (!aABB.intersects(new AABB(blockPos)) && !(vec3.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= 4.0)) continue;
-                bl = true;
+                if (!aABB.intersects(new AABB(blockPos)) && !(crystalPos.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= 4.0)) continue;
+                intersectsTrap = true;
                 break;
             }
-            if (bl && AutoTrapModule.mc.player.getEyePosition().distanceToSqr(vec3) <= Mth.square((double)this.attackRange.getValue().doubleValue()) && (this.attackMultiTask.getValue() || !AutoTrapModule.mc.player.isUsingItem())) {
+            if (intersectsTrap && AutoTrapModule.mc.player.getEyePosition().distanceToSqr(crystalPos) <= Mth.square((double)this.attackRange.getValue().doubleValue()) && (this.attackMultiTask.getValue() || !AutoTrapModule.mc.player.isUsingItem())) {
                 mc.getConnection().send((Packet)new ServerboundAttackPacket(clientboundAddEntityPacket.getId()));
                 if (this.attackSwing.getValue()) {
                     mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
@@ -225,18 +225,18 @@ extends Module {
         for (EndCrystal endCrystal : AutoTrapModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(AutoTrapModule.mc.player.blockPosition()).inflate(this.attackRange.getValue().doubleValue() + 3.0))) {
             if (!endCrystal.isAlive() || endCrystal.isRemoved() || endCrystal.tickCount < this.attackAge.getValue().intValue()) continue;
             AABB aABB = endCrystal.getBoundingBox();
-            boolean bl = false;
+            boolean intersectsTrap = false;
             for (BlockPos blockPos : this.positions) {
                 if (!AutoTrapModule.mc.level.getBlockState(blockPos).canBeReplaced() || !new AABB(blockPos).intersects(aABB)) continue;
-                bl = true;
+                intersectsTrap = true;
                 break;
             }
-            if (!bl || aABB.distanceToSqr(AutoTrapModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && AutoTrapModule.mc.player.isUsingItem()) continue;
+            if (!intersectsTrap || aABB.distanceToSqr(AutoTrapModule.mc.player.getEyePosition()) > this.attackRange.getValue().doubleValue() * this.attackRange.getValue().doubleValue() || !this.attackMultiTask.getValue() && AutoTrapModule.mc.player.isUsingItem()) continue;
             if (this.attackRotate.getValue()) {
-                float[] object = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
-                Night.ROTATION_MANAGER.silentRotate((float)object[0], (float)object[1]);
-                boolean bl2 = aABB.contains(AutoTrapModule.mc.player.getEyePosition());
-                if (!bl2 && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
+                float[] rotations = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
+                Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
+                boolean insideEye = aABB.contains(AutoTrapModule.mc.player.getEyePosition());
+                if (!insideEye && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
             }
             mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
             if (!this.attackSwing.getValue()) continue;
@@ -255,40 +255,39 @@ extends Module {
         return String.valueOf(this.positions.size());
     }
 
-    private Target getTarget(List<AbstractClientPlayer> list) {
-        Target target = null;
+    private Target getTarget(List<AbstractClientPlayer> players) {
+        Target bestTarget = null;
         LogoutSpotModule logoutSpotModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(LogoutSpotModule.class) : null;
         PopChamsModule popChamsModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(PopChamsModule.class) : null;
-        ArrayList<AbstractClientPlayer> arrayList = new ArrayList<AbstractClientPlayer>(list);
+        ArrayList<AbstractClientPlayer> candidates = new ArrayList<AbstractClientPlayer>(players);
         if (logoutSpotModule != null && logoutSpotModule.isToggled()) {
             for (Player player : logoutSpotModule.getGhosts()) {
-                if (player == null || arrayList.contains(player)) continue;
-                arrayList.add((AbstractClientPlayer)player);
+                if (player == null || candidates.contains(player)) continue;
+                candidates.add((AbstractClientPlayer)player);
             }
         }
-        for (Player player : arrayList) {
+        for (Player player : candidates) {
             LogoutSpotModule.Spot spot;
-            boolean bl;
-            if (player == AutoTrapModule.mc.player || popChamsModule != null && popChamsModule.isGhost((Entity)player) || !(bl = EntityUtils.isGhost((Entity)player)) && (!player.isAlive() || player.getHealth() <= 0.0f) || AutoTrapModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || this.ignoreNaked.getValue() && EntityUtils.isNaked(player) || (logoutSpotModule != null && logoutSpotModule.isGhost((Entity)player) ? (spot = logoutSpotModule.getSpot((RemotePlayer)player)) != null && Night.FRIEND_MANAGER.contains(spot.data.name) : Night.FRIEND_MANAGER.contains(player.getName().getString()))) continue;
+            boolean isGhost;
+            if (player == AutoTrapModule.mc.player || popChamsModule != null && popChamsModule.isGhost((Entity)player) || !(isGhost = EntityUtils.isGhost((Entity)player)) && (!player.isAlive() || player.getHealth() <= 0.0f) || AutoTrapModule.mc.player.distanceToSqr((Entity)player) > Mth.square((double)this.enemyRange.getValue().doubleValue()) || this.ignoreNaked.getValue() && EntityUtils.isNaked(player) || (logoutSpotModule != null && logoutSpotModule.isGhost((Entity)player) ? (spot = logoutSpotModule.getSpot((RemotePlayer)player)) != null && Night.FRIEND_MANAGER.contains(spot.data.name) : Night.FRIEND_MANAGER.contains(player.getName().getString()))) continue;
             if (this.holeCheck.getValue() && !HoleUtils.isPlayerInHole(player)) continue;
-            boolean bl2 = !this.noFeet.getValue() && (!this.disableAfterFeet.getValue() || !this.feetTrappedOnce);
-            boolean bl3 = bl2;
-            List<BlockPos> list2 = HoleUtils.getTrapPositions(player, this.mode.getValue().equalsIgnoreCase("Partial"), this.head.getValue(), this.antiStep.getValue(), false, this.strictDirection.getValue(), bl2, this.airPlace.getValue()).stream().filter(blockPos -> AutoTrapModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(WorldUtils::isPlaceable).toList();
-            if (list2.isEmpty()) continue;
-            if (target == null) {
-                target = new Target(player, list2);
+            boolean includeFeet = !this.noFeet.getValue() && (!this.disableAfterFeet.getValue() || !this.feetTrappedOnce);
+            List<BlockPos> validPositions = HoleUtils.getTrapPositions(player, this.mode.getValue().equalsIgnoreCase("Partial"), this.head.getValue(), this.antiStep.getValue(), false, this.strictDirection.getValue(), includeFeet, this.airPlace.getValue()).stream().filter(blockPos -> AutoTrapModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(WorldUtils::isPlaceable).toList();
+            if (validPositions.isEmpty()) continue;
+            if (bestTarget == null) {
+                bestTarget = new Target(player, validPositions);
                 continue;
             }
-            boolean bl4 = EntityUtils.isGhost((Entity)target.player());
-            if (bl4 != bl) {
-                if (!bl4) continue;
-                target = new Target(player, list2);
+            boolean bestIsGhost = EntityUtils.isGhost((Entity)bestTarget.player());
+            if (bestIsGhost != isGhost) {
+                if (!bestIsGhost) continue;
+                bestTarget = new Target(player, validPositions);
                 continue;
             }
-            if (!(AutoTrapModule.mc.player.distanceToSqr((Entity)player) < AutoTrapModule.mc.player.distanceToSqr((Entity)target.player()))) continue;
-            target = new Target(player, list2);
+            if (!(AutoTrapModule.mc.player.distanceToSqr((Entity)player) < AutoTrapModule.mc.player.distanceToSqr((Entity)bestTarget.player()))) continue;
+            bestTarget = new Target(player, validPositions);
         }
-        return target;
+        return bestTarget;
     }
 
     private record Target(Player player, List<BlockPos> positions) {

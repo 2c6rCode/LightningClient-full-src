@@ -24,16 +24,16 @@ import org.jspecify.annotations.Nullable;
 
 public record GuiQuadRenderState(RenderPipeline pipeline, TextureSetup textureSetup, Matrix3x2fc pose, float[] xs, float[] ys, int[] cols, float @Nullable [] us, float @Nullable [] vs, @Nullable ScreenRectangle scissorArea, @Nullable ScreenRectangle bounds) implements GuiElementRenderState
 {
-    public GuiQuadRenderState(Matrix3x2fc matrix3x2fc, float[] fArray, float[] fArray2, int[] nArray, @Nullable ScreenRectangle screenRectangle) {
-        this(RenderPipelines.GUI, TextureSetup.noTexture(), matrix3x2fc, fArray, fArray2, nArray, null, null, screenRectangle, GuiQuadRenderState.computeBounds(fArray, fArray2, matrix3x2fc, screenRectangle));
+    public GuiQuadRenderState(Matrix3x2fc pose, float[] xs, float[] ys, int[] cols, @Nullable ScreenRectangle scissorArea) {
+        this(RenderPipelines.GUI, TextureSetup.noTexture(), pose, xs, ys, cols, null, null, scissorArea, GuiQuadRenderState.computeBounds(xs, ys, pose, scissorArea));
     }
 
-    public GuiQuadRenderState(TextureSetup textureSetup, Matrix3x2fc matrix3x2fc, float[] fArray, float[] fArray2, int[] nArray, float[] fArray3, float[] fArray4, @Nullable ScreenRectangle screenRectangle) {
-        this(RenderPipelines.GUI_TEXTURED, textureSetup, matrix3x2fc, fArray, fArray2, nArray, fArray3, fArray4, screenRectangle, GuiQuadRenderState.computeBounds(fArray, fArray2, matrix3x2fc, screenRectangle));
+    public GuiQuadRenderState(TextureSetup textureSetup, Matrix3x2fc pose, float[] xs, float[] ys, int[] cols, float[] us, float[] vs, @Nullable ScreenRectangle scissorArea) {
+        this(RenderPipelines.GUI_TEXTURED, textureSetup, pose, xs, ys, cols, us, vs, scissorArea, GuiQuadRenderState.computeBounds(xs, ys, pose, scissorArea));
     }
 
-    public GuiQuadRenderState(RenderPipeline renderPipeline, TextureSetup textureSetup, Matrix3x2fc matrix3x2fc, float[] fArray, float[] fArray2, int[] nArray, float @Nullable [] fArray3, float @Nullable [] fArray4, @Nullable ScreenRectangle screenRectangle) {
-        this(renderPipeline, textureSetup, matrix3x2fc, fArray, fArray2, nArray, fArray3, fArray4, screenRectangle, GuiQuadRenderState.computeBounds(fArray, fArray2, matrix3x2fc, screenRectangle));
+    public GuiQuadRenderState(RenderPipeline renderPipeline, TextureSetup textureSetup, Matrix3x2fc pose, float[] xs, float[] ys, int[] cols, float @Nullable [] us, float @Nullable [] vs, @Nullable ScreenRectangle scissorArea) {
+        this(renderPipeline, textureSetup, pose, xs, ys, cols, us, vs, scissorArea, GuiQuadRenderState.computeBounds(xs, ys, pose, scissorArea));
     }
 
     public void buildVertices(VertexConsumer vertexConsumer) {
@@ -48,34 +48,33 @@ public record GuiQuadRenderState(RenderPipeline pipeline, TextureSetup textureSe
         }
     }
 
-    private static @Nullable ScreenRectangle computeBounds(float[] fArray, float[] fArray2, Matrix3x2fc matrix3x2fc, @Nullable ScreenRectangle screenRectangle) {
-        int n;
-        if (fArray.length == 0) {
-            return screenRectangle;
+    private static @Nullable ScreenRectangle computeBounds(float[] xs, float[] ys, Matrix3x2fc pose, @Nullable ScreenRectangle scissorArea) {
+        if (xs.length == 0) {
+            return scissorArea;
         }
-        float f = fArray[0];
-        float f2 = fArray[0];
-        float f3 = fArray2[0];
-        float f4 = fArray2[0];
-        for (n = 1; n < fArray.length; ++n) {
-            if (fArray[n] < f) {
-                f = fArray[n];
+        float minX = xs[0];
+        float maxX = xs[0];
+        float minY = ys[0];
+        float maxY = ys[0];
+        for (int i = 1; i < xs.length; ++i) {
+            if (xs[i] < minX) {
+                minX = xs[i];
             }
-            if (fArray[n] > f2) {
-                f2 = fArray[n];
+            if (xs[i] > maxX) {
+                maxX = xs[i];
             }
-            if (fArray2[n] < f3) {
-                f3 = fArray2[n];
+            if (ys[i] < minY) {
+                minY = ys[i];
             }
-            if (!(fArray2[n] > f4)) continue;
-            f4 = fArray2[n];
+            if (!(ys[i] > maxY)) continue;
+            maxY = ys[i];
         }
-        n = (int)Math.floor(f);
-        int n2 = (int)Math.floor(f3);
-        int n3 = (int)Math.ceil(f2);
-        int n4 = (int)Math.ceil(f4);
-        ScreenRectangle screenRectangle2 = new ScreenRectangle(n, n2, n3 - n, n4 - n2).transformMaxBounds(matrix3x2fc);
-        return screenRectangle != null ? screenRectangle.intersection(screenRectangle2) : screenRectangle2;
+        int left = (int)Math.floor(minX);
+        int top = (int)Math.floor(minY);
+        int right = (int)Math.ceil(maxX);
+        int bottom = (int)Math.ceil(maxY);
+        ScreenRectangle bounds = new ScreenRectangle(left, top, right - left, bottom - top).transformMaxBounds(pose);
+        return scissorArea != null ? scissorArea.intersection(bounds) : bounds;
     }
 }
 

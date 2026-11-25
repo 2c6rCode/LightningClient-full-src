@@ -25,28 +25,28 @@ extends Setting {
         return this;
     }
 
-    public BindSetting(String string, String string2, int n) {
-        super(string, string, string2, new Setting.Visibility());
-        this.value = n;
-        this.defaultValue = n;
+    public BindSetting(String name, String description, int defaultValue) {
+        super(name, name, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public BindSetting(String string, String string2, String string3, int n) {
-        super(string, string2, string3, new Setting.Visibility());
-        this.value = n;
-        this.defaultValue = n;
+    public BindSetting(String name, String tag, String description, int defaultValue) {
+        super(name, tag, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public BindSetting(String string, String string2, Setting.Visibility visibility, int n) {
-        super(string, string, string2, visibility);
-        this.value = n;
-        this.defaultValue = n;
+    public BindSetting(String name, String description, Setting.Visibility visibility, int defaultValue) {
+        super(name, name, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
-    public BindSetting(String string, String string2, String string3, Setting.Visibility visibility, int n) {
-        super(string, string2, string3, visibility);
-        this.value = n;
-        this.defaultValue = n;
+    public BindSetting(String name, String tag, String description, Setting.Visibility visibility, int defaultValue) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
     }
 
     public void resetValue() {
@@ -54,8 +54,8 @@ extends Setting {
         this.mode = "Bind";
     }
 
-    public void setValue(int n) {
-        this.value = n;
+    public void setValue(int keyCode) {
+        this.value = keyCode;
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }
 
@@ -63,19 +63,19 @@ extends Setting {
         if (!this.holdModesSupported) {
             return;
         }
-        int n = (Arrays.asList(MODES).indexOf(this.mode) + 1) % MODES.length;
-        this.mode = MODES[n];
+        int nextIndex = (Arrays.asList(MODES).indexOf(this.mode) + 1) % MODES.length;
+        this.mode = MODES[nextIndex];
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }
 
-    public void setMode(String string) {
-        if (!this.holdModesSupported && !string.equals("Bind")) {
+    public void setMode(String mode) {
+        if (!this.holdModesSupported && !mode.equals("Bind")) {
             return;
         }
-        if (!Arrays.asList(MODES).contains(string)) {
+        if (!Arrays.asList(MODES).contains(mode)) {
             return;
         }
-        this.mode = string;
+        this.mode = mode;
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }
 
@@ -100,8 +100,8 @@ extends Setting {
     }
 
     @Generated
-    public void setHoldModesSupported(boolean bl) {
-        this.holdModesSupported = bl;
+    public void setHoldModesSupported(boolean holdModesSupported) {
+        this.holdModesSupported = holdModesSupported;
     }
 
     public static class Visibility
@@ -109,10 +109,10 @@ extends Setting {
         private final BindSetting value;
         private final int targetValue;
 
-        public Visibility(BindSetting bindSetting, int n) {
+        public Visibility(BindSetting bindSetting, int targetValue) {
             super(bindSetting);
             this.value = bindSetting;
-            this.targetValue = n;
+            this.targetValue = targetValue;
         }
 
         @Override

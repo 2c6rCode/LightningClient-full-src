@@ -20,15 +20,15 @@ public class Animation {
     private final int duration;
     private int activeDuration;
 
-    public Animation(int n, Easing.Method method) {
-        this(0.0f, 0.0f, n, method);
+    public Animation(int duration, Easing.Method method) {
+        this(0.0f, 0.0f, duration, method);
     }
 
-    public Animation(float f, float f2, int n, Easing.Method method) {
-        this.prev = f;
-        this.current = f2;
-        this.duration = n;
-        this.activeDuration = n;
+    public Animation(float prev, float current, int duration, Easing.Method method) {
+        this.prev = prev;
+        this.current = current;
+        this.duration = duration;
+        this.activeDuration = duration;
         this.easing = method;
         this.startTime = System.currentTimeMillis();
     }
@@ -48,30 +48,30 @@ public class Animation {
         return this.value();
     }
 
-    public float get(float f) {
-        float f2 = this.value();
-        if (this.current != f) {
-            float f3 = Math.abs(f - f2);
-            float f4 = Math.abs(this.current - this.prev);
-            float f5 = Math.max(f4, f3);
-            int n = f5 <= 1.0E-4f ? this.duration : Math.round((float)this.duration * Mth.clamp((float)(f3 / f5), (float)0.0f, (float)1.0f));
-            this.prev = f2;
-            this.current = f;
-            this.activeDuration = Math.max(40, n);
+    public float get(float target) {
+        float currentValue = this.value();
+        if (this.current != target) {
+            float remaining = Math.abs(target - currentValue);
+            float totalDistance = Math.abs(this.current - this.prev);
+            float maxDistance = Math.max(totalDistance, remaining);
+            int scaledDuration = maxDistance <= 1.0E-4f ? this.duration : Math.round((float)this.duration * Mth.clamp((float)(remaining / maxDistance), (float)0.0f, (float)1.0f));
+            this.prev = currentValue;
+            this.current = target;
+            this.activeDuration = Math.max(40, scaledDuration);
             this.startTime = System.currentTimeMillis();
         }
-        return f2;
+        return currentValue;
     }
 
     public void setEasing(Easing.Method method) {
         if (this.easing == method) {
             return;
         }
-        float f = this.value();
-        int n = (int)Math.min(Easing.toDelta(this.startTime), Integer.MAX_VALUE);
-        int n2 = Math.max(0, this.activeDuration - n);
-        this.prev = f;
-        this.activeDuration = n2;
+        float currentValue = this.value();
+        int elapsed = (int)Math.min(Easing.toDelta(this.startTime), Integer.MAX_VALUE);
+        int remainingDuration = Math.max(0, this.activeDuration - elapsed);
+        this.prev = currentValue;
+        this.activeDuration = remainingDuration;
         this.startTime = System.currentTimeMillis();
         this.easing = method;
     }
@@ -107,23 +107,23 @@ public class Animation {
     }
 
     @Generated
-    public void setCurrent(float f) {
-        this.current = f;
+    public void setCurrent(float current) {
+        this.current = current;
     }
 
     @Generated
-    public void setPrev(float f) {
-        this.prev = f;
+    public void setPrev(float prev) {
+        this.prev = prev;
     }
 
     @Generated
-    public void setStartTime(long l) {
-        this.startTime = l;
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
     }
 
     @Generated
-    public void setActiveDuration(int n) {
-        this.activeDuration = n;
+    public void setActiveDuration(int activeDuration) {
+        this.activeDuration = activeDuration;
     }
 }
 

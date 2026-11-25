@@ -62,49 +62,49 @@ implements IMinecraft {
     }
 
     @Inject(method={"extractRenderState"}, at={@At(value="TAIL")})
-    private void render$drawTextWithShadow(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void render$drawTextWithShadow(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
-            int n3;
+            int alphaMask;
             if (Night.UPDATE_STATUS.equalsIgnoreCase("none")) {
                 return;
             }
-            String string = "";
-            String string2 = "";
+            String subText = "";
+            String mainText = "";
             Color color = Color.WHITE;
             if (Night.UPDATE_STATUS.equalsIgnoreCase("update-available")) {
-                string2 = "An update is available for Lightning.";
-                string = "Please restart the game to apply changes.";
+                mainText = "An update is available for Lightning.";
+                subText = "Please restart the game to apply changes.";
                 color = Color.ORANGE;
             }
             if (Night.UPDATE_STATUS.equalsIgnoreCase("failed-connection")) {
-                string2 = "Failed to connect to Lightning's servers.";
-                string = "Please make sure you have a working internet connection.";
+                mainText = "Failed to connect to Lightning's servers.";
+                subText = "Please make sure you have a working internet connection.";
                 color = Color.RED;
             }
             if (Night.UPDATE_STATUS.equalsIgnoreCase("failed")) {
-                string2 = "Failed to update Lightning.";
-                string = "Please make sure the auto-updater is working properly.";
+                mainText = "Failed to update Lightning.";
+                subText = "Please make sure the auto-updater is working properly.";
                 color = Color.RED;
             }
             if (Night.UPDATE_STATUS.equalsIgnoreCase("up-to-date")) {
-                string = "Lightning is on the latest version.";
+                subText = "Lightning is on the latest version.";
             }
-            if (string.isEmpty()) {
+            if (subText.isEmpty()) {
                 return;
             }
-            float f2 = 1.0f;
+            float fadeAlpha = 1.0f;
             if (this.fading) {
-                float f4 = (float)(Util.getMillis() - this.fadeInStart) / 2000.0f;
-                if (f4 <= 1.0f) {
-                    f4 = Mth.clamp((float)f4, (float)0.0f, (float)1.0f);
-                    f2 = Mth.clampedMap((float)f4, (float)0.5f, (float)1.0f, (float)0.0f, (float)1.0f);
+                float fadeProgress = (float)(Util.getMillis() - this.fadeInStart) / 2000.0f;
+                if (fadeProgress <= 1.0f) {
+                    fadeProgress = Mth.clamp((float)fadeProgress, (float)0.0f, (float)1.0f);
+                    fadeAlpha = Mth.clampedMap((float)fadeProgress, (float)0.5f, (float)1.0f, (float)0.0f, (float)1.0f);
                 }
             }
-            if (((n3 = Mth.ceil((float)(f2 * 255.0f)) << 24) & 0xFC000000) != 0) {
-                if (!string2.isEmpty()) {
-                    guiGraphicsExtractor.text(TitleScreenMixin.mc.font, string2, this.width / 2 - TitleScreenMixin.mc.font.width(string2) / 2, this.height - 30, color.getRGB() | n3, true);
+            if (((alphaMask = Mth.ceil((float)(fadeAlpha * 255.0f)) << 24) & 0xFC000000) != 0) {
+                if (!mainText.isEmpty()) {
+                    guiGraphicsExtractor.text(TitleScreenMixin.mc.font, mainText, this.width / 2 - TitleScreenMixin.mc.font.width(mainText) / 2, this.height - 30, color.getRGB() | alphaMask, true);
                 }
-                guiGraphicsExtractor.text(TitleScreenMixin.mc.font, string, this.width / 2 - TitleScreenMixin.mc.font.width(string) / 2, this.height - 20, color.getRGB() | n3, true);
+                guiGraphicsExtractor.text(TitleScreenMixin.mc.font, subText, this.width / 2 - TitleScreenMixin.mc.font.width(subText) / 2, this.height - 20, color.getRGB() | alphaMask, true);
             }
             return;
         }

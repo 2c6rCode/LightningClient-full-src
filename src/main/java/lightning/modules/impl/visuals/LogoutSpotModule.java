@@ -94,16 +94,16 @@ extends Module {
     private long lastLocalTeleportTime = 0L;
     private Vec3 lastLocalPos = null;
 
-    private boolean hasRecentlyPearled(UUID uUID) {
-        if (uUID == null) {
+    private boolean hasRecentlyPearled(UUID playerId) {
+        if (playerId == null) {
             return false;
         }
-        Long l = this.recentPearlThrowers.get(uUID);
-        if (l != null && System.currentTimeMillis() - l < 12000L) {
+        Long throwTime = this.recentPearlThrowers.get(playerId);
+        if (throwTime != null && System.currentTimeMillis() - throwTime < 12000L) {
             return true;
         }
-        for (UUID uUID2 : this.activePearls.values()) {
-            if (!uUID.equals(uUID2)) continue;
+        for (UUID activeThrowerId : this.activePearls.values()) {
+            if (!playerId.equals(activeThrowerId)) continue;
             return true;
         }
         return false;
@@ -115,34 +115,34 @@ extends Module {
         this.trackedPlayers.clear();
     }
 
-    public boolean isPlayerInServer(UUID uUID, String string) {
-        if (uUID == null && string == null) {
+    public boolean isPlayerInServer(UUID playerId, String playerName) {
+        if (playerId == null && playerName == null) {
             return false;
         }
         if (LogoutSpotModule.mc.level != null) {
-            if (uUID != null && LogoutSpotModule.mc.level.getPlayerByUUID(uUID) != null) {
+            if (playerId != null && LogoutSpotModule.mc.level.getPlayerByUUID(playerId) != null) {
                 return true;
             }
-            if (string != null) {
+            if (playerName != null) {
                 for (Player player : LogoutSpotModule.mc.level.players()) {
-                    if (this.isGhost((Entity)player) || !string.equalsIgnoreCase(player.getName().getString())) continue;
+                    if (this.isGhost((Entity)player) || !playerName.equalsIgnoreCase(player.getName().getString())) continue;
                     return true;
                 }
             }
         }
         if (mc.getConnection() != null) {
-            if (uUID != null && mc.getConnection().getPlayerInfo(uUID) != null) {
+            if (playerId != null && mc.getConnection().getPlayerInfo(playerId) != null) {
                 return true;
             }
-            if (string != null && mc.getConnection().getPlayerInfo(string) != null) {
+            if (playerName != null && mc.getConnection().getPlayerInfo(playerName) != null) {
                 return true;
             }
             for (PlayerInfo player : mc.getConnection().getOnlinePlayers()) {
                 if (player == null || player.getProfile() == null) continue;
-                if (uUID != null && uUID.equals(player.getProfile().id())) {
+                if (playerId != null && playerId.equals(player.getProfile().id())) {
                     return true;
                 }
-                if (string == null || !string.equalsIgnoreCase(player.getProfile().name())) continue;
+                if (playerName == null || !playerName.equalsIgnoreCase(player.getProfile().name())) continue;
                 return true;
             }
         }
@@ -152,58 +152,57 @@ extends Module {
     @SubscribeEvent
     public void onTick(TickEvent tickEvent) {
         if (LogoutSpotModule.mc.level != null && LogoutSpotModule.mc.player != null) {
-            UUID uUID;
+            UUID playerId;
             if (this.lastLocalPos != null && LogoutSpotModule.mc.player.position().distanceToSqr(this.lastLocalPos) > 100.0) {
                 this.onLocalPlayerTeleport();
             }
             this.lastLocalPos = LogoutSpotModule.mc.player.position();
-            long l = System.currentTimeMillis();
-            this.recentPearlThrowers.entrySet().removeIf(entry -> l - (Long)entry.getValue() > 15000L);
+            long now = System.currentTimeMillis();
+            this.recentPearlThrowers.entrySet().removeIf(entry -> now - (Long)entry.getValue() > 15000L);
             this.activePearls.entrySet().removeIf(entry -> LogoutSpotModule.mc.level.getEntity(((Integer)entry.getKey()).intValue()) == null);
             FakePlayerModule fakePlayerModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FakePlayerModule.class) : null;
             RemotePlayer remotePlayer = fakePlayerModule != null && fakePlayerModule.isToggled() ? fakePlayerModule.getPlayer() : null;
-            boolean bl = Night.MODULE_MANAGER.getModule(IgnoreNakedModule.class).isToggled();
-            for (Player object : new ArrayList<Player>(LogoutSpotModule.mc.level.players())) {
-                boolean bl2;
-                if (object == LogoutSpotModule.mc.player || object == remotePlayer || this.isGhost((Entity)object) || !object.isAlive() || bl && EntityUtils.isNaked(object)) continue;
-                uUID = object.getUUID();
-                this.pendingDisconnects.remove(uUID);
-                if (this.spots.containsKey(uUID)) {
-                    this.removeSpot(uUID);
+            boolean ignoreNaked = Night.MODULE_MANAGER.getModule(IgnoreNakedModule.class).isToggled();
+            for (Player player : new ArrayList<Player>(LogoutSpotModule.mc.level.players())) {
+                boolean holdingPearl;
+                if (player == LogoutSpotModule.mc.player || player == remotePlayer || this.isGhost((Entity)player) || !player.isAlive() || ignoreNaked && EntityUtils.isNaked(player)) continue;
+                playerId = player.getUUID();
+                this.pendingDisconnects.remove(playerId);
+                if (this.spots.containsKey(playerId)) {
+                    this.removeSpot(playerId);
                 }
-                boolean bl3 = bl2 = object.getMainHandItem().getItem() == Items.ENDER_PEARL || object.getOffhandItem().getItem() == Items.ENDER_PEARL;
-                if (bl2 && (object.swinging || object.isUsingItem())) {
-                    this.recentPearlThrowers.put(uUID, l);
+                holdingPearl = player.getMainHandItem().getItem() == Items.ENDER_PEARL || player.getOffhandItem().getItem() == Items.ENDER_PEARL;
+                if (holdingPearl && (player.swinging || player.isUsingItem())) {
+                    this.recentPearlThrowers.put(playerId, now);
                 }
-                int n = Night.WORLD_MANAGER != null ? Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(uUID, 0) : 0;
-                this.trackedPlayers.put(uUID, new TrackedPlayer(object, n));
+                int pops = Night.WORLD_MANAGER != null ? Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(playerId, 0) : 0;
+                this.trackedPlayers.put(playerId, new TrackedPlayer(player, pops));
             }
             if (!this.pendingDisconnects.isEmpty()) {
-                for (Map.Entry entry2 : this.pendingDisconnects.entrySet()) {
-                    String string;
-                    uUID = (UUID)entry2.getKey();
-                    TrackedPlayer trackedPlayer = this.trackedPlayers.get(uUID);
-                    String string2 = string = trackedPlayer != null ? trackedPlayer.name : null;
-                    if (this.isPlayerInServer(uUID, string)) {
-                        this.pendingDisconnects.remove(uUID);
+                for (Map.Entry<UUID, Long> pendingEntry : this.pendingDisconnects.entrySet()) {
+                    playerId = pendingEntry.getKey();
+                    TrackedPlayer trackedPlayer = this.trackedPlayers.get(playerId);
+                    String playerName = trackedPlayer != null ? trackedPlayer.name : null;
+                    if (this.isPlayerInServer(playerId, playerName)) {
+                        this.pendingDisconnects.remove(playerId);
                         continue;
                     }
-                    if (this.hasRecentlyPearled(uUID)) {
-                        this.pendingDisconnects.remove(uUID);
+                    if (this.hasRecentlyPearled(playerId)) {
+                        this.pendingDisconnects.remove(playerId);
                         continue;
                     }
-                    if (l - (Long)entry2.getValue() < 1500L) continue;
-                    this.pendingDisconnects.remove(uUID);
-                    this.spawnGhost(uUID);
+                    if (now - pendingEntry.getValue() < 1500L) continue;
+                    this.pendingDisconnects.remove(playerId);
+                    this.spawnGhost(playerId);
                 }
             }
             if (!this.spots.isEmpty()) {
-                for (Map.Entry entry3 : this.spots.entrySet()) {
-                    uUID = (UUID)entry3.getKey();
-                    Spot spot = (Spot)entry3.getValue();
-                    String string = spot.data != null ? spot.data.name : null;
-                    if (!this.isPlayerInServer(uUID, string)) continue;
-                    this.removeSpot(uUID);
+                for (Map.Entry<UUID, Spot> spotEntry : this.spots.entrySet()) {
+                    playerId = spotEntry.getKey();
+                    Spot spot = spotEntry.getValue();
+                    String playerName = spot.data != null ? spot.data.name : null;
+                    if (!this.isPlayerInServer(playerId, playerName)) continue;
+                    this.removeSpot(playerId);
                 }
             }
         }
@@ -214,41 +213,40 @@ extends Module {
         if (!this.isToggled() || LogoutSpotModule.mc.level == null || LogoutSpotModule.mc.player == null) {
             return;
         }
-        UUID uUID = playerDisconnectEvent.getId();
-        if (uUID == null || uUID.equals(LogoutSpotModule.mc.player.getUUID())) {
+        UUID playerId = playerDisconnectEvent.getId();
+        if (playerId == null || playerId.equals(LogoutSpotModule.mc.player.getUUID())) {
             return;
         }
         if (System.currentTimeMillis() - this.lastLocalTeleportTime < 3000L) {
             return;
         }
         FakePlayerModule fakePlayerModule = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(FakePlayerModule.class) : null;
-        FakePlayerModule fakePlayerModule2 = fakePlayerModule;
-        if (fakePlayerModule != null && fakePlayerModule.isToggled() && fakePlayerModule.getPlayer() != null && uUID.equals(fakePlayerModule.getPlayer().getUUID())) {
+        if (fakePlayerModule != null && fakePlayerModule.isToggled() && fakePlayerModule.getPlayer() != null && playerId.equals(fakePlayerModule.getPlayer().getUUID())) {
             return;
         }
-        if (!this.trackedPlayers.containsKey(uUID)) {
+        if (!this.trackedPlayers.containsKey(playerId)) {
             return;
         }
-        if (this.hasRecentlyPearled(uUID)) {
-            this.trackedPlayers.remove(uUID);
+        if (this.hasRecentlyPearled(playerId)) {
+            this.trackedPlayers.remove(playerId);
             return;
         }
-        this.pendingDisconnects.put(uUID, System.currentTimeMillis());
+        this.pendingDisconnects.put(playerId, System.currentTimeMillis());
     }
 
-    private void spawnGhost(UUID uUID) {
-        TrackedPlayer trackedPlayer = this.trackedPlayers.get(uUID);
+    private void spawnGhost(UUID playerId) {
+        TrackedPlayer trackedPlayer = this.trackedPlayers.get(playerId);
         if (trackedPlayer == null) {
             return;
         }
         mc.execute(() -> {
-            if (LogoutSpotModule.mc.level == null || this.spots.containsKey(uUID)) {
+            if (LogoutSpotModule.mc.level == null || this.spots.containsKey(playerId)) {
                 return;
             }
-            if (this.isPlayerInServer(uUID, trackedPlayer.name)) {
+            if (this.isPlayerInServer(playerId, trackedPlayer.name)) {
                 return;
             }
-            if (this.hasRecentlyPearled(uUID)) {
+            if (this.hasRecentlyPearled(playerId)) {
                 return;
             }
             GameProfile gameProfile = new GameProfile(UUID.randomUUID(), trackedPlayer.name);
@@ -288,20 +286,20 @@ extends Module {
             }
             LogoutSpotModule.mc.level.addEntity((Entity)remotePlayer);
             Spot spot = new Spot(remotePlayer, trackedPlayer);
-            this.spots.put(uUID, spot);
+            this.spots.put(playerId, spot);
             this.ghosts.put(remotePlayer, spot);
         });
     }
 
     @SubscribeEvent
     public void onPlayerConnect(PlayerConnectEvent playerConnectEvent) {
-        UUID uUID = playerConnectEvent.getId();
-        if (uUID == null) {
+        UUID playerId = playerConnectEvent.getId();
+        if (playerId == null) {
             return;
         }
-        this.pendingDisconnects.remove(uUID);
-        if (this.spots.containsKey(uUID)) {
-            mc.execute(() -> this.removeSpot(uUID));
+        this.pendingDisconnects.remove(playerId);
+        if (this.spots.containsKey(playerId)) {
+            mc.execute(() -> this.removeSpot(playerId));
         }
     }
 
@@ -336,25 +334,25 @@ extends Module {
         Entity entity = entitySpawnEvent.getEntity();
         if (entity instanceof ThrownEnderpearl) {
             ThrownEnderpearl thrownEnderpearl = (ThrownEnderpearl)entity;
-            UUID uUID = null;
-            Entity entity2 = thrownEnderpearl.getOwner();
-            if (entity2 instanceof Player) {
-                Player player = (Player)entity2;
+            UUID throwerId = null;
+            Entity owner = thrownEnderpearl.getOwner();
+            if (owner instanceof Player) {
+                Player player = (Player)owner;
                 if (player != LogoutSpotModule.mc.player && !this.isGhost((Entity)player)) {
-                    uUID = player.getUUID();
+                    throwerId = player.getUUID();
                 }
             } else {
-                double d = 36.0;
+                double bestDistSq = 36.0;
                 for (Player player : LogoutSpotModule.mc.level.players()) {
-                    double d2;
-                    if (player == LogoutSpotModule.mc.player || this.isGhost((Entity)player) || !((d2 = player.distanceToSqr(thrownEnderpearl.position())) < d)) continue;
-                    d = d2;
-                    uUID = player.getUUID();
+                    double distSq;
+                    if (player == LogoutSpotModule.mc.player || this.isGhost((Entity)player) || !((distSq = player.distanceToSqr(thrownEnderpearl.position())) < bestDistSq)) continue;
+                    bestDistSq = distSq;
+                    throwerId = player.getUUID();
                 }
             }
-            if (uUID != null) {
-                this.recentPearlThrowers.put(uUID, System.currentTimeMillis());
-                this.activePearls.put(thrownEnderpearl.getId(), uUID);
+            if (throwerId != null) {
+                this.recentPearlThrowers.put(throwerId, System.currentTimeMillis());
+                this.activePearls.put(thrownEnderpearl.getId(), throwerId);
             }
         }
     }
@@ -392,36 +390,36 @@ extends Module {
         for (Spot spot : this.spots.values()) {
             RemotePlayer remotePlayer = spot.ghost;
             if (remotePlayer == null) continue;
-            double d = remotePlayer.getX();
-            double d2 = remotePlayer.getY() + (double)(remotePlayer.isShiftKeyDown() ? 1.9f : 2.1f);
-            double d3 = remotePlayer.getZ();
-            Vec3 vec3 = new Vec3(d - LogoutSpotModule.mc.gameRenderer.mainCamera().position().x, d2 - LogoutSpotModule.mc.gameRenderer.mainCamera().position().y, d3 - LogoutSpotModule.mc.gameRenderer.mainCamera().position().z);
-            float f = (float)Math.sqrt(LogoutSpotModule.mc.gameRenderer.mainCamera().position().distanceToSqr(d, d2, d3));
-            float f2 = 0.0018f + (float)this.scale.getValue().intValue() / 10000.0f * f;
-            if (f <= 8.0f) {
-                f2 = 0.0245f;
+            double gx = remotePlayer.getX();
+            double gy = remotePlayer.getY() + (double)(remotePlayer.isShiftKeyDown() ? 1.9f : 2.1f);
+            double gz = remotePlayer.getZ();
+            Vec3 relPos = new Vec3(gx - LogoutSpotModule.mc.gameRenderer.mainCamera().position().x, gy - LogoutSpotModule.mc.gameRenderer.mainCamera().position().y, gz - LogoutSpotModule.mc.gameRenderer.mainCamera().position().z);
+            float distance = (float)Math.sqrt(LogoutSpotModule.mc.gameRenderer.mainCamera().position().distanceToSqr(gx, gy, gz));
+            float tagScale = 0.0018f + (float)this.scale.getValue().intValue() / 10000.0f * distance;
+            if (distance <= 8.0f) {
+                tagScale = 0.0245f;
             }
             poseStack.pushPose();
-            poseStack.translate(vec3.x, vec3.y, vec3.z);
+            poseStack.translate(relPos.x, relPos.y, relPos.z);
             poseStack.mulPose((Quaternionfc)LogoutSpotModule.mc.gameRenderer.mainCamera().rotation());
-            poseStack.scale(f2, -f2, f2);
+            poseStack.scale(tagScale, -tagScale, tagScale);
             StringBuilder stringBuilder = new StringBuilder(spot.data.name);
             if (this.health.getValue()) {
-                float f3 = spot.data.health + spot.data.absorption;
-                stringBuilder.append(" HP: ").append(new DecimalFormat("0.0").format(f3));
+                float totalHealth = spot.data.health + spot.data.absorption;
+                stringBuilder.append(" HP: ").append(new DecimalFormat("0.0").format(totalHealth));
             }
             if (this.totemPops.getValue() && spot.data.totemPops > 0) {
                 stringBuilder.append(" -").append(spot.data.totemPops);
             }
-            String string = stringBuilder.toString();
-            int n = Night.FONT_MANAGER.getWidth(string);
-            int n2 = Night.FONT_MANAGER.getHeight();
-            Renderer3D.renderQuad(poseStack, (float)(-n) / 2.0f - 2.0f, -n2 - 1, (float)n / 2.0f + 2.0f, 1.0f, new Color(0, 0, 0, 120));
-            Renderer3D.renderOutline(poseStack, (float)(-n) / 2.0f - 2.0f, -n2 - 1, (float)n / 2.0f + 2.0f, 1.0f, new Color(0, 0, 0, 160));
+            String tagText = stringBuilder.toString();
+            int textWidth = Night.FONT_MANAGER.getWidth(tagText);
+            int textHeight = Night.FONT_MANAGER.getHeight();
+            Renderer3D.renderQuad(poseStack, (float)(-textWidth) / 2.0f - 2.0f, -textHeight - 1, (float)textWidth / 2.0f + 2.0f, 1.0f, new Color(0, 0, 0, 120));
+            Renderer3D.renderOutline(poseStack, (float)(-textWidth) / 2.0f - 2.0f, -textHeight - 1, (float)textWidth / 2.0f + 2.0f, 1.0f, new Color(0, 0, 0, 160));
             Renderer3D.draw(Renderer3D.QUADS, Renderer3D.DEBUG_LINES, false);
             Renderer3D.QUADS.clear();
             Renderer3D.DEBUG_LINES.clear();
-            Night.FONT_MANAGER.drawText(poseStack, string, -n / 2, -n2, ColorUtils.getColor(this.fillColor.getColor(), 255));
+            Night.FONT_MANAGER.drawText(poseStack, tagText, -textWidth / 2, -textHeight, ColorUtils.getColor(this.fillColor.getColor(), 255));
             poseStack.popPose();
         }
     }
@@ -431,8 +429,8 @@ extends Module {
         this.clearAll();
     }
 
-    private void removeSpot(UUID uUID) {
-        Spot spot = this.spots.remove(uUID);
+    private void removeSpot(UUID playerId) {
+        Spot spot = this.spots.remove(playerId);
         if (spot != null) {
             this.ghosts.remove(spot.ghost);
             this.despawn(spot.ghost);
@@ -524,7 +522,7 @@ extends Module {
         public final float absorption;
         public final int totemPops;
 
-        public TrackedPlayer(Player player, int n) {
+        public TrackedPlayer(Player player, int totemPops) {
             this.name = player.getName().getString();
             this.x = player.getX();
             this.y = player.getY();
@@ -554,7 +552,7 @@ extends Module {
             }
             this.health = player.getHealth();
             this.absorption = player.getAbsorptionAmount();
-            this.totemPops = n;
+            this.totemPops = totemPops;
         }
     }
 

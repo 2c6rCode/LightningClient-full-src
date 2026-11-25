@@ -48,18 +48,18 @@ extends Module {
         if (!this.mode.getValue().equalsIgnoreCase("NCP")) {
             return;
         }
-        double d = StepModule.mc.player.getY() - StepModule.mc.player.yo;
-        if (d <= 0.75 || d > this.height.getValue().doubleValue()) {
+        double stepHeight = StepModule.mc.player.getY() - StepModule.mc.player.yo;
+        if (stepHeight <= 0.75 || stepHeight > this.height.getValue().doubleValue()) {
             return;
         }
-        double[] dArray = this.getOffset(d);
-        if (dArray != null && dArray.length > 1) {
+        double[] offsets = this.getOffset(stepHeight);
+        if (offsets != null && offsets.length > 1) {
             if (this.useTimer.getValue()) {
-                Night.WORLD_MANAGER.setTimerMultiplier(1.0f / (float)dArray.length);
+                Night.WORLD_MANAGER.setTimerMultiplier(1.0f / (float)offsets.length);
                 this.resetTimer = true;
             }
-            for (double d2 : dArray) {
-                mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(StepModule.mc.player.xo, StepModule.mc.player.yo + d2, StepModule.mc.player.zo, false, StepModule.mc.player.horizontalCollision));
+            for (double yOffset : offsets) {
+                mc.getConnection().send((Packet)new ServerboundMovePlayerPacket.Pos(StepModule.mc.player.xo, StepModule.mc.player.yo + yOffset, StepModule.mc.player.zo, false, StepModule.mc.player.horizontalCollision));
             }
         }
     }
@@ -69,69 +69,69 @@ extends Module {
         return String.valueOf(this.height.getValue().floatValue());
     }
 
-    public double[] getOffset(double d) {
-        double[] dArray;
-        switch ((int)(d * 10000.0)) {
+    public double[] getOffset(double stepHeight) {
+        double[] offsets;
+        switch ((int)(stepHeight * 10000.0)) {
             case 7500: 
             case 10000: {
-                double[] dArray2 = new double[2];
-                dArray2[0] = 0.42;
-                dArray = dArray2;
-                dArray2[1] = 0.753;
+                double[] stepOffsets = new double[2];
+                stepOffsets[0] = 0.42;
+                offsets = stepOffsets;
+                stepOffsets[1] = 0.753;
                 break;
             }
             case 8125: 
             case 8750: {
-                double[] dArray3 = new double[2];
-                dArray3[0] = 0.39;
-                dArray = dArray3;
-                dArray3[1] = 0.7;
+                double[] stepOffsets = new double[2];
+                stepOffsets[0] = 0.39;
+                offsets = stepOffsets;
+                stepOffsets[1] = 0.7;
                 break;
             }
             case 15000: {
-                double[] dArray4 = new double[6];
-                dArray4[0] = 0.42;
-                dArray4[1] = 0.75;
-                dArray4[2] = 1.0;
-                dArray4[3] = 1.16;
-                dArray4[4] = 1.23;
-                dArray = dArray4;
-                dArray4[5] = 1.2;
+                double[] stepOffsets = new double[6];
+                stepOffsets[0] = 0.42;
+                stepOffsets[1] = 0.75;
+                stepOffsets[2] = 1.0;
+                stepOffsets[3] = 1.16;
+                stepOffsets[4] = 1.23;
+                offsets = stepOffsets;
+                stepOffsets[5] = 1.2;
                 break;
             }
             case 20000: {
-                double[] dArray5 = new double[8];
-                dArray5[0] = 0.42;
-                dArray5[1] = 0.78;
-                dArray5[2] = 0.63;
-                dArray5[3] = 0.51;
-                dArray5[4] = 0.9;
-                dArray5[5] = 1.21;
-                dArray5[6] = 1.45;
-                dArray = dArray5;
-                dArray5[7] = 1.43;
+                double[] stepOffsets = new double[8];
+                stepOffsets[0] = 0.42;
+                stepOffsets[1] = 0.78;
+                stepOffsets[2] = 0.63;
+                stepOffsets[3] = 0.51;
+                stepOffsets[4] = 0.9;
+                stepOffsets[5] = 1.21;
+                stepOffsets[6] = 1.45;
+                offsets = stepOffsets;
+                stepOffsets[7] = 1.43;
                 break;
             }
             case 250000: {
-                double[] dArray6 = new double[10];
-                dArray6[0] = 0.425;
-                dArray6[1] = 0.821;
-                dArray6[2] = 0.699;
-                dArray6[3] = 0.599;
-                dArray6[4] = 1.022;
-                dArray6[5] = 1.372;
-                dArray6[6] = 1.652;
-                dArray6[7] = 1.869;
-                dArray6[8] = 2.019;
-                dArray = dArray6;
-                dArray6[9] = 1.907;
+                double[] stepOffsets = new double[10];
+                stepOffsets[0] = 0.425;
+                stepOffsets[1] = 0.821;
+                stepOffsets[2] = 0.699;
+                stepOffsets[3] = 0.599;
+                stepOffsets[4] = 1.022;
+                stepOffsets[5] = 1.372;
+                stepOffsets[6] = 1.652;
+                stepOffsets[7] = 1.869;
+                stepOffsets[8] = 2.019;
+                offsets = stepOffsets;
+                stepOffsets[9] = 1.907;
                 break;
             }
             default: {
-                dArray = null;
+                offsets = null;
             }
         }
-        return dArray;
+        return offsets;
     }
 }
 

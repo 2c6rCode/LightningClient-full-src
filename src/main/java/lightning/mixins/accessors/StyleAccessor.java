@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(value={Style.class})
 public interface StyleAccessor {
     @Invoker(value="<init>")
-    public static Style create(@Nullable TextColor textColor, @Nullable Integer n, @Nullable Boolean bl, @Nullable Boolean bl2, @Nullable Boolean bl3, @Nullable Boolean bl4, @Nullable Boolean bl5, @Nullable ClickEvent clickEvent, @Nullable HoverEvent hoverEvent, @Nullable String string, @Nullable FontDescription fontDescription) {
+    public static Style create(@Nullable TextColor textColor, @Nullable Integer shadowColor, @Nullable Boolean bold, @Nullable Boolean italic, @Nullable Boolean underlined, @Nullable Boolean strikethrough, @Nullable Boolean obfuscated, @Nullable ClickEvent clickEvent, @Nullable HoverEvent hoverEvent, @Nullable String insertion, @Nullable FontDescription fontDescription) {
         return null;
     }
 }

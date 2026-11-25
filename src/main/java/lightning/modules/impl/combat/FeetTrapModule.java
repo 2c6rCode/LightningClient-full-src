@@ -118,15 +118,15 @@ extends Module {
 
     private float getMiningSpeed(BlockState blockState, Player player) {
         ItemStack itemStack = new ItemStack((ItemLike)Items.NETHERITE_PICKAXE);
-        float f = itemStack.getDestroySpeed(blockState);
-        if (f > 1.0f) {
-            int n = 5;
-            f += (float)(n * n + 1);
+        float speed = itemStack.getDestroySpeed(blockState);
+        if (speed > 1.0f) {
+            int efficiencyLevel = 5;
+            speed += (float)(efficiencyLevel * efficiencyLevel + 1);
         }
         if (!player.onGround()) {
-            f /= 5.0f;
+            speed /= 5.0f;
         }
-        return f;
+        return speed;
     }
 
     @Override
@@ -162,7 +162,7 @@ extends Module {
         if (!(FeetTrapModule.mc.level.getEntity(clientboundBlockDestructionPacket.getId()) instanceof Player)) {
             return;
         }
-        this.breakStates.computeIfAbsent(clientboundBlockDestructionPacket.getId(), n -> new BreakState(this, this, (int)n)).startBreak(clientboundBlockDestructionPacket.getPos(), 0.7f);
+        this.breakStates.computeIfAbsent(clientboundBlockDestructionPacket.getId(), entityId -> new BreakState(this, this, (int)entityId)).startBreak(clientboundBlockDestructionPacket.getPos(), 0.7f);
     }
 
     /*
@@ -188,9 +188,9 @@ extends Module {
             this.setToggled(false);
             return;
         }
-        int n = this.findBlastProofBlock();
-        int n2 = FeetTrapModule.mc.player.getInventory().getSelectedSlot();
-        if (n == -1) {
+        int blockSlot = this.findBlastProofBlock();
+        int oldSlot = FeetTrapModule.mc.player.getInventory().getSelectedSlot();
+        if (blockSlot == -1) {
             Night.CHAT_MANAGER.tagged("No blast-proof blocks could be found in your hotbar.", this.getName());
             this.setToggled(false);
             return;
@@ -199,12 +199,12 @@ extends Module {
         if (this.antiBreak.getValue()) {
             this.applyAntiBreak();
         }
-        List<BlockPos> list = this.targetPositions.stream().filter(blockPos -> FeetTrapModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(WorldUtils::isPlaceable).toList();
-        this.targetCount = list.size();
+        List<BlockPos> placeablePositions = this.targetPositions.stream().filter(blockPos -> FeetTrapModule.mc.player.distanceToSqr(Vec3.atCenterOf((Vec3i)blockPos)) <= Mth.square((double)this.range.getValue().doubleValue())).filter(WorldUtils::isPlaceable).toList();
+        this.targetCount = placeablePositions.size();
         if (this.attack.getValue()) {
             this.attackTrapCrystals();
         }
-        if (list.isEmpty()) {
+        if (placeablePositions.isEmpty()) {
             if (this.selfDisable.getValue()) {
                 this.setToggled(false);
             }
@@ -215,24 +215,24 @@ extends Module {
         }
         Night.ROTATION_MANAGER.beginBatchRotation();
         try {
-            InventoryUtils.switchSlot(this.autoSwitch.getValue(), n, n2);
-            int n3 = 0;
-            ArrayList<BlockPos> arrayList = new ArrayList<BlockPos>();
-            for (BlockPos blockPos2 : list) {
-                if (n3 >= this.limit.getValue().intValue()) break;
-                Direction direction = WorldUtils.getDirection(blockPos2, arrayList, this.strictDirection.getValue());
+            InventoryUtils.switchSlot(this.autoSwitch.getValue(), blockSlot, oldSlot);
+            int placedCount = 0;
+            ArrayList<BlockPos> placedPositions = new ArrayList<BlockPos>();
+            for (BlockPos pos : placeablePositions) {
+                if (placedCount >= this.limit.getValue().intValue()) break;
+                Direction direction = WorldUtils.getDirection(pos, placedPositions, this.strictDirection.getValue());
                 if (direction == null) {
                     if (!this.airPlace.getValue()) continue;
-                    this.placeAir(blockPos2);
-                    arrayList.add(blockPos2);
-                    ++n3;
+                    this.placeAir(pos);
+                    placedPositions.add(pos);
+                    ++placedCount;
                     continue;
                 }
-                if (!WorldUtils.placeBlock(blockPos2, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
-                arrayList.add(blockPos2);
-                ++n3;
+                if (!WorldUtils.placeBlock(pos, direction, InteractionHand.MAIN_HAND, this.rotate.getValue(), true, this.render.getValue())) continue;
+                placedPositions.add(pos);
+                ++placedCount;
             }
-            InventoryUtils.switchBack(this.autoSwitch.getValue(), n, n2);
+            InventoryUtils.switchBack(this.autoSwitch.getValue(), blockSlot, oldSlot);
         }
         finally {
             Night.ROTATION_MANAGER.endBatchRotation();
@@ -246,9 +246,9 @@ extends Module {
             WorldUtils.airPlaceBlock(blockPos, InteractionHand.MAIN_HAND, this.rotate.getValue(), this.render.getValue());
             return;
         }
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 0.5, 0.0);
+        Vec3 hitVec = Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 0.5, 0.0);
         if (!this.rotate.getValue().equalsIgnoreCase("None")) {
-            float[] rotations = RotationUtils.getRotations(vec3);
+            float[] rotations = RotationUtils.getRotations(hitVec);
             if (Night.ROTATION_MANAGER.isBatchingRotations()) {
                 Night.ROTATION_MANAGER.batchRotate(rotations[0], rotations[1]);
             } else {
@@ -258,9 +258,9 @@ extends Module {
         if (this.render.getValue() && !Night.RENDER_MANAGER.renderPositions.contains(renderPosition = new RenderPosition(blockPos))) {
             Night.RENDER_MANAGER.renderPositions.add(renderPosition);
         }
-        BlockHitResult blockHitResult = new BlockHitResult(vec3, Direction.UP, blockPos, false);
+        BlockHitResult blockHitResult = new BlockHitResult(hitVec, Direction.UP, blockPos, false);
         mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
-        NetworkUtils.sendSequencedPacket(arg_0 -> FeetTrapModule.createUseItemOnPacket(blockHitResult, arg_0));
+        NetworkUtils.sendSequencedPacket(sequence -> FeetTrapModule.createUseItemOnPacket(blockHitResult, sequence));
         if (this.swing.getValue()) {
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.OFF_HAND));
         }
@@ -272,18 +272,18 @@ extends Module {
         for (EndCrystal endCrystal : FeetTrapModule.mc.level.getEntitiesOfClass(EndCrystal.class, new AABB(FeetTrapModule.mc.player.blockPosition()).inflate(this.range.getValue().doubleValue() + 3.0))) {
             if (!endCrystal.isAlive() || endCrystal.isRemoved() || endCrystal.tickCount < this.attackAge.getValue().intValue()) continue;
             AABB aABB = endCrystal.getBoundingBox();
-            boolean bl = false;
+            boolean intersectsTrap = false;
             for (BlockPos blockPos : this.targetPositions) {
                 if (!FeetTrapModule.mc.level.getBlockState(blockPos).canBeReplaced() || !new AABB(blockPos).intersects(aABB)) continue;
-                bl = true;
+                intersectsTrap = true;
                 break;
             }
-            if (!bl || aABB.distanceToSqr(FeetTrapModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !this.attackMultiTask.getValue() && FeetTrapModule.mc.player.isUsingItem()) continue;
+            if (!intersectsTrap || aABB.distanceToSqr(FeetTrapModule.mc.player.getEyePosition()) > Mth.square((double)this.attackRange.getValue().doubleValue()) || !this.attackMultiTask.getValue() && FeetTrapModule.mc.player.isUsingItem()) continue;
             if (this.attackRotate.getValue()) {
-                float[] object = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
-                Night.ROTATION_MANAGER.silentRotate((float)object[0], (float)object[1]);
-                boolean bl2 = aABB.contains(FeetTrapModule.mc.player.getEyePosition());
-                if (!bl2 && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
+                float[] rotations = RotationUtils.getRotations(endCrystal.getBoundingBox().getCenter());
+                Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
+                boolean insideEye = aABB.contains(FeetTrapModule.mc.player.getEyePosition());
+                if (!insideEye && !WorldUtils.canSee(endCrystal.getBoundingBox().getCenter())) continue;
             }
             mc.getConnection().send((Packet)new ServerboundAttackPacket(endCrystal.getId()));
             if (!this.attackSwing.getValue()) continue;
@@ -293,28 +293,28 @@ extends Module {
     }
 
     private void applyAntiBreak() {
-        for (BreakState object : this.breakStates.values()) {
-            object.onTick();
+        for (BreakState breakState : this.breakStates.values()) {
+            breakState.onTick();
         }
         if (!this.antiBreak.getValue() || this.targetPositions.isEmpty()) {
             return;
         }
-        ArrayList arrayList = new ArrayList();
+        ArrayList<BlockPos> extraPositions = new ArrayList<BlockPos>();
         for (BlockPos blockPos : this.targetPositions) {
-            boolean bl = false;
+            boolean isBeingBroken = false;
             for (BreakState breakState : this.breakStates.values()) {
                 if (!breakState.isBreaking(blockPos)) continue;
-                bl = true;
+                isBeingBroken = true;
                 break;
             }
-            if (!bl) continue;
+            if (!isBeingBroken) continue;
             for (Direction direction : Direction.values()) {
-                BlockPos blockPos2;
-                if (direction == Direction.DOWN || this.targetPositions.contains(blockPos2 = blockPos.relative(direction)) || arrayList.contains(blockPos2) || !FeetTrapModule.mc.level.getBlockState(blockPos2).canBeReplaced() || this.isEntityBlocking(blockPos2)) continue;
-                arrayList.add(blockPos2);
+                BlockPos neighborPos;
+                if (direction == Direction.DOWN || this.targetPositions.contains(neighborPos = blockPos.relative(direction)) || extraPositions.contains(neighborPos) || !FeetTrapModule.mc.level.getBlockState(neighborPos).canBeReplaced() || this.isEntityBlocking(neighborPos)) continue;
+                extraPositions.add(neighborPos);
             }
         }
-        this.targetPositions.addAll(arrayList);
+        this.targetPositions.addAll(extraPositions);
     }
 
     private boolean isEntityBlocking(BlockPos blockPos) {
@@ -327,53 +327,53 @@ extends Module {
     }
 
     private Set<BlockPos> getTargets() {
-        LinkedHashSet<BlockPos> linkedHashSet = new LinkedHashSet<BlockPos>(HoleUtils.getFeetPositions((Player)FeetTrapModule.mc.player, this.extension.getValue(), this.floor.getValue(), false));
+        LinkedHashSet<BlockPos> positions = new LinkedHashSet<BlockPos>(HoleUtils.getFeetPositions((Player)FeetTrapModule.mc.player, this.extension.getValue(), this.floor.getValue(), false));
         if (!this.corners.getValue()) {
-            return linkedHashSet;
+            return positions;
         }
         AABB aABB = FeetTrapModule.mc.player.getBoundingBox();
-        int n = Mth.floor((double)FeetTrapModule.mc.player.getY());
-        int n2 = Mth.floor((double)aABB.minX);
-        while ((double)n2 < Math.ceil(aABB.maxX)) {
-            int n3 = Mth.floor((double)aABB.minZ);
-            while ((double)n3 < Math.ceil(aABB.maxZ)) {
-                BlockPos blockPos = new BlockPos(n2, n, n3);
-                for (BlockPos blockPos2 : new BlockPos[]{blockPos.north().east(), blockPos.north().west(), blockPos.south().east(), blockPos.south().west()}) {
-                    if (this.isEntityBlocking(blockPos2)) continue;
-                    linkedHashSet.add(blockPos2);
+        int footY = Mth.floor((double)FeetTrapModule.mc.player.getY());
+        int blockX = Mth.floor((double)aABB.minX);
+        while ((double)blockX < Math.ceil(aABB.maxX)) {
+            int blockZ = Mth.floor((double)aABB.minZ);
+            while ((double)blockZ < Math.ceil(aABB.maxZ)) {
+                BlockPos blockPos = new BlockPos(blockX, footY, blockZ);
+                for (BlockPos cornerPos : new BlockPos[]{blockPos.north().east(), blockPos.north().west(), blockPos.south().east(), blockPos.south().west()}) {
+                    if (this.isEntityBlocking(cornerPos)) continue;
+                    positions.add(cornerPos);
                 }
-                ++n3;
+                ++blockZ;
             }
-            ++n2;
+            ++blockX;
         }
-        return linkedHashSet;
+        return positions;
     }
 
     private int findBlastProofBlock() {
-        float f = -1.0f;
-        int n = -1;
+        float bestHardness = -1.0f;
+        int bestSlot = -1;
         for (int i = 0; i <= 8; ++i) {
             BlockItem blockItem;
             Block block;
             Item item = FeetTrapModule.mc.player.getInventory().getItem(i).getItem();
             if (!(item instanceof BlockItem) || !this.isBlastProof(block = (blockItem = (BlockItem)item).getBlock())) continue;
-            float f2 = block.defaultDestroyTime();
-            if (f2 == -1.0f) {
+            float destroyTime = block.defaultDestroyTime();
+            if (destroyTime == -1.0f) {
                 return i;
             }
-            if (!(f2 > f)) continue;
-            f = f2;
-            n = i;
+            if (!(destroyTime > bestHardness)) continue;
+            bestHardness = destroyTime;
+            bestSlot = i;
         }
-        return n;
+        return bestSlot;
     }
 
     private boolean isBlastProof(Block block) {
         return block == Blocks.OBSIDIAN || block == Blocks.ENDER_CHEST || block == Blocks.CRYING_OBSIDIAN || block == Blocks.NETHERITE_BLOCK || block == Blocks.RESPAWN_ANCHOR || block == Blocks.ANCIENT_DEBRIS || block == Blocks.ENCHANTING_TABLE || block == Blocks.ANVIL || block == Blocks.CHIPPED_ANVIL || block == Blocks.DAMAGED_ANVIL;
     }
 
-    private static Packet createUseItemOnPacket(BlockHitResult blockHitResult, int n) {
-        return new ServerboundUseItemOnPacket(InteractionHand.OFF_HAND, blockHitResult, n);
+    private static Packet createUseItemOnPacket(BlockHitResult blockHitResult, int sequence) {
+        return new ServerboundUseItemOnPacket(InteractionHand.OFF_HAND, blockHitResult, sequence);
     }
 
     private class BreakState {
@@ -382,26 +382,26 @@ extends Module {
         final BreakTask doubleMine;
         final FeetTrapModule this$0;
 
-        BreakState(FeetTrapModule feetTrapModule, FeetTrapModule feetTrapModule2, int n) {
-            Objects.requireNonNull(feetTrapModule);
-            FeetTrapModule feetTrapModule3 = feetTrapModule2;
-            Objects.requireNonNull(feetTrapModule3);
-            this.this$0 = feetTrapModule3;
+        BreakState(FeetTrapModule outer, FeetTrapModule owner, int entityId) {
+            Objects.requireNonNull(outer);
+            FeetTrapModule target = owner;
+            Objects.requireNonNull(target);
+            this.this$0 = target;
             this.current = new BreakTask();
             this.doubleMine = new BreakTask();
-            this.entityId = n;
+            this.entityId = entityId;
         }
 
-        void startBreak(BlockPos blockPos, float f) {
-            if (this.current.active && !this.current.pos.equals((Object)blockPos)) {
+        void startBreak(BlockPos pos, float targetSpeed) {
+            if (this.current.active && !this.current.pos.equals((Object)pos)) {
                 if (!this.doubleMine.active) {
                     this.doubleMine.copyFrom(this.current);
                     this.doubleMine.targetSpeed = 1.0f;
                 }
                 this.current.reset();
             }
-            if (!this.current.active || !this.current.pos.equals((Object)blockPos)) {
-                this.current.start(blockPos, f);
+            if (!this.current.active || !this.current.pos.equals((Object)pos)) {
+                this.current.start(pos, targetSpeed);
             }
         }
 
@@ -425,12 +425,12 @@ extends Module {
                 breakTask.active = false;
                 return;
             }
-            float f = blockState.getDestroySpeed((BlockGetter)IMinecraft.mc.level, breakTask.pos);
-            if (f == -1.0f) {
+            float hardness = blockState.getDestroySpeed((BlockGetter)IMinecraft.mc.level, breakTask.pos);
+            if (hardness == -1.0f) {
                 return;
             }
-            float f2 = this.this$0.getMiningSpeed(blockState, player);
-            breakTask.progress += f2 / f / 30.0f;
+            float speed = this.this$0.getMiningSpeed(blockState, player);
+            breakTask.progress += speed / hardness / 30.0f;
             if (breakTask.progress >= breakTask.targetSpeed) {
                 breakTask.active = false;
             }
@@ -453,9 +453,9 @@ extends Module {
         private BreakTask() {
         }
 
-        void start(BlockPos blockPos, float f) {
-            this.pos = blockPos;
-            this.targetSpeed = f;
+        void start(BlockPos pos, float targetSpeed) {
+            this.pos = pos;
+            this.targetSpeed = targetSpeed;
             this.progress = 0.0f;
             this.active = true;
         }

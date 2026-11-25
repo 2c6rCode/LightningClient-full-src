@@ -19,8 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={GlDebug.class})
 public class GlDebugMixin {
     @Inject(method={"printDebugLog"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$silenceFramebufferSpam(int n, int n2, int n3, int n4, int n5, long l, long l2, CallbackInfo callbackInfo) {
-        if (n3 == 1286) {
+    private void night$silenceFramebufferSpam(int source, int type, int id, int severity, int length, long message, long userParam, CallbackInfo callbackInfo) {
+        if (id == 1286) {
             callbackInfo.cancel();
         }
     }

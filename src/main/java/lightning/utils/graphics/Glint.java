@@ -53,25 +53,25 @@ public class Glint {
     private static long lastMs = 0L;
 
     public static void tick() {
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         if (lastMs == 0L) {
-            lastMs = l;
+            lastMs = now;
         }
-        float f = (float)(l - lastMs) / 1000.0f;
-        lastMs = l;
-        ENTITY.tick(f);
-        CRYSTAL.tick(f);
+        float deltaSeconds = (float)(now - lastMs) / 1000.0f;
+        lastMs = now;
+        ENTITY.tick(deltaSeconds);
+        CRYSTAL.tick(deltaSeconds);
     }
 
     public static void draw() {
         if (QUADS.isEmpty()) {
             return;
         }
-        int n = 0;
+        int totalVertices = 0;
         for (TexturedVertexCollection texturedVertexCollection : QUADS) {
-            n += texturedVertexCollection.vertices().length;
+            totalVertices += texturedVertexCollection.vertices().length;
         }
-        try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(n * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize()));){
+        try (ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized((int)(totalVertices * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize()));){
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
             for (TexturedVertexCollection texturedVertexCollection2 : QUADS) {
                 texturedVertexCollection2.vertex(bufferBuilder);
@@ -90,9 +90,9 @@ public class Glint {
         public float scrollU = 0.0f;
         public float scrollV = 0.0f;
 
-        public void tick(float f) {
-            this.scrollU = (this.scrollU + this.speedU * f) % 1.0f;
-            this.scrollV = (this.scrollV + this.speedV * f) % 1.0f;
+        public void tick(float deltaSeconds) {
+            this.scrollU = (this.scrollU + this.speedU * deltaSeconds) % 1.0f;
+            this.scrollV = (this.scrollV + this.speedV * deltaSeconds) % 1.0f;
             if (this.scrollU < 0.0f) {
                 this.scrollU += 1.0f;
             }
@@ -101,26 +101,26 @@ public class Glint {
             }
         }
 
-        public float[] getGlintUV(float f, float f2, float f3) {
-            float f4 = this.scale * 0.06f;
-            float f5, f6;
+        public float[] getGlintUV(float x, float y, float z) {
+            float uvScale = this.scale * 0.06f;
+            float u, v;
             switch (this.direction) {
                 case "Horizontal": {
-                    f5 = (f + f3 * 0.5f) * f4;
-                    f6 = f2 * f4;
+                    u = (x + z * 0.5f) * uvScale;
+                    v = y * uvScale;
                     break;
                 }
                 case "Vertical": {
-                    f5 = f2 * f4;
-                    f6 = (f + f3 * 0.5f) * f4;
+                    u = y * uvScale;
+                    v = (x + z * 0.5f) * uvScale;
                     break;
                 }
                 default: {
-                    f5 = f * f4 + f3 * f4 * 0.5f;
-                    f6 = f2 * f4 + f3 * f4 * 0.5f;
+                    u = x * uvScale + z * uvScale * 0.5f;
+                    v = y * uvScale + z * uvScale * 0.5f;
                 }
             }
-            return new float[]{f5 += this.scrollU, f6 += this.scrollV};
+            return new float[]{u += this.scrollU, v += this.scrollV};
         }
     }
 

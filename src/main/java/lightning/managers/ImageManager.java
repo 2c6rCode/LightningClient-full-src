@@ -58,9 +58,9 @@ public class ImageManager {
         catch (Throwable throwable) {
             // empty catch block
         }
-        String string = ImageManager.findSavedActiveImage();
-        if (string != null && !string.equalsIgnoreCase("None") && !string.isEmpty()) {
-            this.setCurrentActiveImage(string);
+        String activeImage = ImageManager.findSavedActiveImage();
+        if (activeImage != null && !activeImage.equalsIgnoreCase("None") && !activeImage.isEmpty()) {
+            this.setCurrentActiveImage(activeImage);
         } else {
             this.initDefaultTexture();
         }
@@ -73,69 +73,41 @@ public class ImageManager {
      */
     public static String findSavedActiveImage() {
         try {
-            Path path;
-            JsonObject jsonObject;
-            InputStream inputStream;
-            String string = "default";
-            Path path2 = Paths.get("Lightning", "General.json");
-            if (Files.exists(path2, new LinkOption[0])) {
-                inputStream = Files.newInputStream(path2, new OpenOption[0]);
-                try {
-                    jsonObject = JsonParser.parseReader((Reader)new InputStreamReader(inputStream)).getAsJsonObject();
-                    if (jsonObject.has("Config")) {
-                        string = jsonObject.get("Config").getAsString();
-                    }
-                }
-                finally {
-                    if (inputStream != null) {
-                        inputStream.close();
+            String configName = "default";
+            Path generalPath = Paths.get("Lightning", "General.json");
+            if (Files.exists(generalPath, new LinkOption[0])) {
+                try (InputStream generalStream = Files.newInputStream(generalPath, new OpenOption[0])) {
+                    JsonObject generalJson = JsonParser.parseReader((Reader)new InputStreamReader(generalStream)).getAsJsonObject();
+                    if (generalJson.has("Config")) {
+                        configName = generalJson.get("Config").getAsString();
                     }
                 }
             }
-            if (!Files.exists(path = Paths.get("Lightning", "Configs", string + ".json"), new LinkOption[0])) {
-                path = Paths.get("Lightning", "Configs", "default.json");
+            Path configPath = Paths.get("Lightning", "Configs", configName + ".json");
+            if (!Files.exists(configPath, new LinkOption[0])) {
+                configPath = Paths.get("Lightning", "Configs", "default.json");
             }
-            if (!Files.exists(path, new LinkOption[0])) {
+            if (!Files.exists(configPath, new LinkOption[0])) {
                 return "None";
             }
-            inputStream = Files.newInputStream(path, new OpenOption[0]);
-            try {
-                String string2;
-                jsonObject = JsonParser.parseReader((Reader)new InputStreamReader(inputStream)).getAsJsonObject();
-                if (!jsonObject.has("Shaders")) {
-                    String string3 = "None";
-                    return string3;
+            try (InputStream configStream = Files.newInputStream(configPath, new OpenOption[0])) {
+                JsonObject configJson = JsonParser.parseReader((Reader)new InputStreamReader(configStream)).getAsJsonObject();
+                if (!configJson.has("Shaders")) {
+                    return "None";
                 }
-                JsonObject jsonObject2 = jsonObject.getAsJsonObject("Shaders");
-                if (!jsonObject2.has("Settings")) {
-                    String string4 = "None";
-                    return string4;
+                JsonObject shadersJson = configJson.getAsJsonObject("Shaders");
+                if (!shadersJson.has("Settings")) {
+                    return "None";
                 }
-                JsonObject jsonObject3 = jsonObject2.getAsJsonObject("Settings");
-                if (!jsonObject3.has("Image")) {
-                    String string5 = "None";
-                    return string5;
+                JsonObject settingsJson = shadersJson.getAsJsonObject("Settings");
+                if (!settingsJson.has("Image")) {
+                    return "None";
                 }
-                String string6 = jsonObject3.get("Image").getAsString();
-                if (string6 == null) {
-                    String string7 = "None";
-                    return string7;
+                String imageName = settingsJson.get("Image").getAsString();
+                if (imageName == null || imageName.isEmpty() || imageName.equalsIgnoreCase("None")) {
+                    return "None";
                 }
-                if (string6.isEmpty()) {
-                    String string8 = "None";
-                    return string8;
-                }
-                if (string6.equalsIgnoreCase("None")) {
-                    String string9 = "None";
-                    return string9;
-                }
-                String string10 = string2 = string6;
-                return string10;
-            }
-            finally {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
+                return imageName;
             }
         }
         catch (Throwable throwable) {
@@ -194,101 +166,98 @@ public class ImageManager {
         }
     }
 
-    public static File resolveImageFile(String string) {
-        if (string == null || string.isEmpty() || string.equalsIgnoreCase("None")) {
+    public static File resolveImageFile(String imageName) {
+        if (imageName == null || imageName.isEmpty() || imageName.equalsIgnoreCase("None")) {
             return null;
         }
-        ArrayList<Path> arrayList = new ArrayList<Path>();
-        arrayList.add(IMAGES_DIR);
-        arrayList.add(Paths.get("Lightning", "Images"));
-        arrayList.add(Paths.get("Lightning", "images"));
-        arrayList.add(Paths.get("Lightning", "Images"));
-        arrayList.add(Paths.get("lightning", "images"));
+        ArrayList<Path> searchDirs = new ArrayList<Path>();
+        searchDirs.add(IMAGES_DIR);
+        searchDirs.add(Paths.get("Lightning", "Images"));
+        searchDirs.add(Paths.get("Lightning", "images"));
+        searchDirs.add(Paths.get("Lightning", "Images"));
+        searchDirs.add(Paths.get("lightning", "images"));
         try {
-            Path path = FabricLoader.getInstance().getGameDir();
-            arrayList.add(path.resolve("Lightning").resolve("images"));
-            arrayList.add(path.resolve("Lightning").resolve("Images"));
-            arrayList.add(path.resolve("Lightning").resolve("images"));
+            Path gameDir = FabricLoader.getInstance().getGameDir();
+            searchDirs.add(gameDir.resolve("Lightning").resolve("images"));
+            searchDirs.add(gameDir.resolve("Lightning").resolve("Images"));
+            searchDirs.add(gameDir.resolve("Lightning").resolve("images"));
         }
         catch (Throwable throwable) {
             // empty catch block
         }
-        for (Path path : arrayList) {
-            File file = path.resolve(string).toFile();
-            if (!file.exists() || !file.isFile()) continue;
-            return file;
+        for (Path dir : searchDirs) {
+            File candidate = dir.resolve(imageName).toFile();
+            if (!candidate.exists() || !candidate.isFile()) continue;
+            return candidate;
         }
-        return IMAGES_DIR.resolve(string).toFile();
+        return IMAGES_DIR.resolve(imageName).toFile();
     }
 
     public List<File> getImageFiles() {
-        ArrayList<File> arrayList;
         this.ensureDirectoryExists();
-        LinkedHashMap<String, File> linkedHashMap = new LinkedHashMap<String, File>();
-        ArrayList<Path> arrayList2 = new ArrayList<Path>();
-        arrayList2.add(IMAGES_DIR);
-        arrayList2.add(Paths.get("Lightning", "Images"));
-        arrayList2.add(Paths.get("Lightning", "images"));
+        LinkedHashMap<String, File> uniqueFiles = new LinkedHashMap<String, File>();
+        ArrayList<Path> searchDirs = new ArrayList<Path>();
+        searchDirs.add(IMAGES_DIR);
+        searchDirs.add(Paths.get("Lightning", "Images"));
+        searchDirs.add(Paths.get("Lightning", "images"));
         try {
             java.nio.file.Path gameDir = FabricLoader.getInstance().getGameDir();
-            arrayList2.add(gameDir.resolve("Lightning").resolve("images"));
-            arrayList2.add(gameDir.resolve("Lightning").resolve("Images"));
+            searchDirs.add(gameDir.resolve("Lightning").resolve("images"));
+            searchDirs.add(gameDir.resolve("Lightning").resolve("Images"));
         }
         catch (Throwable throwable) {
             // empty catch block
         }
-        for (Path path : arrayList2) {
-            File[] fileArray;
-            File file3 = path.toFile();
-            if (!file3.exists() || !file3.isDirectory() || (fileArray = file3.listFiles((file, string) -> {
-                String string2 = string.toLowerCase();
-                return string2.endsWith(".png") || string2.endsWith(".jpg") || string2.endsWith(".jpeg") || string2.endsWith(".bmp") || string2.endsWith(".webp");
+        for (Path dir : searchDirs) {
+            File[] files;
+            File dirFile = dir.toFile();
+            if (!dirFile.exists() || !dirFile.isDirectory() || (files = dirFile.listFiles((parent, name) -> {
+                String lower = name.toLowerCase();
+                return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".bmp") || lower.endsWith(".webp");
             })) == null) continue;
-            for (File file4 : fileArray) {
-                linkedHashMap.putIfAbsent(file4.getName(), file4);
+            for (File file : files) {
+                uniqueFiles.putIfAbsent(file.getName(), file);
             }
         }
-        arrayList = new ArrayList<File>(linkedHashMap.values());
-        arrayList.sort((file, file2) -> file.getName().compareToIgnoreCase(file2.getName()));
-        return arrayList;
+        ArrayList<File> result = new ArrayList<File>(uniqueFiles.values());
+        result.sort((first, second) -> first.getName().compareToIgnoreCase(second.getName()));
+        return result;
     }
 
-    public ImageEntry getImageEntry(String string) {
-        File file;
-        ImageEntry imageEntry;
-        if (string == null || string.isEmpty() || string.equalsIgnoreCase("None")) {
+    public ImageEntry getImageEntry(String imageName) {
+        if (imageName == null || imageName.isEmpty() || imageName.equalsIgnoreCase("None")) {
             return null;
         }
-        if (this.cache.containsKey(string)) {
-            imageEntry = this.cache.get(string);
-            if (imageEntry.file.exists()) {
-                return imageEntry;
+        if (this.cache.containsKey(imageName)) {
+            ImageEntry cached = this.cache.get(imageName);
+            if (cached.file.exists()) {
+                return cached;
             }
-            imageEntry.close();
-            this.cache.remove(string);
+            cached.close();
+            this.cache.remove(imageName);
         }
-        if ((file = ImageManager.resolveImageFile(string)) == null || !file.exists() || !file.isFile()) {
+        File file = ImageManager.resolveImageFile(imageName);
+        if (file == null || !file.exists() || !file.isFile()) {
             return null;
         }
         try {
             com.mojang.blaze3d.platform.NativeImage nativeImage = ImageManager.loadNativeImage(file);
-            Identifier identifier = Identifier.fromNamespaceAndPath((String)"lightning", (String)("preview_" + Math.abs(string.hashCode()) + "_" + System.currentTimeMillis()));
-            DynamicTexture dynamicTexture = new DynamicTexture(() -> "night/" + string, nativeImage);
+            Identifier identifier = Identifier.fromNamespaceAndPath((String)"lightning", (String)("preview_" + Math.abs(imageName.hashCode()) + "_" + System.currentTimeMillis()));
+            DynamicTexture dynamicTexture = new DynamicTexture(() -> "night/" + imageName, nativeImage);
             dynamicTexture.upload();
             Minecraft.getInstance().getTextureManager().register(identifier, (AbstractTexture)dynamicTexture);
-            ImageEntry imageEntry2 = new ImageEntry(string, file, identifier, dynamicTexture, nativeImage.getWidth(), nativeImage.getHeight());
-            this.cache.put(string, imageEntry2);
-            return imageEntry2;
+            ImageEntry entry = new ImageEntry(imageName, file, identifier, dynamicTexture, nativeImage.getWidth(), nativeImage.getHeight());
+            this.cache.put(imageName, entry);
+            return entry;
         }
         catch (Throwable throwable) {
-            Night.LOGGER.error("Failed to load image: " + string, throwable);
+            Night.LOGGER.error("Failed to load image: " + imageName, throwable);
             return null;
         }
     }
 
-    public void setCurrentActiveImage(String string) {
-        this.currentImageName = string != null ? string : "None";
-        String string2 = this.currentImageName;
+    public void setCurrentActiveImage(String imageName) {
+        this.currentImageName = imageName != null ? imageName : "None";
         if (this.currentImageName.equalsIgnoreCase("None") || this.currentImageName.isEmpty()) {
             this.initDefaultTexture();
             return;
@@ -308,7 +277,7 @@ public class ImageManager {
             catch (Throwable throwable) {}
         }
         catch (Throwable throwable) {
-            Night.LOGGER.error("Failed to set active custom image: " + string, throwable);
+            Night.LOGGER.error("Failed to set active custom image: " + imageName, throwable);
             this.initDefaultTexture();
         }
     }
@@ -325,13 +294,13 @@ public class ImageManager {
         public final int width;
         public final int height;
 
-        public ImageEntry(String string, File file, Identifier identifier, DynamicTexture dynamicTexture, int n, int n2) {
-            this.name = string;
+        public ImageEntry(String name, File file, Identifier identifier, DynamicTexture dynamicTexture, int width, int height) {
+            this.name = name;
             this.file = file;
             this.identifier = identifier;
             this.texture = dynamicTexture;
-            this.width = n;
-            this.height = n2;
+            this.width = width;
+            this.height = height;
         }
 
         public void close() {

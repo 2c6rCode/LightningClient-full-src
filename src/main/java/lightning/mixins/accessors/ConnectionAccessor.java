@@ -22,9 +22,9 @@ public interface ConnectionAccessor {
     public Channel getChannel();
 
     @Accessor(value="packetListener")
-    public void setPacketListener(PacketListener var1);
+    public void setPacketListener(PacketListener packetListener);
 
     @Accessor(value="sendLoginDisconnect")
-    public void setSendLoginDisconnect(boolean var1);
+    public void setSendLoginDisconnect(boolean sendLoginDisconnect);
 }
 

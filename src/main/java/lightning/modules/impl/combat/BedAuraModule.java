@@ -191,12 +191,11 @@ extends Module {
             return;
         }
         if (this.autoCraft.getValue() && this.autoPlaceTable.getValue()) {
-            boolean bl = this.countBeds() > 0;
-            boolean bl2 = bl;
-            if (!bl && this.lastHadBeds) {
+            boolean hasBeds = this.countBeds() > 0;
+            if (!hasBeds && this.lastHadBeds) {
                 this.startAutoCraft();
             }
-            this.lastHadBeds = bl;
+            this.lastHadBeds = hasBeds;
         }
         if (this.autoCraftRunning) {
             this.handleAutoCraftTick();
@@ -235,21 +234,20 @@ extends Module {
         if (this.pauseOnEat.getValue() && BedAuraModule.mc.player.isUsingItem() && (BedAuraModule.mc.player.getUseItem().has(DataComponents.FOOD) || BedAuraModule.mc.player.getUseItem().has(DataComponents.POTION_CONTENTS))) {
             return;
         }
-        float f = BedAuraModule.mc.player.getHealth() + BedAuraModule.mc.player.getAbsorptionAmount();
-        if (f <= this.minHealth.getValue().floatValue()) {
+        float effectiveHealth = BedAuraModule.mc.player.getHealth() + BedAuraModule.mc.player.getAbsorptionAmount();
+        if (effectiveHealth <= this.minHealth.getValue().floatValue()) {
             return;
         }
-        long l = System.currentTimeMillis();
-        if (l - this.lastActionMs < this.delay.getValue().longValue()) {
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - this.lastActionMs < this.delay.getValue().longValue()) {
             return;
         }
         if (this.bedPlacedThisCycle) {
             this.submitDetonate();
             return;
         }
-        boolean bl = this.findBedSlot() != -1;
-        boolean bl2 = bl;
-        if (!bl) {
+        boolean hasBedInHotbar = this.findBedSlot() != -1;
+        if (!hasBedInHotbar) {
             if (this.autoCraft.getValue() && this.countBeds() == 0 && !this.autoCraftRunning) {
                 this.startAutoCraft();
             }
@@ -310,10 +308,10 @@ extends Module {
             this.recomputeTicks = 4;
             return;
         }
-        float f = direction.toYRot();
-        float[] fArray = RotationUtils.getRotations(blockHitResult.getLocation());
-        float f2 = fArray[1];
-        Night.ROTATION_MANAGER.silentRotate(f, f2);
+        float yaw = direction.toYRot();
+        float[] hitRotations = RotationUtils.getRotations(blockHitResult.getLocation());
+        float pitch = hitRotations[1];
+        Night.ROTATION_MANAGER.silentRotate(yaw, pitch);
         if (this.executePlaceBed(blockPos, blockHitResult)) {
             this.bedPlacedThisCycle = true;
             this.placedBedPos = blockPos;
@@ -333,9 +331,9 @@ extends Module {
         }
         BlockPos blockPos = this.placedBedPos;
         if (this.placedBedHeadPos != null && this.currentTarget != null) {
-            float f = this.computeDamage(Vec3.atCenterOf((Vec3i)this.placedBedPos), this.currentTarget);
-            float f2 = this.computeDamage(Vec3.atCenterOf((Vec3i)this.placedBedHeadPos), this.currentTarget);
-            if (f2 > f) {
+            float footDamage = this.computeDamage(Vec3.atCenterOf((Vec3i)this.placedBedPos), this.currentTarget);
+            float headDamage = this.computeDamage(Vec3.atCenterOf((Vec3i)this.placedBedHeadPos), this.currentTarget);
+            if (headDamage > footDamage) {
                 blockPos = this.placedBedHeadPos;
             }
         }
@@ -347,23 +345,22 @@ extends Module {
             this.recomputeTicks = 4;
             return;
         }
-        int n = this.findDetonateSlot();
-        float[] fArray = RotationUtils.getRotations(blockHitResult.getLocation());
-        Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
-        int n2 = BedAuraModule.mc.player.getInventory().getSelectedSlot();
-        boolean bl = false;
-        String string = this.swapMode.getValue().equalsIgnoreCase("Alt") ? "AltPickup" : this.swapMode.getValue();
-        String string2 = string;
-        if (n != Integer.MIN_VALUE) {
-            bl = InventoryUtils.switchSlot(string, n, n2);
+        int detonateSlot = this.findDetonateSlot();
+        float[] rotations = RotationUtils.getRotations(blockHitResult.getLocation());
+        Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
+        int prevSlot = BedAuraModule.mc.player.getInventory().getSelectedSlot();
+        boolean switched = false;
+        String switchMode = this.swapMode.getValue().equalsIgnoreCase("Alt") ? "AltPickup" : this.swapMode.getValue();
+        if (detonateSlot != Integer.MIN_VALUE) {
+            switched = InventoryUtils.switchSlot(switchMode, detonateSlot, prevSlot);
         }
         try {
             BedAuraModule.mc.gameMode.useItemOn(BedAuraModule.mc.player, InteractionHand.MAIN_HAND, blockHitResult);
             mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
         }
         finally {
-            if (bl) {
-                InventoryUtils.switchBack(string, n, n2);
+            if (switched) {
+                InventoryUtils.switchBack(switchMode, detonateSlot, prevSlot);
             }
         }
         this.bedPlacedThisCycle = false;
@@ -374,47 +371,46 @@ extends Module {
     }
 
     private boolean executePlaceBed(BlockPos blockPos, BlockHitResult blockHitResult) {
-        boolean bl;
-        int n;
-        String string;
-        int n2;
+        boolean switched;
+        int prevSlot;
+        String switchMode;
+        int bedSlot;
         block11: {
-            n2 = this.findBedSlot();
-            if (n2 == -1) {
+            bedSlot = this.findBedSlot();
+            if (bedSlot == -1) {
                 return false;
             }
-            string = this.swapMode.getValue().equalsIgnoreCase("Alt") ? "AltPickup" : this.swapMode.getValue();
-            bl = InventoryUtils.switchSlot(string, n2, n = BedAuraModule.mc.player.getInventory().getSelectedSlot());
-            if (!bl && mc.getConnection() != null) {
+            switchMode = this.swapMode.getValue().equalsIgnoreCase("Alt") ? "AltPickup" : this.swapMode.getValue();
+            switched = InventoryUtils.switchSlot(switchMode, bedSlot, prevSlot = BedAuraModule.mc.player.getInventory().getSelectedSlot());
+            if (!switched && mc.getConnection() != null) {
                 mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket(BedAuraModule.mc.player.getInventory().getSelectedSlot()));
             }
-            boolean bl2 = WorldUtils.isInteractable(BedAuraModule.mc.level.getBlockState(blockHitResult.getBlockPos())) && !BedAuraModule.mc.player.isShiftKeyDown();
-            boolean bl3 = bl2;
-            if (bl2) {
-                Input input3 = BedAuraModule.mc.player.input != null ? BedAuraModule.mc.player.input.keyPresses : new Input(false, false, false, false, false, false, false);
-                Input input2 = new Input(input3.forward(), input3.backward(), input3.left(), input3.right(), input3.jump(), true, input3.sprint());
-                mc.getConnection().send((Packet)new ServerboundPlayerInputPacket(input2));
+            boolean needSneak = WorldUtils.isInteractable(BedAuraModule.mc.level.getBlockState(blockHitResult.getBlockPos())) && !BedAuraModule.mc.player.isShiftKeyDown();
+            if (needSneak) {
+                Input currentInput = BedAuraModule.mc.player.input != null ? BedAuraModule.mc.player.input.keyPresses : new Input(false, false, false, false, false, false, false);
+                Input sneakInput = new Input(currentInput.forward(), currentInput.backward(), currentInput.left(), currentInput.right(), currentInput.jump(), true, currentInput.sprint());
+                mc.getConnection().send((Packet)new ServerboundPlayerInputPacket(sneakInput));
                 if (BedAuraModule.mc.player instanceof ClientPlayerEntityAccessor accessor) {
-                    accessor.setLastSentInput(input2);
+                    accessor.setLastSentInput(sneakInput);
                 }
             }
             Input restoredInput;
             try {
                 BedAuraModule.mc.gameMode.useItemOn(BedAuraModule.mc.player, InteractionHand.MAIN_HAND, blockHitResult);
                 mc.getConnection().send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
-                if (!bl2) break block11;
+                if (!needSneak) break block11;
                 restoredInput = BedAuraModule.mc.player.input != null ? BedAuraModule.mc.player.input.keyPresses : new Input(false, false, false, false, false, false, false);
             }
             catch (Throwable throwable) {
-                if (bl2) {
+                if (needSneak) {
                     Input input = BedAuraModule.mc.player.input != null ? BedAuraModule.mc.player.input.keyPresses : new Input(false, false, false, false, false, false, false);
                     mc.getConnection().send((Packet)new ServerboundPlayerInputPacket(input));
                     if (BedAuraModule.mc.player instanceof ClientPlayerEntityAccessor accessor) {
                         accessor.setLastSentInput(input);
                     }
                 }
-                if (bl) {
-                    InventoryUtils.switchBack(string, n2, n);
+                if (switched) {
+                    InventoryUtils.switchBack(switchMode, bedSlot, prevSlot);
                 }
                 throw throwable;
             }
@@ -423,143 +419,141 @@ extends Module {
                 accessor.setLastSentInput(restoredInput);
             }
         }
-        if (bl) {
-            InventoryUtils.switchBack(string, n2, n);
+        if (switched) {
+            InventoryUtils.switchBack(switchMode, bedSlot, prevSlot);
         }
         return true;
     }
 
-    private boolean canSeePlacementFace(Vec3 vec3, Vec3 vec32, BlockPos blockPos) {
-        BlockHitResult blockHitResult = BedAuraModule.mc.level.clip(new ClipContext(vec3, vec32, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)BedAuraModule.mc.player));
+    private boolean canSeePlacementFace(Vec3 eyePos, Vec3 targetPos, BlockPos blockPos) {
+        BlockHitResult blockHitResult = BedAuraModule.mc.level.clip(new ClipContext(eyePos, targetPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)BedAuraModule.mc.player));
         if (blockHitResult.getType() == HitResult.Type.MISS) {
             return true;
         }
         if (blockHitResult instanceof BlockHitResult) {
-            BlockHitResult blockHitResult2 = blockHitResult;
-            return blockHitResult2.getBlockPos().equals((Object)blockPos);
+            BlockHitResult hit = blockHitResult;
+            return hit.getBlockPos().equals((Object)blockPos);
         }
         return false;
     }
 
     private BlockHitResult computeBedHit(BlockPos blockPos) {
-        double d = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
-        if (!this.withinReach(blockPos, d)) {
+        double maxRange = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
+        if (!this.withinReach(blockPos, maxRange)) {
             return null;
         }
-        BlockPos blockPos2 = blockPos.below();
-        boolean bl = !BedAuraModule.mc.level.getBlockState(blockPos2).canBeReplaced();
-        Vec3 vec3 = BedAuraModule.mc.player.getEyePosition();
-        if (bl) {
-            Vec3 vec32 = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY(), (double)blockPos.getZ() + 0.5);
-            if (this.strictDirection.getValue() && (vec3.y < (double)blockPos.getY() || !this.canSeePlacementFace(vec3, vec32, blockPos2))) {
+        BlockPos belowPos = blockPos.below();
+        boolean hasSupport = !BedAuraModule.mc.level.getBlockState(belowPos).canBeReplaced();
+        Vec3 eyePos = BedAuraModule.mc.player.getEyePosition();
+        if (hasSupport) {
+            Vec3 hitVec = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY(), (double)blockPos.getZ() + 0.5);
+            if (this.strictDirection.getValue() && (eyePos.y < (double)blockPos.getY() || !this.canSeePlacementFace(eyePos, hitVec, belowPos))) {
                 return null;
             }
-            return new BlockHitResult(vec32, Direction.UP, blockPos2, false);
+            return new BlockHitResult(hitVec, Direction.UP, belowPos, false);
         }
         if (!this.airPlace.getValue()) {
             return null;
         }
         for (Direction direction : Direction.values()) {
-            BlockPos blockPos3 = blockPos.relative(direction);
-            if (BedAuraModule.mc.level.getBlockState(blockPos3).canBeReplaced()) continue;
-            Direction direction2 = direction.getOpposite();
-            Vec3 vec33 = new Vec3((double)blockPos.getX() + 0.5 - (double)direction.getStepX() * 0.5, (double)blockPos.getY() + 0.5 - (double)direction.getStepY() * 0.5, (double)blockPos.getZ() + 0.5 - (double)direction.getStepZ() * 0.5);
-            if (this.strictDirection.getValue() && !this.canSeePlacementFace(vec3, vec33, blockPos3)) continue;
-            return new BlockHitResult(vec33, direction2, blockPos3, false);
+            BlockPos neighborPos = blockPos.relative(direction);
+            if (BedAuraModule.mc.level.getBlockState(neighborPos).canBeReplaced()) continue;
+            Direction oppositeDir = direction.getOpposite();
+            Vec3 hitVec = new Vec3((double)blockPos.getX() + 0.5 - (double)direction.getStepX() * 0.5, (double)blockPos.getY() + 0.5 - (double)direction.getStepY() * 0.5, (double)blockPos.getZ() + 0.5 - (double)direction.getStepZ() * 0.5);
+            if (this.strictDirection.getValue() && !this.canSeePlacementFace(eyePos, hitVec, neighborPos)) continue;
+            return new BlockHitResult(hitVec, oppositeDir, neighborPos, false);
         }
         if (this.strictDirection.getValue()) {
             return null;
         }
-        Vec3 vec34 = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 0.5, (double)blockPos.getZ() + 0.5);
-        return new BlockHitResult(vec34, Direction.UP, blockPos, false);
+        Vec3 airHitVec = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 0.5, (double)blockPos.getZ() + 0.5);
+        return new BlockHitResult(airHitVec, Direction.UP, blockPos, false);
     }
 
     private BlockHitResult computeBedFace(BlockPos blockPos) {
-        Vec3 vec3 = BedAuraModule.mc.player.getEyePosition();
-        double d = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
-        Vec3 vec32 = Vec3.atCenterOf((Vec3i)blockPos);
-        BlockHitResult blockHitResult = null;
-        double d2 = Double.MAX_VALUE;
-        BlockHitResult blockHitResult2 = null;
-        double d3 = Double.MAX_VALUE;
+        Vec3 eyePos = BedAuraModule.mc.player.getEyePosition();
+        double maxRange = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
+        Vec3 centerVec = Vec3.atCenterOf((Vec3i)blockPos);
+        BlockHitResult bestVisibleHit = null;
+        double bestVisibleDist = Double.MAX_VALUE;
+        BlockHitResult bestFallbackHit = null;
+        double bestFallbackDist = Double.MAX_VALUE;
         for (Direction direction : Direction.values()) {
-            BlockHitResult blockHitResult3;
-            BlockPos blockPos2;
-            BlockHitResult blockHitResult4;
-            Vec3 vec33 = new Vec3((double)direction.getStepX(), (double)direction.getStepY(), (double)direction.getStepZ());
-            Vec3 vec34 = vec32.add(vec33.scale(0.5));
-            if (vec3.subtract(vec34).dot(vec33) <= 0.0) continue;
-            double d5 = vec34.distanceTo(vec3);
-            if (d5 > d) continue;
-            if (d5 < d3) {
-                d3 = d5;
-                blockHitResult2 = new BlockHitResult(vec34, direction, blockPos, false);
+            BlockHitResult clipHit;
+            BlockPos hitPos;
+            BlockHitResult blockHit;
+            Vec3 normal = new Vec3((double)direction.getStepX(), (double)direction.getStepY(), (double)direction.getStepZ());
+            Vec3 faceVec = centerVec.add(normal.scale(0.5));
+            if (eyePos.subtract(faceVec).dot(normal) <= 0.0) continue;
+            double dist = faceVec.distanceTo(eyePos);
+            if (dist > maxRange) continue;
+            if (dist < bestFallbackDist) {
+                bestFallbackDist = dist;
+                bestFallbackHit = new BlockHitResult(faceVec, direction, blockPos, false);
             }
-            if (!(((blockHitResult4 = BedAuraModule.mc.level.clip(new ClipContext(vec3, vec34, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)BedAuraModule.mc.player))).getType() != HitResult.Type.BLOCK || !(blockHitResult4 instanceof BlockHitResult) || (blockPos2 = (blockHitResult3 = blockHitResult4).getBlockPos()).equals((Object)blockPos) || this.placedBedPos != null && blockPos2.equals((Object)this.placedBedPos) || this.placedBedHeadPos != null && blockPos2.equals((Object)this.placedBedHeadPos)) && d5 < d2)) continue;
-            d2 = d5;
-            blockHitResult = new BlockHitResult(vec34, direction, blockPos, false);
+            if (!(((blockHit = BedAuraModule.mc.level.clip(new ClipContext(eyePos, faceVec, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)BedAuraModule.mc.player))).getType() != HitResult.Type.BLOCK || !(blockHit instanceof BlockHitResult) || (hitPos = (clipHit = blockHit).getBlockPos()).equals((Object)blockPos) || this.placedBedPos != null && hitPos.equals((Object)this.placedBedPos) || this.placedBedHeadPos != null && hitPos.equals((Object)this.placedBedHeadPos)) && dist < bestVisibleDist)) continue;
+            bestVisibleDist = dist;
+            bestVisibleHit = new BlockHitResult(faceVec, direction, blockPos, false);
         }
-        return blockHitResult != null ? blockHitResult : blockHitResult2;
+        return bestVisibleHit != null ? bestVisibleHit : bestFallbackHit;
     }
 
     private JointPlacement searchPlacement() {
-        int n = (int)Math.ceil(this.bedRange.getValue().doubleValue());
-        double d = this.minDamage.getValue().doubleValue();
-        double d2 = this.maxSelfDamage.getValue().doubleValue();
-        double d3 = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
-        JointPlacement jointPlacement = null;
-        double d4 = -1.0;
-        Vec3 vec3 = BedAuraModule.mc.player.getEyePosition();
-        double d5 = d3 + 0.5;
+        int searchRadius = (int)Math.ceil(this.bedRange.getValue().doubleValue());
+        double minDmg = this.minDamage.getValue().doubleValue();
+        double maxSelfDmg = this.maxSelfDamage.getValue().doubleValue();
+        double maxRange = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
+        JointPlacement bestPlacement = null;
+        double bestScore = -1.0;
+        Vec3 eyePos = BedAuraModule.mc.player.getEyePosition();
+        double maxCenterDist = maxRange + 0.5;
         for (Player player : this.targets) {
-            int n2;
-            int n3;
-            int n4;
-            int n5;
-            int n6;
-            int n7;
-            BlockPos blockPos = player.blockPosition();
-            Vec3 vec32 = player.getBoundingBox().getCenter();
-            if (Vec3.atCenterOf((Vec3i)blockPos).distanceTo(vec3) > (double)n * Math.sqrt(3.0) + d5 || (n7 = Math.max(-n, (int)Math.floor(vec3.x - d5 - (double)blockPos.getX()))) > (n6 = Math.min(n, (int)Math.ceil(vec3.x + d5 - (double)blockPos.getX()))) || (n5 = Math.max(-n, (int)Math.floor(vec3.y - d5 - (double)blockPos.getY()))) > (n4 = Math.min(n, (int)Math.ceil(vec3.y + d5 - (double)blockPos.getY()))) || (n3 = Math.max(-n, (int)Math.floor(vec3.z - d5 - (double)blockPos.getZ()))) > (n2 = Math.min(n, (int)Math.ceil(vec3.z + d5 - (double)blockPos.getZ())))) continue;
-            for (int i = n7; i <= n6; ++i) {
-                for (int j = n5; j <= n4; ++j) {
-                    for (int k = n3; k <= n2; ++k) {
-                        BlockPos blockPos2 = blockPos.offset(i, j, k);
-                        if (Vec3.atCenterOf((Vec3i)blockPos2).distanceTo(vec3) > d5 || !this.footPlaceable(blockPos2, d3)) continue;
+            int maxZ;
+            int minZ;
+            int maxY;
+            int minY;
+            int maxX;
+            int minX;
+            BlockPos playerPos = player.blockPosition();
+            Vec3 targetCenter = player.getBoundingBox().getCenter();
+            if (Vec3.atCenterOf((Vec3i)playerPos).distanceTo(eyePos) > (double)searchRadius * Math.sqrt(3.0) + maxCenterDist || (minX = Math.max(-searchRadius, (int)Math.floor(eyePos.x - maxCenterDist - (double)playerPos.getX()))) > (maxX = Math.min(searchRadius, (int)Math.ceil(eyePos.x + maxCenterDist - (double)playerPos.getX()))) || (minY = Math.max(-searchRadius, (int)Math.floor(eyePos.y - maxCenterDist - (double)playerPos.getY()))) > (maxY = Math.min(searchRadius, (int)Math.ceil(eyePos.y + maxCenterDist - (double)playerPos.getY()))) || (minZ = Math.max(-searchRadius, (int)Math.floor(eyePos.z - maxCenterDist - (double)playerPos.getZ()))) > (maxZ = Math.min(searchRadius, (int)Math.ceil(eyePos.z + maxCenterDist - (double)playerPos.getZ())))) continue;
+            for (int i = minX; i <= maxX; ++i) {
+                for (int j = minY; j <= maxY; ++j) {
+                    for (int k = minZ; k <= maxZ; ++k) {
+                        BlockPos footPos = playerPos.offset(i, j, k);
+                        if (Vec3.atCenterOf((Vec3i)footPos).distanceTo(eyePos) > maxCenterDist || !this.footPlaceable(footPos, maxRange)) continue;
                         for (Direction direction : Direction.Plane.HORIZONTAL) {
-                            float f;
-                            BlockPos blockPos3 = blockPos2.relative(direction);
-                            if (!this.headPlaceable(blockPos3)) continue;
-                            Vec3 vec33 = Vec3.atCenterOf((Vec3i)blockPos2);
-                            Vec3 vec34 = Vec3.atCenterOf((Vec3i)blockPos3);
-                            float f2 = this.computeDamage(vec33, player);
-                            float f3 = this.computeDamage(vec34, player);
-                            boolean bl = f3 >= f2;
-                            Vec3 vec35 = bl ? vec34 : vec33;
-                            Vec3 vec36 = vec35;
-                            float f4 = Math.max(f2, f3);
-                            if ((double)f4 < d) continue;
-                            float f5 = this.computeDamage(vec35, (Player)BedAuraModule.mc.player);
-                            if ((double)f5 > d2) continue;
-                            float f6 = BedAuraModule.mc.player.getHealth() + BedAuraModule.mc.player.getAbsorptionAmount();
-                            if (this.antiSuicide.getValue() && f6 - f5 <= this.minHealth.getValue().floatValue() || this.balance.getValue().doubleValue() > 0.0 && f5 > 0.0f && (double)(f4 / f5) < this.balance.getValue().doubleValue()) continue;
-                            double d6 = f4;
-                            if (vec34.distanceTo(vec32) < vec33.distanceTo(vec32)) {
-                                d6 += 0.01;
+                            BlockPos headPos = footPos.relative(direction);
+                            if (!this.headPlaceable(headPos)) continue;
+                            Vec3 footCenter = Vec3.atCenterOf((Vec3i)footPos);
+                            Vec3 headCenter = Vec3.atCenterOf((Vec3i)headPos);
+                            float footDamage = this.computeDamage(footCenter, player);
+                            float headDamage = this.computeDamage(headCenter, player);
+                            boolean useHead = headDamage >= footDamage;
+                            Vec3 detonateVec = useHead ? headCenter : footCenter;
+                            float targetDamage = Math.max(footDamage, headDamage);
+                            if ((double)targetDamage < minDmg) continue;
+                            float selfDamage = this.computeDamage(detonateVec, (Player)BedAuraModule.mc.player);
+                            if ((double)selfDamage > maxSelfDmg) continue;
+                            float effectiveHealth = BedAuraModule.mc.player.getHealth() + BedAuraModule.mc.player.getAbsorptionAmount();
+                            if (this.antiSuicide.getValue() && effectiveHealth - selfDamage <= this.minHealth.getValue().floatValue() || this.balance.getValue().doubleValue() > 0.0 && selfDamage > 0.0f && (double)(targetDamage / selfDamage) < this.balance.getValue().doubleValue()) continue;
+                            double score = targetDamage;
+                            if (headCenter.distanceTo(targetCenter) < footCenter.distanceTo(targetCenter)) {
+                                score += 0.01;
                             }
-                            if (jointPlacement != null && !(d6 > d4)) continue;
-                            jointPlacement = new JointPlacement(blockPos2, direction, player, f4);
-                            d4 = d6;
+                            if (bestPlacement != null && !(score > bestScore)) continue;
+                            bestPlacement = new JointPlacement(footPos, direction, player, targetDamage);
+                            bestScore = score;
                         }
                     }
                 }
             }
         }
-        return jointPlacement;
+        return bestPlacement;
     }
 
-    private boolean footPlaceable(BlockPos blockPos, double d) {
-        if (!this.withinReach(blockPos, d)) {
+    private boolean footPlaceable(BlockPos blockPos, double maxRange) {
+        if (!this.withinReach(blockPos, maxRange)) {
             return false;
         }
         if (!BedAuraModule.mc.level.getBlockState(blockPos).canBeReplaced()) {
@@ -591,107 +585,107 @@ extends Module {
     }
 
     private boolean currentSelectionStillGood() {
-        float f;
+        float headDamage;
         if (this.currentFoot == null || this.currentDir == null || this.currentTarget == null) {
             return false;
         }
         if (!this.currentTarget.isAlive() || this.currentTarget.getHealth() <= 0.0f) {
             return false;
         }
-        BlockPos blockPos = this.currentFoot.relative(this.currentDir);
-        double d = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
-        if (!this.withinReach(this.currentFoot, d) && !this.withinReach(blockPos, d)) {
+        BlockPos headPos = this.currentFoot.relative(this.currentDir);
+        double maxRange = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
+        if (!this.withinReach(this.currentFoot, maxRange) && !this.withinReach(headPos, maxRange)) {
             return false;
         }
         if (this.strictDirection.getValue() && this.computeBedHit(this.currentFoot) == null) {
             return false;
         }
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)this.currentFoot);
-        Vec3 vec32 = Vec3.atCenterOf((Vec3i)blockPos);
-        float f2 = this.computeDamage(vec3, this.currentTarget);
-        float f3 = Math.max(f2, f = this.computeDamage(vec32, this.currentTarget));
-        if ((double)f3 < this.minDamage.getValue().doubleValue()) {
+        Vec3 footCenter = Vec3.atCenterOf((Vec3i)this.currentFoot);
+        Vec3 headCenter = Vec3.atCenterOf((Vec3i)headPos);
+        float footDamage = this.computeDamage(footCenter, this.currentTarget);
+        float maxDamage = Math.max(footDamage, headDamage = this.computeDamage(headCenter, this.currentTarget));
+        if ((double)maxDamage < this.minDamage.getValue().doubleValue()) {
             return false;
         }
-        Vec3 vec33 = f >= f2 ? vec32 : vec3;
-        float f4 = this.computeDamage(vec33, (Player)BedAuraModule.mc.player);
-        if ((double)f4 > this.maxSelfDamage.getValue().doubleValue()) {
+        Vec3 detonateVec = headDamage >= footDamage ? headCenter : footCenter;
+        float selfDamage = this.computeDamage(detonateVec, (Player)BedAuraModule.mc.player);
+        if ((double)selfDamage > this.maxSelfDamage.getValue().doubleValue()) {
             return false;
         }
-        this.currentEstimatedDamage = f3;
+        this.currentEstimatedDamage = maxDamage;
         return true;
     }
 
     private ExistingBed findExistingBed() {
-        double d = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
-        int n = (int)Math.ceil(this.bedRange.getValue().doubleValue());
-        ExistingBed existingBed = null;
+        double maxRange = Math.max(this.range.getValue().doubleValue(), this.wallsRange.getValue().doubleValue());
+        int searchRadius = (int)Math.ceil(this.bedRange.getValue().doubleValue());
+        ExistingBed bestBed = null;
         for (Player player : this.targets) {
-            BlockPos blockPos = player.blockPosition();
-            Vec3 vec3 = player.getBoundingBox().getCenter();
-            for (int i = -n; i <= n; ++i) {
-                for (int j = -n; j <= n; ++j) {
-                    for (int k = -n; k <= n; ++k) {
-                        float f;
-                        float f2;
-                        BlockPos blockPos2 = blockPos.offset(i, j, k);
-                        if (!(BedAuraModule.mc.level.getBlockState(blockPos2).getBlock() instanceof BedBlock) || Vec3.atCenterOf((Vec3i)blockPos2).distanceTo(vec3) > 6.0 || !this.withinReach(blockPos2, d) || (double)(f2 = this.computeDamage(Vec3.atCenterOf((Vec3i)blockPos2), (Player)BedAuraModule.mc.player)) > this.maxSelfDamage.getValue().doubleValue() || (double)(f = this.computeDamage(Vec3.atCenterOf((Vec3i)blockPos2), player)) < this.minDamage.getValue().doubleValue() || existingBed != null && !(f > existingBed.damage())) continue;
-                        existingBed = new ExistingBed(blockPos2, player, f);
+            BlockPos playerPos = player.blockPosition();
+            Vec3 targetCenter = player.getBoundingBox().getCenter();
+            for (int i = -searchRadius; i <= searchRadius; ++i) {
+                for (int j = -searchRadius; j <= searchRadius; ++j) {
+                    for (int k = -searchRadius; k <= searchRadius; ++k) {
+                        float targetDamage;
+                        float selfDamage;
+                        BlockPos bedPos = playerPos.offset(i, j, k);
+                        if (!(BedAuraModule.mc.level.getBlockState(bedPos).getBlock() instanceof BedBlock) || Vec3.atCenterOf((Vec3i)bedPos).distanceTo(targetCenter) > 6.0 || !this.withinReach(bedPos, maxRange) || (double)(selfDamage = this.computeDamage(Vec3.atCenterOf((Vec3i)bedPos), (Player)BedAuraModule.mc.player)) > this.maxSelfDamage.getValue().doubleValue() || (double)(targetDamage = this.computeDamage(Vec3.atCenterOf((Vec3i)bedPos), player)) < this.minDamage.getValue().doubleValue() || bestBed != null && !(targetDamage > bestBed.damage())) continue;
+                        bestBed = new ExistingBed(bedPos, player, targetDamage);
                     }
                 }
             }
         }
-        return existingBed;
+        return bestBed;
     }
 
-    private float computeDamage(Vec3 vec3, Player player) {
+    private float computeDamage(Vec3 explosionPos, Player player) {
         if (this.predict.getValue()) {
-            Vec3 vec32 = player.position().add(player.getDeltaMovement());
-            AABB aABB = player.getBoundingBox().move(vec32.subtract(player.position()));
-            return DamageUtils.getDamage((Entity)player, aABB, vec3, 5.0f, null, false);
+            Vec3 predictedPos = player.position().add(player.getDeltaMovement());
+            AABB predictedBox = player.getBoundingBox().move(predictedPos.subtract(player.position()));
+            return DamageUtils.getDamage((Entity)player, predictedBox, explosionPos, 5.0f, null, false);
         }
-        return DamageUtils.getDamage((Entity)player, player.getBoundingBox(), vec3, 5.0f, null, false);
+        return DamageUtils.getDamage((Entity)player, player.getBoundingBox(), explosionPos, 5.0f, null, false);
     }
 
-    private boolean withinReach(BlockPos blockPos, double d) {
-        return Vec3.atCenterOf((Vec3i)blockPos).distanceTo(BedAuraModule.mc.player.getEyePosition()) <= d + 0.5;
+    private boolean withinReach(BlockPos blockPos, double maxRange) {
+        return Vec3.atCenterOf((Vec3i)blockPos).distanceTo(BedAuraModule.mc.player.getEyePosition()) <= maxRange + 0.5;
     }
 
     private void updateTargets() {
         this.targets.clear();
-        Vec3 vec3 = BedAuraModule.mc.player.getEyePosition();
-        ArrayList<Player> arrayList = new ArrayList<Player>();
-        for (Object object : BedAuraModule.mc.level.entitiesForRendering()) {
-            Player player2;
-            if (!(object instanceof Player) || (player2 = (Player)object) == BedAuraModule.mc.player || !player2.isAlive() || player2.getHealth() <= 0.0f || this.ignoreFriends.getValue() && Night.FRIEND_MANAGER.contains(player2.getName().getString()) || Vec3.atCenterOf((Vec3i)player2.blockPosition()).distanceTo(vec3) > this.targetRange.getValue().doubleValue() && (double)player2.distanceTo((Entity)BedAuraModule.mc.player) > this.targetRange.getValue().doubleValue()) continue;
-            arrayList.add(player2);
+        Vec3 eyePos = BedAuraModule.mc.player.getEyePosition();
+        ArrayList<Player> candidates = new ArrayList<Player>();
+        for (Entity entity : BedAuraModule.mc.level.entitiesForRendering()) {
+            Player candidate;
+            if (!(entity instanceof Player) || (candidate = (Player)entity) == BedAuraModule.mc.player || !candidate.isAlive() || candidate.getHealth() <= 0.0f || this.ignoreFriends.getValue() && Night.FRIEND_MANAGER.contains(candidate.getName().getString()) || Vec3.atCenterOf((Vec3i)candidate.blockPosition()).distanceTo(eyePos) > this.targetRange.getValue().doubleValue() && (double)candidate.distanceTo((Entity)BedAuraModule.mc.player) > this.targetRange.getValue().doubleValue()) continue;
+            candidates.add(candidate);
         }
         Comparator<Player> comparator = switch (this.targetMode.getValue()) {
             case "Furthest" -> Comparator.comparingDouble((Player player) -> player.distanceTo((Entity)BedAuraModule.mc.player)).reversed();
             case "Health" -> Comparator.comparingDouble(LivingEntity::getHealth);
             default -> Comparator.comparingDouble(player -> player.distanceTo((Entity)BedAuraModule.mc.player));
         };
-        arrayList.sort(comparator);
-        int n = this.maxTargets.getValue().intValue();
-        for (Player player3 : arrayList) {
-            if (this.targets.size() >= n) break;
-            this.targets.add(player3);
+        candidates.sort(comparator);
+        int maxCount = this.maxTargets.getValue().intValue();
+        for (Player candidate : candidates) {
+            if (this.targets.size() >= maxCount) break;
+            this.targets.add(candidate);
         }
     }
 
     private BlockPos findOtherBedHalf(BlockPos blockPos) {
         for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos blockPos2 = blockPos.relative(direction);
-            if (!(BedAuraModule.mc.level.getBlockState(blockPos2).getBlock() instanceof BedBlock)) continue;
-            return blockPos2;
+            BlockPos neighborPos = blockPos.relative(direction);
+            if (!(BedAuraModule.mc.level.getBlockState(neighborPos).getBlock() instanceof BedBlock)) continue;
+            return neighborPos;
         }
         return null;
     }
 
     private int findBedSlot() {
-        boolean bl = this.swapMode.getValue().equalsIgnoreCase("Alt");
+        boolean altSwap = this.swapMode.getValue().equalsIgnoreCase("Alt");
         Predicate<ItemStack> predicate = itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof BedItem;
-        if (bl) {
+        if (altSwap) {
             for (int i = 0; i < 36; ++i) {
                 if (!predicate.test(BedAuraModule.mc.player.getInventory().getItem(i))) continue;
                 return i;
@@ -706,27 +700,27 @@ extends Module {
     }
 
     private int findDetonateSlot() {
-        int n;
-        boolean bl = this.swapMode.getValue().equalsIgnoreCase("Alt");
+        int slot;
+        boolean altSwap = this.swapMode.getValue().equalsIgnoreCase("Alt");
         Predicate<ItemStack> predicate = itemStack -> !itemStack.isEmpty() && !(itemStack.getItem() instanceof BedItem) && !(itemStack.getItem() instanceof BlockItem);
-        if (bl) {
-            for (n = 0; n < 36; ++n) {
-                if (!predicate.test(BedAuraModule.mc.player.getInventory().getItem(n))) continue;
-                return n;
+        if (altSwap) {
+            for (slot = 0; slot < 36; ++slot) {
+                if (!predicate.test(BedAuraModule.mc.player.getInventory().getItem(slot))) continue;
+                return slot;
             }
         } else {
-            for (n = 0; n < 9; ++n) {
-                if (!predicate.test(BedAuraModule.mc.player.getInventory().getItem(n))) continue;
-                return n;
+            for (slot = 0; slot < 9; ++slot) {
+                if (!predicate.test(BedAuraModule.mc.player.getInventory().getItem(slot))) continue;
+                return slot;
             }
         }
-        for (n = 0; n < 9; ++n) {
-            if (!BedAuraModule.mc.player.getInventory().getItem(n).isEmpty()) continue;
-            return n;
+        for (slot = 0; slot < 9; ++slot) {
+            if (!BedAuraModule.mc.player.getInventory().getItem(slot).isEmpty()) continue;
+            return slot;
         }
-        for (n = 0; n < 9; ++n) {
-            if (BedAuraModule.mc.player.getInventory().getItem(n).getItem() instanceof BedItem) continue;
-            return n;
+        for (slot = 0; slot < 9; ++slot) {
+            if (BedAuraModule.mc.player.getInventory().getItem(slot).getItem() instanceof BedItem) continue;
+            return slot;
         }
         return Integer.MIN_VALUE;
     }
@@ -743,71 +737,68 @@ extends Module {
 
     @SubscribeEvent
     public void onRenderWorld(RenderWorldEvent renderWorldEvent) {
-        BlockPos blockPos;
-        BlockPos blockPos2;
+        BlockPos headPos;
+        BlockPos footPos;
         if (!this.renderPreview.getValue() || BedAuraModule.mc.level == null || BedAuraModule.mc.player == null) {
             return;
         }
         if (this.bedPlacedThisCycle && this.placedBedPos != null) {
-            blockPos2 = this.placedBedPos;
-            blockPos = this.placedBedHeadPos != null ? this.placedBedHeadPos : this.findOtherBedHalf(blockPos2);
-            BlockPos blockPos3 = blockPos;
-            if (blockPos != null) {
-                this.placedBedHeadPos = blockPos;
+            footPos = this.placedBedPos;
+            headPos = this.placedBedHeadPos != null ? this.placedBedHeadPos : this.findOtherBedHalf(footPos);
+            if (headPos != null) {
+                this.placedBedHeadPos = headPos;
             }
         } else if (this.currentPlacement != null) {
-            blockPos2 = this.currentPlacement.pos();
-            blockPos = blockPos2.relative(this.currentPlacement.dir());
+            footPos = this.currentPlacement.pos();
+            headPos = footPos.relative(this.currentPlacement.dir());
         } else if (this.currentFoot != null) {
-            blockPos2 = this.currentFoot;
-            blockPos = this.currentHead != null ? this.currentHead : (this.currentDir != null ? this.currentFoot.relative(this.currentDir) : this.findOtherBedHalf(blockPos2));
+            footPos = this.currentFoot;
+            headPos = this.currentHead != null ? this.currentHead : (this.currentDir != null ? this.currentFoot.relative(this.currentDir) : this.findOtherBedHalf(footPos));
         } else {
             this.lastRenderedPos = null;
             return;
         }
-        if (!blockPos2.equals((Object)this.lastRenderedPos)) {
-            this.lastRenderedPos = blockPos2;
+        if (!footPos.equals((Object)this.lastRenderedPos)) {
+            this.lastRenderedPos = footPos;
             this.placementRenderMs = System.currentTimeMillis();
         }
-        float f = 1.0f;
+        float scale = 1.0f;
         if (this.interpolate.getValue()) {
-            long l = System.currentTimeMillis() - this.placementRenderMs;
-            float f2 = Math.min(1.0f, (float)l / 350.0f);
-            f = 0.15f + 0.85f * f2;
+            long elapsedMs = System.currentTimeMillis() - this.placementRenderMs;
+            float progress = Math.min(1.0f, (float)elapsedMs / 350.0f);
+            scale = 0.15f + 0.85f * progress;
         }
-        double d = 0.5625;
         PoseStack poseStack = renderWorldEvent.getMatrices();
-        double d2 = blockPos2.getX();
-        double d3 = blockPos2.getY();
-        double d4 = blockPos2.getZ();
-        double d5 = (double)blockPos2.getX() + 1.0;
-        double d6 = (double)blockPos2.getY() + 0.5625;
-        double d7 = (double)blockPos2.getZ() + 1.0;
-        if (blockPos != null) {
-            d2 = Math.min(blockPos2.getX(), blockPos.getX());
-            d3 = Math.min(blockPos2.getY(), blockPos.getY());
-            d4 = Math.min(blockPos2.getZ(), blockPos.getZ());
-            d5 = (double)Math.max(blockPos2.getX(), blockPos.getX()) + 1.0;
-            d6 = (double)Math.max(blockPos2.getY(), blockPos.getY()) + 0.5625;
-            d7 = (double)Math.max(blockPos2.getZ(), blockPos.getZ()) + 1.0;
+        double minX = footPos.getX();
+        double minY = footPos.getY();
+        double minZ = footPos.getZ();
+        double maxX = (double)footPos.getX() + 1.0;
+        double maxY = (double)footPos.getY() + 0.5625;
+        double maxZ = (double)footPos.getZ() + 1.0;
+        if (headPos != null) {
+            minX = Math.min(footPos.getX(), headPos.getX());
+            minY = Math.min(footPos.getY(), headPos.getY());
+            minZ = Math.min(footPos.getZ(), headPos.getZ());
+            maxX = (double)Math.max(footPos.getX(), headPos.getX()) + 1.0;
+            maxY = (double)Math.max(footPos.getY(), headPos.getY()) + 0.5625;
+            maxZ = (double)Math.max(footPos.getZ(), headPos.getZ()) + 1.0;
         }
-        double d8 = (d2 + d5) * 0.5;
-        double d9 = (d3 + d6) * 0.5;
-        double d10 = (d4 + d7) * 0.5;
-        double d11 = (d5 - d2) * 0.5 * (double)f;
-        double d12 = (d6 - d3) * 0.5 * (double)f;
-        double d13 = (d7 - d4) * 0.5 * (double)f;
-        AABB aABB = new AABB(d8 - d11, d9 - d12, d10 - d13, d8 + d11, d9 + d12, d10 + d13);
-        Color color = this.fillColor.getColor();
-        Color color2 = this.outlineColor.getColor();
-        boolean bl = this.renderMode.getValue().equalsIgnoreCase("Fill") || this.renderMode.getValue().equalsIgnoreCase("Both");
-        boolean bl2 = this.renderMode.getValue().equalsIgnoreCase("Outline") || this.renderMode.getValue().equalsIgnoreCase("Both");
-        boolean bl3 = bl2;
-        if (bl) {
-            Renderer3D.renderBox(poseStack, aABB, color);
+        double centerX = (minX + maxX) * 0.5;
+        double centerY = (minY + maxY) * 0.5;
+        double centerZ = (minZ + maxZ) * 0.5;
+        double halfX = (maxX - minX) * 0.5 * (double)scale;
+        double halfY = (maxY - minY) * 0.5 * (double)scale;
+        double halfZ = (maxZ - minZ) * 0.5 * (double)scale;
+        AABB aABB = new AABB(centerX - halfX, centerY - halfY, centerZ - halfZ, centerX + halfX, centerY + halfY, centerZ + halfZ);
+        Color fill = this.fillColor.getColor();
+        Color outline = this.outlineColor.getColor();
+        boolean drawFill = this.renderMode.getValue().equalsIgnoreCase("Fill") || this.renderMode.getValue().equalsIgnoreCase("Both");
+        boolean drawOutline = this.renderMode.getValue().equalsIgnoreCase("Outline") || this.renderMode.getValue().equalsIgnoreCase("Both");
+        if (drawFill) {
+            Renderer3D.renderBox(poseStack, aABB, fill);
         }
-        if (bl2) {
-            Renderer3D.renderBoxOutline(poseStack, aABB, color2);
+        if (drawOutline) {
+            Renderer3D.renderBoxOutline(poseStack, aABB, outline);
         }
     }
 
@@ -827,8 +818,8 @@ extends Module {
             this.autoCraftRunning = false;
             return;
         }
-        boolean bl = BedAuraModule.mc.player.containerMenu instanceof CraftingMenu;
-        if (!bl) {
+        boolean inCraftingMenu = BedAuraModule.mc.player.containerMenu instanceof CraftingMenu;
+        if (!inCraftingMenu) {
             if (!this.autoPlaceTable.getValue()) {
                 this.autoCraftRunning = false;
                 return;
@@ -843,12 +834,11 @@ extends Module {
                 this.autoCraftTicks = 0;
                 return;
             }
-            boolean bl2 = BedAuraModule.mc.level.getBlockState(this.placedTablePos).getBlock() == Blocks.CRAFTING_TABLE;
-            boolean bl3 = bl2;
-            if (bl2 && !this.tableOpenSent) {
+            boolean tablePlaced = BedAuraModule.mc.level.getBlockState(this.placedTablePos).getBlock() == Blocks.CRAFTING_TABLE;
+            if (tablePlaced && !this.tableOpenSent) {
                 if (this.rotate.getValue()) {
-                    float[] fArray = RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)this.placedTablePos));
-                    Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
+                    float[] rotations = RotationUtils.getRotations(Vec3.atCenterOf((Vec3i)this.placedTablePos));
+                    Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
                 }
                 BedAuraModule.mc.gameMode.useItemOn(BedAuraModule.mc.player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf((Vec3i)this.placedTablePos), Direction.UP, this.placedTablePos, false));
                 this.tableOpenSent = true;
@@ -882,13 +872,13 @@ extends Module {
     }
 
     private int countBeds() {
-        int n = 0;
+        int totalBeds = 0;
         for (int i = 0; i < 36; ++i) {
             ItemStack itemStack = BedAuraModule.mc.player.getInventory().getItem(i);
             if (!(itemStack.getItem() instanceof BedItem)) continue;
-            n += itemStack.getCount();
+            totalBeds += itemStack.getCount();
         }
-        return n;
+        return totalBeds;
     }
 
     private boolean isInventoryFull() {
@@ -900,12 +890,12 @@ extends Module {
     }
 
     private boolean gridHasMaterials(AbstractContainerMenu abstractContainerMenu) {
-        for (int n : WOOL_GRID_SLOTS) {
-            if (this.isWool(abstractContainerMenu.getSlot(n).getItem())) continue;
+        for (int slot : WOOL_GRID_SLOTS) {
+            if (this.isWool(abstractContainerMenu.getSlot(slot).getItem())) continue;
             return false;
         }
-        for (int n : PLANK_GRID_SLOTS) {
-            if (this.isPlanks(abstractContainerMenu.getSlot(n).getItem())) continue;
+        for (int slot : PLANK_GRID_SLOTS) {
+            if (this.isPlanks(abstractContainerMenu.getSlot(slot).getItem())) continue;
             return false;
         }
         return true;
@@ -920,35 +910,35 @@ extends Module {
     }
 
     private boolean fillCraftingGrid(AbstractContainerMenu abstractContainerMenu) {
-        int n;
-        int n2 = this.findMenuSlot(abstractContainerMenu, this::isWool);
-        int n3 = this.findMenuSlot(abstractContainerMenu, this::isPlanks);
-        if (n2 == -1 || n3 == -1) {
+        int sourceSlot;
+        int woolSlot = this.findMenuSlot(abstractContainerMenu, this::isWool);
+        int plankSlot = this.findMenuSlot(abstractContainerMenu, this::isPlanks);
+        if (woolSlot == -1 || plankSlot == -1) {
             return false;
         }
-        for (int n4 : WOOL_GRID_SLOTS) {
-            if (this.isWool(abstractContainerMenu.getSlot(n4).getItem())) continue;
-            n = this.findMenuSlot(abstractContainerMenu, this::isWool);
-            if (n == -1) {
+        for (int gridSlot : WOOL_GRID_SLOTS) {
+            if (this.isWool(abstractContainerMenu.getSlot(gridSlot).getItem())) continue;
+            sourceSlot = this.findMenuSlot(abstractContainerMenu, this::isWool);
+            if (sourceSlot == -1) {
                 return false;
             }
-            this.placeOneItem(abstractContainerMenu, n, n4);
+            this.placeOneItem(abstractContainerMenu, sourceSlot, gridSlot);
         }
-        for (int n4 : PLANK_GRID_SLOTS) {
-            if (this.isPlanks(abstractContainerMenu.getSlot(n4).getItem())) continue;
-            n = this.findMenuSlot(abstractContainerMenu, this::isPlanks);
-            if (n == -1) {
+        for (int gridSlot : PLANK_GRID_SLOTS) {
+            if (this.isPlanks(abstractContainerMenu.getSlot(gridSlot).getItem())) continue;
+            sourceSlot = this.findMenuSlot(abstractContainerMenu, this::isPlanks);
+            if (sourceSlot == -1) {
                 return false;
             }
-            this.placeOneItem(abstractContainerMenu, n, n4);
+            this.placeOneItem(abstractContainerMenu, sourceSlot, gridSlot);
         }
         return true;
     }
 
-    private void placeOneItem(AbstractContainerMenu abstractContainerMenu, int n, int n2) {
-        BedAuraModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, n, 1, ContainerInput.PICKUP, (Player)BedAuraModule.mc.player);
-        BedAuraModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, n2, 1, ContainerInput.PICKUP, (Player)BedAuraModule.mc.player);
-        BedAuraModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, n, 0, ContainerInput.PICKUP, (Player)BedAuraModule.mc.player);
+    private void placeOneItem(AbstractContainerMenu abstractContainerMenu, int sourceSlot, int targetSlot) {
+        BedAuraModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, sourceSlot, 1, ContainerInput.PICKUP, (Player)BedAuraModule.mc.player);
+        BedAuraModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, targetSlot, 1, ContainerInput.PICKUP, (Player)BedAuraModule.mc.player);
+        BedAuraModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, sourceSlot, 0, ContainerInput.PICKUP, (Player)BedAuraModule.mc.player);
     }
 
     private int findMenuSlot(AbstractContainerMenu abstractContainerMenu, Predicate<ItemStack> predicate) {
@@ -960,41 +950,41 @@ extends Module {
     }
 
     private BlockPos tryPlaceCraftingTable() {
-        int n;
-        int n2 = -1;
+        int prevSlot;
+        int tableSlot = -1;
         for (int i = 0; i < 9; ++i) {
             if (BedAuraModule.mc.player.getInventory().getItem(i).getItem() != Blocks.CRAFTING_TABLE.asItem()) continue;
-            n2 = i;
+            tableSlot = i;
             break;
         }
-        if (n2 == -1) {
+        if (tableSlot == -1) {
             return null;
         }
-        BlockPos blockPos = BedAuraModule.mc.player.blockPosition();
-        BlockPos blockPos2 = null;
-        double d = Double.MAX_VALUE;
-        int n3 = (int)Math.ceil(this.range.getValue().doubleValue());
-        for (int i = -n3; i <= n3; ++i) {
-            for (int j = -n3; j <= n3; ++j) {
-                for (n = -n3; n <= n3; ++n) {
-                    BlockPos blockPos3 = blockPos.offset(i, j, n);
-                    double d2 = BedAuraModule.mc.player.distanceToSqr((double)blockPos3.getX() + 0.5, (double)blockPos3.getY() + 0.5, (double)blockPos3.getZ() + 0.5);
-                    if (d2 > this.range.getValue().doubleValue() * this.range.getValue().doubleValue() || !BedAuraModule.mc.level.getBlockState(blockPos3).canBeReplaced() || BedAuraModule.mc.level.getBlockState(blockPos3.below()).canBeReplaced() || new AABB(blockPos3).intersects(BedAuraModule.mc.player.getBoundingBox()) || !(d2 < d)) continue;
-                    d = d2;
-                    blockPos2 = blockPos3;
+        BlockPos playerPos = BedAuraModule.mc.player.blockPosition();
+        BlockPos bestPos = null;
+        double bestDistSq = Double.MAX_VALUE;
+        int searchRadius = (int)Math.ceil(this.range.getValue().doubleValue());
+        for (int i = -searchRadius; i <= searchRadius; ++i) {
+            for (int j = -searchRadius; j <= searchRadius; ++j) {
+                for (int k = -searchRadius; k <= searchRadius; ++k) {
+                    BlockPos candidatePos = playerPos.offset(i, j, k);
+                    double distSq = BedAuraModule.mc.player.distanceToSqr((double)candidatePos.getX() + 0.5, (double)candidatePos.getY() + 0.5, (double)candidatePos.getZ() + 0.5);
+                    if (distSq > this.range.getValue().doubleValue() * this.range.getValue().doubleValue() || !BedAuraModule.mc.level.getBlockState(candidatePos).canBeReplaced() || BedAuraModule.mc.level.getBlockState(candidatePos.below()).canBeReplaced() || new AABB(candidatePos).intersects(BedAuraModule.mc.player.getBoundingBox()) || !(distSq < bestDistSq)) continue;
+                    bestDistSq = distSq;
+                    bestPos = candidatePos;
                 }
             }
         }
-        if (blockPos2 == null) {
+        if (bestPos == null) {
             return null;
         }
-        BlockPos blockPos4 = blockPos2.below();
-        BlockHitResult blockHitResult = new BlockHitResult(new Vec3((double)blockPos2.getX() + 0.5, (double)blockPos2.getY(), (double)blockPos2.getZ() + 0.5), Direction.UP, blockPos4, false);
-        n = BedAuraModule.mc.player.getInventory().getSelectedSlot();
-        InventoryUtils.switchSlot("Normal", n2, n);
+        BlockPos supportPos = bestPos.below();
+        BlockHitResult blockHitResult = new BlockHitResult(new Vec3((double)bestPos.getX() + 0.5, (double)bestPos.getY(), (double)bestPos.getZ() + 0.5), Direction.UP, supportPos, false);
+        prevSlot = BedAuraModule.mc.player.getInventory().getSelectedSlot();
+        InventoryUtils.switchSlot("Normal", tableSlot, prevSlot);
         BedAuraModule.mc.gameMode.useItemOn(BedAuraModule.mc.player, InteractionHand.MAIN_HAND, blockHitResult);
-        InventoryUtils.switchBack("Normal", n2, n);
-        return blockPos2;
+        InventoryUtils.switchBack("Normal", tableSlot, prevSlot);
+        return bestPos;
     }
 
     @SubscribeEvent

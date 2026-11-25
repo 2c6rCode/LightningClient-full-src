@@ -53,15 +53,12 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerUpdate(PlayerUpdateEvent playerUpdateEvent) {
-        int n;
-        int n2;
         if (ReplenishModule.mc.player == null || ReplenishModule.mc.level == null) {
             return;
         }
         if (!this.inventory.getValue()) {
-            n2 = ReplenishModule.mc.gui != null && ReplenishModule.mc.gui.screen() != null || ReplenishModule.mc.player.containerMenu != null && ReplenishModule.mc.player.containerMenu != ReplenishModule.mc.player.inventoryMenu ? 1 : 0;
-            n = n2;
-            if (n2 != 0) {
+            boolean screenOpen = ReplenishModule.mc.gui != null && ReplenishModule.mc.gui.screen() != null || ReplenishModule.mc.player.containerMenu != null && ReplenishModule.mc.player.containerMenu != ReplenishModule.mc.player.inventoryMenu;
+            if (screenOpen) {
                 for (int i = 0; i <= 8; ++i) {
                     ItemStack itemStack = ReplenishModule.mc.player.getInventory().getItem(i);
                     this.hotbarItems[i] = itemStack.getItem();
@@ -74,24 +71,24 @@ extends Module {
             return;
         }
         if (this.ticks <= 0) {
-            for (n2 = 0; n2 <= 8; ++n2) {
-                if (MainhandSlotGuard.isLocked(n2)) continue;
-                ItemStack itemStack = ReplenishModule.mc.player.getInventory().getItem(n2);
-                Item item = itemStack.getItem();
-                int n3 = itemStack.getCount();
-                Item item2 = this.hotbarItems[n2];
-                int n4 = this.hotbarCounts[n2];
-                this.hotbarItems[n2] = item;
-                this.hotbarCounts[n2] = n3;
-                if (item2 == null || item2 == Items.AIR || item == item2 && n3 >= n4) continue;
-                Item item3 = item == Items.AIR ? item2 : item;
-                ItemStack itemStack2 = item == Items.AIR ? new ItemStack((ItemLike)item2) : itemStack;
-                ItemStack itemStack3 = itemStack2;
-                if (!itemStack2.isStackable() && !this.unstackable.getValue() || item3 == Items.TOTEM_OF_UNDYING && Night.MODULE_MANAGER.getModule(MainhandModule.class).legitOwnsTotems() || (itemStack2.isStackable() ? n3 > (int)(this.threshold.getValue().floatValue() / 64.0f * (float)itemStack2.getMaxStackSize()) : n3 > 0) || (n = InventoryUtils.findInventory(item3, (int)((float)this.minimumCount.getValue().intValue() / 64.0f * (float)itemStack2.getMaxStackSize()))) == -1) continue;
+            for (int slot = 0; slot <= 8; ++slot) {
+                int sourceSlot;
+                if (MainhandSlotGuard.isLocked(slot)) continue;
+                ItemStack currentStack = ReplenishModule.mc.player.getInventory().getItem(slot);
+                Item currentItem = currentStack.getItem();
+                int currentCount = currentStack.getCount();
+                Item prevItem = this.hotbarItems[slot];
+                int prevCount = this.hotbarCounts[slot];
+                this.hotbarItems[slot] = currentItem;
+                this.hotbarCounts[slot] = currentCount;
+                if (prevItem == null || prevItem == Items.AIR || currentItem == prevItem && currentCount >= prevCount) continue;
+                Item targetItem = currentItem == Items.AIR ? prevItem : currentItem;
+                ItemStack targetStack = currentItem == Items.AIR ? new ItemStack((ItemLike)prevItem) : currentStack;
+                if (!targetStack.isStackable() && !this.unstackable.getValue() || targetItem == Items.TOTEM_OF_UNDYING && Night.MODULE_MANAGER.getModule(MainhandModule.class).legitOwnsTotems() || (targetStack.isStackable() ? currentCount > (int)(this.threshold.getValue().floatValue() / 64.0f * (float)targetStack.getMaxStackSize()) : currentCount > 0) || (sourceSlot = InventoryUtils.findInventory(targetItem, (int)((float)this.minimumCount.getValue().intValue() / 64.0f * (float)targetStack.getMaxStackSize()))) == -1) continue;
                 if (this.switchMode.getValue().equalsIgnoreCase("Quick")) {
-                    ReplenishModule.mc.gameMode.handleContainerInput(ReplenishModule.mc.player.containerMenu.containerId, InventoryUtils.indexToSlot(n), MainhandSlotGuard.quickButton(n2), MainhandSlotGuard.quickInput(), (Player)ReplenishModule.mc.player);
+                    ReplenishModule.mc.gameMode.handleContainerInput(ReplenishModule.mc.player.containerMenu.containerId, InventoryUtils.indexToSlot(sourceSlot), MainhandSlotGuard.quickButton(slot), MainhandSlotGuard.quickInput(), (Player)ReplenishModule.mc.player);
                 } else {
-                    InventoryUtils.swap(this.switchMode.getValue(), n, n2);
+                    InventoryUtils.swap(this.switchMode.getValue(), sourceSlot, slot);
                 }
                 this.ticks = 2 + Night.SERVER_MANAGER.getPingDelay();
             }

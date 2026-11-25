@@ -36,30 +36,30 @@ extends Screen {
     @Inject(method={"init"}, at={@At(value="TAIL")})
     private void init(CallbackInfo callbackInfo) {
         try {
-            int n;
-            int n2;
-            int n3 = 75;
-            int n4 = 20;
-            AbstractWidget abstractWidget = null;
+            int buttonY;
+            int buttonX;
+            int buttonWidth = 75;
+            int buttonHeight = 20;
+            AbstractWidget viaWidget = null;
             for (GuiEventListener guiEventListener : this.children()) {
                 if (!(guiEventListener instanceof AbstractWidget)) continue;
-                AbstractWidget abstractWidget2 = (AbstractWidget)guiEventListener;
-                String string = abstractWidget2.getClass().getName().toLowerCase();
-                String string2 = abstractWidget2.getMessage() != null ? abstractWidget2.getMessage().getString().toLowerCase() : "";
-                String string3 = string2;
-                if (!string.contains("viafabric") && !string2.contains("viafabric") && !string2.contains("viaversion")) continue;
-                abstractWidget = abstractWidget2;
+                AbstractWidget widget = (AbstractWidget)guiEventListener;
+                String className = widget.getClass().getName().toLowerCase();
+                String messageText = widget.getMessage() != null ? widget.getMessage().getString().toLowerCase() : "";
+                String unusedMessageText = messageText;
+                if (!className.contains("viafabric") && !messageText.contains("viafabric") && !messageText.contains("viaversion")) continue;
+                viaWidget = widget;
                 break;
             }
-            if (abstractWidget != null) {
-                n2 = abstractWidget.getX() - n3 - 4;
-                n = abstractWidget.getY();
-                n4 = abstractWidget.getHeight() > 0 ? abstractWidget.getHeight() : 20;
+            if (viaWidget != null) {
+                buttonX = viaWidget.getX() - buttonWidth - 4;
+                buttonY = viaWidget.getY();
+                buttonHeight = viaWidget.getHeight() > 0 ? viaWidget.getHeight() : 20;
             } else {
-                n2 = this.width - n3 - 6;
-                n = 5;
+                buttonX = this.width - buttonWidth - 6;
+                buttonY = 5;
             }
-            this.addRenderableWidget(AccountButton.create((int)n2, (int)n, (int)n3, (int)n4, (Screen)this));
+            this.addRenderableWidget(AccountButton.create((int)buttonX, (int)buttonY, (int)buttonWidth, (int)buttonHeight, (Screen)this));
             return;
         }
         catch (NullPointerException nullPointerException) {

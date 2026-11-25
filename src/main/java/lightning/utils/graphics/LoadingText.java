@@ -60,127 +60,120 @@ public final class LoadingText {
         return true;
     }
 
-    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, float f2, boolean bl) {
-        float f3;
-        float f4;
-        float f5;
-        float f6;
-        float f7;
-        long l = System.currentTimeMillis();
-        if (start < 0L || l - lastFrame > 3000L) {
-            start = l;
+    public static void render(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, float alpha, float progress, boolean finished) {
+        long now = System.currentTimeMillis();
+        if (start < 0L || now - lastFrame > 3000L) {
+            start = now;
             shown = 0.0f;
         }
-        lastFrame = l;
-        long l2 = LoadingClock.tick(l);
-        float f8 = Math.min(0.1f, (float)(l - lastFrame) / 1000.0f);
-        LoadingText.drawBackground(guiGraphicsExtractor, n, n2, f);
+        lastFrame = now;
+        long elapsedMs = LoadingClock.tick(now);
+        LoadingText.drawBackground(guiGraphicsExtractor, width, height, alpha);
         LoadingText.initFonts();
         if (title == null) {
             return;
         }
-        float f9 = bl ? 1.0f : Math.max(0.0f, Math.min(1.0f, f2));
-        shown += (f9 - shown) * 0.12f;
-        if (bl && shown > 0.995f) {
+        float targetProgress = finished ? 1.0f : Math.max(0.0f, Math.min(1.0f, progress));
+        shown += (targetProgress - shown) * 0.12f;
+        if (finished && shown > 0.995f) {
             shown = 1.0f;
         }
-        int n3 = TEXT.length();
-        float[] fArray = new float[n3];
-        float f10 = 0.0f;
-        for (int i = 0; i < n3; ++i) {
-            fArray[i] = title.getTextWidth(String.valueOf(TEXT.charAt(i)));
-            f10 += fArray[i];
+        int length = TEXT.length();
+        float[] charWidths = new float[length];
+        float totalWidth = 0.0f;
+        for (int i = 0; i < length; ++i) {
+            charWidths[i] = title.getTextWidth(String.valueOf(TEXT.charAt(i)));
+            totalWidth += charWidths[i];
         }
-        float f11 = title.getHeight();
-        float f12 = (float)n / 2.0f - f10 / 2.0f;
-        float f13 = (float)n2 / 2.0f - f11 / 2.0f - 14.0f;
-        float f14 = f12;
-        for (int i = 0; i < n3; ++i) {
-            f7 = (float)(l2 - (long)i * 200L) / 1400.0f;
-            if (f7 > 0.0f) {
-                f6 = Math.min(f7, 1.0f);
-                f5 = f13 - 120.0f * (1.0f - LoadingText.bounce(f6));
-                f4 = Math.min(1.0f, f6 * 3.0f) * f;
-                f3 = (float)i / (float)(n3 - 1);
-                int n4 = LoadingText.argb(f4, LoadingText.lerp(240, 127, f3), LoadingText.lerp(210, 240, f3), LoadingText.lerp(255, 255, f3));
-                LoadingGlow.draw(title, guiGraphicsExtractor, String.valueOf(TEXT.charAt(i)), f14, f5, f4);
-                title.drawString(guiGraphicsExtractor, String.valueOf(TEXT.charAt(i)), f14, f5, n4, false);
+        float textHeight = title.getHeight();
+        float startX = (float)width / 2.0f - totalWidth / 2.0f;
+        float baseY = (float)height / 2.0f - textHeight / 2.0f - 14.0f;
+        float cursorX = startX;
+        for (int i = 0; i < length; ++i) {
+            float charProgress = (float)(elapsedMs - (long)i * 200L) / 1400.0f;
+            if (charProgress > 0.0f) {
+                float clampedProgress = Math.min(charProgress, 1.0f);
+                float charY = baseY - 120.0f * (1.0f - LoadingText.bounce(clampedProgress));
+                float charAlpha = Math.min(1.0f, clampedProgress * 3.0f) * alpha;
+                float gradientT = (float)i / (float)(length - 1);
+                int charColor = LoadingText.argb(charAlpha, LoadingText.lerp(240, 127, gradientT), LoadingText.lerp(210, 240, gradientT), LoadingText.lerp(255, 255, gradientT));
+                LoadingGlow.draw(title, guiGraphicsExtractor, String.valueOf(TEXT.charAt(i)), cursorX, charY, charAlpha);
+                title.drawString(guiGraphicsExtractor, String.valueOf(TEXT.charAt(i)), cursorX, charY, charColor, false);
             }
-            f14 += fArray[i];
+            cursorX += charWidths[i];
         }
-        float f15 = Math.min(1.0f, Math.max(0.0f, ((float)l2 - 500.0f) / 400.0f)) * f;
-        if (f15 <= 0.0f) {
+        float barAlpha = Math.min(1.0f, Math.max(0.0f, ((float)elapsedMs - 500.0f) / 400.0f)) * alpha;
+        if (barAlpha <= 0.0f) {
             return;
         }
-        f7 = f10 * 0.92f;
-        f6 = 6.0f;
-        f5 = (float)n / 2.0f - f7 / 2.0f;
-        f4 = f13 + f11 + 18.0f;
-        LoadingText.roundedBar(guiGraphicsExtractor, f5, f4, f7, f6, 1.0f, TRACK, TRACK, f15 * 0.85f);
-        f3 = f7 * shown;
-        if (f3 > 1.0f) {
-            LoadingText.roundedBar(guiGraphicsExtractor, f5, f4, f3, f6, f3 / f7, new Color(220, 185, 255), new Color(127, 240, 255), f15);
+        float barWidth = totalWidth * 0.92f;
+        float barHeight = 6.0f;
+        float barX = (float)width / 2.0f - barWidth / 2.0f;
+        float barY = baseY + textHeight + 18.0f;
+        LoadingText.roundedBar(guiGraphicsExtractor, barX, barY, barWidth, barHeight, 1.0f, TRACK, TRACK, barAlpha * 0.85f);
+        float fillWidth = barWidth * shown;
+        if (fillWidth > 1.0f) {
+            LoadingText.roundedBar(guiGraphicsExtractor, barX, barY, fillWidth, barHeight, fillWidth / barWidth, new Color(220, 185, 255), new Color(127, 240, 255), barAlpha);
         }
-        String string = Math.round(shown * 100.0f) + "%";
-        float f16 = small.getTextWidth(string);
-        small.drawString(guiGraphicsExtractor, string, (float)n / 2.0f - f16 / 2.0f, f4 + f6 + 8.0f, LoadingText.argb(f15, 245, 230, 255), false);
+        String percentText = Math.round(shown * 100.0f) + "%";
+        float percentWidth = small.getTextWidth(percentText);
+        small.drawString(guiGraphicsExtractor, percentText, (float)width / 2.0f - percentWidth / 2.0f, barY + barHeight + 8.0f, LoadingText.argb(barAlpha, 245, 230, 255), false);
     }
 
-    private static void drawBackground(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f) {
+    private static void drawBackground(GuiGraphicsExtractor guiGraphicsExtractor, int width, int height, float alpha) {
         if (bg == null) {
             bg = Identifier.fromNamespaceAndPath((String)"lightning", (String)"textures/gui/moonlight_lg.png");
         }
-        int n3 = Math.max(0, Math.min(255, Math.round(f * 255.0f)));
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, bg, 0, 0, 0.0f, 0.0f, n, n2, n, n2, n, n2, n3 << 24 | 0xFFFFFF);
-        int n4 = Math.round(70.0f * f);
+        int alphaByte = Math.max(0, Math.min(255, Math.round(alpha * 255.0f)));
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, bg, 0, 0, 0.0f, 0.0f, width, height, width, height, width, height, alphaByte << 24 | 0xFFFFFF);
     }
 
-    private static void roundedBar(GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, float f4, float f5, Color color, Color color2, float f6) {
-        float f7 = f4 / 2.0f;
-        Color color3 = LoadingText.mix(color, color2, Math.min(1.0f, f5));
-        for (int i = 0; i < (int)f4; ++i) {
-            float f8;
-            float f9 = f7 - ((float)i + 0.5f);
-            float f10 = f7 - (float)Math.sqrt(Math.max(0.0f, f7 * f7 - f9 * f9));
-            float f11 = f + f3 - f10;
-            if (f11 <= (f8 = f + f10)) continue;
-            float f12 = (f8 - f) / f3;
-            float f13 = (f11 - f) / f3;
-            Color color4 = LoadingText.withA(LoadingText.mix(color, color3, f12), f6);
-            Color color5 = LoadingText.withA(LoadingText.mix(color, color3, f13), f6);
-            Renderer2D.renderSidewaysGradient(guiGraphicsExtractor, f8, f2 + (float)i, f11, f2 + (float)i + 1.0f, color4, color5);
+    private static void roundedBar(GuiGraphicsExtractor guiGraphicsExtractor, float x, float y, float width, float height, float progress, Color startColor, Color endColor, float alpha) {
+        float radius = height / 2.0f;
+        Color filledEndColor = LoadingText.mix(startColor, endColor, Math.min(1.0f, progress));
+        for (int i = 0; i < (int)height; ++i) {
+            float rowLeft;
+            float dy = radius - ((float)i + 0.5f);
+            float inset = radius - (float)Math.sqrt(Math.max(0.0f, radius * radius - dy * dy));
+            float rowRight = x + width - inset;
+            if (rowRight <= (rowLeft = x + inset)) continue;
+            float tLeft = (rowLeft - x) / width;
+            float tRight = (rowRight - x) / width;
+            Color leftColor = LoadingText.withA(LoadingText.mix(startColor, filledEndColor, tLeft), alpha);
+            Color rightColor = LoadingText.withA(LoadingText.mix(startColor, filledEndColor, tRight), alpha);
+            Renderer2D.renderSidewaysGradient(guiGraphicsExtractor, rowLeft, y + (float)i, rowRight, y + (float)i + 1.0f, leftColor, rightColor);
         }
     }
 
-    private static Color mix(Color color, Color color2, float f) {
-        return new Color(LoadingText.lerp(color.getRed(), color2.getRed(), f), LoadingText.lerp(color.getGreen(), color2.getGreen(), f), LoadingText.lerp(color.getBlue(), color2.getBlue(), f));
+    private static Color mix(Color first, Color second, float t) {
+        return new Color(LoadingText.lerp(first.getRed(), second.getRed(), t), LoadingText.lerp(first.getGreen(), second.getGreen(), t), LoadingText.lerp(first.getBlue(), second.getBlue(), t));
     }
 
-    private static Color withA(Color color, float f) {
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, Math.round(f * 255.0f))));
+    private static Color withA(Color color, float alpha) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, Math.round(alpha * 255.0f))));
     }
 
-    private static int lerp(int n, int n2, float f) {
-        return Math.round((float)n + (float)(n2 - n) * f);
+    private static int lerp(int start, int end, float t) {
+        return Math.round((float)start + (float)(end - start) * t);
     }
 
-    private static int argb(float f, int n, int n2, int n3) {
-        return Math.max(0, Math.min(255, Math.round(f * 255.0f))) << 24 | n << 16 | n2 << 8 | n3;
+    private static int argb(float alpha, int red, int green, int blue) {
+        return Math.max(0, Math.min(255, Math.round(alpha * 255.0f))) << 24 | red << 16 | green << 8 | blue;
     }
 
-    private static float bounce(float f) {
-        float f2 = 7.5625f;
-        float f3 = 2.75f;
-        if (f < 1.0f / f3) {
-            return f2 * f * f;
+    private static float bounce(float t) {
+        float n1 = 7.5625f;
+        float d1 = 2.75f;
+        if (t < 1.0f / d1) {
+            return n1 * t * t;
         }
-        if (f < 2.0f / f3) {
-            return f2 * (f -= 1.5f / f3) * f + 0.75f;
+        if (t < 2.0f / d1) {
+            return n1 * (t -= 1.5f / d1) * t + 0.75f;
         }
-        if (f < 2.5f / f3) {
-            return f2 * (f -= 2.25f / f3) * f + 0.9375f;
+        if (t < 2.5f / d1) {
+            return n1 * (t -= 2.25f / d1) * t + 0.9375f;
         }
-        return f2 * (f -= 2.625f / f3) * f + 0.984375f;
+        return n1 * (t -= 2.625f / d1) * t + 0.984375f;
     }
 }
 

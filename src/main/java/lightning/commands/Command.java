@@ -30,9 +30,9 @@ implements IMinecraft {
         this.aliases = Arrays.asList(registerCommand.aliases());
     }
 
-    public abstract void execute(String[] var1);
+    public abstract void execute(String[] args);
 
-    public List<String> getSuggestions(String[] stringArray) {
+    public List<String> getSuggestions(String[] args) {
         return List.of();
     }
 
@@ -70,13 +70,13 @@ implements IMinecraft {
     }
 
     @Generated
-    public void setName(String string) {
-        this.name = string;
+    public void setName(String name) {
+        this.name = name;
     }
 
     @Generated
-    public void setTag(String string) {
-        this.tag = string;
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 }
 

@@ -17,6 +17,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 @Mixin(value={ClientInput.class})
 public interface ClientInputAccessor {
     @Accessor(value="moveVector")
-    public void setMoveVector(Vec2 var1);
+    public void setMoveVector(Vec2 moveVector);
 }
 

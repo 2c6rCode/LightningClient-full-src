@@ -44,26 +44,25 @@ public class PingBypassConfig {
      */
     public void load() {
         try {
-            Object object;
-            Path path = this.configPath.getParent();
-            if (path != null) {
-                Files.createDirectories(path, new FileAttribute[0]);
+            Path parentDir = this.configPath.getParent();
+            if (parentDir != null) {
+                Files.createDirectories(parentDir, new FileAttribute[0]);
             }
             if (!Files.exists(this.configPath, new LinkOption[0])) {
-                object = this.configPath.getParent().getParent().resolve(Paths.get("euclient", "pingbypass.properties"));
-                if (Files.exists((Path)object, new LinkOption[0])) {
-                    Files.copy((Path)object, this.configPath, StandardCopyOption.COPY_ATTRIBUTES);
+                Path legacyConfigPath = this.configPath.getParent().getParent().resolve(Paths.get("euclient", "pingbypass.properties"));
+                if (Files.exists(legacyConfigPath, new LinkOption[0])) {
+                    Files.copy(legacyConfigPath, this.configPath, StandardCopyOption.COPY_ATTRIBUTES);
                 } else {
                     this.createDefaults();
                 }
             }
-            object = Files.newInputStream(this.configPath, new OpenOption[0]);
+            InputStream inputStream = Files.newInputStream(this.configPath, new OpenOption[0]);
             try {
-                this.properties.load((InputStream)object);
+                this.properties.load(inputStream);
             }
             finally {
-                if (object != null) {
-                    ((InputStream)object).close();
+                if (inputStream != null) {
+                    inputStream.close();
                 }
             }
         }
@@ -95,17 +94,17 @@ public class PingBypassConfig {
     }
 
     public int getPort() {
-        String string = this.getProperty(KEY_PORT, DEFAULT_PORT);
+        String portValue = this.getProperty(KEY_PORT, DEFAULT_PORT);
         try {
-            int n = Integer.parseInt(string);
-            if (n < 1 || n > 65535) {
-                LOGGER.error("PingBypass port out of range (1-65535): {}, falling back to default 25565", (Object)n);
+            int port = Integer.parseInt(portValue);
+            if (port < 1 || port > 65535) {
+                LOGGER.error("PingBypass port out of range (1-65535): {}, falling back to default 25565", (Object)port);
                 return 25565;
             }
-            return n;
+            return port;
         }
         catch (NumberFormatException numberFormatException) {
-            LOGGER.error("PingBypass port is not a valid integer: '{}', falling back to default 25565", (Object)string);
+            LOGGER.error("PingBypass port is not a valid integer: '{}', falling back to default 25565", (Object)portValue);
             return 25565;
         }
     }
@@ -115,16 +114,16 @@ public class PingBypassConfig {
     }
 
     public boolean hasPassword() {
-        String string = this.getPassword();
-        return string != null && !string.isEmpty();
+        String password = this.getPassword();
+        return password != null && !password.isEmpty();
     }
 
-    public String getProperty(String string, String string2) {
-        String string3 = System.getProperty(string);
-        if (string3 != null) {
-            return string3;
+    public String getProperty(String key, String defaultValue) {
+        String systemValue = System.getProperty(key);
+        if (systemValue != null) {
+            return systemValue;
         }
-        return this.properties.getProperty(string, string2);
+        return this.properties.getProperty(key, defaultValue);
     }
 
     public Properties toProperties() {

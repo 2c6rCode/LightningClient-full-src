@@ -72,7 +72,7 @@ public class RegistryCache {
 
     public void load() {
         LOGGER.info("Loading vanilla registries for proxy...");
-        long l = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         try {
             PackRepository packRepository = ServerPacksSource.createVanillaTrustedRepository();
             MinecraftServer.configurePackRepository((PackRepository)packRepository, (WorldDataConfiguration)WorldDataConfiguration.DEFAULT, (boolean)true, (boolean)true);
@@ -96,8 +96,8 @@ public class RegistryCache {
                 this.registryPackets.add((Packet<?>)new ClientboundUpdateTagsPacket(TagNetworkSerialization.serializeTagsToNetwork(this.registries)));
                 this.loaded = true;
             }
-            long l2 = System.currentTimeMillis() - l;
-            LOGGER.info("Loaded {} registry packets in {}ms", (Object)this.registryPackets.size(), (Object)l2);
+            long elapsedMs = System.currentTimeMillis() - startTime;
+            LOGGER.info("Loaded {} registry packets in {}ms", (Object)this.registryPackets.size(), (Object)elapsedMs);
         }
         catch (Exception exception) {
             LOGGER.error("Failed to load vanilla registries", (Throwable)exception);

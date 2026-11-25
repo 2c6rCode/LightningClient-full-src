@@ -57,19 +57,19 @@ implements IMinecraft {
     private long fadeInStart;
 
     @Inject(method={"extractRenderState"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$renderLoadingScreen(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void night$renderLoadingScreen(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
             callbackInfo.cancel();
-            int n3 = mc.getWindow().getGuiScaledWidth();
-            int n4 = mc.getWindow().getGuiScaledHeight();
-            long l = Util.getMillis();
+            int scaledWidth = mc.getWindow().getGuiScaledWidth();
+            int scaledHeight = mc.getWindow().getGuiScaledHeight();
+            long now = Util.getMillis();
             if (this.fadeIn && this.fadeInStart == -1L) {
-                this.fadeInStart = l;
+                this.fadeInStart = now;
             }
-            float f2 = this.fadeOutStart > -1L ? (float)(l - this.fadeOutStart) / 1000.0f : -1.0f;
-            float f3 = this.fadeInStart > -1L ? (float)(l - this.fadeInStart) / 500.0f : -1.0f;
-            float f4 = 1.0f;
-            if (f2 >= 1.0f) {
+            float fadeOutProgress = this.fadeOutStart > -1L ? (float)(now - this.fadeOutStart) / 1000.0f : -1.0f;
+            float fadeInProgress = this.fadeInStart > -1L ? (float)(now - this.fadeInStart) / 500.0f : -1.0f;
+            float alpha = 1.0f;
+            if (fadeOutProgress >= 1.0f) {
                 if (LoadingOverlayMixin.mc.gui.screen() != null) {
                     LoadingOverlayMixin.mc.gui.screen().init(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
                 }
@@ -83,16 +83,16 @@ implements IMinecraft {
                 LoadingOverlayMixin.mc.gui.setOverlay(null);
                 return;
             }
-            if (f2 >= 0.0f) {
-                f4 = 1.0f - Mth.clamp((float)f2, (float)0.0f, (float)1.0f);
-            } else if (this.fadeIn && f3 >= 0.0f) {
-                f4 = Mth.clamp((float)f3, (float)0.0f, (float)1.0f);
+            if (fadeOutProgress >= 0.0f) {
+                alpha = 1.0f - Mth.clamp((float)fadeOutProgress, (float)0.0f, (float)1.0f);
+            } else if (this.fadeIn && fadeInProgress >= 0.0f) {
+                alpha = Mth.clamp((float)fadeInProgress, (float)0.0f, (float)1.0f);
             }
-            float f5 = this.reload.getActualProgress();
-            this.currentProgress = Mth.clamp((float)(this.currentProgress * 0.95f + f5 * 0.05f), (float)0.0f, (float)1.0f);
-            LoadingText.render((GuiGraphicsExtractor)guiGraphicsExtractor, (int)n3, (int)n4, (float)f4, (float)this.currentProgress, (boolean)this.reload.isDone());
+            float actualProgress = this.reload.getActualProgress();
+            this.currentProgress = Mth.clamp((float)(this.currentProgress * 0.95f + actualProgress * 0.05f), (float)0.0f, (float)1.0f);
+            LoadingText.render((GuiGraphicsExtractor)guiGraphicsExtractor, (int)scaledWidth, (int)scaledHeight, (float)alpha, (float)this.currentProgress, (boolean)this.reload.isDone());
             if (this.reload.isDone() && LoadingText.ready() && this.fadeOutStart == -1L) {
-                this.fadeOutStart = l;
+                this.fadeOutStart = now;
             }
             return;
         }

@@ -49,11 +49,11 @@ extends Module {
             return;
         }
         if (this.messageTimer.hasTimeElapsed(this.delay.getValue().intValue() * 1000) && !this.queue.isEmpty() && !this.clientside.getValue()) {
-            String string = this.queue.poll();
+            String message = this.queue.poll();
             if (this.clientside.getValue()) {
-                Night.CHAT_MANAGER.message(string);
+                Night.CHAT_MANAGER.message(message);
             } else {
-                WelcomerModule.mc.player.connection.sendChat((this.greenText.getValue() ? "> " : "") + string);
+                WelcomerModule.mc.player.connection.sendChat((this.greenText.getValue() ? "> " : "") + message);
             }
             this.messageTimer.reset();
         }

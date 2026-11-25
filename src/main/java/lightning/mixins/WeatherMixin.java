@@ -27,8 +27,8 @@ public abstract class WeatherMixin {
         try {
             AtmosphereModule atmosphereModule = (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class);
             if (atmosphereModule.isToggled() && !atmosphereModule.weather.getValue().equalsIgnoreCase("Unchanged")) {
-                String string = atmosphereModule.weather.getValue();
-                callbackInfoReturnable.setReturnValue(string.equalsIgnoreCase("Rain") || string.equalsIgnoreCase("Thunder"));
+                String weather = atmosphereModule.weather.getValue();
+                callbackInfoReturnable.setReturnValue(weather.equalsIgnoreCase("Rain") || weather.equalsIgnoreCase("Thunder"));
             }
             return;
         }
@@ -53,14 +53,14 @@ public abstract class WeatherMixin {
     }
 
     @Inject(method={"getRainLevel"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$getRainLevel(float f, CallbackInfoReturnable<Float> callbackInfoReturnable) {
+    private void night$getRainLevel(float partialTick, CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             AtmosphereModule atmosphereModule = (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class);
             if (!atmosphereModule.isToggled() || atmosphereModule.weather.getValue().equalsIgnoreCase("Unchanged")) {
                 return;
             }
-            String string = atmosphereModule.weather.getValue();
-            callbackInfoReturnable.setReturnValue(Float.valueOf(string.equalsIgnoreCase("Rain") || string.equalsIgnoreCase("Thunder") ? 1.0f : 0.0f));
+            String weather = atmosphereModule.weather.getValue();
+            callbackInfoReturnable.setReturnValue(Float.valueOf(weather.equalsIgnoreCase("Rain") || weather.equalsIgnoreCase("Thunder") ? 1.0f : 0.0f));
             return;
         }
         catch (NullPointerException nullPointerException) {
@@ -69,7 +69,7 @@ public abstract class WeatherMixin {
     }
 
     @Inject(method={"getThunderLevel"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$getThunderLevel(float f, CallbackInfoReturnable<Float> callbackInfoReturnable) {
+    private void night$getThunderLevel(float partialTick, CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             AtmosphereModule atmosphereModule = (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class);
             if (!atmosphereModule.isToggled() || atmosphereModule.weather.getValue().equalsIgnoreCase("Unchanged")) {

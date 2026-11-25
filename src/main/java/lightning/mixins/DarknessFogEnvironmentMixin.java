@@ -31,7 +31,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={DarknessFogEnvironment.class})
 public class DarknessFogEnvironmentMixin {
     @Inject(method={"setupFog"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$setupFog(FogData fogData, Camera camera, ClientLevel clientLevel, float f, DeltaTracker deltaTracker, CallbackInfo callbackInfo) {
+    private void night$setupFog(FogData fogData, Camera camera, ClientLevel clientLevel, float viewDistance, DeltaTracker deltaTracker, CallbackInfo callbackInfo) {
         try {
             NoRenderModule noRenderModule = (NoRenderModule)Night.MODULE_MANAGER.getModule(NoRenderModule.class);
             if (noRenderModule.isToggled() && noRenderModule.blindness.getValue()) {

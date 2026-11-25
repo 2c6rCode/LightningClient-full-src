@@ -16,10 +16,10 @@ implements Transferable {
     private final File file;
     private final boolean includeFile;
 
-    public ImageTransferable(Image image, File file, boolean bl) {
+    public ImageTransferable(Image image, File file, boolean includeFile) {
         this.image = image;
         this.file = file;
-        this.includeFile = bl;
+        this.includeFile = includeFile;
     }
 
     @Override

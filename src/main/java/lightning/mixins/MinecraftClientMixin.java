@@ -100,7 +100,7 @@ implements IMinecraft {
     }
 
     @Inject(method={"runTick"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/Minecraft;runAllTasks()V", shift=At.Shift.AFTER)})
-    private void runTickHook(boolean bl, CallbackInfo callbackInfo) {
+    private void runTickHook(boolean renderLevel, CallbackInfo callbackInfo) {
         try {
             Night.EVENT_HANDLER.post((Event)new GameLoopEvent());
             return;
@@ -146,28 +146,28 @@ implements IMinecraft {
     }
 
     @ModifyExpressionValue(method={"continueAttack"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/player/LocalPlayer;isUsingItem()Z")})
-    private boolean handleBlockBreaking(boolean bl) {
+    private boolean handleBlockBreaking(boolean usingItem) {
         try {
             if (Night.MODULE_MANAGER != null && ((MultiTaskModule)Night.MODULE_MANAGER.getModule(MultiTaskModule.class)).isToggled()) {
                 return false;
             }
-            return bl;
+            return usingItem;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return usingItem;
         }
     }
 
     @ModifyExpressionValue(method={"startUseItem"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;isDestroying()Z")})
-    private boolean handleInputEvents(boolean bl) {
+    private boolean handleInputEvents(boolean destroying) {
         try {
             if (Night.MODULE_MANAGER != null && ((MultiTaskModule)Night.MODULE_MANAGER.getModule(MultiTaskModule.class)).isToggled()) {
                 return false;
             }
-            return bl;
+            return destroying;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return destroying;
         }
     }
 
@@ -180,16 +180,16 @@ implements IMinecraft {
     }
 
     @Redirect(method={"handleKeybinds"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/entity/player/Inventory;setSelectedSlot(I)V")})
-    private void night$redirectSetSelectedSlot(Inventory inventory, int n) {
+    private void night$redirectSetSelectedSlot(Inventory inventory, int slot) {
         MainhandModule mainhandModule;
         if (Night.MODULE_MANAGER != null && (mainhandModule = (MainhandModule)Night.MODULE_MANAGER.getModule(MainhandModule.class)) != null && mainhandModule.shouldLockSlot()) {
             return;
         }
-        inventory.setSelectedSlot(n);
+        inventory.setSelectedSlot(slot);
     }
 
     @Inject(method={"pick"}, at={@At(value="HEAD")}, cancellable=true)
-    private void pick(float f, CallbackInfo callbackInfo) {
+    private void pick(float partialTick, CallbackInfo callbackInfo) {
         try {
             if (MinecraftClientMixin.mc.level == null || this.player == null) {
                 return;

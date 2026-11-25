@@ -27,7 +27,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={MultiPlayerGameMode.class})
 public class MultiPlayerGameModeMixin {
     @Inject(method={"handleContainerInput"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$blockPeekClicks(int n, int n2, int n3, ContainerInput containerInput, Player player, CallbackInfo callbackInfo) {
+    private void night$blockPeekClicks(int containerId, int slotNum, int buttonNum, ContainerInput containerInput, Player player, CallbackInfo callbackInfo) {
         try {
             if (Minecraft.getInstance().gui.screen() instanceof PeekScreen) {
                 callbackInfo.cancel();

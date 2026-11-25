@@ -11,6 +11,6 @@ import net.minecraft.network.Connection;
 
 @FunctionalInterface
 public interface PbPacketHandler<T extends PbPacket> {
-    public void handle(T var1, Connection var2);
+    public void handle(T packet, Connection connection);
 }
 

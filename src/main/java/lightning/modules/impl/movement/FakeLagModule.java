@@ -94,17 +94,15 @@ extends Module {
      */
     @SubscribeEvent
     public void onPacketSend(PacketSendEvent packetSendEvent) {
-        ServerboundMovePlayerPacket serverboundMovePlayerPacket;
-        Object object;
-        if (this.getNull() || this.sending || !((object = packetSendEvent.getPacket()) instanceof ServerboundMovePlayerPacket) || !this.hasPositionChange(serverboundMovePlayerPacket = (ServerboundMovePlayerPacket)object)) {
+        Packet<?> packet = packetSendEvent.getPacket();
+        if (this.getNull() || this.sending || !(packet instanceof ServerboundMovePlayerPacket serverboundMovePlayerPacket) || !this.hasPositionChange(serverboundMovePlayerPacket)) {
             return;
         }
         if (!this.shouldChoke()) {
             this.serverPosition = FakeLagModule.mc.player.position();
             return;
         }
-        Object object2 = object = this.packets;
-        synchronized (object2) {
+        synchronized (this.packets) {
             packetSendEvent.setCancelled(true);
             this.packets.add(serverboundMovePlayerPacket);
         }
@@ -130,14 +128,13 @@ extends Module {
             return;
         }
         if (this.onlyOnHoleLeave.getValue()) {
-            BlockPos blockPos = this.currentPos;
+            BlockPos previousPos = this.currentPos;
             this.currentPos = BlockPos.containing((Position)FakeLagModule.mc.player.position());
-            BlockPos blockPos2 = blockPos == null ? this.currentPos : blockPos;
-            BlockPos blockPos3 = blockPos2;
-            if (!this.currentPos.equals((Object)blockPos2)) {
-                boolean bl = HoleSnapModule.isInHole(this.currentPos);
-                boolean bl2 = HoleSnapModule.isInHole(blockPos2);
-                if (!bl && bl2) {
+            BlockPos lastPos = previousPos == null ? this.currentPos : previousPos;
+            if (!this.currentPos.equals((Object)lastPos)) {
+                boolean currentlyInHole = HoleSnapModule.isInHole(this.currentPos);
+                boolean previouslyInHole = HoleSnapModule.isInHole(lastPos);
+                if (!currentlyInHole && previouslyInHole) {
                     this.isChoking = true;
                     this.chokeTimer.reset();
                 }
@@ -188,9 +185,7 @@ extends Module {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     private void sendPackets() {
-        ArrayList<ServerboundMovePlayerPacket> arrayList;
-        ArrayList<ServerboundMovePlayerPacket> arrayList2 = arrayList = this.packets;
-        synchronized (arrayList2) {
+        synchronized (this.packets) {
             this.sending = true;
             for (ServerboundMovePlayerPacket serverboundMovePlayerPacket : this.packets) {
                 FakeLagModule.mc.player.connection.send((Packet)serverboundMovePlayerPacket);

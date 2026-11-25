@@ -26,9 +26,9 @@ implements IAmbienceModule {
     public Color getColor() {
         Color color = this.color.getColor();
         if (this.useSaturation.getValue()) {
-            float[] fArray = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
-            Color color2 = Color.getHSBColor(fArray[0], this.saturation.getValue().floatValue(), fArray[2]);
-            return new Color(color2.getRed(), color2.getGreen(), color2.getBlue(), color.getAlpha());
+            float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+            Color adjustedColor = Color.getHSBColor(hsb[0], this.saturation.getValue().floatValue(), hsb[2]);
+            return new Color(adjustedColor.getRed(), adjustedColor.getGreen(), adjustedColor.getBlue(), color.getAlpha());
         }
         return color;
     }

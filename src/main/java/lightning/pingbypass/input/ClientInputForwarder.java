@@ -43,14 +43,13 @@ public class ClientInputForwarder {
             return;
         }
         Screen screen = minecraft.gui.screen();
-        boolean bl = screen instanceof InventoryScreen && (inventoryScreen = (InventoryScreen)screen).getMenu() == minecraft.player.inventoryMenu;
-        boolean bl2 = bl;
-        if (bl == this.inventoryOpen) {
+        boolean isInventoryOpen = screen instanceof InventoryScreen && (inventoryScreen = (InventoryScreen)screen).getMenu() == minecraft.player.inventoryMenu;
+        if (isInventoryOpen == this.inventoryOpen) {
             return;
         }
-        this.inventoryOpen = bl;
+        this.inventoryOpen = isInventoryOpen;
         try {
-            PbCustomPayload pbCustomPayload = PbCustomPayload.fromPacket(new C2SOpenInventoryPacket(bl));
+            PbCustomPayload pbCustomPayload = PbCustomPayload.fromPacket(new C2SOpenInventoryPacket(isInventoryOpen));
             minecraft.getConnection().getConnection().send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)pbCustomPayload));
         }
         catch (Exception exception) {
@@ -70,16 +69,16 @@ public class ClientInputForwarder {
         if (minecraft.getConnection() == null) {
             return;
         }
-        int n = mouseInputEvent.getButton();
-        if (n != 0 && n != 1) {
+        int button = mouseInputEvent.getButton();
+        if (button != 0 && button != 1) {
             return;
         }
-        this.sendInput(minecraft, 0, n, 1);
+        this.sendInput(minecraft, 0, button, 1);
     }
 
-    private void sendInput(Minecraft minecraft, int n, int n2, int n3) {
+    private void sendInput(Minecraft minecraft, int inputType, int keyCode, int action) {
         try {
-            PbCustomPayload pbCustomPayload = PbCustomPayload.fromPacket(new C2SInputPacket(n, n2, n3));
+            PbCustomPayload pbCustomPayload = PbCustomPayload.fromPacket(new C2SInputPacket(inputType, keyCode, action));
             minecraft.getConnection().getConnection().send((Packet)new ServerboundCustomPayloadPacket((CustomPacketPayload)pbCustomPayload));
         }
         catch (Exception exception) {

@@ -29,20 +29,20 @@ extends Module {
     public BooleanSetting friendMessage = new BooleanSetting("FriendMessage", "Sends a message to a player whenever you add them to your friends list.", false);
     public StringSetting content = new StringSetting("Content", "The message that will be sent to the people you add. $player is placeholder for their name.", new BooleanSetting.Visibility(this.friendMessage, true), "/msg $player I have just added you to my friends list!");
 
-    public void sendFriendMessage(String string) {
+    public void sendFriendMessage(String playerName) {
         if (FriendModule.mc.level == null || FriendModule.mc.player == null) {
             return;
         }
         if (!this.friendMessage.getValue()) {
             return;
         }
-        if (mc.getConnection().getOnlinePlayers().stream().noneMatch(playerInfo -> playerInfo.getProfile().name().equalsIgnoreCase(string))) {
+        if (mc.getConnection().getOnlinePlayers().stream().noneMatch(playerInfo -> playerInfo.getProfile().name().equalsIgnoreCase(playerName))) {
             return;
         }
         if (this.content.getValue().startsWith("/")) {
-            mc.getConnection().sendCommand(this.content.getValue().substring(1).replace("$player", string));
+            mc.getConnection().sendCommand(this.content.getValue().substring(1).replace("$player", playerName));
         } else {
-            mc.getConnection().sendChat(this.content.getValue().replace("$player", string));
+            mc.getConnection().sendChat(this.content.getValue().replace("$player", playerName));
         }
     }
 
@@ -69,13 +69,13 @@ extends Module {
             return;
         }
         Player player = (Player)entity;
-        String string = player.getGameProfile().name();
-        if (Night.FRIEND_MANAGER.contains(string)) {
-            Night.FRIEND_MANAGER.remove(string);
-            Night.CHAT_MANAGER.tagged("Successfully removed " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " from your friends list.", "MCF", this.getName());
+        String playerName = player.getGameProfile().name();
+        if (Night.FRIEND_MANAGER.contains(playerName)) {
+            Night.FRIEND_MANAGER.remove(playerName);
+            Night.CHAT_MANAGER.tagged("Successfully removed " + String.valueOf(ChatUtils.getPrimary()) + playerName + String.valueOf(ChatUtils.getSecondary()) + " from your friends list.", "MCF", this.getName());
         } else {
-            Night.FRIEND_MANAGER.add(string);
-            Night.CHAT_MANAGER.tagged("Successfully added " + String.valueOf(ChatUtils.getPrimary()) + string + String.valueOf(ChatUtils.getSecondary()) + " to your friends list.", "MCF", this.getName());
+            Night.FRIEND_MANAGER.add(playerName);
+            Night.CHAT_MANAGER.tagged("Successfully added " + String.valueOf(ChatUtils.getPrimary()) + playerName + String.valueOf(ChatUtils.getSecondary()) + " to your friends list.", "MCF", this.getName());
         }
     }
 }

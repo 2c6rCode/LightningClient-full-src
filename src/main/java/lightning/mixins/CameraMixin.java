@@ -55,10 +55,10 @@ implements IMinecraft {
     private boolean detached;
 
     @Shadow
-    protected abstract void move(float var1, float var2, float var3);
+    protected abstract void move(float zoom, float dy, float dx);
 
     @Shadow
-    protected abstract float getMaxZoom(float var1);
+    protected abstract float getMaxZoom(float maxZoom);
 
     @ModifyArgs(method={"alignWithEntity"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/Camera;getMaxZoom(F)F")})
     private void update(Args args) {
@@ -82,12 +82,12 @@ implements IMinecraft {
     }
 
     @Inject(method={"getMaxZoom"}, at={@At(value="HEAD")}, cancellable=true)
-    private void clipToSpace(float f, CallbackInfoReturnable<Float> callbackInfoReturnable) {
+    private void clipToSpace(float maxZoom, CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             IViewClipModule iViewClipModule = Night.MODULE_MANAGER != null ? (IViewClipModule)Night.MODULE_MANAGER.getModule("ViewClip") : null;
-            IViewClipModule iViewClipModule2 = iViewClipModule;
+            IViewClipModule unusedViewClipModule = iViewClipModule;
             if (iViewClipModule != null && iViewClipModule.isToggled()) {
-                callbackInfoReturnable.setReturnValue(Float.valueOf(f));
+                callbackInfoReturnable.setReturnValue(Float.valueOf(maxZoom));
             }
             return;
         }
@@ -123,9 +123,9 @@ implements IMinecraft {
             if (iMotionCameraModule != null && iMotionCameraModule.isToggled() && iMotionCameraModule.isSmoothPerspective() && iMotionCameraModule.shouldBeDetached()) {
                 this.detached = true;
                 if (CameraMixin.mc.options != null && CameraMixin.mc.options.getCameraType().isFirstPerson()) {
-                    float f2 = (float)iMotionCameraModule.getDistance();
-                    if (f2 > 0.001f) {
-                        this.move(-this.getMaxZoom(f2), 0.0f, 0.0f);
+                    float distance = (float)iMotionCameraModule.getDistance();
+                    if (distance > 0.001f) {
+                        this.move(-this.getMaxZoom(distance), 0.0f, 0.0f);
                     }
                 }
             }
@@ -147,34 +147,34 @@ implements IMinecraft {
                 }
                 ElytraFlyModule elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class);
                 if (elytraFlyModule != null && elytraFlyModule.isFreeLookActive()) {
-                    boolean bl = CameraMixin.mc.options != null && CameraMixin.mc.options.getCameraType().isMirrored();
-                    float f = elytraFlyModule.getFreeYaw();
-                    float f2 = elytraFlyModule.getFreePitch();
-                    if (bl) {
-                        f += 180.0f;
-                        f2 = -f2;
+                    boolean mirrored = CameraMixin.mc.options != null && CameraMixin.mc.options.getCameraType().isMirrored();
+                    float yaw = elytraFlyModule.getFreeYaw();
+                    float pitch = elytraFlyModule.getFreePitch();
+                    if (mirrored) {
+                        yaw += 180.0f;
+                        pitch = -pitch;
                     }
-                    args.setAll(new Object[]{Float.valueOf(f), Float.valueOf(f2)});
+                    args.setAll(new Object[]{Float.valueOf(yaw), Float.valueOf(pitch)});
                     return;
                 }
                 AutoMaceModule autoMaceModule = (AutoMaceModule)Night.MODULE_MANAGER.getModule(AutoMaceModule.class);
                 if (autoMaceModule != null && autoMaceModule.isFreeLookActive()) {
-                    boolean bl = CameraMixin.mc.options != null && CameraMixin.mc.options.getCameraType().isMirrored();
-                    float f = autoMaceModule.getFreeYaw();
-                    float f3 = autoMaceModule.getFreePitch();
-                    if (bl) {
-                        f += 180.0f;
-                        f3 = -f3;
+                    boolean mirrored = CameraMixin.mc.options != null && CameraMixin.mc.options.getCameraType().isMirrored();
+                    float yaw = autoMaceModule.getFreeYaw();
+                    float pitch = autoMaceModule.getFreePitch();
+                    if (mirrored) {
+                        yaw += 180.0f;
+                        pitch = -pitch;
                     }
-                    args.setAll(new Object[]{Float.valueOf(f), Float.valueOf(f3)});
+                    args.setAll(new Object[]{Float.valueOf(yaw), Float.valueOf(pitch)});
                     return;
                 }
                 RotationLockModule rotationLockModule = (RotationLockModule)Night.MODULE_MANAGER.getModule(RotationLockModule.class);
                 if (rotationLockModule != null && rotationLockModule.isToggled() && rotationLockModule.custom.getValue()) {
-                    float f = rotationLockModule.getShakeYawOffset();
-                    float f4 = rotationLockModule.getShakePitchOffset();
-                    if (f != 0.0f || f4 != 0.0f) {
-                        args.setAll(new Object[]{Float.valueOf(((Float)args.get(0)).floatValue() + f), Float.valueOf(((Float)args.get(1)).floatValue() + f4)});
+                    float shakeYaw = rotationLockModule.getShakeYawOffset();
+                    float shakePitch = rotationLockModule.getShakePitchOffset();
+                    if (shakeYaw != 0.0f || shakePitch != 0.0f) {
+                        args.setAll(new Object[]{Float.valueOf(((Float)args.get(0)).floatValue() + shakeYaw), Float.valueOf(((Float)args.get(1)).floatValue() + shakePitch)});
                     }
                 }
             }
@@ -208,7 +208,7 @@ implements IMinecraft {
     }
 
     @Inject(method={"calculateFov"}, at={@At(value="TAIL")}, cancellable=true)
-    private void getFOV(float f, CallbackInfoReturnable<Float> callbackInfoReturnable) {
+    private void getFOV(float fov, CallbackInfoReturnable<Float> callbackInfoReturnable) {
         try {
             if (Night.MODULE_MANAGER == null) {
                 return;

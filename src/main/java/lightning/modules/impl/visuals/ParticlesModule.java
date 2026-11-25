@@ -57,9 +57,9 @@ extends Module {
         if (!this.totemMode.getValue().equalsIgnoreCase("Custom")) {
             return;
         }
-        Vec3 vec3 = playerPopEvent.getPlayer().getBoundingBox().getCenter();
-        Vec3 vec32 = new Vec3(this.totemVelocityX.getValue().doubleValue(), this.totemVelocityY.getValue().doubleValue(), this.totemVelocityZ.getValue().doubleValue());
-        this.spawnTotemParticles(vec3, vec32);
+        Vec3 center = playerPopEvent.getPlayer().getBoundingBox().getCenter();
+        Vec3 velScale = new Vec3(this.totemVelocityX.getValue().doubleValue(), this.totemVelocityY.getValue().doubleValue(), this.totemVelocityZ.getValue().doubleValue());
+        this.spawnTotemParticles(center, velScale);
     }
 
     @SubscribeEvent
@@ -67,8 +67,8 @@ extends Module {
         if (attackEntityEvent.getTarget() == null || !this.hit.getValue()) {
             return;
         }
-        Vec3 vec3 = attackEntityEvent.getTarget().getBoundingBox().getCenter();
-        this.spawnHitParticles(vec3);
+        Vec3 center = attackEntityEvent.getTarget().getBoundingBox().getCenter();
+        this.spawnHitParticles(center);
     }
 
     @SubscribeEvent
@@ -88,36 +88,36 @@ extends Module {
         this.particleManager.render(renderWorldEvent.getMatrices(), renderWorldEvent.getTickDelta());
     }
 
-    private void spawnTotemParticles(Vec3 vec3, Vec3 vec32) {
-        int n = this.customColorA.getColor().getRGB();
-        int n2 = this.customColorB.getColor().getRGB();
-        boolean bl = this.totemGlow.getValue();
-        boolean bl2 = this.totemPhysics.getValue();
-        int n3 = this.totemNumber.getValue().intValue();
-        for (int i = 0; i < n3; ++i) {
-            Vec3 vec33 = ParticleManager.randomMotion(0.5 * (0.75 + Math.random() * 0.25));
-            vec33 = new Vec3(vec33.x * vec32.x, vec33.y * vec32.y, vec33.z * vec32.z);
-            if (bl2) {
-                this.particleManager.addBouncy(vec3, vec33, 1.5, n, n2, bl);
+    private void spawnTotemParticles(Vec3 center, Vec3 velScale) {
+        int colorA = this.customColorA.getColor().getRGB();
+        int colorB = this.customColorB.getColor().getRGB();
+        boolean glow = this.totemGlow.getValue();
+        boolean physics = this.totemPhysics.getValue();
+        int count = this.totemNumber.getValue().intValue();
+        for (int i = 0; i < count; ++i) {
+            Vec3 motion = ParticleManager.randomMotion(0.5 * (0.75 + Math.random() * 0.25));
+            motion = new Vec3(motion.x * velScale.x, motion.y * velScale.y, motion.z * velScale.z);
+            if (physics) {
+                this.particleManager.addBouncy(center, motion, 1.5, colorA, colorB, glow);
                 continue;
             }
-            this.particleManager.addFriction(vec3, vec33, 0.9, 1.5, n, n2, bl);
+            this.particleManager.addFriction(center, motion, 0.9, 1.5, colorA, colorB, glow);
         }
     }
 
-    private void spawnHitParticles(Vec3 vec3) {
-        int n = this.hitColorA.getColor().getRGB();
-        int n2 = this.hitColorB.getColor().getRGB();
-        boolean bl = this.hitGlow.getValue();
-        boolean bl2 = this.hitPhysics.getValue();
-        int n3 = this.hitNumber.getValue().intValue();
-        for (int i = 0; i < n3; ++i) {
-            Vec3 vec32 = ParticleManager.randomMotion(0.5 * (0.75 + Math.random() * 0.25));
-            if (bl2) {
-                this.particleManager.addBouncy(vec3, vec32, 1.0, n, n2, bl);
+    private void spawnHitParticles(Vec3 center) {
+        int colorA = this.hitColorA.getColor().getRGB();
+        int colorB = this.hitColorB.getColor().getRGB();
+        boolean glow = this.hitGlow.getValue();
+        boolean physics = this.hitPhysics.getValue();
+        int count = this.hitNumber.getValue().intValue();
+        for (int i = 0; i < count; ++i) {
+            Vec3 motion = ParticleManager.randomMotion(0.5 * (0.75 + Math.random() * 0.25));
+            if (physics) {
+                this.particleManager.addBouncy(center, motion, 1.0, colorA, colorB, glow);
                 continue;
             }
-            this.particleManager.addFriction(vec3, vec32, 0.9, 1.0, n, n2, bl);
+            this.particleManager.addFriction(center, motion, 0.9, 1.0, colorA, colorB, glow);
         }
     }
 

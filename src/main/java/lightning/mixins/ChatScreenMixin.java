@@ -56,9 +56,9 @@ extends Screen {
     }
 
     @Inject(method={"handleChatInput"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/multiplayer/ClientPacketListener;sendChat(Ljava/lang/String;)V")}, cancellable=true)
-    private void sendMessage(String string, boolean bl, CallbackInfo callbackInfo) {
+    private void sendMessage(String message, boolean addToRecentChat, CallbackInfo callbackInfo) {
         try {
-            ChatInputEvent chatInputEvent = new ChatInputEvent(string);
+            ChatInputEvent chatInputEvent = new ChatInputEvent(message);
             Night.EVENT_HANDLER.post((Event)chatInputEvent);
             if (chatInputEvent.isCancelled()) {
                 callbackInfo.cancel();
@@ -71,9 +71,9 @@ extends Screen {
     }
 
     @Inject(method={"handleChatInput"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/multiplayer/ClientPacketListener;sendCommand(Ljava/lang/String;)V")}, cancellable=true)
-    private void sendCommand(String string, boolean bl, CallbackInfo callbackInfo) {
+    private void sendCommand(String command, boolean addToRecentChat, CallbackInfo callbackInfo) {
         try {
-            CommandInputEvent commandInputEvent = new CommandInputEvent(string);
+            CommandInputEvent commandInputEvent = new CommandInputEvent(command);
             Night.EVENT_HANDLER.post((Event)commandInputEvent);
             if (commandInputEvent.isCancelled()) {
                 callbackInfo.cancel();
@@ -86,34 +86,34 @@ extends Screen {
     }
 
     @WrapWithCondition(method={"extractRenderState"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V")})
-    private boolean render(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, int n3, int n4, int n5) {
+    private boolean render(GuiGraphicsExtractor guiGraphicsExtractor, int x1, int y1, int x2, int y2, int color) {
         return !((HUDModule)Night.MODULE_MANAGER.getModule(HUDModule.class)).isToggled();
     }
 
     @Inject(method={"extractRenderState"}, at={@At(value="TAIL")})
-    private void night$renderIrcOutline(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, float f, CallbackInfo callbackInfo) {
+    private void night$renderIrcOutline(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo callbackInfo) {
         try {
             if (this.input == null) {
                 return;
             }
-            String string = this.input.getValue();
+            String inputText = this.input.getValue();
             IRCModule iRCModule = (IRCModule)Night.MODULE_MANAGER.getModule(IRCModule.class);
             if (iRCModule == null || !iRCModule.isToggled()) {
                 return;
             }
-            String string2 = iRCModule.prefix.getValue();
-            if (string2 == null || string2.isEmpty()) {
-                string2 = "$";
+            String ircPrefix = iRCModule.prefix.getValue();
+            if (ircPrefix == null || ircPrefix.isEmpty()) {
+                ircPrefix = "$";
             }
-            if (string != null && string.startsWith(string2)) {
-                int n3 = this.input.getX() - 2;
-                int n4 = this.input.getY() - 2;
-                int n5 = this.input.getX() + this.input.getWidth() + 2;
-                int n6 = this.input.getY() + this.input.getHeight() + 2;
+            if (inputText != null && inputText.startsWith(ircPrefix)) {
+                int x1 = this.input.getX() - 2;
+                int y1 = this.input.getY() - 2;
+                int x2 = this.input.getX() + this.input.getWidth() + 2;
+                int y2 = this.input.getY() + this.input.getHeight() + 2;
                 Color color = ColorUtils.getGlobalColor();
-                Renderer2D.renderOutline((GuiGraphicsExtractor)guiGraphicsExtractor, (float)((float)n3 - 1.0f), (float)((float)n4 - 1.0f), (float)((float)n5 + 1.0f), (float)((float)n6 + 1.0f), (Color)new Color(color.getRed(), color.getGreen(), color.getBlue(), 90));
-                Renderer2D.renderOutline((GuiGraphicsExtractor)guiGraphicsExtractor, (float)n3, (float)n4, (float)n5, (float)n6, (Color)color);
-                Renderer2D.renderQuad((GuiGraphicsExtractor)guiGraphicsExtractor, (float)n3, (float)n4, (float)n5, (float)n6, (Color)new Color(color.getRed(), color.getGreen(), color.getBlue(), 35));
+                Renderer2D.renderOutline((GuiGraphicsExtractor)guiGraphicsExtractor, (float)((float)x1 - 1.0f), (float)((float)y1 - 1.0f), (float)((float)x2 + 1.0f), (float)((float)y2 + 1.0f), (Color)new Color(color.getRed(), color.getGreen(), color.getBlue(), 90));
+                Renderer2D.renderOutline((GuiGraphicsExtractor)guiGraphicsExtractor, (float)x1, (float)y1, (float)x2, (float)y2, (Color)color);
+                Renderer2D.renderQuad((GuiGraphicsExtractor)guiGraphicsExtractor, (float)x1, (float)y1, (float)x2, (float)y2, (Color)new Color(color.getRed(), color.getGreen(), color.getBlue(), 35));
             }
             return;
         }

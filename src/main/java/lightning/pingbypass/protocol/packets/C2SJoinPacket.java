@@ -15,9 +15,9 @@ extends PbPacket {
     private final String serverIp;
     private final int serverPort;
 
-    public C2SJoinPacket(String string, int n) {
-        this.serverIp = string;
-        this.serverPort = n;
+    public C2SJoinPacket(String serverIp, int serverPort) {
+        this.serverIp = serverIp;
+        this.serverPort = serverPort;
     }
 
     public C2SJoinPacket(FriendlyByteBuf friendlyByteBuf) {

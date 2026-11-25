@@ -30,7 +30,7 @@ import net.minecraft.world.level.block.ShulkerBoxBlock;
 @RegisterModule(name="ShulkerInfo", description="Renders a preview of the contents of the shulker you are hovering.", category=Module.Category.MISCELLANEOUS)
 public class ShulkerInfoModule
 extends Module {
-    public void renderInfo(GuiGraphicsExtractor guiGraphicsExtractor, int n, int n2, ItemStack itemStack) {
+    public void renderInfo(GuiGraphicsExtractor guiGraphicsExtractor, int x, int y, ItemStack itemStack) {
         try {
             BlockItem blockItem;
             Block block;
@@ -46,19 +46,19 @@ extends Module {
                     // empty catch block
                 }
             }
-            Renderer2D.renderQuad(guiGraphicsExtractor, n += 4, n2 -= 62 + Night.FONT_MANAGER.getHeight(), n + 164, n2 + 60 + Night.FONT_MANAGER.getHeight(), new Color(0, 0, 0, 200));
-            Renderer2D.renderOutline(guiGraphicsExtractor, n, n2, n + 164, n2 + 60 + Night.FONT_MANAGER.getHeight(), color);
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, itemStack.getHoverName().getString(), n + 3, n2 + 3, Color.WHITE);
-            int n3 = 0;
-            int n4 = 0;
-            for (ItemStack itemStack2 : itemContainerContents.nonEmptyItemCopyStream().toList()) {
-                int n5 = n + 1 + n4 * 18;
-                int n6 = n2 + Night.FONT_MANAGER.getHeight() + 5 + n3 * 18;
-                guiGraphicsExtractor.item(itemStack2, n5, n6);
-                guiGraphicsExtractor.itemDecorations(ShulkerInfoModule.mc.font, itemStack2, n5, n6);
-                if (++n4 < 9) continue;
-                n4 = 0;
-                ++n3;
+            Renderer2D.renderQuad(guiGraphicsExtractor, x += 4, y -= 62 + Night.FONT_MANAGER.getHeight(), x + 164, y + 60 + Night.FONT_MANAGER.getHeight(), new Color(0, 0, 0, 200));
+            Renderer2D.renderOutline(guiGraphicsExtractor, x, y, x + 164, y + 60 + Night.FONT_MANAGER.getHeight(), color);
+            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, itemStack.getHoverName().getString(), x + 3, y + 3, Color.WHITE);
+            int row = 0;
+            int col = 0;
+            for (ItemStack slotStack : itemContainerContents.nonEmptyItemCopyStream().toList()) {
+                int slotX = x + 1 + col * 18;
+                int slotY = y + Night.FONT_MANAGER.getHeight() + 5 + row * 18;
+                guiGraphicsExtractor.item(slotStack, slotX, slotY);
+                guiGraphicsExtractor.itemDecorations(ShulkerInfoModule.mc.font, slotStack, slotX, slotY);
+                if (++col < 9) continue;
+                col = 0;
+                ++row;
             }
         }
         catch (Exception exception) {

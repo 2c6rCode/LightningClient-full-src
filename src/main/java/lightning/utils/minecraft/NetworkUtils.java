@@ -40,13 +40,13 @@ implements IMinecraft {
 
     public static boolean isLegacyProtocol() {
         try {
-            Object object;
+            Object targetVersion;
             if (vfpImpl == null) {
                 vfpImpl = Class.forName("com.viaversion.viafabricplus.ViaFabricPlus").getMethod("getImpl", new Class[0]).invoke(null, new Object[0]);
                 vfpTargetVersion = Class.forName("com.viaversion.viafabricplus.api.ViaFabricPlusBase").getMethod("getTargetVersion", new Class[0]);
                 protocolVersionGetVersion = Class.forName("com.viaversion.viaversion.api.protocol.version.ProtocolVersion").getMethod("getVersion", new Class[0]);
             }
-            return (object = vfpTargetVersion.invoke(vfpImpl, new Object[0])) != null && (Integer)protocolVersionGetVersion.invoke(object, new Object[0]) < 768;
+            return (targetVersion = vfpTargetVersion.invoke(vfpImpl, new Object[0])) != null && (Integer)protocolVersionGetVersion.invoke(targetVersion, new Object[0]) < 768;
         }
         catch (Throwable throwable) {
             return false;
@@ -54,7 +54,7 @@ implements IMinecraft {
     }
 
     public static interface SequencedPacketCreator {
-        public Packet<ServerGamePacketListener> predict(int var1);
+        public Packet<ServerGamePacketListener> predict(int sequence);
     }
 }
 

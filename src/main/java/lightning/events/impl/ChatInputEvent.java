@@ -19,13 +19,13 @@ extends Event {
     }
 
     @Generated
-    public void setMessage(String string) {
-        this.message = string;
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     @Generated
-    public ChatInputEvent(String string) {
-        this.message = string;
+    public ChatInputEvent(String message) {
+        this.message = message;
     }
 }
 

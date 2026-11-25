@@ -45,13 +45,13 @@ extends Module {
     private volatile long lastMarker;
     private volatile long lastNotify;
 
-    private static String norm(String string) {
-        return Normalizer.normalize(string, Normalizer.Form.NFC).toLowerCase();
+    private static String norm(String text) {
+        return Normalizer.normalize(text, Normalizer.Form.NFC).toLowerCase();
     }
 
-    private static boolean containsAny(String string, String[] stringArray) {
-        for (String string2 : stringArray) {
-            if (!string.contains(NoSpamKeyBindModule.norm(string2))) continue;
+    private static boolean containsAny(String text, String[] patterns) {
+        for (String pattern : patterns) {
+            if (!text.contains(NoSpamKeyBindModule.norm(pattern))) continue;
             return true;
         }
         return false;
@@ -59,17 +59,17 @@ extends Module {
 
     private boolean serverMatches() {
         try {
-            String string = this.server.getValue();
-            if (string == null || string.isBlank()) {
+            String serverFilter = this.server.getValue();
+            if (serverFilter == null || serverFilter.isBlank()) {
                 return true;
             }
-            String string2 = Night.SERVER_MANAGER.getServer();
-            if (string2 == null) {
+            String currentServer = Night.SERVER_MANAGER.getServer();
+            if (currentServer == null) {
                 return false;
             }
-            string2 = string2.toLowerCase();
-            for (String string3 : string.toLowerCase().split(",")) {
-                if ((string3 = string3.trim()).isEmpty() || !string2.contains(string3)) continue;
+            currentServer = currentServer.toLowerCase();
+            for (String token : serverFilter.toLowerCase().split(",")) {
+                if ((token = token.trim()).isEmpty() || !currentServer.contains(token)) continue;
                 return true;
             }
         }
@@ -79,25 +79,25 @@ extends Module {
         return false;
     }
 
-    private void say(String string) {
+    private void say(String message) {
         if (!this.notify.getValue()) {
             return;
         }
         try {
-            Night.CHAT_MANAGER.tagged(string, this.getName());
+            Night.CHAT_MANAGER.tagged(message, this.getName());
         }
         catch (Throwable throwable) {
             // empty catch block
         }
     }
 
-    private void startBlocking(boolean bl) {
-        long l = System.currentTimeMillis();
-        boolean bl2 = this.blocked;
+    private void startBlocking(boolean fromChatJoin) {
+        long now = System.currentTimeMillis();
+        boolean wasBlocked = this.blocked;
         this.blocked = true;
-        this.sawJoin = bl || this.sawJoin;
-        this.lastMarker = l;
-        if (!bl2) {
+        this.sawJoin = fromChatJoin || this.sawJoin;
+        this.lastMarker = now;
+        if (!wasBlocked) {
             this.say("Login/lobby detected - commands from modules & keybinds are paused.");
         }
     }
@@ -128,34 +128,34 @@ extends Module {
     public void onPacketReceive(PacketReceiveEvent packetReceiveEvent) {
         Packet<?> packet = packetReceiveEvent.getPacket();
         if (packet instanceof ClientboundSystemChatPacket) {
-            String string;
+            String normalizedMsg;
             ClientboundSystemChatPacket clientboundSystemChatPacket = (ClientboundSystemChatPacket)packet;
             if (!this.serverMatches()) {
                 return;
             }
             try {
-                string = NoSpamKeyBindModule.norm(clientboundSystemChatPacket.content().getString());
+                normalizedMsg = NoSpamKeyBindModule.norm(clientboundSystemChatPacket.content().getString());
             }
             catch (Throwable throwable) {
                 return;
             }
-            if (NoSpamKeyBindModule.containsAny(string, STRONG)) {
+            if (NoSpamKeyBindModule.containsAny(normalizedMsg, STRONG)) {
                 this.startBlocking(true);
-            } else if (this.blocked && NoSpamKeyBindModule.containsAny(string, WEAK)) {
+            } else if (this.blocked && NoSpamKeyBindModule.containsAny(normalizedMsg, WEAK)) {
                 this.lastMarker = System.currentTimeMillis();
             }
         } else if (packet instanceof ClientboundLoginPacket || packet instanceof ClientboundRespawnPacket) {
             if (!this.blocked) {
                 return;
             }
-            long l = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
             if (!this.sawJoin) {
                 this.sawJoin = true;
-                this.lastMarker = l;
+                this.lastMarker = now;
                 return;
             }
-            long l2 = this.lobbyGap.getValue().longValue() * 1000L;
-            if (l - this.lastMarker >= l2) {
+            long gapMs = this.lobbyGap.getValue().longValue() * 1000L;
+            if (now - this.lastMarker >= gapMs) {
                 this.blocked = false;
                 this.say("Entered the server - commands from modules & keybinds work again.");
             }
@@ -164,9 +164,9 @@ extends Module {
 
     @SubscribeEvent
     public void onPacketSend(PacketSendEvent packetSendEvent) {
-        int n;
-        Object object;
-        String string;
+        int spaceIndex;
+        String baseCommand;
+        String rawCommand;
         block11: {
             if (!this.blocked) {
                 return;
@@ -175,64 +175,64 @@ extends Module {
             try {
                 if (packet instanceof ServerboundChatCommandPacket) {
                     ServerboundChatCommandPacket serverboundChatCommandPacket = (ServerboundChatCommandPacket)packet;
-                    string = serverboundChatCommandPacket.command();
+                    rawCommand = serverboundChatCommandPacket.command();
                     break block11;
                 }
                 if (packet instanceof ServerboundChatCommandSignedPacket) {
                     ServerboundChatCommandSignedPacket signedPacket = (ServerboundChatCommandSignedPacket)packet;
-                    string = signedPacket.command();
+                    rawCommand = signedPacket.command();
                     break block11;
                 }
                 return;
             }
             catch (Throwable throwable) {
-                string = "";
+                rawCommand = "";
             }
         }
-        if (string == null) {
-            string = "";
+        if (rawCommand == null) {
+            rawCommand = "";
         }
-        if (((String)(object = string.trim().toLowerCase())).startsWith("/")) {
-            object = ((String)object).substring(1);
+        if ((baseCommand = rawCommand.trim().toLowerCase()).startsWith("/")) {
+            baseCommand = baseCommand.substring(1);
         }
-        if ((n = ((String)object).indexOf(32)) >= 0) {
-            object = ((String)object).substring(0, n);
+        if ((spaceIndex = baseCommand.indexOf(32)) >= 0) {
+            baseCommand = baseCommand.substring(0, spaceIndex);
         }
-        if (this.isAllowed((String)object)) {
+        if (this.isAllowed(baseCommand)) {
             return;
         }
         if (!this.blockManual.getValue() && !this.fromClientFeature()) {
             return;
         }
         packetSendEvent.cancel();
-        long l = System.currentTimeMillis();
-        if (l - this.lastNotify > 3000L) {
-            this.lastNotify = l;
-            this.say("Blocked /" + (String)object + " (login/lobby).");
+        long now = System.currentTimeMillis();
+        if (now - this.lastNotify > 3000L) {
+            this.lastNotify = now;
+            this.say("Blocked /" + baseCommand + " (login/lobby).");
         }
     }
 
-    private boolean isAllowed(String string) {
-        String string2 = this.allowed.getValue();
-        if (string2 == null) {
+    private boolean isAllowed(String commandName) {
+        String allowedList = this.allowed.getValue();
+        if (allowedList == null) {
             return false;
         }
-        for (String string3 : string2.toLowerCase().split(",")) {
-            if (!string3.trim().equals(string)) continue;
+        for (String token : allowedList.toLowerCase().split(",")) {
+            if (!token.trim().equals(commandName)) continue;
             return true;
         }
         return false;
     }
 
     private boolean fromClientFeature() {
-        String string = NoSpamKeyBindModule.class.getName();
+        String selfClassName = NoSpamKeyBindModule.class.getName();
         try {
             return StackWalker.getInstance().walk(stream -> stream.anyMatch(stackFrame -> {
-                String string2 = stackFrame.getClassName();
-                if (string2.equals(string) || string2.startsWith("lightning.modules.impl.miscellaneous.AutoLoginModule")) {
+                String callerClass = stackFrame.getClassName();
+                if (callerClass.equals(selfClassName) || callerClass.startsWith("lightning.modules.impl.miscellaneous.AutoLoginModule")) {
                     return false;
                 }
-                return string2.startsWith("lightning.modules.") || string2.startsWith("lightning.managers.MacroManager");
+                return callerClass.startsWith("lightning.modules.") || callerClass.startsWith("lightning.managers.MacroManager");
             }));
         }
         catch (Throwable throwable) {

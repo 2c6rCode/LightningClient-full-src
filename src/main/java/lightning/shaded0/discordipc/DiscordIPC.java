@@ -32,7 +32,7 @@ public class DiscordIPC {
         onError = biConsumer;
     }
 
-    public static boolean start(long l, Runnable runnable) {
+    public static boolean start(long clientId, Runnable runnable) {
         c = Connection.open(DiscordIPC::onPacket);
         if (c == null) {
             return false;
@@ -40,7 +40,7 @@ public class DiscordIPC {
         onReady = runnable;
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("v", (Number)1);
-        jsonObject.addProperty("client_id", Long.toString(l));
+        jsonObject.addProperty("client_id", Long.toString(clientId));
         c.write(Opcode.Handshake, jsonObject);
         return true;
     }
@@ -111,12 +111,12 @@ public class DiscordIPC {
     }
 
     private static int getPID() {
-        String string = ManagementFactory.getRuntimeMXBean().getName();
-        return Integer.parseInt(string.substring(0, string.indexOf(64)));
+        String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
+        return Integer.parseInt(runtimeName.substring(0, runtimeName.indexOf(64)));
     }
 
-    private static void defaultErrorCallback(int n, String string) {
-        System.err.println("Discord IPC error " + n + " with message: " + string);
+    private static void defaultErrorCallback(int errorCode, String errorMessage) {
+        System.err.println("Discord IPC error " + errorCode + " with message: " + errorMessage);
     }
 }
 

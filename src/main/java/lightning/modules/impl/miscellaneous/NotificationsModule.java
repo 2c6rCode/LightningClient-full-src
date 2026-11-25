@@ -72,7 +72,7 @@ extends Module {
                 Night.CHAT_MANAGER.message(String.valueOf(ChatUtils.getPrimary()) + ownerName + String.valueOf(ChatUtils.getSecondary()) + " threw a pearl towards " + EntityUtils.getPearlDirection(pearl).toString() + ".", "pearl-throws-" + ownerName);
                 this.thrownPearls.add(pearl.getId());
             }
-            this.thrownPearls.removeIf(n -> !(NotificationsModule.mc.level.getEntity(n.intValue()) instanceof ThrownEnderpearl));
+            this.thrownPearls.removeIf(entityId -> !(NotificationsModule.mc.level.getEntity(entityId.intValue()) instanceof ThrownEnderpearl));
         }
     }
 
@@ -90,9 +90,9 @@ extends Module {
 
     @SubscribeEvent
     public void onPlayerDeath(PlayerDeathEvent playerDeathEvent) {
-        int n = Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(playerDeathEvent.getPlayer().getUUID(), 0);
-        if (this.totemPops.getValue() && n > 0) {
-            Night.CHAT_MANAGER.message(String.valueOf(ChatUtils.getPrimary()) + playerDeathEvent.getPlayer().getName().getString() + String.valueOf(ChatUtils.getSecondary()) + " has died after popping " + String.valueOf(ChatUtils.getPrimary()) + n + String.valueOf(ChatUtils.getSecondary()) + " totem" + (n > 1 ? "s" : "") + ".", "totem-pop-" + playerDeathEvent.getPlayer().getName().getString());
+        int pops = Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(playerDeathEvent.getPlayer().getUUID(), 0);
+        if (this.totemPops.getValue() && pops > 0) {
+            Night.CHAT_MANAGER.message(String.valueOf(ChatUtils.getPrimary()) + playerDeathEvent.getPlayer().getName().getString() + String.valueOf(ChatUtils.getSecondary()) + " has died after popping " + String.valueOf(ChatUtils.getPrimary()) + pops + String.valueOf(ChatUtils.getSecondary()) + " totem" + (pops > 1 ? "s" : "") + ".", "totem-pop-" + playerDeathEvent.getPlayer().getName().getString());
         }
     }
 }

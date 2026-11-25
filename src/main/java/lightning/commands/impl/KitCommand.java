@@ -13,46 +13,46 @@ import lightning.modules.impl.player.RekitModule;
 public class KitCommand
 extends Command {
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
             return List.of("save", "load", "delete", "list", "active");
         }
-        if (stringArray.length == 1 && (stringArray[0].equalsIgnoreCase("load") || stringArray[0].equalsIgnoreCase("delete"))) {
+        if (args.length == 1 && (args[0].equalsIgnoreCase("load") || args[0].equalsIgnoreCase("delete"))) {
             return Night.MODULE_MANAGER.getModule(RekitModule.class).getKitNames();
         }
         return List.of();
     }
 
     @Override
-    public void execute(String[] stringArray) {
+    public void execute(String[] args) {
         RekitModule rekitModule = Night.MODULE_MANAGER.getModule(RekitModule.class);
-        if (stringArray.length == 0) {
+        if (args.length == 0) {
             this.messageSyntax();
             return;
         }
-        switch (stringArray[0].toLowerCase()) {
+        switch (args[0].toLowerCase()) {
             case "save": {
-                if (stringArray.length < 2) {
+                if (args.length < 2) {
                     this.messageSyntax();
                     return;
                 }
-                rekitModule.saveKit(stringArray[1]);
+                rekitModule.saveKit(args[1]);
                 break;
             }
             case "load": {
-                if (stringArray.length < 2) {
+                if (args.length < 2) {
                     rekitModule.listKits();
                     break;
                 }
-                rekitModule.loadKit(stringArray[1]);
+                rekitModule.loadKit(args[1]);
                 break;
             }
             case "delete": {
-                if (stringArray.length < 2) {
+                if (args.length < 2) {
                     this.messageSyntax();
                     return;
                 }
-                rekitModule.deleteKit(stringArray[1]);
+                rekitModule.deleteKit(args[1]);
                 break;
             }
             case "active": {

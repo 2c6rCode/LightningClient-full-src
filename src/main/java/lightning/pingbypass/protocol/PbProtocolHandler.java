@@ -39,49 +39,49 @@ public class PbProtocolHandler {
         this.registerFactories();
     }
 
-    public <T extends PbPacket> void register(int n, Function<FriendlyByteBuf, T> function, PbPacketHandler<T> pbPacketHandler) {
-        this.factories.put(n, function);
-        this.handlers.put(n, pbPacketHandler);
+    public <T extends PbPacket> void register(int packetId, Function<FriendlyByteBuf, T> function, PbPacketHandler<T> pbPacketHandler) {
+        this.factories.put(packetId, function);
+        this.handlers.put(packetId, pbPacketHandler);
     }
 
-    public <T extends PbPacket> void registerFactory(int n, Function<FriendlyByteBuf, T> function) {
-        this.factories.put(n, function);
+    public <T extends PbPacket> void registerFactory(int packetId, Function<FriendlyByteBuf, T> function) {
+        this.factories.put(packetId, function);
     }
 
-    public <T extends PbPacket> void registerHandler(int n, PbPacketHandler<T> pbPacketHandler) {
-        this.handlers.put(n, pbPacketHandler);
+    public <T extends PbPacket> void registerHandler(int packetId, PbPacketHandler<T> pbPacketHandler) {
+        this.handlers.put(packetId, pbPacketHandler);
     }
 
     public void handle(FriendlyByteBuf friendlyByteBuf, Connection connection) {
-        int n;
+        int packetId;
         try {
-            n = friendlyByteBuf.readVarInt();
+            packetId = friendlyByteBuf.readVarInt();
         }
         catch (Exception exception) {
             LOGGER.warn("[PbProtocol] Failed to read packet ID from buffer", (Throwable)exception);
             return;
         }
-        Function<FriendlyByteBuf, ? extends PbPacket> function = this.factories.get(n);
+        Function<FriendlyByteBuf, ? extends PbPacket> function = this.factories.get(packetId);
         if (function == null) {
-            LOGGER.warn("[PbProtocol] Unknown packet ID: {}", (Object)n);
+            LOGGER.warn("[PbProtocol] Unknown packet ID: {}", (Object)packetId);
         } else {
             PbPacket pbPacket;
             try {
                 pbPacket = function.apply(friendlyByteBuf);
             }
             catch (Exception exception) {
-                LOGGER.warn("[PbProtocol] Failed to deserialize packet ID {}", (Object)n, (Object)exception);
+                LOGGER.warn("[PbProtocol] Failed to deserialize packet ID {}", (Object)packetId, (Object)exception);
                 return;
             }
-            PbPacketHandler<?> pbPacketHandler = this.handlers.get(n);
+            PbPacketHandler<?> pbPacketHandler = this.handlers.get(packetId);
             if (pbPacketHandler == null) {
-                LOGGER.warn("[PbProtocol] No handler registered for packet ID: {}", (Object)n);
+                LOGGER.warn("[PbProtocol] No handler registered for packet ID: {}", (Object)packetId);
             } else {
                 try {
                     handlePacket(pbPacketHandler, pbPacket, connection);
                 }
                 catch (Exception exception) {
-                    LOGGER.warn("[PbProtocol] Error handling packet ID {}", (Object)n, (Object)exception);
+                    LOGGER.warn("[PbProtocol] Error handling packet ID {}", (Object)packetId, (Object)exception);
                 }
             }
         }

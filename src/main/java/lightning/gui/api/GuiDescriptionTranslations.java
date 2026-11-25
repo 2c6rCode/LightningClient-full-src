@@ -19,8 +19,8 @@ public final class GuiDescriptionTranslations {
     private GuiDescriptionTranslations() {
     }
 
-    public static String translate(String string) {
-        return Holder.VALUES.getOrDefault(string, "");
+    public static String translate(String englishText) {
+        return Holder.VALUES.getOrDefault(englishText, "");
     }
 
     private static Map<String, String> load() {
@@ -32,16 +32,16 @@ public final class GuiDescriptionTranslations {
             if (entryArray == null) {
                 throw new IllegalStateException("Empty Vietnamese description resource");
             }
-            HashMap<String, String> hashMap = new HashMap<String, String>();
+            HashMap<String, String> translations = new HashMap<String, String>();
             for (Entry entry : entryArray) {
                 if (entry == null || entry.english == null || entry.vi == null || entry.vi.isBlank()) {
                     throw new IllegalStateException("Invalid Vietnamese description entry");
                 }
-                String string = hashMap.putIfAbsent(entry.english, entry.vi);
-                if (string == null || string.equals(entry.vi)) continue;
+                String existing = translations.putIfAbsent(entry.english, entry.vi);
+                if (existing == null || existing.equals(entry.vi)) continue;
                 throw new IllegalStateException("Conflicting Vietnamese descriptions");
             }
-            return Map.copyOf(hashMap);
+            return Map.copyOf(translations);
         } catch (Exception exception) {
             Night.LOGGER.warn("Could not load Vietnamese GUI descriptions", (Throwable)exception);
             return Map.of();

@@ -99,9 +99,9 @@ extends Module {
 
     @SubscribeEvent
     public void onTick(TickEvent tickEvent) {
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         this.ghosts.entrySet().removeIf(entry -> {
-            if (l - (Long)entry.getValue() <= (long)this.duration.getValue().intValue()) {
+            if (now - (Long)entry.getValue() <= (long)this.duration.getValue().intValue()) {
                 return false;
             }
             this.despawn((RemotePlayer)entry.getKey());
@@ -145,25 +145,25 @@ extends Module {
         if (this.yOffset.getValue().intValue() == 0) {
             return 0.0f;
         }
-        Long l = this.ghosts.get(remotePlayer);
-        if (l == null) {
+        Long spawnTime = this.ghosts.get(remotePlayer);
+        if (spawnTime == null) {
             return 0.0f;
         }
-        int n = this.duration.getValue().intValue();
-        if (n <= 0) {
+        int durationMs = this.duration.getValue().intValue();
+        if (durationMs <= 0) {
             return 0.0f;
         }
-        float f = Easing.toDelta(l, n);
-        return this.yOffset.getValue().floatValue() * f;
+        float progress = Easing.toDelta(spawnTime, durationMs);
+        return this.yOffset.getValue().floatValue() * progress;
     }
 
     private Color withFade(Color color, RemotePlayer remotePlayer) {
-        Long l = this.ghosts.get(remotePlayer);
-        if (l == null) {
+        Long spawnTime = this.ghosts.get(remotePlayer);
+        if (spawnTime == null) {
             return color;
         }
-        float f = 1.0f - Easing.toDelta(l, this.duration.getValue().intValue());
-        return ColorUtils.getColor(color, (int)((float)color.getAlpha() * f));
+        float remainingAlpha = 1.0f - Easing.toDelta(spawnTime, this.duration.getValue().intValue());
+        return ColorUtils.getColor(color, (int)((float)color.getAlpha() * remainingAlpha));
     }
 }
 

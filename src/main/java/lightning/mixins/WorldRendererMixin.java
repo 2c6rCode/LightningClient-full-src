@@ -51,30 +51,30 @@ public abstract class WorldRendererMixin {
     }
 
     @ModifyVariable(method={"render"}, at={@At(value="HEAD")}, argsOnly=true, ordinal=0)
-    private boolean renderOutline(boolean bl) {
+    private boolean renderOutline(boolean shouldRenderOutline) {
         try {
             if (Night.MODULE_MANAGER != null && ((BlockHighlightModule)Night.MODULE_MANAGER.getModule(BlockHighlightModule.class)).isToggled()) {
                 return false;
             }
-            return bl;
+            return shouldRenderOutline;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return shouldRenderOutline;
         }
     }
 
     @ModifyVariable(method={"render"}, at={@At(value="HEAD")}, argsOnly=true, ordinal=1)
-    private boolean night$forceShouldRenderSky(boolean bl) {
+    private boolean night$forceShouldRenderSky(boolean shouldRenderSky) {
         try {
             AtmosphereModule atmosphereModule = Night.MODULE_MANAGER != null ? (AtmosphereModule)Night.MODULE_MANAGER.getModule(AtmosphereModule.class) : null;
-            AtmosphereModule atmosphereModule2 = atmosphereModule;
+            AtmosphereModule unusedAtmosphereModule = atmosphereModule;
             if (atmosphereModule != null && atmosphereModule.isToggled() && atmosphereModule.modifySky.getValue()) {
                 return true;
             }
-            return bl;
+            return shouldRenderSky;
         }
         catch (NullPointerException nullPointerException) {
-            return bl;
+            return shouldRenderSky;
         }
     }
 

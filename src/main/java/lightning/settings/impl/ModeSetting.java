@@ -19,39 +19,39 @@ extends Setting {
     private final String defaultValue;
     private final List<String> modes;
 
-    public ModeSetting(String string, String string2, String string3, String[] stringArray) {
-        super(string, string, string2, new Setting.Visibility());
-        this.value = string3;
-        this.defaultValue = string3;
-        this.modes = Arrays.asList(stringArray);
+    public ModeSetting(String name, String description, String defaultValue, String[] modes) {
+        super(name, name, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.modes = Arrays.asList(modes);
     }
 
-    public ModeSetting(String string, String string2, String string3, String string4, String[] stringArray) {
-        super(string, string2, string3, new Setting.Visibility());
-        this.value = string4;
-        this.defaultValue = string4;
-        this.modes = Arrays.asList(stringArray);
+    public ModeSetting(String name, String tag, String description, String defaultValue, String[] modes) {
+        super(name, tag, description, new Setting.Visibility());
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.modes = Arrays.asList(modes);
     }
 
-    public ModeSetting(String string, String string2, Setting.Visibility visibility, String string3, String[] stringArray) {
-        super(string, string, string2, visibility);
-        this.value = string3;
-        this.defaultValue = string3;
-        this.modes = Arrays.asList(stringArray);
+    public ModeSetting(String name, String description, Setting.Visibility visibility, String defaultValue, String[] modes) {
+        super(name, name, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.modes = Arrays.asList(modes);
     }
 
-    public ModeSetting(String string, String string2, String string3, Setting.Visibility visibility, String string4, String[] stringArray) {
-        super(string, string2, string3, visibility);
-        this.value = string4;
-        this.defaultValue = string4;
-        this.modes = Arrays.asList(stringArray);
+    public ModeSetting(String name, String tag, String description, Setting.Visibility visibility, String defaultValue, String[] modes) {
+        super(name, tag, description, visibility);
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+        this.modes = Arrays.asList(modes);
     }
 
-    public void setValue(String string) {
-        if (!this.modes.contains(string)) {
+    public void setValue(String mode) {
+        if (!this.modes.contains(mode)) {
             return;
         }
-        this.value = string;
+        this.value = mode;
         Night.EVENT_HANDLER.post(new SettingChangeEvent(this));
     }
 
@@ -79,10 +79,10 @@ extends Setting {
         private final ModeSetting value;
         private final List<String> targetValues;
 
-        public Visibility(ModeSetting modeSetting, String ... stringArray) {
+        public Visibility(ModeSetting modeSetting, String ... targetValues) {
             super(modeSetting);
             this.value = modeSetting;
-            this.targetValues = Arrays.asList(stringArray);
+            this.targetValues = Arrays.asList(targetValues);
         }
 
         @Override
@@ -94,13 +94,13 @@ extends Setting {
                     return;
                 }
             }
-            boolean bl = false;
-            for (String string : this.targetValues) {
-                if (!this.value.getValue().equals(string)) continue;
-                bl = true;
+            boolean matches = false;
+            for (String targetValue : this.targetValues) {
+                if (!this.value.getValue().equals(targetValue)) continue;
+                matches = true;
                 break;
             }
-            this.setVisible(bl);
+            this.setVisible(matches);
         }
     }
 }

@@ -31,7 +31,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={HumanoidMobRenderer.class})
 public abstract class HumanoidMobRendererMixin {
     @Inject(method={"extractHumanoidRenderState"}, at={@At(value="TAIL")})
-    private static void night$hideControlRocketGlide(LivingEntity livingEntity, HumanoidRenderState humanoidRenderState, float f, ItemModelResolver itemModelResolver, CallbackInfo callbackInfo) {
+    private static void night$hideControlRocketGlide(LivingEntity livingEntity, HumanoidRenderState humanoidRenderState, float partialTick, ItemModelResolver itemModelResolver, CallbackInfo callbackInfo) {
         try {
             if (livingEntity != Minecraft.getInstance().player) {
                 return;

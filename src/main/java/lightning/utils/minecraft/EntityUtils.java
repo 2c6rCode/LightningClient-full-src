@@ -122,15 +122,15 @@ implements IMinecraft {
             return false;
         }
         AABB aABB = entity.getBoundingBox();
-        int n = Mth.floor((double)aABB.minX);
-        int n2 = Mth.ceil((double)aABB.maxX);
-        int n3 = Mth.floor((double)aABB.minY);
-        int n4 = Mth.ceil((double)aABB.maxY);
-        int n5 = Mth.floor((double)aABB.minZ);
-        int n6 = Mth.ceil((double)aABB.maxZ);
-        for (int i = n; i < n2; ++i) {
-            for (int j = n3; j < n4; ++j) {
-                for (int k = n5; k < n6; ++k) {
+        int minX = Mth.floor((double)aABB.minX);
+        int maxX = Mth.ceil((double)aABB.maxX);
+        int minY = Mth.floor((double)aABB.minY);
+        int maxY = Mth.ceil((double)aABB.maxY);
+        int minZ = Mth.floor((double)aABB.minZ);
+        int maxZ = Mth.ceil((double)aABB.maxZ);
+        for (int i = minX; i < maxX; ++i) {
+            for (int j = minY; j < maxY; ++j) {
+                for (int k = minZ; k < maxZ; ++k) {
                     BlockPos blockPos = new BlockPos(i, j, k);
                     VoxelShape voxelShape = EntityUtils.mc.level.getBlockState(blockPos).getCollisionShape((BlockGetter)EntityUtils.mc.level, blockPos);
                     if (voxelShape.isEmpty() || !voxelShape.bounds().move(blockPos).intersects(aABB)) continue;
@@ -147,15 +147,15 @@ implements IMinecraft {
             return arrayList;
         }
         AABB aABB = entity.getBoundingBox();
-        int n = Mth.floor((double)aABB.minX);
-        int n2 = Mth.ceil((double)aABB.maxX);
-        int n3 = Mth.floor((double)aABB.minY);
-        int n4 = Mth.ceil((double)aABB.maxY);
-        int n5 = Mth.floor((double)aABB.minZ);
-        int n6 = Mth.ceil((double)aABB.maxZ);
-        for (int i = n; i < n2; ++i) {
-            for (int j = n3; j < n4; ++j) {
-                for (int k = n5; k < n6; ++k) {
+        int minX = Mth.floor((double)aABB.minX);
+        int maxX = Mth.ceil((double)aABB.maxX);
+        int minY = Mth.floor((double)aABB.minY);
+        int maxY = Mth.ceil((double)aABB.maxY);
+        int minZ = Mth.floor((double)aABB.minZ);
+        int maxZ = Mth.ceil((double)aABB.maxZ);
+        for (int i = minX; i < maxX; ++i) {
+            for (int j = minY; j < maxY; ++j) {
+                for (int k = minZ; k < maxZ; ++k) {
                     BlockPos blockPos = new BlockPos(i, j, k);
                     VoxelShape voxelShape = EntityUtils.mc.level.getBlockState(blockPos).getCollisionShape((BlockGetter)EntityUtils.mc.level, blockPos);
                     if (voxelShape.isEmpty() || !voxelShape.bounds().move(blockPos).intersects(aABB)) continue;
@@ -238,11 +238,11 @@ implements IMinecraft {
     }
 
     public static double getSpeed(Entity entity, SpeedUnit speedUnit) {
-        double d = Math.sqrt(Mth.square((double)Math.abs(entity.getX() - entity.xo)) + Mth.square((double)Math.abs(entity.getZ() - entity.zo)));
+        double distance = Math.sqrt(Mth.square((double)Math.abs(entity.getX() - entity.xo)) + Mth.square((double)Math.abs(entity.getZ() - entity.zo)));
         if (speedUnit == SpeedUnit.KILOMETERS) {
-            return d * 3.6 * (double)Night.WORLD_MANAGER.getTimerMultiplier() * 20.0;
+            return distance * 3.6 * (double)Night.WORLD_MANAGER.getTimerMultiplier() * 20.0;
         }
-        return d / 0.05 * (double)Night.WORLD_MANAGER.getTimerMultiplier();
+        return distance / 0.05 * (double)Night.WORLD_MANAGER.getTimerMultiplier();
     }
 
     public static boolean hasNegativeEffects(Player player) {
@@ -253,11 +253,11 @@ implements IMinecraft {
         return false;
     }
 
-    public static Vec3 getRenderPos(Entity entity, float f) {
-        double d = Mth.lerp((double)f, (double)entity.xo, (double)entity.getX());
-        double d2 = Mth.lerp((double)f, (double)entity.yo, (double)entity.getY());
-        double d3 = Mth.lerp((double)f, (double)entity.zo, (double)entity.getZ());
-        return new Vec3(d, d2, d3);
+    public static Vec3 getRenderPos(Entity entity, float tickDelta) {
+        double interpX = Mth.lerp((double)tickDelta, (double)entity.xo, (double)entity.getX());
+        double interpY = Mth.lerp((double)tickDelta, (double)entity.yo, (double)entity.getY());
+        double interpZ = Mth.lerp((double)tickDelta, (double)entity.zo, (double)entity.getZ());
+        return new Vec3(interpX, interpY, interpZ);
     }
 
     public static LivingEntity getClosestEntity(Entity entity) {
@@ -288,10 +288,10 @@ implements IMinecraft {
     }
 
     public static boolean isInWeb(Entity entity) {
-        for (float f : new float[]{0.0f, 0.3f, -0.3f}) {
-            for (float f2 : new float[]{0.0f, 0.3f, -0.3f}) {
-                for (int n : new int[]{-1, 0, 1, 2}) {
-                    BlockPos blockPos = BlockPos.containing((double)(entity.getX() + (double)f), (double)entity.getY(), (double)(entity.getZ() + (double)f2)).above(n);
+        for (float offsetX : new float[]{0.0f, 0.3f, -0.3f}) {
+            for (float offsetZ : new float[]{0.0f, 0.3f, -0.3f}) {
+                for (int offsetY : new int[]{-1, 0, 1, 2}) {
+                    BlockPos blockPos = BlockPos.containing((double)(entity.getX() + (double)offsetX), (double)entity.getY(), (double)(entity.getZ() + (double)offsetZ)).above(offsetY);
                     if (!new AABB(blockPos).intersects(entity.getBoundingBox()) || EntityUtils.mc.level.getBlockState(blockPos).getBlock() != Blocks.COBWEB) continue;
                     return true;
                 }

@@ -42,8 +42,8 @@ extends Module {
         if (this.ignorePearls.getValue() && item == Items.ENDER_PEARL) {
             return false;
         }
-        boolean bl = item.builtInRegistryHolder().is(ItemTags.FOOT_ARMOR) || item.builtInRegistryHolder().is(ItemTags.LEG_ARMOR) || item.builtInRegistryHolder().is(ItemTags.CHEST_ARMOR) || item.builtInRegistryHolder().is(ItemTags.HEAD_ARMOR);
-        return !this.ignoreEquipment.getValue() || !bl && item != Items.ELYTRA;
+        boolean isArmor = item.builtInRegistryHolder().is(ItemTags.FOOT_ARMOR) || item.builtInRegistryHolder().is(ItemTags.LEG_ARMOR) || item.builtInRegistryHolder().is(ItemTags.CHEST_ARMOR) || item.builtInRegistryHolder().is(ItemTags.HEAD_ARMOR);
+        return !this.ignoreEquipment.getValue() || !isArmor && item != Items.ELYTRA;
     }
 }
 

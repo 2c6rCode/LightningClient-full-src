@@ -106,10 +106,10 @@ extends Module {
     }
 
     private void maybeReloadStoreForWorld() {
-        String string = ChestScanStore.currentWorldKey();
-        if (!string.equals(this.lastWorldKey)) {
+        String worldKey = ChestScanStore.currentWorldKey();
+        if (!worldKey.equals(this.lastWorldKey)) {
             this.store.loadForWorld();
-            this.lastWorldKey = string;
+            this.lastWorldKey = worldKey;
             this.missingSinceMs.clear();
         }
     }
@@ -120,24 +120,24 @@ extends Module {
             return;
         }
         this.maybeReloadStoreForWorld();
-        boolean bl = ChestScanModule.mc.player.containerMenu instanceof ChestMenu;
-        if (!bl && ChestScanModule.mc.gui.screen() == null) {
+        boolean isChestMenuOpen = ChestScanModule.mc.player.containerMenu instanceof ChestMenu;
+        if (!isChestMenuOpen && ChestScanModule.mc.gui.screen() == null) {
             this.lastLookedAtChestPos = this.resolveLookedAtChestPos(mc);
         }
-        if (bl && !this.wasChestMenuOpenLastTick) {
+        if (isChestMenuOpen && !this.wasChestMenuOpenLastTick) {
             this.openChestPos = this.lastLookedAtChestPos;
             this.lastSnapshotStatus = null;
         }
-        if (bl) {
+        if (isChestMenuOpen) {
             ChestMenu chestMenu = (ChestMenu)ChestScanModule.mc.player.containerMenu;
             this.lastSnapshotStatus = this.computeStatus(chestMenu.getContainer());
         }
-        if (!bl && this.wasChestMenuOpenLastTick) {
+        if (!isChestMenuOpen && this.wasChestMenuOpenLastTick) {
             this.finalizeChestState(mc, this.openChestPos, this.lastSnapshotStatus);
             this.openChestPos = null;
             this.lastSnapshotStatus = null;
         }
-        this.wasChestMenuOpenLastTick = bl;
+        this.wasChestMenuOpenLastTick = isChestMenuOpen;
         this.tickChainRecompute(mc);
     }
 
@@ -151,15 +151,15 @@ extends Module {
             return;
         }
         this.chainTicks = 0;
-        BlockPos blockPos = minecraft.player.blockPosition();
-        int n = this.scanRadius.getValue().intValue();
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>(this.store.positions());
-        Map<BlockPos, BlockPos> map = ChestScanChain.findEdges((Level)minecraft.level, hashSet, blockPos, n);
-        HashMap<BlockPos, ChestScanStore.ChestStatus> hashMap = new HashMap<BlockPos, ChestScanStore.ChestStatus>();
-        for (BlockPos blockPos2 : hashSet) {
-            hashMap.put(blockPos2, this.store.get(blockPos2));
+        BlockPos playerPos = minecraft.player.blockPosition();
+        int radius = this.scanRadius.getValue().intValue();
+        HashSet<BlockPos> trackedPositions = new HashSet<BlockPos>(this.store.positions());
+        Map<BlockPos, BlockPos> edges = ChestScanChain.findEdges((Level)minecraft.level, trackedPositions, playerPos, radius);
+        HashMap<BlockPos, ChestScanStore.ChestStatus> statuses = new HashMap<BlockPos, ChestScanStore.ChestStatus>();
+        for (BlockPos pos : trackedPositions) {
+            statuses.put(pos, this.store.get(pos));
         }
-        this.lastInferredEmpty = ChestScanChain.inferEmpty(map, hashMap);
+        this.lastInferredEmpty = ChestScanChain.inferEmpty(edges, statuses);
     }
 
     @SubscribeEvent
@@ -167,61 +167,61 @@ extends Module {
         if (ChestScanModule.mc.player == null || ChestScanModule.mc.level == null) {
             return;
         }
-        double d = this.scanRadius.getValue().doubleValue();
-        double d2 = d * d;
+        double radius = this.scanRadius.getValue().doubleValue();
+        double radiusSq = radius * radius;
         BlockPos playerPos = ChestScanModule.mc.player.blockPosition();
-        boolean bl = this.renderMode.getValue().equalsIgnoreCase("Fill") || this.renderMode.getValue().equalsIgnoreCase("Both");
-        boolean bl2 = this.renderMode.getValue().equalsIgnoreCase("Outline") || this.renderMode.getValue().equalsIgnoreCase("Both");
-        HashSet<BlockPos> hashSet = new HashSet<BlockPos>();
+        boolean renderFill = this.renderMode.getValue().equalsIgnoreCase("Fill") || this.renderMode.getValue().equalsIgnoreCase("Both");
+        boolean renderOutline = this.renderMode.getValue().equalsIgnoreCase("Outline") || this.renderMode.getValue().equalsIgnoreCase("Both");
+        HashSet<BlockPos> rendered = new HashSet<BlockPos>();
         for (BlockPos pos : new ArrayList<BlockPos>(this.store.positions())) {
-            if (playerPos.distSqr(pos) > d2 || !ChestScanModule.mc.level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) continue;
+            if (playerPos.distSqr(pos) > radiusSq || !ChestScanModule.mc.level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) continue;
             if (!(ChestScanModule.mc.level.getBlockState(pos).getBlock() instanceof ChestBlock)) {
-                long l = System.currentTimeMillis();
-                Long missing = this.missingSinceMs.putIfAbsent(pos, l);
-                if (missing == null || l - missing < 1500L) continue;
+                long now = System.currentTimeMillis();
+                Long missing = this.missingSinceMs.putIfAbsent(pos, now);
+                if (missing == null || now - missing < 1500L) continue;
                 this.store.remove(pos);
                 this.missingSinceMs.remove(pos);
                 continue;
             }
             this.missingSinceMs.remove(pos);
             ChestScanStore.ChestStatus status = this.store.get(pos);
-            if (hashSet.contains(pos) || status == null) continue;
-            AABB aABB = this.getChestBox(pos, hashSet);
+            if (rendered.contains(pos) || status == null) continue;
+            AABB aABB = this.getChestBox(pos, rendered);
             Color fillColor = this.getFillColor(status);
             Color outlineColor = this.getOutlineColor(status);
-            if (bl) {
+            if (renderFill) {
                 Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, fillColor);
             }
-            if (!bl2) continue;
+            if (!renderOutline) continue;
             Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, outlineColor);
         }
         if (this.hopperChain.getValue()) {
-            Color color2 = this.emptyFillColor.getColor();
-            Color outlineColor2 = this.emptyOutlineColor.getColor();
-            for (BlockPos blockPos2 : this.lastInferredEmpty) {
-                if (this.store.get(blockPos2) != null || playerPos.distSqr(blockPos2) > d2 || !ChestScanModule.mc.level.hasChunk(blockPos2.getX() >> 4, blockPos2.getZ() >> 4) || hashSet.contains(blockPos2) || !(ChestScanModule.mc.level.getBlockState(blockPos2).getBlock() instanceof ChestBlock)) continue;
-                AABB aABB = this.getChestBox(blockPos2, hashSet);
-                if (bl) {
-                    Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, color2);
+            Color emptyFill = this.emptyFillColor.getColor();
+            Color emptyOutline = this.emptyOutlineColor.getColor();
+            for (BlockPos pos : this.lastInferredEmpty) {
+                if (this.store.get(pos) != null || playerPos.distSqr(pos) > radiusSq || !ChestScanModule.mc.level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4) || rendered.contains(pos) || !(ChestScanModule.mc.level.getBlockState(pos).getBlock() instanceof ChestBlock)) continue;
+                AABB aABB = this.getChestBox(pos, rendered);
+                if (renderFill) {
+                    Renderer3D.renderBox(renderWorldEvent.getMatrices(), aABB, emptyFill);
                 }
-                if (!bl2) continue;
-                Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, outlineColor2);
+                if (!renderOutline) continue;
+                Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, emptyOutline);
             }
         }
     }
 
-    private AABB getChestBox(BlockPos blockPos, Set<BlockPos> set) {
-        set.add(blockPos);
+    private AABB getChestBox(BlockPos blockPos, Set<BlockPos> visited) {
+        visited.add(blockPos);
         BlockState blockState = ChestScanModule.mc.level.getBlockState(blockPos);
         if (blockState.getBlock() instanceof ChestBlock && blockState.hasProperty((Property)ChestBlock.TYPE) && blockState.getValue((Property)ChestBlock.TYPE) != ChestType.SINGLE) {
-            Direction direction = (Direction)blockState.getValue((Property)ChestBlock.FACING);
+            Direction facing = (Direction)blockState.getValue((Property)ChestBlock.FACING);
             ChestType chestType = (ChestType)blockState.getValue((Property)ChestBlock.TYPE);
-            Direction direction2 = chestType == ChestType.LEFT ? direction.getClockWise() : direction.getCounterClockWise();
-            BlockPos blockPos2 = blockPos.relative(direction2);
-            BlockState blockState2 = ChestScanModule.mc.level.getBlockState(blockPos2);
-            if (blockState2.getBlock() instanceof ChestBlock && blockState2.hasProperty((Property)ChestBlock.TYPE) && blockState2.getValue((Property)ChestBlock.TYPE) != ChestType.SINGLE) {
-                set.add(blockPos2);
-                return new AABB((double)Math.min(blockPos.getX(), blockPos2.getX()), (double)Math.min(blockPos.getY(), blockPos2.getY()), (double)Math.min(blockPos.getZ(), blockPos2.getZ()), (double)Math.max(blockPos.getX(), blockPos2.getX()) + 1.0, (double)Math.max(blockPos.getY(), blockPos2.getY()) + 1.0, (double)Math.max(blockPos.getZ(), blockPos2.getZ()) + 1.0);
+            Direction neighborDir = chestType == ChestType.LEFT ? facing.getClockWise() : facing.getCounterClockWise();
+            BlockPos neighborPos = blockPos.relative(neighborDir);
+            BlockState neighborState = ChestScanModule.mc.level.getBlockState(neighborPos);
+            if (neighborState.getBlock() instanceof ChestBlock && neighborState.hasProperty((Property)ChestBlock.TYPE) && neighborState.getValue((Property)ChestBlock.TYPE) != ChestType.SINGLE) {
+                visited.add(neighborPos);
+                return new AABB((double)Math.min(blockPos.getX(), neighborPos.getX()), (double)Math.min(blockPos.getY(), neighborPos.getY()), (double)Math.min(blockPos.getZ(), neighborPos.getZ()), (double)Math.max(blockPos.getX(), neighborPos.getX()) + 1.0, (double)Math.max(blockPos.getY(), neighborPos.getY()) + 1.0, (double)Math.max(blockPos.getZ(), neighborPos.getZ()) + 1.0);
             }
         }
         return new AABB(blockPos);
@@ -256,19 +256,19 @@ extends Module {
     }
 
     private ChestScanStore.ChestStatus computeStatus(Container container) {
-        int n = container.getContainerSize();
-        if (n == 0) {
+        int size = container.getContainerSize();
+        if (size == 0) {
             return ChestScanStore.ChestStatus.EMPTY;
         }
-        int n2 = 0;
-        for (int i = 0; i < n; ++i) {
+        int nonEmptyCount = 0;
+        for (int i = 0; i < size; ++i) {
             if (container.getItem(i).isEmpty()) continue;
-            ++n2;
+            ++nonEmptyCount;
         }
-        if (n2 == 0) {
+        if (nonEmptyCount == 0) {
             return ChestScanStore.ChestStatus.EMPTY;
         }
-        return n2 == n ? ChestScanStore.ChestStatus.FULL : ChestScanStore.ChestStatus.PARTIAL;
+        return nonEmptyCount == size ? ChestScanStore.ChestStatus.FULL : ChestScanStore.ChestStatus.PARTIAL;
     }
 
     private void finalizeChestState(Minecraft minecraft, BlockPos blockPos, ChestScanStore.ChestStatus chestStatus) {
@@ -281,12 +281,12 @@ extends Module {
         }
         BlockState blockState = minecraft.level.getBlockState(blockPos);
         if (blockState.getBlock() instanceof ChestBlock && blockState.hasProperty((Property)ChestBlock.TYPE) && blockState.getValue((Property)ChestBlock.TYPE) != ChestType.SINGLE) {
-            Direction direction = (Direction)blockState.getValue((Property)ChestBlock.FACING);
+            Direction facing = (Direction)blockState.getValue((Property)ChestBlock.FACING);
             ChestType chestType = (ChestType)blockState.getValue((Property)ChestBlock.TYPE);
-            Direction direction2 = chestType == ChestType.LEFT ? direction.getClockWise() : direction.getCounterClockWise();
-            BlockPos blockPos2 = blockPos.relative(direction2);
-            if (minecraft.level.getBlockState(blockPos2).getBlock() instanceof ChestBlock) {
-                this.store.put(blockPos2, chestStatus);
+            Direction neighborDir = chestType == ChestType.LEFT ? facing.getClockWise() : facing.getCounterClockWise();
+            BlockPos neighborPos = blockPos.relative(neighborDir);
+            if (minecraft.level.getBlockState(neighborPos).getBlock() instanceof ChestBlock) {
+                this.store.put(neighborPos, chestStatus);
             }
         }
     }

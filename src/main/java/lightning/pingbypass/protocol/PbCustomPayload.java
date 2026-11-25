@@ -74,10 +74,10 @@ public record PbCustomPayload(byte[] data) implements CustomPacketPayload
         return new PbCustomPayload(byArray);
     }
 
-    public static PbCustomPayload error(String string) {
+    public static PbCustomPayload error(String message) {
         FriendlyByteBuf friendlyByteBuf = new FriendlyByteBuf(Unpooled.buffer());
         friendlyByteBuf.writeVarInt(7);
-        friendlyByteBuf.writeUtf(string);
+        friendlyByteBuf.writeUtf(message);
         byte[] byArray = new byte[friendlyByteBuf.readableBytes()];
         friendlyByteBuf.readBytes(byArray);
         friendlyByteBuf.release();

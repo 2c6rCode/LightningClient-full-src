@@ -28,16 +28,16 @@ extends Command {
     private static final byte TOTEM_POP_EVENT_ID = 35;
 
     @Override
-    public void execute(String[] stringArray) {
+    public void execute(String[] args) {
         FakePlayerModule fakePlayerModule = Night.MODULE_MANAGER.getModule(FakePlayerModule.class);
         if (fakePlayerModule == null) {
             return;
         }
-        if (stringArray.length == 0) {
+        if (args.length == 0) {
             fakePlayerModule.setToggled(!fakePlayerModule.isToggled());
             return;
         }
-        switch (stringArray[0].toLowerCase()) {
+        switch (args[0].toLowerCase()) {
             case "remove": {
                 if (fakePlayerModule.isToggled()) {
                     fakePlayerModule.setToggled(false);
@@ -67,7 +67,7 @@ extends Command {
                 break;
             }
             default: {
-                fakePlayerModule.name.setValue(stringArray[0]);
+                fakePlayerModule.name.setValue(args[0]);
                 if (!fakePlayerModule.isToggled()) {
                     fakePlayerModule.setToggled(true);
                     break;
@@ -79,8 +79,8 @@ extends Command {
     }
 
     @Override
-    public List<String> getSuggestions(String[] stringArray) {
-        if (stringArray.length == 0) {
+    public List<String> getSuggestions(String[] args) {
+        if (args.length == 0) {
             return List.of("remove", "pop", "swim", "record", "stop", "play");
         }
         return List.of();

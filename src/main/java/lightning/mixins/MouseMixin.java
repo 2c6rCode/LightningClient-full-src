@@ -41,13 +41,13 @@ public class MouseMixin {
     private Minecraft minecraft;
 
     @Inject(method={"onButton"}, at={@At(value="HEAD")})
-    private void onMouseButton(long l, MouseButtonInfo mouseButtonInfo, int n, CallbackInfo callbackInfo) {
+    private void onMouseButton(long window, MouseButtonInfo mouseButtonInfo, int action, CallbackInfo callbackInfo) {
         try {
-            int n2 = mouseButtonInfo.button();
-            int n3 = mouseButtonInfo.modifiers();
-            Night.EVENT_HANDLER.post((Event)new UnfilteredMouseInputEvent(n2, n, n3));
-            if (l == this.minecraft.getWindow().handle() && n == 1 && this.minecraft.gui.screen() == null) {
-                Night.EVENT_HANDLER.post((Event)new MouseInputEvent(n2));
+            int button = mouseButtonInfo.button();
+            int modifiers = mouseButtonInfo.modifiers();
+            Night.EVENT_HANDLER.post((Event)new UnfilteredMouseInputEvent(button, action, modifiers));
+            if (window == this.minecraft.getWindow().handle() && action == 1 && this.minecraft.gui.screen() == null) {
+                Night.EVENT_HANDLER.post((Event)new MouseInputEvent(button));
             }
             return;
         }
@@ -57,10 +57,10 @@ public class MouseMixin {
     }
 
     @Inject(method={"onScroll"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$onScroll(long l, double d, double d2, CallbackInfo callbackInfo) {
+    private void night$onScroll(long window, double horizontal, double vertical, CallbackInfo callbackInfo) {
         try {
             MainhandModule mainhandModule;
-            if (this.minecraft.gui.screen() == null && l == this.minecraft.getWindow().handle() && Night.MODULE_MANAGER != null && (mainhandModule = (MainhandModule)Night.MODULE_MANAGER.getModule(MainhandModule.class)) != null && mainhandModule.shouldLockSlot()) {
+            if (this.minecraft.gui.screen() == null && window == this.minecraft.getWindow().handle() && Night.MODULE_MANAGER != null && (mainhandModule = (MainhandModule)Night.MODULE_MANAGER.getModule(MainhandModule.class)) != null && mainhandModule.shouldLockSlot()) {
                 callbackInfo.cancel();
             }
             return;

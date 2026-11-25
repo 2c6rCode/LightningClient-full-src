@@ -250,21 +250,21 @@ extends Module {
         this.inventoryPosition.set(20.0f, 120.0f);
     }
 
-    private int getFakedCoord(int n, int n2) {
+    private int getFakedCoord(int coord, int offset) {
         if (!this.fakeCoords.getValue()) {
-            return n;
+            return coord;
         }
-        if (Math.abs(n) < this.fakeThreshold.getValue().intValue()) {
-            return n;
+        if (Math.abs(coord) < this.fakeThreshold.getValue().intValue()) {
+            return coord;
         }
-        long l = (long)n2 + (long)Math.abs(n) / 3L;
-        boolean bl = (Math.abs(n) * 31 + n2) % 2 == 0;
-        long l2 = bl ? -l : l;
-        long l3 = l2;
+        long baseCoord = (long)offset + (long)Math.abs(coord) / 3L;
+        boolean negate = (Math.abs(coord) * 31 + offset) % 2 == 0;
+        long fakedCoord = negate ? -baseCoord : baseCoord;
+        long result = fakedCoord;
         if (HUDModule.mc.player != null && HUDModule.mc.player.level() != null && HUDModule.mc.player.level().dimension() == Level.NETHER) {
-            l2 /= 8L;
+            fakedCoord /= 8L;
         }
-        return (int)l2;
+        return (int)fakedCoord;
     }
 
     @SubscribeEvent
@@ -287,10 +287,10 @@ extends Module {
             if (this.moduleList.getValue()) {
                 Comparator<Module> modCompWidth = Comparator.comparingInt(module -> -Night.FONT_MANAGER.getWidth(HudListStyle.moduleText(this, module)));
                 Comparator<Module> modCompName = Comparator.comparing(Module::getName);
-                boolean bl = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
+                boolean isNewbie = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
                 List<ModuleEntry> entries = new ArrayList<ModuleEntry>();
                 for (Module module2 : Night.MODULE_MANAGER.getModules().stream().filter(module -> module.drawn.getValue()).filter(module -> {
-                    if (bl) {
+                    if (isNewbie) {
                         return module.getBind() != 0 ? true : !this.bindOnly.getValue() && (module.isToggled() || module.getAnimationOffset().value() > 0.01f);
                     }
                     return this.bindOnly.getValue() && module.getBind() == 0 ? false : module.isToggled() || module.getAnimationOffset().value() > 0.01f;
@@ -301,12 +301,12 @@ extends Module {
                 this.moduleEntries = entries;
             }
             if (this.playerRadar.getValue()) {
-                Comparator<Player> playerCompDist = Comparator.comparingDouble(p -> HUDModule.mc.player.distanceTo((Entity)p));
-                Comparator<Player> playerCompName = Comparator.comparing(p -> p.getName().getString());
-                ArrayList<PlayerEntry> arrayList = new ArrayList<PlayerEntry>();
-                for (Player player : HUDModule.mc.level.players().stream().filter(p -> p != HUDModule.mc.player).filter(p -> !EntityUtils.isGhost((Entity)p)).filter(p -> !this.playerRadarAntiBot.getValue() || !EntityUtils.isBot(p)).filter(p -> !Night.MODULE_MANAGER.getModule(IgnoreNakedModule.class).isToggled() || !EntityUtils.isNaked(p)).sorted(this.playerRadarSorting.getValue().equalsIgnoreCase("Distance") ? playerCompDist : playerCompName).limit(this.playerRadarLimit.getValue().longValue()).toList()) {
+                Comparator<Player> playerCompDist = Comparator.comparingDouble(player -> HUDModule.mc.player.distanceTo((Entity)player));
+                Comparator<Player> playerCompName = Comparator.comparing(player -> player.getName().getString());
+                ArrayList<PlayerEntry> radarEntries = new ArrayList<PlayerEntry>();
+                for (Player player : HUDModule.mc.level.players().stream().filter(candidate -> candidate != HUDModule.mc.player).filter(candidate -> !EntityUtils.isGhost((Entity)candidate)).filter(candidate -> !this.playerRadarAntiBot.getValue() || !EntityUtils.isBot(candidate)).filter(candidate -> !Night.MODULE_MANAGER.getModule(IgnoreNakedModule.class).isToggled() || !EntityUtils.isNaked(candidate)).sorted(this.playerRadarSorting.getValue().equalsIgnoreCase("Distance") ? playerCompDist : playerCompName).limit(this.playerRadarLimit.getValue().longValue()).toList()) {
                     Identifier skinId = null;
-                    MobEffectInstance mobEffectInstance2;
+                    MobEffectInstance resistanceEffect;
                     PlayerInfo playerInfo;
                     if (this.playerIcons.getValue() && mc.getConnection() != null && (playerInfo = mc.getConnection().getPlayerInfo(player.getName().getString())) != null) {
                         skinId = playerInfo.getSkin().body().texturePath();
@@ -327,30 +327,30 @@ extends Module {
                     if (this.playerRadarHealth.getValue()) {
                         text = text + String.valueOf(ColorUtils.getHealthColor(player.getHealth() + player.getAbsorptionAmount())) + " " + new DecimalFormat("0.0").format(player.getHealth() + player.getAbsorptionAmount()) + String.valueOf(ChatFormatting.RESET);
                     }
-                    int n = Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(player.getUUID(), 0);
-                    if (this.playerRadarTotems.getValue() && n > 0) {
-                        text = text + String.valueOf(ColorUtils.getTotemColor(n)) + " -" + n + String.valueOf(ChatFormatting.RESET);
+                    int poppedTotems = Night.WORLD_MANAGER.getPoppedTotems().getOrDefault(player.getUUID(), 0);
+                    if (this.playerRadarTotems.getValue() && poppedTotems > 0) {
+                        text = text + String.valueOf(ColorUtils.getTotemColor(poppedTotems)) + " -" + poppedTotems + String.valueOf(ChatFormatting.RESET);
                     }
-                    if (this.playerRadarTurtlePot.getValue() && (mobEffectInstance2 = player.getEffect(MobEffects.RESISTANCE)) != null && mobEffectInstance2.getAmplifier() >= 2) {
+                    if (this.playerRadarTurtlePot.getValue() && (resistanceEffect = player.getEffect(MobEffects.RESISTANCE)) != null && resistanceEffect.getAmplifier() >= 2) {
                         text = text + String.valueOf(ChatFormatting.RED) + " [TM]" + String.valueOf(ChatFormatting.RESET);
                     }
-                    arrayList.add(new PlayerEntry(player, text, skinId));
+                    radarEntries.add(new PlayerEntry(player, text, skinId));
                 }
-                this.playerEntries = arrayList;
+                this.playerEntries = radarEntries;
             }
             if (this.potions.getValue()) {
                 Comparator<MobEffectInstance> potionCompWidth = Comparator.comparingInt(mobEffectInstance -> -Night.FONT_MANAGER.getWidth(((MobEffect)mobEffectInstance.getEffect().value()).getDisplayName().getString() + " " + (mobEffectInstance.getAmplifier() + 1)));
                 Comparator<MobEffectInstance> potionCompName = Comparator.comparing(mobEffectInstance -> ((MobEffect)mobEffectInstance.getEffect().value()).getDisplayName().getString());
-                ArrayList<PotionEntry> arrayList = new ArrayList<PotionEntry>();
-                for (MobEffectInstance mobEffectInstance3 : HUDModule.mc.player.getActiveEffects().stream().sorted(this.potionSorting.getValue().equalsIgnoreCase("Width") ? potionCompWidth : potionCompName).toList()) {
-                    String string = this.getPotionText(mobEffectInstance3);
+                ArrayList<PotionEntry> activePotions = new ArrayList<PotionEntry>();
+                for (MobEffectInstance effectInstance : HUDModule.mc.player.getActiveEffects().stream().sorted(this.potionSorting.getValue().equalsIgnoreCase("Width") ? potionCompWidth : potionCompName).toList()) {
+                    String potionText = this.getPotionText(effectInstance);
                     Identifier sprite = null;
                     if (this.potionIcons.getValue()) {
-                        sprite = Hud.getMobEffectSprite((Holder)mobEffectInstance3.getEffect());
+                        sprite = Hud.getMobEffectSprite((Holder)effectInstance.getEffect());
                     }
-                    arrayList.add(new PotionEntry(string, sprite, this.potionColor.getValue().equalsIgnoreCase("Vanilla") ? new Color(((MobEffect)mobEffectInstance3.getEffect().value()).getColor()) : (this.potionColor.getValue().equalsIgnoreCase("Enhanced") ? (EntityUtils.POTION_COLORS.containsKey(mobEffectInstance3.getEffect().value()) ? EntityUtils.POTION_COLORS.get(mobEffectInstance3.getEffect().value()) : new Color(((MobEffect)mobEffectInstance3.getEffect().value()).getColor())) : null)));
+                    activePotions.add(new PotionEntry(potionText, sprite, this.potionColor.getValue().equalsIgnoreCase("Vanilla") ? new Color(((MobEffect)effectInstance.getEffect().value()).getColor()) : (this.potionColor.getValue().equalsIgnoreCase("Enhanced") ? (EntityUtils.POTION_COLORS.containsKey(effectInstance.getEffect().value()) ? EntityUtils.POTION_COLORS.get(effectInstance.getEffect().value()) : new Color(((MobEffect)effectInstance.getEffect().value()).getColor())) : null)));
                 }
-                this.potionEntries = arrayList;
+                this.potionEntries = activePotions;
             }
         }
     }
@@ -379,47 +379,47 @@ extends Module {
     }
 
     private void renderWatermark(RenderOverlayEvent renderOverlayEvent) {
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
         if (this.watermark.getValue() || this.uptime.getValue()) {
-            String[] stringArray;
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(this.watermarkPosition.getX(), this.watermarkPosition.getY());
-            int n = 0;
-            int n2 = 0;
+            String[] uptimeParts;
+            matrixStack.pushMatrix();
+            matrixStack.translate(this.watermarkPosition.getX(), this.watermarkPosition.getY());
+            int maxWidth = 0;
+            int lineCount = 0;
             if (this.watermark.getValue()) {
-                boolean bl = true;
-                String versionNum = bl ? "" : "26";
-                String string = !bl || !this.watermarkVersion.getValue() ? "" : (!this.watermarkVersionMode.getValue().equals("GitHash") ? String.valueOf(ChatFormatting.GRAY) : "+436.eeeb439b78");
-                String string2 = this.watermarkText.getValue() + (String)(this.watermarkVersion.getValue() ? String.valueOf(this.watermarkSync.getValue() ? "" : (this.inversion.getValue() ? ChatFormatting.GRAY : ChatFormatting.WHITE)) + " " + versionNum + (this.watermarkMinecraftVersion.getValue() ? "-mc26.2" : "") + string : "");
-                float f = 2.0f;
+                boolean hideVersion = true;
+                String versionNum = hideVersion ? "" : "26";
+                String revisionSuffix = !hideVersion || !this.watermarkVersion.getValue() ? "" : (!this.watermarkVersionMode.getValue().equals("GitHash") ? String.valueOf(ChatFormatting.GRAY) : "+436.eeeb439b78");
+                String watermarkStr = this.watermarkText.getValue() + (String)(this.watermarkVersion.getValue() ? String.valueOf(this.watermarkSync.getValue() ? "" : (this.inversion.getValue() ? ChatFormatting.GRAY : ChatFormatting.WHITE)) + " " + versionNum + (this.watermarkMinecraftVersion.getValue() ? "-mc26.2" : "") + revisionSuffix : "");
+                float textX = 2.0f;
                 if (this.watermarkLogo.getValue()) {
-                    int n3 = Night.FONT_MANAGER.getHeight();
-                    int n4 = this.getHudColor(2.0f).getRGB();
-                    renderOverlayEvent.getContext().blit(RenderPipelines.GUI_TEXTURED, LOGO_ID, 2, 2, 0.0f, 0.0f, n3, n3, 64, 64, 64, 64, n4);
-                    f = 2 + n3 + 3;
+                    int logoSize = Night.FONT_MANAGER.getHeight();
+                    int logoColor = this.getHudColor(2.0f).getRGB();
+                    renderOverlayEvent.getContext().blit(RenderPipelines.GUI_TEXTURED, LOGO_ID, 2, 2, 0.0f, 0.0f, logoSize, logoSize, 64, 64, 64, 64, logoColor);
+                    textX = 2 + logoSize + 3;
                 }
-                this.drawText(renderOverlayEvent.getContext(), string2, f, 2.0f);
-                n = Math.max(n, (int)(f - 2.0f) + Night.FONT_MANAGER.getWidth(string2));
-                ++n2;
+                this.drawText(renderOverlayEvent.getContext(), watermarkStr, textX, 2.0f);
+                maxWidth = Math.max(maxWidth, (int)(textX - 2.0f) + Night.FONT_MANAGER.getWidth(watermarkStr));
+                ++lineCount;
             }
             if (this.uptime.getValue()) {
-                stringArray = FormattingUtils.formatSeconds((System.currentTimeMillis() - Night.UPTIME) / 1000L);
-                String string = "Uptime " + String.valueOf(ChatFormatting.WHITE) + stringArray[0] + ":" + stringArray[1] + ":" + stringArray[2];
-                this.drawText(renderOverlayEvent.getContext(), string, 2.0f, 2 + (this.watermark.getValue() ? Night.FONT_MANAGER.getHeight() : 0), this.informationSync.getValue() ? null : new Color(170, 170, 170));
-                n = Math.max(n, Night.FONT_MANAGER.getWidth(string));
-                ++n2;
+                uptimeParts = FormattingUtils.formatSeconds((System.currentTimeMillis() - Night.UPTIME) / 1000L);
+                String uptimeText = "Uptime " + String.valueOf(ChatFormatting.WHITE) + uptimeParts[0] + ":" + uptimeParts[1] + ":" + uptimeParts[2];
+                this.drawText(renderOverlayEvent.getContext(), uptimeText, 2.0f, 2 + (this.watermark.getValue() ? Night.FONT_MANAGER.getHeight() : 0), this.informationSync.getValue() ? null : new Color(170, 170, 170));
+                maxWidth = Math.max(maxWidth, Night.FONT_MANAGER.getWidth(uptimeText));
+                ++lineCount;
             }
-            HudElementRegistry.reportBounds("Watermark", 2.0f, 2.0f, 2 + n, 2 + n2 * Night.FONT_MANAGER.getHeight());
-            matrix3x2fStack.popMatrix();
+            HudElementRegistry.reportBounds("Watermark", 2.0f, 2.0f, 2 + maxWidth, 2 + lineCount * Night.FONT_MANAGER.getHeight());
+            matrixStack.popMatrix();
         }
         if (this.welcomer.getValue()) {
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(this.welcomerPosition.getX(), this.welcomerPosition.getY());
-            String string = this.welcomerText.getValue().replace("[username]", String.valueOf(this.welcomerSync.getValue() ? "" : (this.inversion.getValue() ? ChatFormatting.GRAY : ChatFormatting.WHITE)) + HUDModule.mc.player.getName().getString() + String.valueOf(ChatFormatting.RESET));
-            float f = (float)mc.getWindow().getGuiScaledWidth() / 2.0f - (float)Night.FONT_MANAGER.getWidth(string) / 2.0f;
-            this.drawText(renderOverlayEvent.getContext(), string, f, 6.0f);
-            HudElementRegistry.reportBounds("Welcomer", f, 6.0f, f + (float)Night.FONT_MANAGER.getWidth(string), 6 + Night.FONT_MANAGER.getHeight());
-            matrix3x2fStack.popMatrix();
+            matrixStack.pushMatrix();
+            matrixStack.translate(this.welcomerPosition.getX(), this.welcomerPosition.getY());
+            String welcomeText = this.welcomerText.getValue().replace("[username]", String.valueOf(this.welcomerSync.getValue() ? "" : (this.inversion.getValue() ? ChatFormatting.GRAY : ChatFormatting.WHITE)) + HUDModule.mc.player.getName().getString() + String.valueOf(ChatFormatting.RESET));
+            float welcomeX = (float)mc.getWindow().getGuiScaledWidth() / 2.0f - (float)Night.FONT_MANAGER.getWidth(welcomeText) / 2.0f;
+            this.drawText(renderOverlayEvent.getContext(), welcomeText, welcomeX, 6.0f);
+            HudElementRegistry.reportBounds("Welcomer", welcomeX, 6.0f, welcomeX + (float)Night.FONT_MANAGER.getWidth(welcomeText), 6 + Night.FONT_MANAGER.getHeight());
+            matrixStack.popMatrix();
         }
     }
 
@@ -430,66 +430,66 @@ extends Module {
         if (!this.moduleList.getValue()) {
             return;
         }
-        float f = this.potionsAnimation.get(!this.vanillaPotions.getValue().equalsIgnoreCase("Move") || HUDModule.mc.player.getActiveEffects().isEmpty() ? 0.0f : (float)(EntityUtils.hasNegativeEffects((Player)HUDModule.mc.player) ? 51 : 25));
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.moduleListPosition.getX(), this.moduleListPosition.getY());
-        boolean bl = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
-        int n = 0;
-        int n2 = 0;
+        float potionOffset = this.potionsAnimation.get(!this.vanillaPotions.getValue().equalsIgnoreCase("Move") || HUDModule.mc.player.getActiveEffects().isEmpty() ? 0.0f : (float)(EntityUtils.hasNegativeEffects((Player)HUDModule.mc.player) ? 51 : 25));
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.moduleListPosition.getX(), this.moduleListPosition.getY());
+        boolean isNewbie = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
+        int maxWidth = 0;
+        int index = 0;
         for (ModuleEntry moduleEntry : this.moduleEntries) {
-            boolean bl2 = moduleEntry.module().isToggled() || bl && moduleEntry.module().getBind() != 0;
-            float f2 = bl2 ? (float)(Night.FONT_MANAGER.getWidth(moduleEntry.text()) + 2) : 0.0f;
-            float f3 = (float)mc.getWindow().getGuiScaledWidth() - moduleEntry.module().getAnimationOffset().get(f2);
-            float f4 = 2.0f + f + (float)(n2 * Night.FONT_MANAGER.getHeight());
-            this.drawModuleText(moduleEntry.module(), renderOverlayEvent.getContext(), moduleEntry.text(), f3, f4);
-            n = Math.max(n, Night.FONT_MANAGER.getWidth(moduleEntry.text()) + 2);
-            ++n2;
+            boolean active = moduleEntry.module().isToggled() || isNewbie && moduleEntry.module().getBind() != 0;
+            float targetOffset = active ? (float)(Night.FONT_MANAGER.getWidth(moduleEntry.text()) + 2) : 0.0f;
+            float drawX = (float)mc.getWindow().getGuiScaledWidth() - moduleEntry.module().getAnimationOffset().get(targetOffset);
+            float drawY = 2.0f + potionOffset + (float)(index * Night.FONT_MANAGER.getHeight());
+            this.drawModuleText(moduleEntry.module(), renderOverlayEvent.getContext(), moduleEntry.text(), drawX, drawY);
+            maxWidth = Math.max(maxWidth, Night.FONT_MANAGER.getWidth(moduleEntry.text()) + 2);
+            ++index;
         }
         if (!this.moduleEntries.isEmpty()) {
-            float f5 = mc.getWindow().getGuiScaledWidth();
-            HudElementRegistry.reportBounds("ModuleList", f5 - (float)n, 2.0f + f, f5, 2.0f + f + (float)(this.moduleEntries.size() * Night.FONT_MANAGER.getHeight()));
+            float screenWidth = mc.getWindow().getGuiScaledWidth();
+            HudElementRegistry.reportBounds("ModuleList", screenWidth - (float)maxWidth, 2.0f + potionOffset, screenWidth, 2.0f + potionOffset + (float)(this.moduleEntries.size() * Night.FONT_MANAGER.getHeight()));
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderPlayerRadar(RenderOverlayEvent renderOverlayEvent) {
         if (!this.playerRadar.getValue()) {
             return;
         }
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.playerRadarPosition.getX(), this.playerRadarPosition.getY());
-        int n = 0;
-        int n2 = 0;
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.playerRadarPosition.getX(), this.playerRadarPosition.getY());
+        int maxWidth = 0;
+        int index = 0;
         for (PlayerEntry playerEntry : this.playerEntries) {
             if (playerEntry.headTexture() != null) {
-                PlayerFaceExtractor.extractRenderState((GuiGraphicsExtractor)renderOverlayEvent.getContext(), (Identifier)playerEntry.headTexture(), (int)2, (int)(1 + Night.FONT_MANAGER.getHeight() * 2 + (Night.FONT_MANAGER.getHeight() + 1) * n2), (int)Night.FONT_MANAGER.getHeight(), (boolean)true, (boolean)false, (int)Color.WHITE.getRGB());
+                PlayerFaceExtractor.extractRenderState((GuiGraphicsExtractor)renderOverlayEvent.getContext(), (Identifier)playerEntry.headTexture(), (int)2, (int)(1 + Night.FONT_MANAGER.getHeight() * 2 + (Night.FONT_MANAGER.getHeight() + 1) * index), (int)Night.FONT_MANAGER.getHeight(), (boolean)true, (boolean)false, (int)Color.WHITE.getRGB());
             }
-            int n3 = 2 + (playerEntry.headTexture() != null ? Night.FONT_MANAGER.getHeight() + 2 : 0);
-            this.drawText(renderOverlayEvent.getContext(), playerEntry.text(), n3, 2 + Night.FONT_MANAGER.getHeight() * 2 + (Night.FONT_MANAGER.getHeight() + 1) * n2, Night.FRIEND_MANAGER.contains(playerEntry.player().getName().getString()) ? Night.FRIEND_MANAGER.getDefaultFriendColor() : null);
-            n = Math.max(n, n3 + Night.FONT_MANAGER.getWidth(playerEntry.text()));
-            ++n2;
+            int textX = 2 + (playerEntry.headTexture() != null ? Night.FONT_MANAGER.getHeight() + 2 : 0);
+            this.drawText(renderOverlayEvent.getContext(), playerEntry.text(), textX, 2 + Night.FONT_MANAGER.getHeight() * 2 + (Night.FONT_MANAGER.getHeight() + 1) * index, Night.FRIEND_MANAGER.contains(playerEntry.player().getName().getString()) ? Night.FRIEND_MANAGER.getDefaultFriendColor() : null);
+            maxWidth = Math.max(maxWidth, textX + Night.FONT_MANAGER.getWidth(playerEntry.text()));
+            ++index;
         }
         if (!this.playerEntries.isEmpty()) {
-            HudElementRegistry.reportBounds("PlayerRadar", 2.0f, 1 + Night.FONT_MANAGER.getHeight() * 2, n, 1 + Night.FONT_MANAGER.getHeight() * 2 + (Night.FONT_MANAGER.getHeight() + 1) * this.playerEntries.size());
+            HudElementRegistry.reportBounds("PlayerRadar", 2.0f, 1 + Night.FONT_MANAGER.getHeight() * 2, maxWidth, 1 + Night.FONT_MANAGER.getHeight() * 2 + (Night.FONT_MANAGER.getHeight() + 1) * this.playerEntries.size());
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private static int countItem(Player player, Item item) {
         if (player == null) {
             return 0;
         }
-        int n = 0;
+        int count = 0;
         for (ItemStack itemStack : player.getInventory().getNonEquipmentItems()) {
             if (!itemStack.is(item)) continue;
-            n += itemStack.getCount();
+            count += itemStack.getCount();
         }
         if (player.getOffhandItem().is(item)) {
-            n += player.getOffhandItem().getCount();
+            count += player.getOffhandItem().getCount();
         }
-        return n;
+        return count;
     }
 
     private static ItemStack[] dummyArmor() {
@@ -513,208 +513,208 @@ extends Module {
         if (HUDModule.mc.player == null) {
             return;
         }
-        boolean bl = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
-        int n = HUDModule.mc.player.isEyeInFluid(FluidTags.WATER) || HUDModule.mc.player.getAirSupply() < HUDModule.mc.player.getMaxAirSupply() ? 10 : 0;
-        int n2 = mc.getWindow().getGuiScaledWidth() / 2 + 15;
-        int n3 = mc.getWindow().getGuiScaledHeight() - 55 - n;
-        HudElementRegistry.reportBounds("Armor", n2 - 1, n3 - 3, n2 + 71, n3 + 17);
-        if (!this.armor.getValue() && !bl) {
+        boolean inHudEditor = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
+        int airOffset = HUDModule.mc.player.isEyeInFluid(FluidTags.WATER) || HUDModule.mc.player.getAirSupply() < HUDModule.mc.player.getMaxAirSupply() ? 10 : 0;
+        int baseX = mc.getWindow().getGuiScaledWidth() / 2 + 15;
+        int baseY = mc.getWindow().getGuiScaledHeight() - 55 - airOffset;
+        HudElementRegistry.reportBounds("Armor", baseX - 1, baseY - 3, baseX + 71, baseY + 17);
+        if (!this.armor.getValue() && !inHudEditor) {
             return;
         }
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.armorPosition.getX(), this.armorPosition.getY());
-        boolean bl2 = false;
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.armorPosition.getX(), this.armorPosition.getY());
+        boolean hasArmor = false;
         for (EquipmentSlot equipmentSlot : ARMOR_SLOTS) {
             if (HUDModule.mc.player.getItemBySlot(equipmentSlot).isEmpty()) continue;
-            bl2 = true;
+            hasArmor = true;
             break;
         }
-        if (bl2 && this.armor.getValue()) {
-            int n4 = 0;
+        if (hasArmor && this.armor.getValue()) {
+            int slotIndex = 0;
             for (EquipmentSlot equipmentSlot : ARMOR_SLOTS) {
                 ItemStack itemStack = HUDModule.mc.player.getItemBySlot(equipmentSlot);
                 if (itemStack.isEmpty()) continue;
-                int n5 = mc.getWindow().getGuiScaledWidth() / 2 + 69 - 18 * n4;
-                int n6 = n3;
-                renderOverlayEvent.getContext().item(itemStack, n5, n6);
+                int itemX = mc.getWindow().getGuiScaledWidth() / 2 + 69 - 18 * slotIndex;
+                int itemY = baseY;
+                renderOverlayEvent.getContext().item(itemStack, itemX, itemY);
                 if (this.armorDurability.getValue().equalsIgnoreCase("Bar") || this.armorDurability.getValue().equalsIgnoreCase("Both")) {
-                    renderOverlayEvent.getContext().itemDecorations(HUDModule.mc.font, itemStack, n5, n6);
+                    renderOverlayEvent.getContext().itemDecorations(HUDModule.mc.font, itemStack, itemX, itemY);
                 }
-                int n7 = itemStack.getDamageValue();
-                int n8 = itemStack.getMaxDamage();
-                if ((this.armorDurability.getValue().equalsIgnoreCase("Percentage") || this.armorDurability.getValue().equalsIgnoreCase("Both")) && n8 > 0) {
-                    matrix3x2fStack.pushMatrix();
-                    matrix3x2fStack.scale(0.625f, 0.625f);
-                    this.drawText(renderOverlayEvent.getContext(), (n8 - n7) * 100 / n8 + "%", (int)((float)((mc.getWindow().getGuiScaledWidth() >> 1) + 70 - 18 * n4) * 1.6f), (int)((float)(n3 - 3) * 1.6f - 5.0f), false, new Color(1.0f - (float)(n8 - n7) / (float)n8, (float)(n8 - n7) / (float)n8, 0.0f));
-                    matrix3x2fStack.popMatrix();
+                int damageValue = itemStack.getDamageValue();
+                int maxDamage = itemStack.getMaxDamage();
+                if ((this.armorDurability.getValue().equalsIgnoreCase("Percentage") || this.armorDurability.getValue().equalsIgnoreCase("Both")) && maxDamage > 0) {
+                    matrixStack.pushMatrix();
+                    matrixStack.scale(0.625f, 0.625f);
+                    this.drawText(renderOverlayEvent.getContext(), (maxDamage - damageValue) * 100 / maxDamage + "%", (int)((float)((mc.getWindow().getGuiScaledWidth() >> 1) + 70 - 18 * slotIndex) * 1.6f), (int)((float)(baseY - 3) * 1.6f - 5.0f), false, new Color(1.0f - (float)(maxDamage - damageValue) / (float)maxDamage, (float)(maxDamage - damageValue) / (float)maxDamage, 0.0f));
+                    matrixStack.popMatrix();
                 }
-                ++n4;
+                ++slotIndex;
             }
-        } else if (bl) {
-            ItemStack[] equipmentSlotArray = HUDModule.dummyArmor();
-            for (int i = 0; i < equipmentSlotArray.length; ++i) {
-                int n9 = mc.getWindow().getGuiScaledWidth() / 2 + 69 - 18 * i;
-                int n10 = n3;
-                renderOverlayEvent.getContext().item(equipmentSlotArray[i], n9, n10);
+        } else if (inHudEditor) {
+            ItemStack[] previewArmor = HUDModule.dummyArmor();
+            for (int i = 0; i < previewArmor.length; ++i) {
+                int itemX = mc.getWindow().getGuiScaledWidth() / 2 + 69 - 18 * i;
+                int itemY = baseY;
+                renderOverlayEvent.getContext().item(previewArmor[i], itemX, itemY);
             }
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderTotemCounter(RenderOverlayEvent renderOverlayEvent) {
         if (HUDModule.mc.player == null) {
             return;
         }
-        boolean bl = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
-        float f = (float)mc.getWindow().getGuiScaledWidth() / 2.0f - 9.0f;
-        float f2 = mc.getWindow().getGuiScaledHeight() - 55 - (HUDModule.mc.player.isEyeInFluid(FluidTags.WATER) && HUDModule.mc.gameMode != null && HUDModule.mc.gameMode.getPlayerMode() != GameType.CREATIVE ? 10 : 0);
-        HudElementRegistry.reportBounds("TotemCounter", f - 1.0f, f2 - 1.0f, f + 19.0f, f2 + 19.0f);
-        if (!this.totemCounter.getValue() && !bl) {
+        boolean inHudEditor = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
+        float posX = (float)mc.getWindow().getGuiScaledWidth() / 2.0f - 9.0f;
+        float posY = mc.getWindow().getGuiScaledHeight() - 55 - (HUDModule.mc.player.isEyeInFluid(FluidTags.WATER) && HUDModule.mc.gameMode != null && HUDModule.mc.gameMode.getPlayerMode() != GameType.CREATIVE ? 10 : 0);
+        HudElementRegistry.reportBounds("TotemCounter", posX - 1.0f, posY - 1.0f, posX + 19.0f, posY + 19.0f);
+        if (!this.totemCounter.getValue() && !inHudEditor) {
             return;
         }
-        int n = HUDModule.countItem((Player)HUDModule.mc.player, Items.TOTEM_OF_UNDYING);
-        this.totemSmoothCounter.update(n);
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.totemCounterPosition.getX(), this.totemCounterPosition.getY());
-        if (this.totemCounter.getValue() && (n > 0 || this.totemSmoothCounter.lastCount > 0)) {
+        int totemCount = HUDModule.countItem((Player)HUDModule.mc.player, Items.TOTEM_OF_UNDYING);
+        this.totemSmoothCounter.update(totemCount);
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.totemCounterPosition.getX(), this.totemCounterPosition.getY());
+        if (this.totemCounter.getValue() && (totemCount > 0 || this.totemSmoothCounter.lastCount > 0)) {
             ItemStack itemStack = new ItemStack((ItemLike)Items.TOTEM_OF_UNDYING);
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(f, f2);
+            matrixStack.pushMatrix();
+            matrixStack.translate(posX, posY);
             renderOverlayEvent.getContext().item(itemStack, 0, 0);
             this.totemSmoothCounter.render(renderOverlayEvent.getContext(), this.itemsSmooth.getValue());
-            matrix3x2fStack.popMatrix();
-        } else if (bl) {
+            matrixStack.popMatrix();
+        } else if (inHudEditor) {
             ItemStack itemStack = new ItemStack((ItemLike)Items.TOTEM_OF_UNDYING);
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(f, f2);
+            matrixStack.pushMatrix();
+            matrixStack.translate(posX, posY);
             renderOverlayEvent.getContext().item(itemStack, 0, 0);
             if (Night.FONT_MANAGER != null) {
                 Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), "1", 17 - Night.FONT_MANAGER.getWidth("1"), 9, Color.WHITE);
             } else {
                 renderOverlayEvent.getContext().text(HUDModule.mc.font, "1", 17 - HUDModule.mc.font.width("1"), 9, -1, true);
             }
-            matrix3x2fStack.popMatrix();
+            matrixStack.popMatrix();
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderCrystalCounter(RenderOverlayEvent renderOverlayEvent) {
         if (HUDModule.mc.player == null) {
             return;
         }
-        boolean bl = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
-        float f = (float)mc.getWindow().getGuiScaledWidth() / 2.0f + 106.0f;
-        float f2 = (float)(mc.getWindow().getGuiScaledHeight() - 40) - (this.counterChatOffset.getValue() ? this.chatOffset : 0.0f);
-        HudElementRegistry.reportBounds("CrystalCounter", f - 1.0f, f2 - 1.0f, f + 19.0f, f2 + 19.0f);
-        if (!this.crystalCounter.getValue() && !bl) {
+        boolean inHudEditor = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
+        float posX = (float)mc.getWindow().getGuiScaledWidth() / 2.0f + 106.0f;
+        float posY = (float)(mc.getWindow().getGuiScaledHeight() - 40) - (this.counterChatOffset.getValue() ? this.chatOffset : 0.0f);
+        HudElementRegistry.reportBounds("CrystalCounter", posX - 1.0f, posY - 1.0f, posX + 19.0f, posY + 19.0f);
+        if (!this.crystalCounter.getValue() && !inHudEditor) {
             return;
         }
-        int n = HUDModule.countItem((Player)HUDModule.mc.player, Items.END_CRYSTAL);
-        this.crystalSmoothCounter.update(n);
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.crystalCounterPosition.getX(), this.crystalCounterPosition.getY());
-        if (this.crystalCounter.getValue() && (n > 0 || this.crystalSmoothCounter.lastCount > 0)) {
+        int crystalCount = HUDModule.countItem((Player)HUDModule.mc.player, Items.END_CRYSTAL);
+        this.crystalSmoothCounter.update(crystalCount);
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.crystalCounterPosition.getX(), this.crystalCounterPosition.getY());
+        if (this.crystalCounter.getValue() && (crystalCount > 0 || this.crystalSmoothCounter.lastCount > 0)) {
             ItemStack itemStack = new ItemStack((ItemLike)Items.END_CRYSTAL);
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(f, f2);
+            matrixStack.pushMatrix();
+            matrixStack.translate(posX, posY);
             renderOverlayEvent.getContext().item(itemStack, 0, 0);
             this.crystalSmoothCounter.render(renderOverlayEvent.getContext(), this.itemsSmooth.getValue());
-            matrix3x2fStack.popMatrix();
-        } else if (bl) {
+            matrixStack.popMatrix();
+        } else if (inHudEditor) {
             ItemStack itemStack = new ItemStack((ItemLike)Items.END_CRYSTAL);
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(f, f2);
+            matrixStack.pushMatrix();
+            matrixStack.translate(posX, posY);
             renderOverlayEvent.getContext().item(itemStack, 0, 0);
             if (Night.FONT_MANAGER != null) {
                 Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), "64", 17 - Night.FONT_MANAGER.getWidth("64"), 9, Color.WHITE);
             } else {
                 renderOverlayEvent.getContext().text(HUDModule.mc.font, "64", 17 - HUDModule.mc.font.width("64"), 9, -1, true);
             }
-            matrix3x2fStack.popMatrix();
+            matrixStack.popMatrix();
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderXPCounter(RenderOverlayEvent renderOverlayEvent) {
         if (HUDModule.mc.player == null) {
             return;
         }
-        boolean bl = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
-        float f = (float)mc.getWindow().getGuiScaledWidth() / 2.0f + 106.0f;
-        float f2 = (float)(mc.getWindow().getGuiScaledHeight() - 20) - (this.counterChatOffset.getValue() ? this.chatOffset : 0.0f);
-        HudElementRegistry.reportBounds("XPCounter", f - 1.0f, f2 - 1.0f, f + 19.0f, f2 + 19.0f);
-        if (!this.xpCounter.getValue() && !bl) {
+        boolean inHudEditor = HUDModule.mc.gui.screen() instanceof HUDEditorScreen;
+        float posX = (float)mc.getWindow().getGuiScaledWidth() / 2.0f + 106.0f;
+        float posY = (float)(mc.getWindow().getGuiScaledHeight() - 20) - (this.counterChatOffset.getValue() ? this.chatOffset : 0.0f);
+        HudElementRegistry.reportBounds("XPCounter", posX - 1.0f, posY - 1.0f, posX + 19.0f, posY + 19.0f);
+        if (!this.xpCounter.getValue() && !inHudEditor) {
             return;
         }
-        int n = HUDModule.countItem((Player)HUDModule.mc.player, Items.EXPERIENCE_BOTTLE);
-        this.xpSmoothCounter.update(n);
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.xpCounterPosition.getX(), this.xpCounterPosition.getY());
-        if (this.xpCounter.getValue() && (n > 0 || this.xpSmoothCounter.lastCount > 0)) {
+        int xpCount = HUDModule.countItem((Player)HUDModule.mc.player, Items.EXPERIENCE_BOTTLE);
+        this.xpSmoothCounter.update(xpCount);
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.xpCounterPosition.getX(), this.xpCounterPosition.getY());
+        if (this.xpCounter.getValue() && (xpCount > 0 || this.xpSmoothCounter.lastCount > 0)) {
             ItemStack itemStack = new ItemStack((ItemLike)Items.EXPERIENCE_BOTTLE);
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(f, f2);
+            matrixStack.pushMatrix();
+            matrixStack.translate(posX, posY);
             renderOverlayEvent.getContext().item(itemStack, 0, 0);
             this.xpSmoothCounter.render(renderOverlayEvent.getContext(), this.itemsSmooth.getValue());
-            matrix3x2fStack.popMatrix();
-        } else if (bl) {
+            matrixStack.popMatrix();
+        } else if (inHudEditor) {
             ItemStack itemStack = new ItemStack((ItemLike)Items.EXPERIENCE_BOTTLE);
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(f, f2);
+            matrixStack.pushMatrix();
+            matrixStack.translate(posX, posY);
             renderOverlayEvent.getContext().item(itemStack, 0, 0);
             if (Night.FONT_MANAGER != null) {
                 Night.FONT_MANAGER.drawTextWithShadow(renderOverlayEvent.getContext(), "64", 17 - Night.FONT_MANAGER.getWidth("64"), 9, Color.WHITE);
             } else {
                 renderOverlayEvent.getContext().text(HUDModule.mc.font, "64", 17 - HUDModule.mc.font.width("64"), 9, -1, true);
             }
-            matrix3x2fStack.popMatrix();
+            matrixStack.popMatrix();
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderInventory(RenderOverlayEvent renderOverlayEvent) {
-        Color color;
-        int n;
+        Color bgColor;
+        int alpha;
         if (HUDModule.mc.player == null) {
             return;
         }
         if (!this.inventory.getValue()) {
             return;
         }
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.inventoryPosition.getX(), this.inventoryPosition.getY());
-        int n2 = 3;
-        int n3 = 18;
-        int n4 = 9 * n3 + n2 * 2;
-        int n5 = 3 * n3 + n2 * 2;
-        HudElementRegistry.reportBounds("Inventory", 0.0f, 0.0f, n4, n5);
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.inventoryPosition.getX(), this.inventoryPosition.getY());
+        int padding = 3;
+        int slotSize = 18;
+        int totalWidth = 9 * slotSize + padding * 2;
+        int totalHeight = 3 * slotSize + padding * 2;
+        HudElementRegistry.reportBounds("Inventory", 0.0f, 0.0f, totalWidth, totalHeight);
         if (this.inventoryBackground.getValue()) {
-            n = (int)Math.clamp(this.inventoryAlpha.getValue().floatValue(), 0.0f, 255.0f);
-            color = new Color(15, 15, 18, n);
-            Color color2 = new Color(255, 255, 255, Math.min(n, 30));
-            Renderer2D.renderQuad(renderOverlayEvent.getContext(), 0.0f, 0.0f, n4, n5, color);
-            Renderer2D.renderOutline(renderOverlayEvent.getContext(), 0.0f, 0.0f, n4, n5, color2);
+            alpha = (int)Math.clamp(this.inventoryAlpha.getValue().floatValue(), 0.0f, 255.0f);
+            bgColor = new Color(15, 15, 18, alpha);
+            Color outlineColor = new Color(255, 255, 255, Math.min(alpha, 30));
+            Renderer2D.renderQuad(renderOverlayEvent.getContext(), 0.0f, 0.0f, totalWidth, totalHeight, bgColor);
+            Renderer2D.renderOutline(renderOverlayEvent.getContext(), 0.0f, 0.0f, totalWidth, totalHeight, outlineColor);
         }
-        for (n = 9; n <= 35; ++n) {
-            int n6 = (n - 9) % 9;
-            int n7 = (n - 9) / 9;
-            int n8 = n2 + n6 * n3;
-            int n9 = n2 + n7 * n3;
+        for (int slotIndex = 9; slotIndex <= 35; ++slotIndex) {
+            int col = (slotIndex - 9) % 9;
+            int row = (slotIndex - 9) / 9;
+            int slotX = padding + col * slotSize;
+            int slotY = padding + row * slotSize;
             if (this.inventorySlotBackground.getValue()) {
-                Color color3 = new Color(255, 255, 255, 10);
-                Renderer2D.renderQuad(renderOverlayEvent.getContext(), n8, n9, n8 + 18, n9 + 18, color3);
+                Color slotBgColor = new Color(255, 255, 255, 10);
+                Renderer2D.renderQuad(renderOverlayEvent.getContext(), slotX, slotY, slotX + 18, slotY + 18, slotBgColor);
             }
-            ItemStack itemStack = HUDModule.mc.player.getInventory().getItem(n);
+            ItemStack itemStack = HUDModule.mc.player.getInventory().getItem(slotIndex);
             if (itemStack.isEmpty()) continue;
-            renderOverlayEvent.getContext().item(itemStack, n8 + 1, n9 + 1);
-            renderOverlayEvent.getContext().itemDecorations(HUDModule.mc.font, itemStack, n8 + 1, n9 + 1);
+            renderOverlayEvent.getContext().item(itemStack, slotX + 1, slotY + 1);
+            renderOverlayEvent.getContext().itemDecorations(HUDModule.mc.font, itemStack, slotX + 1, slotY + 1);
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderPotions(RenderOverlayEvent renderOverlayEvent) {
@@ -724,44 +724,43 @@ extends Module {
         if (!this.potions.getValue()) {
             return;
         }
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.potionsPosition.getX(), this.potionsPosition.getY());
-        float f = this.informationChatOffset.getValue() ? this.chatOffset : 0.0f;
-        int n = 0;
-        int n2 = 0;
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.potionsPosition.getX(), this.potionsPosition.getY());
+        float bottomOffset = this.informationChatOffset.getValue() ? this.chatOffset : 0.0f;
+        int index = 0;
+        int maxWidth = 0;
         for (PotionEntry potionEntry : this.potionEntries) {
-            int n3 = Night.FONT_MANAGER.getWidth(potionEntry.text());
-            int n4 = n3 + (potionEntry.sprite() != null ? Night.FONT_MANAGER.getHeight() + 2 : 0);
-            n2 = Math.max(n2, n4);
-            int n5 = mc.getWindow().getGuiScaledWidth() - 2 - n3;
-            int n6 = mc.getWindow().getGuiScaledHeight() - (int)f - 2 - Night.FONT_MANAGER.getHeight() - Night.FONT_MANAGER.getHeight() * n;
+            int textWidth = Night.FONT_MANAGER.getWidth(potionEntry.text());
+            int entryWidth = textWidth + (potionEntry.sprite() != null ? Night.FONT_MANAGER.getHeight() + 2 : 0);
+            maxWidth = Math.max(maxWidth, entryWidth);
+            int drawX = mc.getWindow().getGuiScaledWidth() - 2 - textWidth;
+            int drawY = mc.getWindow().getGuiScaledHeight() - (int)bottomOffset - 2 - Night.FONT_MANAGER.getHeight() - Night.FONT_MANAGER.getHeight() * index;
             if (potionEntry.sprite() != null) {
-                matrix3x2fStack.pushMatrix();
-                matrix3x2fStack.translate((float)(n5 - Night.FONT_MANAGER.getHeight() - 2), (float)(n6 - 1));
+                matrixStack.pushMatrix();
+                matrixStack.translate((float)(drawX - Night.FONT_MANAGER.getHeight() - 2), (float)(drawY - 1));
                 renderOverlayEvent.getContext().blitSprite(RenderPipelines.GUI_TEXTURED, potionEntry.sprite(), 0, 0, Night.FONT_MANAGER.getHeight(), Night.FONT_MANAGER.getHeight());
-                matrix3x2fStack.popMatrix();
+                matrixStack.popMatrix();
             }
-            this.drawText(renderOverlayEvent.getContext(), potionEntry.text(), n5, n6, this.potionColor.getValue().equals("Client") && this.colorMode.getValue().equals("Rainbow") && this.rainbowMode.getValue().equals("Horizontal"), potionEntry.color());
-            ++n;
+            this.drawText(renderOverlayEvent.getContext(), potionEntry.text(), drawX, drawY, this.potionColor.getValue().equals("Client") && this.colorMode.getValue().equals("Rainbow") && this.rainbowMode.getValue().equals("Horizontal"), potionEntry.color());
+            ++index;
         }
-        if (n > 0) {
-            float f2 = mc.getWindow().getGuiScaledWidth();
-            float f3 = (float)mc.getWindow().getGuiScaledHeight() - f;
-            HudElementRegistry.reportBounds("Potions", f2 - 2.0f - (float)n2 - 4.0f, f3 - 2.0f - (float)(n * Night.FONT_MANAGER.getHeight()), f2, f3);
+        if (index > 0) {
+            float screenWidth = mc.getWindow().getGuiScaledWidth();
+            float bottomY = (float)mc.getWindow().getGuiScaledHeight() - bottomOffset;
+            HudElementRegistry.reportBounds("Potions", screenWidth - 2.0f - (float)maxWidth - 4.0f, bottomY - 2.0f - (float)(index * Night.FONT_MANAGER.getHeight()), screenWidth, bottomY);
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
     private void renderInformation(RenderOverlayEvent renderOverlayEvent) {
         if (HUDModule.mc.player != null && this.informationElement.getValue()) {
-            Object object;
-            float f;
-            Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-            matrix3x2fStack.pushMatrix();
-            matrix3x2fStack.translate(this.informationPosition.getX(), this.informationPosition.getY());
-            int n = 0;
-            float f2 = f = this.informationChatOffset.getValue() ? this.chatOffset : 0.0f;
+            float bottomOffset;
+            Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+            matrixStack.pushMatrix();
+            matrixStack.translate(this.informationPosition.getX(), this.informationPosition.getY());
+            int lineIndex = 0;
+            float unusedOffset = bottomOffset = this.informationChatOffset.getValue() ? this.chatOffset : 0.0f;
             if (this.health.getValue()) {
                 String healthStr = new DecimalFormat("0").format(HUDModule.mc.player.getHealth() + HUDModule.mc.player.getAbsorptionAmount());
                 Color color = new Color(TextColor.fromLegacyFormat((ChatFormatting)ColorUtils.getHealthColor(HUDModule.mc.player.getHealth() + HUDModule.mc.player.getAbsorptionAmount())).getValue());
@@ -783,35 +782,35 @@ extends Module {
             if (this.serverBrand.getValue()) {
                 infoList.add(String.valueOf(this.getPrimary()) + "Brand " + String.valueOf(this.getSecondary()) + Night.SERVER_MANAGER.getServerBrand());
             }
-            float f3 = Night.SERVER_MANAGER.getTickRate();
+            float tickRate = Night.SERVER_MANAGER.getTickRate();
             if (this.tps.getValue()) {
-                infoList.add(String.valueOf(this.getPrimary()) + "TPS " + String.valueOf(this.getSecondary()) + ((double)f3 > 19.79 ? "20.00" : new DecimalFormat("00.00").format(f3)));
+                infoList.add(String.valueOf(this.getPrimary()) + "TPS " + String.valueOf(this.getSecondary()) + ((double)tickRate > 19.79 ? "20.00" : new DecimalFormat("00.00").format(tickRate)));
             }
             if (!infoList.isEmpty()) {
                 infoList.sort(Comparator.comparingInt(Night.FONT_MANAGER::getWidth).reversed());
                 for (String infoText : infoList) {
                     if (infoText.startsWith("Durability")) {
                         if (!HUDModule.mc.player.getMainHandItem().isDamageableItem()) continue;
-                        int n2 = HUDModule.mc.player.getMainHandItem().getMaxDamage();
-                        int n3 = HUDModule.mc.player.getMainHandItem().getDamageValue();
-                        String string = String.valueOf(n2 - n3);
-                        this.drawText(renderOverlayEvent.getContext(), String.valueOf(this.getPrimary()) + "Durability ", mc.getWindow().getGuiScaledWidth() - 2 - Night.FONT_MANAGER.getWidth("Durability ") - Night.FONT_MANAGER.getWidth(string), (float)mc.getWindow().getGuiScaledHeight() - f - 2.0f - (float)Night.FONT_MANAGER.getHeight() + (float)(n * -Night.FONT_MANAGER.getHeight()), this.informationSync.getValue() ? null : new Color(170, 170, 170));
-                        this.drawText(renderOverlayEvent.getContext(), string, mc.getWindow().getGuiScaledWidth() - 2 - Night.FONT_MANAGER.getWidth(string), (float)mc.getWindow().getGuiScaledHeight() - f - 2.0f - (float)Night.FONT_MANAGER.getHeight() + (float)(n * -Night.FONT_MANAGER.getHeight()), false, new Color(1.0f - (float)(n2 - n3) / (float)n2, (float)(n2 - n3) / (float)n2, 0.0f));
-                        ++n;
+                        int maxDamage = HUDModule.mc.player.getMainHandItem().getMaxDamage();
+                        int damageValue = HUDModule.mc.player.getMainHandItem().getDamageValue();
+                        String durabilityStr = String.valueOf(maxDamage - damageValue);
+                        this.drawText(renderOverlayEvent.getContext(), String.valueOf(this.getPrimary()) + "Durability ", mc.getWindow().getGuiScaledWidth() - 2 - Night.FONT_MANAGER.getWidth("Durability ") - Night.FONT_MANAGER.getWidth(durabilityStr), (float)mc.getWindow().getGuiScaledHeight() - bottomOffset - 2.0f - (float)Night.FONT_MANAGER.getHeight() + (float)(lineIndex * -Night.FONT_MANAGER.getHeight()), this.informationSync.getValue() ? null : new Color(170, 170, 170));
+                        this.drawText(renderOverlayEvent.getContext(), durabilityStr, mc.getWindow().getGuiScaledWidth() - 2 - Night.FONT_MANAGER.getWidth(durabilityStr), (float)mc.getWindow().getGuiScaledHeight() - bottomOffset - 2.0f - (float)Night.FONT_MANAGER.getHeight() + (float)(lineIndex * -Night.FONT_MANAGER.getHeight()), false, new Color(1.0f - (float)(maxDamage - damageValue) / (float)maxDamage, (float)(maxDamage - damageValue) / (float)maxDamage, 0.0f));
+                        ++lineIndex;
                         continue;
                     }
-                    this.drawText(renderOverlayEvent.getContext(), infoText, mc.getWindow().getGuiScaledWidth() - 2 - Night.FONT_MANAGER.getWidth(infoText), (float)mc.getWindow().getGuiScaledHeight() - f - 2.0f - (float)Night.FONT_MANAGER.getHeight() + (float)(n * -Night.FONT_MANAGER.getHeight()), this.informationSync.getValue() ? null : new Color(170, 170, 170));
-                    ++n;
+                    this.drawText(renderOverlayEvent.getContext(), infoText, mc.getWindow().getGuiScaledWidth() - 2 - Night.FONT_MANAGER.getWidth(infoText), (float)mc.getWindow().getGuiScaledHeight() - bottomOffset - 2.0f - (float)Night.FONT_MANAGER.getHeight() + (float)(lineIndex * -Night.FONT_MANAGER.getHeight()), this.informationSync.getValue() ? null : new Color(170, 170, 170));
+                    ++lineIndex;
                 }
-                int n4 = 0;
-                for (String string : infoList) {
-                    n4 = Math.max(n4, Night.FONT_MANAGER.getWidth(string));
+                int maxWidth = 0;
+                for (String infoText : infoList) {
+                    maxWidth = Math.max(maxWidth, Night.FONT_MANAGER.getWidth(infoText));
                 }
-                float f4 = mc.getWindow().getGuiScaledWidth();
-                float f5 = (float)mc.getWindow().getGuiScaledHeight() - f;
-                HudElementRegistry.reportBounds("Information", f4 - 2.0f - (float)n4, f5 - 2.0f - (float)(n * Night.FONT_MANAGER.getHeight()), f4, f5);
+                float screenWidth = mc.getWindow().getGuiScaledWidth();
+                float bottomY = (float)mc.getWindow().getGuiScaledHeight() - bottomOffset;
+                HudElementRegistry.reportBounds("Information", screenWidth - 2.0f - (float)maxWidth, bottomY - 2.0f - (float)(lineIndex * Night.FONT_MANAGER.getHeight()), screenWidth, bottomY);
             }
-            matrix3x2fStack.popMatrix();
+            matrixStack.popMatrix();
         }
     }
 
@@ -822,139 +821,139 @@ extends Module {
         if (!this.coordinates.getValue() && !this.direction.getValue()) {
             return;
         }
-        Matrix3x2fStack matrix3x2fStack = renderOverlayEvent.getMatrices();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(this.coordinatesPosition.getX(), this.coordinatesPosition.getY());
-        float f = this.positionChatOffset.getValue() ? this.chatOffset : 0.0f;
-        int n = 0;
-        int n2 = 0;
-        int n3 = 0;
+        Matrix3x2fStack matrixStack = renderOverlayEvent.getMatrices();
+        matrixStack.pushMatrix();
+        matrixStack.translate(this.coordinatesPosition.getX(), this.coordinatesPosition.getY());
+        float bottomOffset = this.positionChatOffset.getValue() ? this.chatOffset : 0.0f;
+        int yOffset = 0;
+        int maxWidth = 0;
+        int lineCount = 0;
         if (this.coordinates.getValue()) {
-            int n4 = this.getFakedCoord(HUDModule.mc.player.getBlockX(), this.fakeOffsetX);
-            int n5 = this.getFakedCoord(HUDModule.mc.player.getBlockZ(), this.fakeOffsetZ);
-            String string = String.valueOf(this.getSecondary()) + String.valueOf(n4) + (String)(this.netherCoordinates.getValue() ? String.valueOf(ChatFormatting.GRAY) + " [" + String.valueOf(this.getSecondary()) + WorldUtils.getNetherPosition(n4) + String.valueOf(ChatFormatting.GRAY) + "]" : "") + String.valueOf(this.inversion.getValue() || this.positionSync.getValue() ? ChatFormatting.RESET : ChatFormatting.GRAY) + ", " + String.valueOf(this.getSecondary()) + HUDModule.mc.player.getBlockY() + String.valueOf(this.inversion.getValue() || this.positionSync.getValue() ? ChatFormatting.RESET : ChatFormatting.GRAY) + ", " + String.valueOf(this.getSecondary()) + String.valueOf(n5) + (String)(this.netherCoordinates.getValue() ? String.valueOf(ChatFormatting.GRAY) + " [" + String.valueOf(this.getSecondary()) + WorldUtils.getNetherPosition(n5) + String.valueOf(ChatFormatting.GRAY) + "]" : "");
-            this.drawText(renderOverlayEvent.getContext(), string, 2.0f, (float)mc.getWindow().getGuiScaledHeight() - f - (float)n - (float)Night.FONT_MANAGER.getHeight() - 2.0f);
-            n2 = Math.max(n2, Night.FONT_MANAGER.getWidth(string));
-            n += Night.FONT_MANAGER.getHeight();
-            ++n3;
+            int coordX = this.getFakedCoord(HUDModule.mc.player.getBlockX(), this.fakeOffsetX);
+            int coordZ = this.getFakedCoord(HUDModule.mc.player.getBlockZ(), this.fakeOffsetZ);
+            String coordsText = String.valueOf(this.getSecondary()) + String.valueOf(coordX) + (String)(this.netherCoordinates.getValue() ? String.valueOf(ChatFormatting.GRAY) + " [" + String.valueOf(this.getSecondary()) + WorldUtils.getNetherPosition(coordX) + String.valueOf(ChatFormatting.GRAY) + "]" : "") + String.valueOf(this.inversion.getValue() || this.positionSync.getValue() ? ChatFormatting.RESET : ChatFormatting.GRAY) + ", " + String.valueOf(this.getSecondary()) + HUDModule.mc.player.getBlockY() + String.valueOf(this.inversion.getValue() || this.positionSync.getValue() ? ChatFormatting.RESET : ChatFormatting.GRAY) + ", " + String.valueOf(this.getSecondary()) + String.valueOf(coordZ) + (String)(this.netherCoordinates.getValue() ? String.valueOf(ChatFormatting.GRAY) + " [" + String.valueOf(this.getSecondary()) + WorldUtils.getNetherPosition(coordZ) + String.valueOf(ChatFormatting.GRAY) + "]" : "");
+            this.drawText(renderOverlayEvent.getContext(), coordsText, 2.0f, (float)mc.getWindow().getGuiScaledHeight() - bottomOffset - (float)yOffset - (float)Night.FONT_MANAGER.getHeight() - 2.0f);
+            maxWidth = Math.max(maxWidth, Night.FONT_MANAGER.getWidth(coordsText));
+            yOffset += Night.FONT_MANAGER.getHeight();
+            ++lineCount;
         }
         if (this.direction.getValue()) {
-            String string = String.valueOf(this.getPrimary()) + WorldUtils.getFacingName(HUDModule.mc.player.getYRot()) + String.valueOf(this.inversion.getValue() ? this.getSecondary() : ChatFormatting.GRAY) + " [" + String.valueOf(this.inversion.getValue() ? this.getSecondary() : ChatFormatting.WHITE) + WorldUtils.getFacingAxes(HUDModule.mc.player.getYRot()) + String.valueOf(this.inversion.getValue() ? this.getSecondary() : ChatFormatting.GRAY) + "]";
-            this.drawText(renderOverlayEvent.getContext(), string, 2.0f, (float)mc.getWindow().getGuiScaledHeight() - f - (float)n - (float)Night.FONT_MANAGER.getHeight() - 2.0f, this.positionSync.getValue() ? null : Color.WHITE);
-            n2 = Math.max(n2, Night.FONT_MANAGER.getWidth(string));
-            ++n3;
+            String dirText = String.valueOf(this.getPrimary()) + WorldUtils.getFacingName(HUDModule.mc.player.getYRot()) + String.valueOf(this.inversion.getValue() ? this.getSecondary() : ChatFormatting.GRAY) + " [" + String.valueOf(this.inversion.getValue() ? this.getSecondary() : ChatFormatting.WHITE) + WorldUtils.getFacingAxes(HUDModule.mc.player.getYRot()) + String.valueOf(this.inversion.getValue() ? this.getSecondary() : ChatFormatting.GRAY) + "]";
+            this.drawText(renderOverlayEvent.getContext(), dirText, 2.0f, (float)mc.getWindow().getGuiScaledHeight() - bottomOffset - (float)yOffset - (float)Night.FONT_MANAGER.getHeight() - 2.0f, this.positionSync.getValue() ? null : Color.WHITE);
+            maxWidth = Math.max(maxWidth, Night.FONT_MANAGER.getWidth(dirText));
+            ++lineCount;
         }
-        float f2 = (float)mc.getWindow().getGuiScaledHeight() - f;
-        HudElementRegistry.reportBounds("Coordinates", 2.0f, f2 - 2.0f - (float)(n3 * Night.FONT_MANAGER.getHeight()), 2 + n2, f2 - 2.0f);
-        matrix3x2fStack.popMatrix();
+        float bottomY = (float)mc.getWindow().getGuiScaledHeight() - bottomOffset;
+        HudElementRegistry.reportBounds("Coordinates", 2.0f, bottomY - 2.0f - (float)(lineCount * Night.FONT_MANAGER.getHeight()), 2 + maxWidth, bottomY - 2.0f);
+        matrixStack.popMatrix();
     }
 
-    private static Color lerpColor(Color color, Color color2, float f) {
-        float f2 = Math.max(0.0f, Math.min(1.0f, f));
-        int n = Math.round((float)color.getRed() + f2 * (float)(color2.getRed() - color.getRed()));
-        int n2 = Math.round((float)color.getGreen() + f2 * (float)(color2.getGreen() - color.getGreen()));
-        int n3 = Math.round((float)color.getBlue() + f2 * (float)(color2.getBlue() - color.getBlue()));
-        int n4 = Math.round((float)color.getAlpha() + f2 * (float)(color2.getAlpha() - color.getAlpha()));
-        return new Color(n, n2, n3, n4);
+    private static Color lerpColor(Color fromColor, Color toColor, float progress) {
+        float t = Math.max(0.0f, Math.min(1.0f, progress));
+        int red = Math.round((float)fromColor.getRed() + t * (float)(toColor.getRed() - fromColor.getRed()));
+        int green = Math.round((float)fromColor.getGreen() + t * (float)(toColor.getGreen() - fromColor.getGreen()));
+        int blue = Math.round((float)fromColor.getBlue() + t * (float)(toColor.getBlue() - fromColor.getBlue()));
+        int alpha = Math.round((float)fromColor.getAlpha() + t * (float)(toColor.getAlpha() - fromColor.getAlpha()));
+        return new Color(red, green, blue, alpha);
     }
 
-    private void drawModuleText(Module module2, GuiGraphicsExtractor guiGraphicsExtractor, String string, float f, float f2) {
-        boolean bl = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
-        if (!bl) {
-            if (!module2.isToggled()) {
-                this.drawText(guiGraphicsExtractor, string, f, f2, false, new Color(170, 170, 170));
+    private void drawModuleText(Module targetModule, GuiGraphicsExtractor graphics, String text, float x, float y) {
+        boolean isNewbie = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
+        if (!isNewbie) {
+            if (!targetModule.isToggled()) {
+                this.drawText(graphics, text, x, y, false, new Color(170, 170, 170));
                 return;
             }
-            Color color = this.getHudColor(f2);
+            Color color = this.getHudColor(y);
             if (this.moduleColorMode.getValue().equalsIgnoreCase("Rainbow")) {
-                long l = (long)f2 / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 10L);
-                color = ColorUtils.getOffsetRainbow(l);
+                long offset = (long)y / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 10L);
+                color = ColorUtils.getOffsetRainbow(offset);
             } else if (this.moduleColorMode.getValue().equals("Random")) {
-                color = ColorUtils.getHashColor(module2.getName());
+                color = ColorUtils.getHashColor(targetModule.getName());
             }
-            this.drawText(guiGraphicsExtractor, string, f, f2, (this.moduleColorMode.getValue().equals("Rainbow") || this.moduleColorMode.getValue().equals("Default") && this.colorMode.getValue().equals("Rainbow")) && this.rainbowMode.getValue().equals("Horizontal"), color);
+            this.drawText(graphics, text, x, y, (this.moduleColorMode.getValue().equals("Rainbow") || this.moduleColorMode.getValue().equals("Default") && this.colorMode.getValue().equals("Rainbow")) && this.rainbowMode.getValue().equals("Horizontal"), color);
             return;
         }
-        Animation animation = this.moduleColorAnimations.computeIfAbsent(module2, module -> new Animation(module.isToggled() ? 1.0f : 0.0f, module.isToggled() ? 1.0f : 0.0f, 350, Easing.Method.EASE_IN_OUT_CUBIC));
-        float f3 = animation.get(module2.isToggled() ? 1.0f : 0.0f);
-        Color color = this.getHudColor(f2);
+        Animation animation = this.moduleColorAnimations.computeIfAbsent(targetModule, module -> new Animation(module.isToggled() ? 1.0f : 0.0f, module.isToggled() ? 1.0f : 0.0f, 350, Easing.Method.EASE_IN_OUT_CUBIC));
+        float progress = animation.get(targetModule.isToggled() ? 1.0f : 0.0f);
+        Color color = this.getHudColor(y);
         if (this.moduleColorMode.getValue().equalsIgnoreCase("Rainbow")) {
-            long l = (long)f2 / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 10L);
-            color = ColorUtils.getOffsetRainbow(l);
+            long offset = (long)y / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 10L);
+            color = ColorUtils.getOffsetRainbow(offset);
         } else if (this.moduleColorMode.getValue().equals("Random")) {
-            color = ColorUtils.getHashColor(module2.getName());
+            color = ColorUtils.getHashColor(targetModule.getName());
         }
-        boolean bl2 = (this.moduleColorMode.getValue().equals("Rainbow") || this.moduleColorMode.getValue().equals("Default") && this.colorMode.getValue().equals("Rainbow")) && this.rainbowMode.getValue().equals("Horizontal");
-        HudListStyle.drawNewbie(this, module2, guiGraphicsExtractor, f, f2, f3, color, bl2);
+        boolean horizontalRainbow = (this.moduleColorMode.getValue().equals("Rainbow") || this.moduleColorMode.getValue().equals("Default") && this.colorMode.getValue().equals("Rainbow")) && this.rainbowMode.getValue().equals("Horizontal");
+        HudListStyle.drawNewbie(this, targetModule, graphics, x, y, progress, color, horizontalRainbow);
     }
 
-    private void drawNewbieModuleText(Module module, GuiGraphicsExtractor guiGraphicsExtractor, float f, float f2, float f3, Color color, boolean bl) {
-        String string;
-        String string2;
-        Object object = module.getBind() != 0 ? "[" + KeyboardUtils.getKeyName(module.getBind()) + "] " : "";
-        String string3 = (String)object + (string2 = module.getName()) + (string = module.getMetaData().isEmpty() || !this.metaData.getValue() ? "" : " [" + module.getMetaData() + "]");
-        if (string3.isEmpty()) {
+    private void drawNewbieModuleText(Module module, GuiGraphicsExtractor graphics, float x, float y, float progress, Color color, boolean horizontalRainbow) {
+        String metaSuffix;
+        String moduleName;
+        String bindPrefix = module.getBind() != 0 ? "[" + KeyboardUtils.getKeyName(module.getBind()) + "] " : "";
+        String fullText = bindPrefix + (moduleName = module.getName()) + (metaSuffix = module.getMetaData().isEmpty() || !this.metaData.getValue() ? "" : " [" + module.getMetaData() + "]");
+        if (fullText.isEmpty()) {
             return;
         }
-        Color color2 = new Color(170, 170, 170);
-        Color color3 = Color.WHITE;
-        float f4 = Night.FONT_MANAGER.getWidth(string3);
-        float f5 = 0.0f;
-        float f6 = 0.35f;
+        Color offColor = new Color(170, 170, 170);
+        Color whiteColor = Color.WHITE;
+        float totalWidth = Night.FONT_MANAGER.getWidth(fullText);
+        float cursorX = 0.0f;
+        float sweepWidth = 0.35f;
         MutableComponent mutableComponent = Component.empty();
-        int n = ((String)object).length();
-        int n2 = string2.length();
-        for (int i = 0; i < string3.length(); ++i) {
-            char c = string3.charAt(i);
-            String string4 = String.valueOf(c);
-            float f7 = Night.FONT_MANAGER.getWidth(string4);
-            float f8 = f4 > 0.0f ? (f5 + f7 / 2.0f) / f4 : 0.0f;
-            f5 += f7;
-            Color color4 = color2;
-            Color color5 = i < n ? (c == '[' || c == ']' || c == ' ' ? color2 : color3) : (i < n + n2 ? (bl ? ColorUtils.getOffsetRainbow((long)i * this.rainbowOffset.getValue().longValue() * 5L) : color) : (c == '[' || c == ']' || c == ' ' ? color2 : color3));
-            float f9 = Math.max(0.0f, Math.min(1.0f, (f3 * (1.0f + f6) - f8) / f6));
-            float f10 = f9 * f9 * (3.0f - 2.0f * f9);
-            Color color6 = HUDModule.lerpColor(color4, color5, f10);
-            mutableComponent.append((Component)Component.literal((String)string4).setStyle(Style.EMPTY.withColor(TextColor.fromRgb((int)color6.getRGB()))));
+        int bindLen = bindPrefix.length();
+        int nameLen = moduleName.length();
+        for (int i = 0; i < fullText.length(); ++i) {
+            char ch = fullText.charAt(i);
+            String chStr = String.valueOf(ch);
+            float charWidth = Night.FONT_MANAGER.getWidth(chStr);
+            float charCenter = totalWidth > 0.0f ? (cursorX + charWidth / 2.0f) / totalWidth : 0.0f;
+            cursorX += charWidth;
+            Color startColor = offColor;
+            Color endColor = i < bindLen ? (ch == '[' || ch == ']' || ch == ' ' ? offColor : whiteColor) : (i < bindLen + nameLen ? (horizontalRainbow ? ColorUtils.getOffsetRainbow((long)i * this.rainbowOffset.getValue().longValue() * 5L) : color) : (ch == '[' || ch == ']' || ch == ' ' ? offColor : whiteColor));
+            float rawT = Math.max(0.0f, Math.min(1.0f, (progress * (1.0f + sweepWidth) - charCenter) / sweepWidth));
+            float smoothT = rawT * rawT * (3.0f - 2.0f * rawT);
+            Color charColor = HUDModule.lerpColor(startColor, endColor, smoothT);
+            mutableComponent.append((Component)Component.literal((String)chStr).setStyle(Style.EMPTY.withColor(TextColor.fromRgb((int)charColor.getRGB()))));
         }
-        Matrix3x2fStack matrix3x2fStack = guiGraphicsExtractor.pose();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(f, f2);
-        Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, mutableComponent.getVisualOrderText(), 0, 0, Color.WHITE);
-        matrix3x2fStack.popMatrix();
+        Matrix3x2fStack matrixStack = graphics.pose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(x, y);
+        Night.FONT_MANAGER.drawTextWithShadow(graphics, mutableComponent.getVisualOrderText(), 0, 0, Color.WHITE);
+        matrixStack.popMatrix();
     }
 
-    private void drawText(GuiGraphicsExtractor guiGraphicsExtractor, String string, float f, float f2) {
-        this.drawText(guiGraphicsExtractor, string, f, f2, null);
+    private void drawText(GuiGraphicsExtractor graphics, String text, float x, float y) {
+        this.drawText(graphics, text, x, y, null);
     }
 
-    public void drawText(GuiGraphicsExtractor guiGraphicsExtractor, String string, float f, float f2, Color color) {
-        this.drawText(guiGraphicsExtractor, string, f, f2, this.colorMode.getValue().equals("Rainbow") && this.rainbowMode.getValue().equals("Horizontal"), color);
+    public void drawText(GuiGraphicsExtractor graphics, String text, float x, float y, Color color) {
+        this.drawText(graphics, text, x, y, this.colorMode.getValue().equals("Rainbow") && this.rainbowMode.getValue().equals("Horizontal"), color);
     }
 
-    public void drawText(GuiGraphicsExtractor guiGraphicsExtractor, String string, float f, float f2, boolean bl, Color color) {
+    public void drawText(GuiGraphicsExtractor graphics, String text, float x, float y, boolean horizontalRainbow, Color color) {
         if (color == null) {
-            color = this.getHudColor(f2);
+            color = this.getHudColor(y);
         }
-        Matrix3x2fStack matrix3x2fStack = guiGraphicsExtractor.pose();
-        matrix3x2fStack.pushMatrix();
-        matrix3x2fStack.translate(f, f2);
-        if (bl) {
-            Night.FONT_MANAGER.drawRainbowString(guiGraphicsExtractor, string, 0, 0, this.rainbowOffset.getValue().longValue() * 5L);
+        Matrix3x2fStack matrixStack = graphics.pose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(x, y);
+        if (horizontalRainbow) {
+            Night.FONT_MANAGER.drawRainbowString(graphics, text, 0, 0, this.rainbowOffset.getValue().longValue() * 5L);
         } else {
-            Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, 0, 0, color);
+            Night.FONT_MANAGER.drawTextWithShadow(graphics, text, 0, 0, color);
         }
-        matrix3x2fStack.popMatrix();
+        matrixStack.popMatrix();
     }
 
-    private Color getHudColor(float f) {
+    private Color getHudColor(float y) {
         if (this.colorMode.getValue().equalsIgnoreCase("Rainbow")) {
-            long l = (long)f / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 10L);
-            return ColorUtils.getOffsetRainbow(l);
+            long offset = (long)y / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 10L);
+            return ColorUtils.getOffsetRainbow(offset);
         }
         if (this.colorMode.getValue().equalsIgnoreCase("Wave")) {
-            long l = (long)f / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 20L);
-            return ColorUtils.getOffsetWave(ColorUtils.getGlobalColor(), l);
+            long offset = (long)y / (long)Night.FONT_MANAGER.getHeight() * (this.rainbowOffset.getValue().longValue() * 20L);
+            return ColorUtils.getOffsetWave(ColorUtils.getGlobalColor(), offset);
         }
         if (this.colorMode.getValue().equalsIgnoreCase("Custom")) {
             return ColorUtils.getColor(this.customColor.getColor(), 255);
@@ -963,34 +962,34 @@ extends Module {
     }
 
     @Override
-    public Setting getSetting(String string) {
-        if (string.equalsIgnoreCase("ModuleListMode") || string.equalsIgnoreCase("Mode")) {
+    public Setting getSetting(String name) {
+        if (name.equalsIgnoreCase("ModuleListMode") || name.equalsIgnoreCase("Mode")) {
             return this.moduleListMode;
         }
-        return super.getSetting(string);
+        return super.getSetting(name);
     }
 
     private String getModuleText(Module module) {
-        boolean bl = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
-        Object object = "";
-        if (bl && module.getBind() != 0) {
-            object = String.valueOf(ChatFormatting.GRAY) + "[" + String.valueOf(ChatFormatting.WHITE) + KeyboardUtils.getKeyName(module.getBind()) + String.valueOf(ChatFormatting.GRAY) + "] ";
+        boolean isNewbie = this.moduleListMode.getValue().equalsIgnoreCase("Newbie");
+        String bindPrefix = "";
+        if (isNewbie && module.getBind() != 0) {
+            bindPrefix = String.valueOf(ChatFormatting.GRAY) + "[" + String.valueOf(ChatFormatting.WHITE) + KeyboardUtils.getKeyName(module.getBind()) + String.valueOf(ChatFormatting.GRAY) + "] ";
         }
-        if (!bl && !module.isToggled()) {
-            return (String)object + String.valueOf(ChatFormatting.GRAY) + module.getName() + (String)(module.getMetaData().isEmpty() || !this.metaData.getValue() ? "" : String.valueOf(ChatFormatting.DARK_GRAY) + " [" + String.valueOf(ChatFormatting.GRAY) + module.getMetaData() + String.valueOf(ChatFormatting.DARK_GRAY) + "]");
+        if (!isNewbie && !module.isToggled()) {
+            return bindPrefix + String.valueOf(ChatFormatting.GRAY) + module.getName() + (String)(module.getMetaData().isEmpty() || !this.metaData.getValue() ? "" : String.valueOf(ChatFormatting.DARK_GRAY) + " [" + String.valueOf(ChatFormatting.GRAY) + module.getMetaData() + String.valueOf(ChatFormatting.DARK_GRAY) + "]");
         }
-        return (String)object + module.getName() + (String)(module.getMetaData().isEmpty() || !this.metaData.getValue() ? "" : String.valueOf(ChatFormatting.GRAY) + " [" + String.valueOf(ChatFormatting.WHITE) + module.getMetaData() + String.valueOf(ChatFormatting.GRAY) + "]");
+        return bindPrefix + module.getName() + (String)(module.getMetaData().isEmpty() || !this.metaData.getValue() ? "" : String.valueOf(ChatFormatting.GRAY) + " [" + String.valueOf(ChatFormatting.WHITE) + module.getMetaData() + String.valueOf(ChatFormatting.GRAY) + "]");
     }
 
     private String getPotionText(MobEffectInstance mobEffectInstance) {
-        String string;
+        String durationStr;
         if (mobEffectInstance.isInfiniteDuration()) {
-            string = "**:**";
+            durationStr = "**:**";
         } else {
-            int n = Math.round((float)mobEffectInstance.getDuration() / HUDModule.mc.level.tickRateManager().tickrate());
-            string = String.format("%02d:%02d", n / 60, n % 60);
+            int seconds = Math.round((float)mobEffectInstance.getDuration() / HUDModule.mc.level.tickRateManager().tickrate());
+            durationStr = String.format("%02d:%02d", seconds / 60, seconds % 60);
         }
-        return ((MobEffect)mobEffectInstance.getEffect().value()).getDisplayName().getString() + " " + (mobEffectInstance.getAmplifier() + 1) + " " + String.valueOf(ChatFormatting.WHITE) + string;
+        return ((MobEffect)mobEffectInstance.getEffect().value()).getDisplayName().getString() + " " + (mobEffectInstance.getAmplifier() + 1) + " " + String.valueOf(ChatFormatting.WHITE) + durationStr;
     }
 
     private ChatFormatting getPrimary() {
@@ -1014,75 +1013,74 @@ extends Module {
         private SmoothCounter() {
         }
 
-        public void update(int n) {
+        public void update(int count) {
             if (this.lastCount == -1) {
-                this.lastCount = n;
-                this.prevCount = n;
+                this.lastCount = count;
+                this.prevCount = count;
                 return;
             }
-            if (n != this.lastCount) {
+            if (count != this.lastCount) {
                 this.prevCount = this.lastCount;
-                this.lastCount = n;
-                this.direction = n < this.prevCount ? -1 : 1;
+                this.lastCount = count;
+                this.direction = count < this.prevCount ? -1 : 1;
                 this.changeTime = System.currentTimeMillis();
             }
         }
 
-        public void render(GuiGraphicsExtractor guiGraphicsExtractor, boolean bl) {
+        public void render(GuiGraphicsExtractor graphics, boolean smooth) {
             Color color;
-            float f;
-            float f2;
+            float enterOffsetY;
+            float exitOffsetY;
             if (this.lastCount <= 0 && this.prevCount <= 0) {
                 return;
             }
-            String string = String.valueOf(Math.max(0, this.lastCount));
-            int n = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getHeight() : 9;
-            long l = System.currentTimeMillis() - this.changeTime;
-            float f3 = 320.0f;
-            float f4 = this.changeTime == 0L ? 1.0f : Math.min(1.0f, (float)l / f3);
-            float f5 = f4;
-            if (!bl || f4 >= 1.0f || this.prevCount == -1 || this.prevCount == this.lastCount) {
-                int n2 = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getWidth(string) : Minecraft.getInstance().font.width(string);
-                float f6 = 17 - n2;
-                float f7 = 9.0f;
+            String countText = String.valueOf(Math.max(0, this.lastCount));
+            int fontHeight = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getHeight() : 9;
+            long elapsed = System.currentTimeMillis() - this.changeTime;
+            float durationMs = 320.0f;
+            float progress = this.changeTime == 0L ? 1.0f : Math.min(1.0f, (float)elapsed / durationMs);
+            if (!smooth || progress >= 1.0f || this.prevCount == -1 || this.prevCount == this.lastCount) {
+                int textWidth = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getWidth(countText) : Minecraft.getInstance().font.width(countText);
+                float drawX = 17 - textWidth;
+                float drawY = 9.0f;
                 if (Night.FONT_MANAGER != null) {
-                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, (int)f6, (int)f7, Color.WHITE);
+                    Night.FONT_MANAGER.drawTextWithShadow(graphics, countText, (int)drawX, (int)drawY, Color.WHITE);
                 } else {
-                    guiGraphicsExtractor.text(Minecraft.getInstance().font, string, (int)f6, (int)f7, -1, true);
+                    graphics.text(Minecraft.getInstance().font, countText, (int)drawX, (int)drawY, -1, true);
                 }
                 return;
             }
-            float f8 = Easing.ease(f4, Easing.Method.EASE_OUT_CUBIC);
-            String string2 = String.valueOf(Math.max(0, this.prevCount));
-            int n3 = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getWidth(string) : Minecraft.getInstance().font.width(string);
-            int n4 = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getWidth(string2) : Minecraft.getInstance().font.width(string2);
-            float f9 = 17 - n3;
-            float f10 = 17 - n4;
-            float f11 = 9.0f;
-            float f12 = n + 3;
+            float eased = Easing.ease(progress, Easing.Method.EASE_OUT_CUBIC);
+            String prevText = String.valueOf(Math.max(0, this.prevCount));
+            int countWidth = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getWidth(countText) : Minecraft.getInstance().font.width(countText);
+            int prevWidth = Night.FONT_MANAGER != null ? Night.FONT_MANAGER.getWidth(prevText) : Minecraft.getInstance().font.width(prevText);
+            float drawX = 17 - countWidth;
+            float prevDrawX = 17 - prevWidth;
+            float drawY = 9.0f;
+            float slideDist = fontHeight + 3;
             if (this.direction < 0) {
-                f2 = f8 * f12;
-                f = -(1.0f - f8) * f12;
+                exitOffsetY = eased * slideDist;
+                enterOffsetY = -(1.0f - eased) * slideDist;
             } else {
-                f2 = -f8 * f12;
-                f = (1.0f - f8) * f12;
+                exitOffsetY = -eased * slideDist;
+                enterOffsetY = (1.0f - eased) * slideDist;
             }
-            int n5 = Math.max(0, Math.min(255, Math.round((1.0f - f8) * 255.0f)));
-            int n6 = Math.max(0, Math.min(255, Math.round(f8 * 255.0f)));
-            if (n5 > 5) {
-                color = new Color(255, 255, 255, n5);
+            int prevAlpha = Math.max(0, Math.min(255, Math.round((1.0f - eased) * 255.0f)));
+            int currAlpha = Math.max(0, Math.min(255, Math.round(eased * 255.0f)));
+            if (prevAlpha > 5) {
+                color = new Color(255, 255, 255, prevAlpha);
                 if (Night.FONT_MANAGER != null) {
-                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string2, (int)f10, (int)(f11 + f2), color);
+                    Night.FONT_MANAGER.drawTextWithShadow(graphics, prevText, (int)prevDrawX, (int)(drawY + exitOffsetY), color);
                 } else {
-                    guiGraphicsExtractor.text(Minecraft.getInstance().font, string2, (int)f10, (int)(f11 + f2), n5 << 24 | 0xFFFFFF, true);
+                    graphics.text(Minecraft.getInstance().font, prevText, (int)prevDrawX, (int)(drawY + exitOffsetY), prevAlpha << 24 | 0xFFFFFF, true);
                 }
             }
-            if (n6 > 5) {
-                color = new Color(255, 255, 255, n6);
+            if (currAlpha > 5) {
+                color = new Color(255, 255, 255, currAlpha);
                 if (Night.FONT_MANAGER != null) {
-                    Night.FONT_MANAGER.drawTextWithShadow(guiGraphicsExtractor, string, (int)f9, (int)(f11 + f), color);
+                    Night.FONT_MANAGER.drawTextWithShadow(graphics, countText, (int)drawX, (int)(drawY + enterOffsetY), color);
                 } else {
-                    guiGraphicsExtractor.text(Minecraft.getInstance().font, string, (int)f9, (int)(f11 + f), n6 << 24 | 0xFFFFFF, true);
+                    graphics.text(Minecraft.getInstance().font, countText, (int)drawX, (int)(drawY + enterOffsetY), currAlpha << 24 | 0xFFFFFF, true);
                 }
             }
         }

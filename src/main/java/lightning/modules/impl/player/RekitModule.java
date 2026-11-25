@@ -178,11 +178,11 @@ extends Module {
             if (!FileUtils.fileExists(LAST_KIT_FILE)) {
                 return;
             }
-            String string = Files.readString(Paths.get(LAST_KIT_FILE, new String[0])).trim();
-            if (string.isEmpty()) {
+            String kitName = Files.readString(Paths.get(LAST_KIT_FILE, new String[0])).trim();
+            if (kitName.isEmpty()) {
                 return;
             }
-            File file = new File(FOLDER, string + ".json");
+            File file = new File(FOLDER, kitName + ".json");
             if (!file.exists()) {
                 return;
             }
@@ -190,7 +190,7 @@ extends Module {
             try (FileReader fileReader = new FileReader(file);){
                 Type type = new TypeToken<Map<Integer, KitItem>>(){}.getType();
                 this.activeKit = (Map)gson.fromJson((Reader)fileReader, type);
-                this.activeKitName = string;
+                this.activeKitName = kitName;
             }
         }
         catch (Exception exception) {
@@ -198,37 +198,37 @@ extends Module {
         }
     }
 
-    private void info(String string) {
-        Night.CHAT_MANAGER.tagged(string, this.getName());
+    private void info(String message) {
+        Night.CHAT_MANAGER.tagged(message, this.getName());
     }
 
-    private void error(String string) {
-        Night.CHAT_MANAGER.tagged("\u00a7c" + string, this.getName());
+    private void error(String message) {
+        Night.CHAT_MANAGER.tagged("\u00a7c" + message, this.getName());
     }
 
     public List<String> getKitNames() {
-        ArrayList<String> arrayList = new ArrayList<String>();
-        File[] fileArray = new File(FOLDER).listFiles();
-        if (fileArray != null) {
-            for (File file : fileArray) {
+        ArrayList<String> kitNames = new ArrayList<String>();
+        File[] files = new File(FOLDER).listFiles();
+        if (files != null) {
+            for (File file : files) {
                 if (!file.getName().endsWith(".json")) continue;
-                arrayList.add(file.getName().replace(".json", ""));
+                kitNames.add(file.getName().replace(".json", ""));
             }
         }
-        return arrayList;
+        return kitNames;
     }
 
-    public void saveKit(String string) {
+    public void saveKit(String kitName) {
         if (RekitModule.mc.player == null) {
             return;
         }
         if (RekitModule.mc.player.isCreative() || RekitModule.mc.player.isSpectator()) {
             return;
         }
-        HashMap<Integer, KitItem> hashMap = new HashMap<Integer, KitItem>();
+        HashMap<Integer, KitItem> kitMap = new HashMap<Integer, KitItem>();
         for (int i = 0; i < 36; ++i) {
-            int n = this.getHandlerSlotPlayerOnly(i);
-            ItemStack itemStack = RekitModule.mc.player.inventoryMenu.getSlot(n).getItem();
+            int handlerSlot = this.getHandlerSlotPlayerOnly(i);
+            ItemStack itemStack = RekitModule.mc.player.inventoryMenu.getSlot(handlerSlot).getItem();
             if (itemStack.isEmpty()) continue;
             KitItem kitItem = new KitItem();
             kitItem.id = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
@@ -236,39 +236,39 @@ extends Module {
             if (itemStack.has(DataComponents.CUSTOM_NAME)) {
                 kitItem.name = itemStack.getHoverName().getString();
             }
-            hashMap.put(i, kitItem);
+            kitMap.put(i, kitItem);
         }
         try {
             FileUtils.createDirectory(FOLDER);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            try (FileWriter fileWriter = new FileWriter(new File(FOLDER, string + ".json"));){
-                gson.toJson(hashMap, (Appendable)fileWriter);
+            try (FileWriter fileWriter = new FileWriter(new File(FOLDER, kitName + ".json"));){
+                gson.toJson(kitMap, (Appendable)fileWriter);
             }
-            this.activeKit = hashMap;
-            this.activeKitName = string;
-            Files.writeString(Paths.get(LAST_KIT_FILE, new String[0]), (CharSequence)string, new OpenOption[0]);
-            this.info("Kit saved and activated: " + string);
+            this.activeKit = kitMap;
+            this.activeKitName = kitName;
+            Files.writeString(Paths.get(LAST_KIT_FILE, new String[0]), (CharSequence)kitName, new OpenOption[0]);
+            this.info("Kit saved and activated: " + kitName);
         }
         catch (Exception exception) {
             this.error("Error saving kit!");
         }
     }
 
-    public void loadKit(String string) {
+    public void loadKit(String kitName) {
         try {
-            File file = new File(FOLDER, string + ".json");
+            File file = new File(FOLDER, kitName + ".json");
             if (!file.exists()) {
-                this.error("Kit not found: " + string);
+                this.error("Kit not found: " + kitName);
                 return;
             }
             Gson gson = new Gson();
             try (FileReader fileReader = new FileReader(file);){
                 Type type = new TypeToken<Map<Integer, KitItem>>(){}.getType();
                 this.activeKit = (Map)gson.fromJson((Reader)fileReader, type);
-                this.activeKitName = string;
+                this.activeKitName = kitName;
             }
-            Files.writeString(Paths.get(LAST_KIT_FILE, new String[0]), (CharSequence)string, new OpenOption[0]);
-            this.info("Kit loaded: " + string);
+            Files.writeString(Paths.get(LAST_KIT_FILE, new String[0]), (CharSequence)kitName, new OpenOption[0]);
+            this.info("Kit loaded: " + kitName);
         }
         catch (Exception exception) {
             this.error("Error occurred while reading kit!");
@@ -276,20 +276,20 @@ extends Module {
     }
 
     public void listKits() {
-        File[] fileArray = new File(FOLDER).listFiles();
-        if (fileArray == null || fileArray.length == 0) {
+        File[] files = new File(FOLDER).listFiles();
+        if (files == null || files.length == 0) {
             this.info("You don't have any kits.");
             return;
         }
         this.info("Available kits:");
-        for (File file : fileArray) {
+        for (File file : files) {
             if (!file.getName().endsWith(".json")) continue;
-            String string = file.getName().replace(".json", "");
-            if (string.equals(this.activeKitName)) {
-                Night.CHAT_MANAGER.tagged("\u00a79- " + string + " [active]", this.getName());
+            String kitName = file.getName().replace(".json", "");
+            if (kitName.equals(this.activeKitName)) {
+                Night.CHAT_MANAGER.tagged("\u00a79- " + kitName + " [active]", this.getName());
                 continue;
             }
-            Night.CHAT_MANAGER.tagged("\u00a77- " + string, this.getName());
+            Night.CHAT_MANAGER.tagged("\u00a77- " + kitName, this.getName());
         }
     }
 
@@ -301,14 +301,14 @@ extends Module {
         }
     }
 
-    public void deleteKit(String string) {
-        File file = new File(FOLDER, string + ".json");
+    public void deleteKit(String kitName) {
+        File file = new File(FOLDER, kitName + ".json");
         if (file.exists() && file.delete()) {
-            if (string.equals(this.activeKitName)) {
+            if (kitName.equals(this.activeKitName)) {
                 this.activeKit.clear();
                 this.activeKitName = "";
             }
-            this.info("Kit deleted: " + string);
+            this.info("Kit deleted: " + kitName);
         } else {
             this.error("Failed to delete kit.");
         }
@@ -336,15 +336,15 @@ extends Module {
             return;
         }
         if (RekitModule.mc.gui.screen() == null) {
-            boolean bl = KeyboardUtils.isBindDown(this.autoPlaceBind.getValue());
-            if (bl && !this.autoPlaceBindWasDown && this.autoState == AutoState.IDLE && !RekitModule.mc.player.isCreative() && !RekitModule.mc.player.isSpectator() && this.findShulkerInInventory() != -1) {
+            boolean bindDown = KeyboardUtils.isBindDown(this.autoPlaceBind.getValue());
+            if (bindDown && !this.autoPlaceBindWasDown && this.autoState == AutoState.IDLE && !RekitModule.mc.player.isCreative() && !RekitModule.mc.player.isSpectator() && this.findShulkerInInventory() != -1) {
                 this.autoPlaceActive = true;
                 this.autoState = AutoState.PLACE_SHULKER;
                 this.autoTicks = 0;
                 this.hotbarSwapSettled = false;
                 this.hotbarSwapAttempts = 0;
             }
-            this.autoPlaceBindWasDown = bl;
+            this.autoPlaceBindWasDown = bindDown;
         } else {
             this.autoPlaceBindWasDown = false;
         }
@@ -373,14 +373,14 @@ extends Module {
         if (!this.auto.getValue() || this.placedShulkerPos == null) {
             return;
         }
-        long l = System.currentTimeMillis() - this.placedShulkerRenderMs;
-        float f = Math.min(1.0f, (float)l / 400.0f);
-        float f2 = 0.15f + 0.85f * f;
-        double d = (double)this.placedShulkerPos.getX() + 0.5;
-        double d2 = (double)this.placedShulkerPos.getY() + 0.5;
-        double d3 = (double)this.placedShulkerPos.getZ() + 0.5;
-        double d4 = 0.5 * (double)f2;
-        AABB aABB = new AABB(d - d4, d2 - d4, d3 - d4, d + d4, d2 + d4, d3 + d4);
+        long elapsedMs = System.currentTimeMillis() - this.placedShulkerRenderMs;
+        float progress = Math.min(1.0f, (float)elapsedMs / 400.0f);
+        float scale = 0.15f + 0.85f * progress;
+        double centerX = (double)this.placedShulkerPos.getX() + 0.5;
+        double centerY = (double)this.placedShulkerPos.getY() + 0.5;
+        double centerZ = (double)this.placedShulkerPos.getZ() + 0.5;
+        double halfExtent = 0.5 * (double)scale;
+        AABB aABB = new AABB(centerX - halfExtent, centerY - halfExtent, centerZ - halfExtent, centerX + halfExtent, centerY + halfExtent, centerZ + halfExtent);
         Renderer3D.renderBoxOutline(renderWorldEvent.getMatrices(), aABB, new Color(255, 220, 0, 230));
     }
 
@@ -418,10 +418,10 @@ extends Module {
      */
     private void handleAutoTick() {
         this.hideContainerScreenIfSilent();
-        boolean bl = RekitModule.mc.player.hasContainerOpen();
+        boolean containerOpen = RekitModule.mc.player.hasContainerOpen();
         if (this.autoState == AutoState.IDLE) {
             this.autoPlaceActive = false;
-            if (bl) {
+            if (containerOpen) {
                 if (RekitModule.mc.player.containerMenu instanceof ShulkerBoxMenu) {
                     this.manualPullTick();
                     return;
@@ -442,7 +442,7 @@ extends Module {
             return;
         }
         if (this.autoState == AutoState.FIND_SHULKER) {
-            if (!bl) {
+            if (!containerOpen) {
                 return;
             }
             if (this.isKitComplete()) {
@@ -450,11 +450,11 @@ extends Module {
                 this.autoState = AutoState.IDLE;
                 return;
             }
-            int n = RekitModule.mc.player.containerMenu.slots.size() - 36;
-            if (n <= 0) {
+            int containerSlots = RekitModule.mc.player.containerMenu.slots.size() - 36;
+            if (containerSlots <= 0) {
                 return;
             }
-            this.shulkerEnderSlot = this.findShulkerInContainer(n);
+            this.shulkerEnderSlot = this.findShulkerInContainer(containerSlots);
             if (this.shulkerEnderSlot == -1) {
                 this.error("Auto stopped: no shulker has the items this kit still needs.");
                 RekitModule.mc.player.closeContainer();
@@ -467,11 +467,11 @@ extends Module {
             return;
         }
         if (this.autoState == AutoState.GRAB_SHULKER) {
-            if (!bl) {
+            if (!containerOpen) {
                 return;
             }
-            int n = RekitModule.mc.player.containerMenu.slots.size() - 36;
-            if (n <= 0) {
+            int containerSlots = RekitModule.mc.player.containerMenu.slots.size() - 36;
+            if (containerSlots <= 0) {
                 return;
             }
             AbstractContainerMenu abstractContainerMenu = RekitModule.mc.player.containerMenu;
@@ -480,13 +480,13 @@ extends Module {
                 this.autoState = AutoState.FIND_SHULKER;
                 return;
             }
-            int n2 = this.firstEmptyHotbarSlot();
-            if (n2 != -1) {
-                RekitModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, this.shulkerEnderSlot, n2, ContainerInput.SWAP, (Player)RekitModule.mc.player);
+            int emptyHotbarSlot = this.firstEmptyHotbarSlot();
+            if (emptyHotbarSlot != -1) {
+                RekitModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, this.shulkerEnderSlot, emptyHotbarSlot, ContainerInput.SWAP, (Player)RekitModule.mc.player);
             } else {
-                int n3 = RekitModule.mc.player.getInventory().getSelectedSlot() == 0 ? 1 : 0;
-                RekitModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, this.shulkerEnderSlot, n3, ContainerInput.SWAP, (Player)RekitModule.mc.player);
-                this.displacedHotbarSlot = n3;
+                int fallbackHotbarSlot = RekitModule.mc.player.getInventory().getSelectedSlot() == 0 ? 1 : 0;
+                RekitModule.mc.gameMode.handleContainerInput(abstractContainerMenu.containerId, this.shulkerEnderSlot, fallbackHotbarSlot, ContainerInput.SWAP, (Player)RekitModule.mc.player);
+                this.displacedHotbarSlot = fallbackHotbarSlot;
                 this.displacedEnderSlot = this.shulkerEnderSlot;
             }
             this.autoState = AutoState.PLACE_SHULKER;
@@ -496,8 +496,8 @@ extends Module {
             return;
         }
         if (this.autoState == AutoState.PLACE_SHULKER) {
-            boolean bl2;
-            if (bl) {
+            boolean placed;
+            if (containerOpen) {
                 RekitModule.mc.player.closeContainer();
                 return;
             }
@@ -505,17 +505,17 @@ extends Module {
                 ++this.autoTicks;
                 return;
             }
-            int n = this.findShulkerInInventory();
-            if (n == -1) {
+            int shulkerSlot = this.findShulkerInInventory();
+            if (shulkerSlot == -1) {
                 this.autoState = AutoState.IDLE;
                 return;
             }
-            if (n > 8 && !this.hotbarSwapSettled) {
-                this.ensureHotbar(n);
+            if (shulkerSlot > 8 && !this.hotbarSwapSettled) {
+                this.ensureHotbar(shulkerSlot);
                 this.hotbarSwapSettled = true;
                 return;
             }
-            if (n > 8) {
+            if (shulkerSlot > 8) {
                 ++this.hotbarSwapAttempts;
                 if (this.hotbarSwapAttempts > 3) {
                     ++this.placeFailStreak;
@@ -525,20 +525,20 @@ extends Module {
                 this.hotbarSwapSettled = false;
                 return;
             }
-            BlockPos blockPos = this.findPlaceableSpot();
-            if (blockPos == null) {
+            BlockPos placePos = this.findPlaceableSpot();
+            if (placePos == null) {
                 ++this.placeFailStreak;
                 this.autoState = AutoState.RETURN_SHULKER;
                 return;
             }
-            BlockHitResult blockHitResult = this.getHitResultForPlace(blockPos);
+            BlockHitResult blockHitResult = this.getHitResultForPlace(placePos);
             if (blockHitResult == null) {
                 ++this.placeFailStreak;
                 this.autoState = AutoState.RETURN_SHULKER;
                 return;
             }
-            n = this.findShulkerInInventory();
-            if (n < 0 || n > 8) {
+            shulkerSlot = this.findShulkerInInventory();
+            if (shulkerSlot < 0 || shulkerSlot > 8) {
                 ++this.placeFailStreak;
                 this.autoState = AutoState.RETURN_SHULKER;
                 return;
@@ -546,29 +546,29 @@ extends Module {
             Night.ROTATION_MANAGER.beginBatchRotation();
             try {
                 if (!this.rotate.getValue().equalsIgnoreCase("None")) {
-                    float[] fArray = RotationUtils.getRotations(blockHitResult.getLocation());
-                    Night.ROTATION_MANAGER.batchRotate(fArray[0], fArray[1]);
+                    float[] rotations = RotationUtils.getRotations(blockHitResult.getLocation());
+                    Night.ROTATION_MANAGER.batchRotate(rotations[0], rotations[1]);
                 }
-                this.swapToSlotNormal(n);
-                bl2 = this.isPositionClear(blockPos) && RekitModule.mc.gameMode.useItemOn(RekitModule.mc.player, InteractionHand.MAIN_HAND, blockHitResult) != InteractionResult.FAIL && !RekitModule.mc.level.getBlockState(blockPos).canBeReplaced();
+                this.swapToSlotNormal(shulkerSlot);
+                placed = this.isPositionClear(placePos) && RekitModule.mc.gameMode.useItemOn(RekitModule.mc.player, InteractionHand.MAIN_HAND, blockHitResult) != InteractionResult.FAIL && !RekitModule.mc.level.getBlockState(placePos).canBeReplaced();
             }
             finally {
                 Night.ROTATION_MANAGER.endBatchRotation();
             }
-            if (!bl2) {
+            if (!placed) {
                 this.swapBackNormal();
                 ++this.placeFailStreak;
                 this.autoState = AutoState.RETURN_SHULKER;
                 return;
             }
-            this.placedShulkerPos = blockPos;
+            this.placedShulkerPos = placePos;
             this.placedShulkerRenderMs = System.currentTimeMillis();
             this.autoState = AutoState.OPEN_SHULKER;
             this.autoTicks = 0;
             return;
         }
         if (this.autoState == AutoState.OPEN_SHULKER) {
-            if (bl) {
+            if (containerOpen) {
                 this.swapBackNormal();
                 this.autoState = AutoState.PULL_ITEMS;
                 this.autoTicks = 0;
@@ -589,7 +589,7 @@ extends Module {
             return;
         }
         if (this.autoState == AutoState.PULL_ITEMS) {
-            if (!bl) {
+            if (!containerOpen) {
                 this.autoState = AutoState.BREAK_SHULKER;
                 this.autoTicks = 0;
                 return;
@@ -604,14 +604,14 @@ extends Module {
                 return;
             }
             this.ticks = 0;
-            boolean bl3 = false;
-            int n = RekitModule.mc.player.containerMenu.slots.size() - 36;
-            if (n > 0) {
+            boolean pulledAny = false;
+            int containerSlots = RekitModule.mc.player.containerMenu.slots.size() - 36;
+            if (containerSlots > 0) {
                 for (int i = 0; i < this.actionsPerTick.getValue().intValue() && this.pullFromContainerTick(); ++i) {
-                    bl3 = true;
+                    pulledAny = true;
                 }
             }
-            int n4 = this.emptyTicks = bl3 ? 0 : (this.emptyTicks = this.emptyTicks + 1);
+            this.emptyTicks = pulledAny ? 0 : this.emptyTicks + 1;
             if (this.emptyTicks >= 5) {
                 this.autoState = AutoState.BREAK_SHULKER;
                 this.autoTicks = 0;
@@ -619,7 +619,7 @@ extends Module {
             return;
         }
         if (this.autoState == AutoState.BREAK_SHULKER) {
-            if (bl) {
+            if (containerOpen) {
                 RekitModule.mc.player.closeContainer();
                 return;
             }
@@ -654,7 +654,7 @@ extends Module {
                 this.autoState = AutoState.IDLE;
                 return;
             }
-            if (!bl) {
+            if (!containerOpen) {
                 if (this.autoTicks < 2) {
                     ++this.autoTicks;
                     return;
@@ -670,8 +670,8 @@ extends Module {
                 return;
             }
             this.autoTicks = 0;
-            int n = this.findShulkerInInventory();
-            if (n == -1) {
+            int shulkerSlot = this.findShulkerInInventory();
+            if (shulkerSlot == -1) {
                 if (this.placedShulkerPos != null && RekitModule.mc.level != null && !RekitModule.mc.level.getBlockState(this.placedShulkerPos).canBeReplaced()) {
                     this.autoState = AutoState.BREAK_SHULKER;
                     this.autoTicks = 0;
@@ -681,33 +681,33 @@ extends Module {
                 this.autoTicks = 0;
                 return;
             }
-            int n5 = RekitModule.mc.player.containerMenu.slots.size() - 36;
-            if (n5 <= 0) {
+            int containerSlots = RekitModule.mc.player.containerMenu.slots.size() - 36;
+            if (containerSlots <= 0) {
                 return;
             }
             AbstractContainerMenu abstractContainerMenu = RekitModule.mc.player.containerMenu;
             if (this.displacedHotbarSlot != -1) {
-                int n6 = this.getPlayerHandlerSlot(n5, n);
-                this.click(abstractContainerMenu.containerId, n6, 0, ContainerInput.PICKUP);
+                int shulkerHandlerSlot = this.getPlayerHandlerSlot(containerSlots, shulkerSlot);
+                this.click(abstractContainerMenu.containerId, shulkerHandlerSlot, 0, ContainerInput.PICKUP);
                 this.click(abstractContainerMenu.containerId, this.displacedEnderSlot, 0, ContainerInput.PICKUP);
-                int n7 = this.getPlayerHandlerSlot(n5, this.displacedHotbarSlot);
-                this.click(abstractContainerMenu.containerId, n7, 0, ContainerInput.PICKUP);
+                int displacedHandlerSlot = this.getPlayerHandlerSlot(containerSlots, this.displacedHotbarSlot);
+                this.click(abstractContainerMenu.containerId, displacedHandlerSlot, 0, ContainerInput.PICKUP);
                 this.displacedHotbarSlot = -1;
                 this.displacedEnderSlot = -1;
             } else {
-                int n8;
-                int n9 = -1;
-                for (n8 = 0; n8 < n5; ++n8) {
-                    if (!abstractContainerMenu.getSlot(n8).getItem().isEmpty()) continue;
-                    n9 = n8;
+                int slotIndex;
+                int emptyEnderSlot = -1;
+                for (slotIndex = 0; slotIndex < containerSlots; ++slotIndex) {
+                    if (!abstractContainerMenu.getSlot(slotIndex).getItem().isEmpty()) continue;
+                    emptyEnderSlot = slotIndex;
                     break;
                 }
-                if (n9 == -1) {
+                if (emptyEnderSlot == -1) {
                     this.autoState = AutoState.IDLE;
                     return;
                 }
-                n8 = this.getPlayerHandlerSlot(n5, n);
-                this.atomicSwap(abstractContainerMenu.containerId, n8, n9);
+                slotIndex = this.getPlayerHandlerSlot(containerSlots, shulkerSlot);
+                this.atomicSwap(abstractContainerMenu.containerId, slotIndex, emptyEnderSlot);
             }
             this.placedShulkerPos = null;
             this.shulkerEnderSlot = -1;
@@ -734,60 +734,60 @@ extends Module {
             this.enderChestPos = blockHitResult.getBlockPos();
             return;
         }
-        BlockPos blockPos = RekitModule.mc.player.blockPosition();
+        BlockPos playerPos = RekitModule.mc.player.blockPosition();
         for (int i = -3; i <= 3; ++i) {
             for (int j = -1; j <= 3; ++j) {
                 for (int k = -3; k <= 3; ++k) {
-                    BlockPos blockPos2 = blockPos.offset(i, j, k);
-                    if (!RekitModule.mc.level.getBlockState(blockPos2).is(Blocks.ENDER_CHEST)) continue;
-                    this.enderChestPos = blockPos2;
+                    BlockPos checkPos = playerPos.offset(i, j, k);
+                    if (!RekitModule.mc.level.getBlockState(checkPos).is(Blocks.ENDER_CHEST)) continue;
+                    this.enderChestPos = checkPos;
                     return;
                 }
             }
         }
     }
 
-    private int findShulkerInContainer(int n) {
+    private int findShulkerInContainer(int containerSlots) {
         AbstractContainerMenu abstractContainerMenu = RekitModule.mc.player.containerMenu;
-        HashSet<Item> hashSet = new HashSet<Item>();
+        HashSet<Item> neededItems = new HashSet<Item>();
         for (Map.Entry<Integer, KitItem> entry : this.activeKit.entrySet()) {
             Item item;
-            ItemStack itemStack2 = RekitModule.mc.player.getInventory().getItem(entry.getKey().intValue());
-            if (entry.getValue() == null || entry.getValue().id == null || entry.getValue().id.isEmpty() || this.isCorrectItem(itemStack2, entry.getValue())) continue;
+            ItemStack invStack = RekitModule.mc.player.getInventory().getItem(entry.getKey().intValue());
+            if (entry.getValue() == null || entry.getValue().id == null || entry.getValue().id.isEmpty() || this.isCorrectItem(invStack, entry.getValue())) continue;
             Identifier itemId = Identifier.tryParse(entry.getValue().id);
             if (itemId == null || (item = (Item)BuiltInRegistries.ITEM.getValue(itemId)) == null) continue;
-            hashSet.add(item);
+            neededItems.add(item);
         }
-        int n2 = -1;
-        int n3 = -1;
-        for (int i = 0; i < n; ++i) {
+        int bestSlot = -1;
+        int bestScore = -1;
+        for (int i = 0; i < containerSlots; ++i) {
             ItemStack itemStack = abstractContainerMenu.getSlot(i).getItem();
             if (!this.isShulkerBox(itemStack)) continue;
-            int n4 = 0;
+            int score = 0;
             ItemContainerContents itemContainerContents = (ItemContainerContents)itemStack.get(DataComponents.CONTAINER);
             if (itemContainerContents != null) {
-                for (ItemStack itemStack3 : itemContainerContents.nonEmptyItemCopyStream().toList()) {
-                    if (!hashSet.contains(itemStack3.getItem())) continue;
-                    n4 += itemStack3.getMaxStackSize() == 1 ? 100 : 1;
+                for (ItemStack contentStack : itemContainerContents.nonEmptyItemCopyStream().toList()) {
+                    if (!neededItems.contains(contentStack.getItem())) continue;
+                    score += contentStack.getMaxStackSize() == 1 ? 100 : 1;
                 }
             }
             if (this.considerShulkerName.getValue() && !this.activeKitName.isEmpty() && itemStack.has(DataComponents.CUSTOM_NAME) && RekitModule.normalizeName(itemStack.getHoverName().getString()).equalsIgnoreCase(RekitModule.normalizeName(this.activeKitName))) {
-                n4 += 1000000;
+                score += 1000000;
             }
-            if (n4 <= n3) continue;
-            n3 = n4;
-            n2 = i;
+            if (score <= bestScore) continue;
+            bestScore = score;
+            bestSlot = i;
         }
-        return n3 <= 0 ? -1 : n2;
+        return bestScore <= 0 ? -1 : bestSlot;
     }
 
-    private int ensureHotbar(int n) {
-        if (n >= 0 && n <= 8) {
-            return n;
+    private int ensureHotbar(int invSlot) {
+        if (invSlot >= 0 && invSlot <= 8) {
+            return invSlot;
         }
-        int n2 = RekitModule.mc.player.getInventory().getSelectedSlot();
-        RekitModule.mc.gameMode.handleContainerInput(RekitModule.mc.player.inventoryMenu.containerId, this.getHandlerSlotPlayerOnly(n), n2, ContainerInput.SWAP, (Player)RekitModule.mc.player);
-        return n2;
+        int selectedSlot = RekitModule.mc.player.getInventory().getSelectedSlot();
+        RekitModule.mc.gameMode.handleContainerInput(RekitModule.mc.player.inventoryMenu.containerId, this.getHandlerSlotPlayerOnly(invSlot), selectedSlot, ContainerInput.SWAP, (Player)RekitModule.mc.player);
+        return selectedSlot;
     }
 
     private int findShulkerInInventory() {
@@ -812,8 +812,8 @@ extends Module {
             return null;
         }
         Player player = (Player)livingEntity;
-        long l = RekitModule.mc.level.getGameTime() - (long)RekitModule.mc.player.getLastHurtByMobTimestamp();
-        return l <= 100L ? player : null;
+        long ticksSinceHurt = RekitModule.mc.level.getGameTime() - (long)RekitModule.mc.player.getLastHurtByMobTimestamp();
+        return ticksSinceHurt <= 100L ? player : null;
     }
 
     private boolean isPositionClear(BlockPos blockPos) {
@@ -821,23 +821,22 @@ extends Module {
     }
 
     private BlockPos findPlaceableSpot() {
-        BlockPos blockPos = RekitModule.mc.player.blockPosition();
-        Player player = this.getActiveCombatOpponent();
-        int n = (int)Math.ceil(RekitModule.mc.player.blockInteractionRange());
-        BlockPos blockPos2 = null;
-        double d = Double.MAX_VALUE;
-        for (int i = -n; i <= n; ++i) {
-            for (int j = -n; j <= n; ++j) {
-                BlockPos blockPos3 = blockPos.offset(i, 0, j);
-                if (blockPos3.distSqr((Vec3i)blockPos) > (double)n * (double)n || blockPos3.below().equals((Object)this.enderChestPos) || !this.isPositionClear(blockPos3) || !RekitModule.mc.level.getBlockState(blockPos3).canBeReplaced() || RekitModule.mc.level.getBlockState(blockPos3.below()).canBeReplaced() || RekitModule.mc.level.getBlockState(blockPos3.below()).is(Blocks.AIR) || !RekitModule.mc.level.getBlockState(blockPos3.above()).canBeReplaced()) continue;
-                double d2 = player != null ? -blockPos3.distSqr((Vec3i)player.blockPosition()) : (double)(i * i + j * j);
-                double d3 = d2;
-                if (!(d2 < d)) continue;
-                d = d2;
-                blockPos2 = blockPos3;
+        BlockPos playerPos = RekitModule.mc.player.blockPosition();
+        Player opponent = this.getActiveCombatOpponent();
+        int reach = (int)Math.ceil(RekitModule.mc.player.blockInteractionRange());
+        BlockPos bestPos = null;
+        double bestScore = Double.MAX_VALUE;
+        for (int i = -reach; i <= reach; ++i) {
+            for (int j = -reach; j <= reach; ++j) {
+                BlockPos candidatePos = playerPos.offset(i, 0, j);
+                if (candidatePos.distSqr((Vec3i)playerPos) > (double)reach * (double)reach || candidatePos.below().equals((Object)this.enderChestPos) || !this.isPositionClear(candidatePos) || !RekitModule.mc.level.getBlockState(candidatePos).canBeReplaced() || RekitModule.mc.level.getBlockState(candidatePos.below()).canBeReplaced() || RekitModule.mc.level.getBlockState(candidatePos.below()).is(Blocks.AIR) || !RekitModule.mc.level.getBlockState(candidatePos.above()).canBeReplaced()) continue;
+                double score = opponent != null ? -candidatePos.distSqr((Vec3i)opponent.blockPosition()) : (double)(i * i + j * j);
+                if (!(score < bestScore)) continue;
+                bestScore = score;
+                bestPos = candidatePos;
             }
         }
-        return blockPos2;
+        return bestPos;
     }
 
     private BlockHitResult getHitResultForPlace(BlockPos blockPos) {
@@ -845,9 +844,9 @@ extends Module {
         if (direction == null) {
             return null;
         }
-        BlockPos blockPos2 = blockPos.relative(direction);
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)blockPos2).add((double)(-direction.getStepX()) * 0.48, (double)(-direction.getStepY()) * 0.48, (double)(-direction.getStepZ()) * 0.48);
-        return new BlockHitResult(vec3, direction.getOpposite(), blockPos2, false);
+        BlockPos supportPos = blockPos.relative(direction);
+        Vec3 hitVec = Vec3.atCenterOf((Vec3i)supportPos).add((double)(-direction.getStepX()) * 0.48, (double)(-direction.getStepY()) * 0.48, (double)(-direction.getStepZ()) * 0.48);
+        return new BlockHitResult(hitVec, direction.getOpposite(), supportPos, false);
     }
 
     private boolean isKitComplete() {
@@ -862,94 +861,91 @@ extends Module {
     }
 
     private boolean pullFromContainerTick() {
-        int n;
-        ItemStack itemStack;
-        int n2;
-        KitItem kitItem;
-        int n3;
         AbstractContainerMenu abstractContainerMenu = RekitModule.mc.player.containerMenu;
-        int n4 = abstractContainerMenu.slots.size() - 36;
-        if (n4 <= 0) {
+        int containerSlots = abstractContainerMenu.slots.size() - 36;
+        if (containerSlots <= 0) {
             return false;
         }
         if (!abstractContainerMenu.getCarried().isEmpty()) {
-            int n5;
+            int slotIndex;
             ++this.cursorWaitTicks;
             if (this.cursorWaitTicks < 20) {
                 return false;
             }
             this.cursorWaitTicks = 0;
-            int n6 = -1;
-            for (n5 = 0; n5 < n4; ++n5) {
-                if (!abstractContainerMenu.getSlot(n5).getItem().isEmpty()) continue;
-                n6 = n5;
+            int emptySlot = -1;
+            for (slotIndex = 0; slotIndex < containerSlots; ++slotIndex) {
+                if (!abstractContainerMenu.getSlot(slotIndex).getItem().isEmpty()) continue;
+                emptySlot = slotIndex;
                 break;
             }
-            if (n6 == -1) {
-                for (n5 = 0; n5 < 36; ++n5) {
-                    int n7 = this.getPlayerHandlerSlot(n4, n5);
-                    if (!abstractContainerMenu.getSlot(n7).getItem().isEmpty()) continue;
-                    n6 = n7;
+            if (emptySlot == -1) {
+                for (slotIndex = 0; slotIndex < 36; ++slotIndex) {
+                    int handlerSlot = this.getPlayerHandlerSlot(containerSlots, slotIndex);
+                    if (!abstractContainerMenu.getSlot(handlerSlot).getItem().isEmpty()) continue;
+                    emptySlot = handlerSlot;
                     break;
                 }
             }
-            if (n6 != -1) {
-                this.click(abstractContainerMenu.containerId, n6, 0, ContainerInput.PICKUP);
+            if (emptySlot != -1) {
+                this.click(abstractContainerMenu.containerId, emptySlot, 0, ContainerInput.PICKUP);
                 return true;
             }
             return false;
         }
         this.cursorWaitTicks = 0;
-        for (n3 = 0; n3 < 36; ++n3) {
-            ItemStack itemStack2;
-            int n8;
-            kitItem = this.activeKit.get(n3);
+        for (int invSlot = 0; invSlot < 36; ++invSlot) {
+            ItemStack candidateStack;
+            int sourceSlot;
+            KitItem kitItem = this.activeKit.get(invSlot);
             if (kitItem == null) continue;
-            n2 = this.getPlayerHandlerSlot(n4, n3);
-            itemStack = abstractContainerMenu.getSlot(n2).getItem();
-            boolean isCorrect = this.isCorrectItem(itemStack, kitItem);
+            int targetHandlerSlot = this.getPlayerHandlerSlot(containerSlots, invSlot);
+            ItemStack currentStack = abstractContainerMenu.getSlot(targetHandlerSlot).getItem();
+            boolean isCorrect = this.isCorrectItem(currentStack, kitItem);
             if (!isCorrect) {
-                if (this.isShulkerBox(itemStack) || (n8 = this.findBestItemInContainer(abstractContainerMenu, n4, kitItem)) == -1) continue;
-                this.atomicSwap(abstractContainerMenu.containerId, n8, n2);
+                if (this.isShulkerBox(currentStack) || (sourceSlot = this.findBestItemInContainer(abstractContainerMenu, containerSlots, kitItem)) == -1) continue;
+                this.atomicSwap(abstractContainerMenu.containerId, sourceSlot, targetHandlerSlot);
                 return true;
             }
-            if (itemStack.getCount() >= itemStack.getMaxStackSize()) continue;
-            n8 = this.findExactItemInContainer(abstractContainerMenu, n4, itemStack);
-            if (n8 != -1) {
-                this.atomicSwap(abstractContainerMenu.containerId, n8, n2);
+            if (currentStack.getCount() >= currentStack.getMaxStackSize()) continue;
+            sourceSlot = this.findExactItemInContainer(abstractContainerMenu, containerSlots, currentStack);
+            if (sourceSlot != -1) {
+                this.atomicSwap(abstractContainerMenu.containerId, sourceSlot, targetHandlerSlot);
                 return true;
             }
-            int n9 = this.findBestItemInContainer(abstractContainerMenu, n4, kitItem);
-            if (n9 == -1 || (itemStack2 = abstractContainerMenu.getSlot(n9).getItem()).getCount() <= itemStack.getCount()) continue;
-            this.atomicSwap(abstractContainerMenu.containerId, n9, n2);
+            int betterSlot = this.findBestItemInContainer(abstractContainerMenu, containerSlots, kitItem);
+            if (betterSlot == -1 || (candidateStack = abstractContainerMenu.getSlot(betterSlot).getItem()).getCount() <= currentStack.getCount()) continue;
+            this.atomicSwap(abstractContainerMenu.containerId, betterSlot, targetHandlerSlot);
             return true;
         }
-        for (n3 = 0; n3 < 36; ++n3) {
-            kitItem = this.activeKit.get(n3);
-            if (kitItem == null || !this.isShulkerBox(itemStack = abstractContainerMenu.getSlot(n2 = this.getPlayerHandlerSlot(n4, n3)).getItem()) || this.isItemCompensated(abstractContainerMenu, n4, kitItem)) continue;
-            int n10 = this.findBestItemInContainer(abstractContainerMenu, n4, kitItem);
-            n = this.findEmptyUnassignedSlot(abstractContainerMenu, n4);
-            if (n10 == -1 || n == -1) continue;
-            this.atomicSwap(abstractContainerMenu.containerId, n10, n);
+        for (int invSlot = 0; invSlot < 36; ++invSlot) {
+            int targetHandlerSlot;
+            ItemStack currentStack;
+            KitItem kitItem = this.activeKit.get(invSlot);
+            if (kitItem == null || !this.isShulkerBox(currentStack = abstractContainerMenu.getSlot(targetHandlerSlot = this.getPlayerHandlerSlot(containerSlots, invSlot)).getItem()) || this.isItemCompensated(abstractContainerMenu, containerSlots, kitItem)) continue;
+            int sourceSlot = this.findBestItemInContainer(abstractContainerMenu, containerSlots, kitItem);
+            int emptyUnassignedSlot = this.findEmptyUnassignedSlot(abstractContainerMenu, containerSlots);
+            if (sourceSlot == -1 || emptyUnassignedSlot == -1) continue;
+            this.atomicSwap(abstractContainerMenu.containerId, sourceSlot, emptyUnassignedSlot);
             return true;
         }
         return false;
     }
 
-    private void atomicSwap(int n, int n2, int n3) {
-        this.click(n, n2, 0, ContainerInput.PICKUP);
-        this.click(n, n3, 0, ContainerInput.PICKUP);
-        this.click(n, n2, 0, ContainerInput.PICKUP);
+    private void atomicSwap(int containerId, int slotA, int slotB) {
+        this.click(containerId, slotA, 0, ContainerInput.PICKUP);
+        this.click(containerId, slotB, 0, ContainerInput.PICKUP);
+        this.click(containerId, slotA, 0, ContainerInput.PICKUP);
     }
 
-    private void click(int n, int n2, int n3, ContainerInput containerInput) {
+    private void click(int containerId, int slotIndex, int button, ContainerInput containerInput) {
         lastContainerActionMs = System.currentTimeMillis();
-        RekitModule.mc.gameMode.handleContainerInput(n, n2, n3, containerInput, (Player)RekitModule.mc.player);
+        RekitModule.mc.gameMode.handleContainerInput(containerId, slotIndex, button, containerInput, (Player)RekitModule.mc.player);
     }
 
-    private void swapToSlotNormal(int n) {
+    private void swapToSlotNormal(int slot) {
         this.savedSlot = RekitModule.mc.player.getInventory().getSelectedSlot();
-        RekitModule.mc.player.getInventory().setSelectedSlot(n);
+        RekitModule.mc.player.getInventory().setSelectedSlot(slot);
         ((ClientPlayerInteractionManagerAccessor)RekitModule.mc.gameMode).invokeSyncSelectedSlot();
     }
 
@@ -968,7 +964,7 @@ extends Module {
     private void instantBreak(BlockPos blockPos) {
         Direction direction = Direction.UP;
         SpeedMineModule speedMineModule = Night.MODULE_MANAGER.getModule(SpeedMineModule.class);
-        boolean bl = speedMineModule != null && speedMineModule.farReach.getValue();
+        boolean farReach = speedMineModule != null && speedMineModule.farReach.getValue();
         Night.ROTATION_MANAGER.beginBatchRotation();
         try {
             if (!this.rotate.getValue().equalsIgnoreCase("None")) {
@@ -976,7 +972,7 @@ extends Module {
                 Night.ROTATION_MANAGER.batchRotate(rotations[0], rotations[1]);
             }
             mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, blockPos, direction));
-            if (bl) {
+            if (farReach) {
                 BlockPos farPos = blockPos.below(2000);
                 mc.getConnection().send((Packet)new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, farPos, WorldUtils.getClosestDirection(farPos, true)));
             }
@@ -1006,7 +1002,7 @@ extends Module {
         return item != null && itemStack.getItem() == item;
     }
 
-    private int findBestItemInContainer(AbstractContainerMenu abstractContainerMenu, int n, KitItem kitItem) {
+    private int findBestItemInContainer(AbstractContainerMenu abstractContainerMenu, int containerSlots, KitItem kitItem) {
         if (kitItem == null || kitItem.id == null || kitItem.id.isEmpty()) {
             return -1;
         }
@@ -1018,59 +1014,59 @@ extends Module {
         if (item == null) {
             return -1;
         }
-        int n2 = -1;
-        long l = -1L;
-        for (int i = 0; i < n; ++i) {
-            long l2;
+        int bestSlot = -1;
+        long bestScore = -1L;
+        for (int i = 0; i < containerSlots; ++i) {
+            long score;
             ItemStack itemStack = abstractContainerMenu.getSlot(i).getItem();
-            if (itemStack.isEmpty() || itemStack.getItem() != item || (l2 = this.scoreCandidate(itemStack)) <= l) continue;
-            l = l2;
-            n2 = i;
+            if (itemStack.isEmpty() || itemStack.getItem() != item || (score = this.scoreCandidate(itemStack)) <= bestScore) continue;
+            bestScore = score;
+            bestSlot = i;
         }
-        return n2;
+        return bestSlot;
     }
 
     private long scoreCandidate(ItemStack itemStack) {
         if (itemStack.getMaxStackSize() > 1) {
             return itemStack.getCount();
         }
-        long l = 0L;
-        String string = this.preferredEnchantId(itemStack);
-        if (string != null && this.hasEnchant(itemStack, string)) {
-            l += 1000000L;
+        long score = 0L;
+        String enchantId = this.preferredEnchantId(itemStack);
+        if (enchantId != null && this.hasEnchant(itemStack, enchantId)) {
+            score += 1000000L;
         }
         if (itemStack.isDamageableItem()) {
-            l += (long)(itemStack.getMaxDamage() - itemStack.getDamageValue());
+            score += (long)(itemStack.getMaxDamage() - itemStack.getDamageValue());
         }
-        return l;
+        return score;
     }
 
     private String preferredEnchantId(ItemStack itemStack) {
-        String string;
-        String string2 = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).getPath();
-        if (string2.endsWith("_pickaxe")) {
+        String prefValue;
+        String itemPath = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).getPath();
+        if (itemPath.endsWith("_pickaxe")) {
             return this.pickaxePref.getValue().equalsIgnoreCase("SilkTouch") ? "silk_touch" : "efficiency";
         }
-        if (string2.endsWith("_helmet") || string2.equals("turtle_helmet")) {
-            string = this.helmetPref.getValue();
-        } else if (string2.endsWith("_chestplate")) {
-            string = this.chestplatePref.getValue();
-        } else if (string2.endsWith("_leggings")) {
-            string = this.leggingsPref.getValue();
-        } else if (string2.endsWith("_boots")) {
-            string = this.bootsPref.getValue();
+        if (itemPath.endsWith("_helmet") || itemPath.equals("turtle_helmet")) {
+            prefValue = this.helmetPref.getValue();
+        } else if (itemPath.endsWith("_chestplate")) {
+            prefValue = this.chestplatePref.getValue();
+        } else if (itemPath.endsWith("_leggings")) {
+            prefValue = this.leggingsPref.getValue();
+        } else if (itemPath.endsWith("_boots")) {
+            prefValue = this.bootsPref.getValue();
         } else {
             return null;
         }
-        return string.equalsIgnoreCase("Blast") ? "blast_protection" : "protection";
+        return prefValue.equalsIgnoreCase("Blast") ? "blast_protection" : "protection";
     }
 
-    private boolean hasEnchant(ItemStack itemStack, String string) {
+    private boolean hasEnchant(ItemStack itemStack, String enchantPath) {
         ItemEnchantments itemEnchantments = (ItemEnchantments)itemStack.get(DataComponents.ENCHANTMENTS);
         if (itemEnchantments == null || itemEnchantments.isEmpty()) {
             return false;
         }
-        Identifier identifier = Identifier.tryParse((String)("minecraft:" + string));
+        Identifier identifier = Identifier.tryParse((String)("minecraft:" + enchantPath));
         if (identifier == null) {
             return false;
         }
@@ -1081,37 +1077,37 @@ extends Module {
         return false;
     }
 
-    private int findExactItemInContainer(AbstractContainerMenu abstractContainerMenu, int n, ItemStack itemStack) {
-        for (int i = 0; i < n; ++i) {
-            ItemStack itemStack2 = abstractContainerMenu.getSlot(i).getItem();
-            if (itemStack2.isEmpty() || !ItemStack.isSameItemSameComponents((ItemStack)itemStack2, (ItemStack)itemStack)) continue;
+    private int findExactItemInContainer(AbstractContainerMenu abstractContainerMenu, int containerSlots, ItemStack targetStack) {
+        for (int i = 0; i < containerSlots; ++i) {
+            ItemStack candidateStack = abstractContainerMenu.getSlot(i).getItem();
+            if (candidateStack.isEmpty() || !ItemStack.isSameItemSameComponents((ItemStack)candidateStack, (ItemStack)targetStack)) continue;
             return i;
         }
         return -1;
     }
 
-    private int getPlayerHandlerSlot(int n, int n2) {
-        if (n2 >= 0 && n2 <= 8) {
-            return n + 27 + n2;
+    private int getPlayerHandlerSlot(int containerSlots, int invSlot) {
+        if (invSlot >= 0 && invSlot <= 8) {
+            return containerSlots + 27 + invSlot;
         }
-        if (n2 >= 9 && n2 <= 35) {
-            return n + (n2 - 9);
-        }
-        return -1;
-    }
-
-    private int getHandlerSlotPlayerOnly(int n) {
-        if (n >= 0 && n <= 8) {
-            return 36 + n;
-        }
-        if (n >= 9 && n <= 35) {
-            return n;
+        if (invSlot >= 9 && invSlot <= 35) {
+            return containerSlots + (invSlot - 9);
         }
         return -1;
     }
 
-    private static String normalizeName(String string) {
-        return Normalizer.normalize(string, Normalizer.Form.NFKC).trim();
+    private int getHandlerSlotPlayerOnly(int invSlot) {
+        if (invSlot >= 0 && invSlot <= 8) {
+            return 36 + invSlot;
+        }
+        if (invSlot >= 9 && invSlot <= 35) {
+            return invSlot;
+        }
+        return -1;
+    }
+
+    private static String normalizeName(String name) {
+        return Normalizer.normalize(name, Normalizer.Form.NFKC).trim();
     }
 
     private boolean isShulkerBox(ItemStack itemStack) {
@@ -1120,7 +1116,7 @@ extends Module {
         return !itemStack.isEmpty() && (item = itemStack.getItem()) instanceof BlockItem && (blockItem = (BlockItem)item).getBlock() instanceof ShulkerBoxBlock;
     }
 
-    private boolean isItemCompensated(AbstractContainerMenu abstractContainerMenu, int n, KitItem kitItem) {
+    private boolean isItemCompensated(AbstractContainerMenu abstractContainerMenu, int containerSlots, KitItem kitItem) {
         if (kitItem == null || kitItem.id == null || kitItem.id.isEmpty()) {
             return false;
         }
@@ -1133,18 +1129,18 @@ extends Module {
             return false;
         }
         for (int i = 0; i < 36; ++i) {
-            int n2;
-            if (this.activeKit.get(i) != null || abstractContainerMenu.getSlot(n2 = this.getPlayerHandlerSlot(n, i)).getItem().getItem() != item) continue;
+            int handlerSlot;
+            if (this.activeKit.get(i) != null || abstractContainerMenu.getSlot(handlerSlot = this.getPlayerHandlerSlot(containerSlots, i)).getItem().getItem() != item) continue;
             return true;
         }
         return false;
     }
 
-    private int findEmptyUnassignedSlot(AbstractContainerMenu abstractContainerMenu, int n) {
+    private int findEmptyUnassignedSlot(AbstractContainerMenu abstractContainerMenu, int containerSlots) {
         for (int i = 0; i < 36; ++i) {
-            int n2;
-            if (this.activeKit.get(i) != null || !abstractContainerMenu.getSlot(n2 = this.getPlayerHandlerSlot(n, i)).getItem().isEmpty()) continue;
-            return n2;
+            int handlerSlot;
+            if (this.activeKit.get(i) != null || !abstractContainerMenu.getSlot(handlerSlot = this.getPlayerHandlerSlot(containerSlots, i)).getItem().isEmpty()) continue;
+            return handlerSlot;
         }
         return -1;
     }

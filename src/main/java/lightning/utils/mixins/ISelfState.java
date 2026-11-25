@@ -6,6 +6,6 @@ package lightning.utils.mixins;
 public interface ISelfState {
     public boolean night$isSelf();
 
-    public void night$setSelf(boolean var1);
+    public void night$setSelf(boolean self);
 }
 

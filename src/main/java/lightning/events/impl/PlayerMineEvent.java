@@ -27,9 +27,9 @@ extends Event {
     }
 
     @Generated
-    public PlayerMineEvent(int n, BlockPos blockPos) {
-        this.actorID = n;
-        this.position = blockPos;
+    public PlayerMineEvent(int actorID, BlockPos position) {
+        this.actorID = actorID;
+        this.position = position;
     }
 }
 

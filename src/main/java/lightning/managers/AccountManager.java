@@ -95,13 +95,13 @@ implements IMinecraft {
         return Paths.get("Lightning", "accounts.json");
     }
 
-    private void applySession(User user, String string) {
+    private void applySession(User user, String accessToken) {
         MinecraftClientAccessor minecraftClientAccessor = (MinecraftClientAccessor)mc;
         minecraftClientAccessor.setUser(user);
         try {
-            if (string != null && !string.isEmpty()) {
+            if (accessToken != null && !accessToken.isEmpty()) {
                 YggdrasilAuthenticationService yggdrasilAuthenticationService = new YggdrasilAuthenticationService(Proxy.NO_PROXY);
-                UserApiService userApiService = yggdrasilAuthenticationService.createUserApiService(string);
+                UserApiService userApiService = yggdrasilAuthenticationService.createUserApiService(accessToken);
                 minecraftClientAccessor.setUserApiService(userApiService);
                 ProfileKeyPairManager profileKeyPairManager = ProfileKeyPairManager.create((UserApiService)userApiService, (User)user, (Path)AccountManager.mc.gameDirectory.toPath());
                 minecraftClientAccessor.setProfileKeyPairManager(profileKeyPairManager);
@@ -171,20 +171,20 @@ implements IMinecraft {
         return false;
     }
 
-    public Account loginOffline(String string) {
-        if (string == null || string.trim().isEmpty()) {
+    public Account loginOffline(String username) {
+        if (username == null || username.trim().isEmpty()) {
             return null;
         }
-        string = string.trim();
+        username = username.trim();
         Account account = null;
-        for (Account account2 : this.accounts) {
-            if (account2.getType() != AccountType.OFFLINE || !account2.getName().equalsIgnoreCase(string)) continue;
-            account = account2;
+        for (Account existing : this.accounts) {
+            if (existing.getType() != AccountType.OFFLINE || !existing.getName().equalsIgnoreCase(username)) continue;
+            account = existing;
             break;
         }
         if (account == null) {
-            UUID uUID = UUID.nameUUIDFromBytes(("OfflinePlayer:" + string).getBytes(StandardCharsets.UTF_8));
-            account = new Account(string, uUID.toString(), AccountType.OFFLINE);
+            UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
+            account = new Account(username, offlineUuid.toString(), AccountType.OFFLINE);
             this.accounts.add(account);
         }
         this.login(account);
@@ -195,7 +195,7 @@ implements IMinecraft {
         if (account == null) {
             return;
         }
-        this.accounts.removeIf(account2 -> account2.getName().equalsIgnoreCase(account.getName()) && account2.getType() == account.getType());
+        this.accounts.removeIf(existing -> existing.getName().equalsIgnoreCase(account.getName()) && existing.getType() == account.getType());
         this.accounts.add(account);
         this.saveAccounts();
     }

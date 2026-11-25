@@ -25,10 +25,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value={BlockDestructionProgress.class})
 public class BlockBreakingInfoMixin {
     @Inject(method={"setProgress"}, at={@At(value="HEAD")})
-    private void setProgress(int n, CallbackInfo callbackInfo) {
+    private void setProgress(int progress, CallbackInfo callbackInfo) {
         try {
             BlockDestructionProgress blockDestructionProgress = (BlockDestructionProgress)(Object)this;
-            if (n >= 0 && n <= 9) {
+            if (progress >= 0 && progress <= 9) {
                 Night.EVENT_HANDLER.post((Event)new PlayerMineEvent(blockDestructionProgress.getId(), blockDestructionProgress.getPos()));
             }
             return;

@@ -89,24 +89,24 @@ public class StashWebhook {
         return userId;
     }
 
-    public static void setWebhookUrl(String string) {
+    public static void setWebhookUrl(String url) {
         StashWebhook.ensureLoaded();
-        webhookUrl = string;
+        webhookUrl = url;
         StashWebhook.save();
     }
 
-    public static void setUserId(String string) {
+    public static void setUserId(String id) {
         StashWebhook.ensureLoaded();
-        userId = string;
+        userId = id;
         StashWebhook.save();
     }
 
     private static synchronized boolean tryClaimSendSlot() {
-        long l = System.currentTimeMillis();
-        if (l - lastSentAtMs < 5000L) {
+        long now = System.currentTimeMillis();
+        if (now - lastSentAtMs < 5000L) {
             return false;
         }
-        lastSentAtMs = l;
+        lastSentAtMs = now;
         return true;
     }
 
@@ -121,45 +121,43 @@ public class StashWebhook {
         return "Unknown";
     }
 
-    public static void send(int n, int n2, String string, Map<String, Integer> map, String string2, String string3) {
-        String string4 = string2 != null && !string2.isBlank() ? string2 : StashWebhook.getWebhookUrl();
-        String string5 = string4;
-        if (string4 == null || string4.isBlank()) {
+    public static void send(int x, int z, String dimension, Map<String, Integer> counts, String webhookUrlOverride, String userIdOverride) {
+        String targetUrl = webhookUrlOverride != null && !webhookUrlOverride.isBlank() ? webhookUrlOverride : StashWebhook.getWebhookUrl();
+        if (targetUrl == null || targetUrl.isBlank()) {
             return;
         }
         if (!StashWebhook.tryClaimSendSlot()) {
             return;
         }
-        String string6 = StashWebhook.serverLabel();
-        String string7 = string3 != null && !string3.isBlank() ? string3 : StashWebhook.getUserId();
+        String server = StashWebhook.serverLabel();
+        String pingUserId = userIdOverride != null && !userIdOverride.isBlank() ? userIdOverride : StashWebhook.getUserId();
         CompletableFuture.runAsync(() -> {
             try {
-                Object object;
-                JsonObject jsonObject2 = new JsonObject();
-                jsonObject2.addProperty("title", "Stash Found!");
-                jsonObject2.addProperty("description", "Coordinates: **X: " + n + " Z: " + n2 + "** (" + string + ")");
-                jsonObject2.addProperty("color", (Number)3066993);
-                JsonArray jsonArray = new JsonArray();
-                JsonObject jsonObject3 = new JsonObject();
-                jsonObject3.addProperty("name", "Server");
-                jsonObject3.addProperty("value", string6);
-                jsonObject3.addProperty("inline", Boolean.valueOf(false));
-                jsonArray.add((JsonElement)jsonObject3);
-                for (Map.Entry<String, Integer> entry : map.entrySet()) {
+                JsonObject embed = new JsonObject();
+                embed.addProperty("title", "Stash Found!");
+                embed.addProperty("description", "Coordinates: **X: " + x + " Z: " + z + "** (" + dimension + ")");
+                embed.addProperty("color", (Number)3066993);
+                JsonArray fields = new JsonArray();
+                JsonObject serverField = new JsonObject();
+                serverField.addProperty("name", "Server");
+                serverField.addProperty("value", server);
+                serverField.addProperty("inline", Boolean.valueOf(false));
+                fields.add((JsonElement)serverField);
+                for (Map.Entry<String, Integer> entry : counts.entrySet()) {
                     JsonObject fieldObj = new JsonObject();
                     fieldObj.addProperty("name", entry.getKey());
                     fieldObj.addProperty("value", String.valueOf(entry.getValue()));
                     fieldObj.addProperty("inline", Boolean.valueOf(true));
-                    jsonArray.add((JsonElement)fieldObj);
+                    fields.add((JsonElement)fieldObj);
                 }
-                jsonObject2.add("fields", (JsonElement)jsonArray);
-                JsonArray jsonArray2 = new JsonArray();
-                jsonArray2.add((JsonElement)jsonObject2);
-                JsonObject jsonObject = new JsonObject();
-                jsonObject.addProperty("content", (String)(string7 == null || string7.isBlank() ? "" : "<@" + string7 + ">"));
-                jsonObject.add("embeds", (JsonElement)jsonArray2);
-                object = jsonObject.toString().getBytes(StandardCharsets.UTF_8);
-                URL uRL = URI.create(string4).toURL();
+                embed.add("fields", (JsonElement)fields);
+                JsonArray embeds = new JsonArray();
+                embeds.add((JsonElement)embed);
+                JsonObject body = new JsonObject();
+                body.addProperty("content", (String)(pingUserId == null || pingUserId.isBlank() ? "" : "<@" + pingUserId + ">"));
+                body.add("embeds", (JsonElement)embeds);
+                byte[] payloadBytes = body.toString().getBytes(StandardCharsets.UTF_8);
+                URL uRL = URI.create(targetUrl).toURL();
                 HttpURLConnection httpURLConnection = (HttpURLConnection)uRL.openConnection();
                 httpURLConnection.setRequestMethod("POST");
                 httpURLConnection.setRequestProperty("Content-Type", "application/json");
@@ -167,11 +165,11 @@ public class StashWebhook {
                 httpURLConnection.setDoOutput(true);
                 httpURLConnection.setConnectTimeout(8000);
                 httpURLConnection.setReadTimeout(8000);
-                try (OutputStream n3 = httpURLConnection.getOutputStream();){
-                    n3.write((byte[])object);
-                    n3.flush();
+                try (OutputStream outputStream = httpURLConnection.getOutputStream();){
+                    outputStream.write(payloadBytes);
+                    outputStream.flush();
                 }
-                int n3 = httpURLConnection.getResponseCode();
+                int responseCode = httpURLConnection.getResponseCode();
                 httpURLConnection.disconnect();
             }
             catch (Exception exception) {

@@ -90,7 +90,7 @@ implements IMinecraft {
     private Slot night$lastDragSlot = null;
 
     @Shadow
-    protected abstract void slotClicked(Slot var1, int var2, int var3, ContainerInput var4);
+    protected abstract void slotClicked(Slot slot, int slotId, int button, ContainerInput containerInput);
 
     protected HandledScreenMixin(Component component) {
         super(component);
@@ -125,8 +125,8 @@ implements IMinecraft {
             if (this.hoveredSlot == null || this.hoveredSlot.getItem().isEmpty() || !shulkerInfoModule.hasItems(this.hoveredSlot.getItem())) {
                 return;
             }
-            int n = (Integer)args.get(4);
-            args.set(4, (Object)(n + 20));
+            int tooltipY = (Integer)args.get(4);
+            args.set(4, (Object)(tooltipY + 20));
             return;
         }
         catch (NullPointerException nullPointerException) {
@@ -135,15 +135,15 @@ implements IMinecraft {
     }
 
     @Inject(method={"mouseDragged"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$dragClick(MouseButtonEvent mouseButtonEvent, double d, double d2, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
+    private void night$dragClick(MouseButtonEvent mouseButtonEvent, double dragX, double dragY, CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         try {
             InventoryControlModule inventoryControlModule = (InventoryControlModule)Night.MODULE_MANAGER.getModule(InventoryControlModule.class);
             if (!inventoryControlModule.isToggled() || !inventoryControlModule.dragClick.getValue()) {
                 return;
             }
-            boolean bl = InputConstants.isKeyDown((Window)mc.getWindow(), (int)340) || InputConstants.isKeyDown((Window)mc.getWindow(), (int)344);
-            boolean bl2 = bl;
-            if (mouseButtonEvent.button() != 0 || !bl) {
+            boolean shiftDown = InputConstants.isKeyDown((Window)mc.getWindow(), (int)340) || InputConstants.isKeyDown((Window)mc.getWindow(), (int)344);
+            boolean unusedShiftDown = shiftDown;
+            if (mouseButtonEvent.button() != 0 || !shiftDown) {
                 return;
             }
             if (this.hoveredSlot == null || this.hoveredSlot.getItem().isEmpty() || this.hoveredSlot == this.night$lastDragSlot) {
@@ -170,27 +170,27 @@ implements IMinecraft {
         try {
             ChestStealerModule chestStealerModule;
             if (Night.MODULE_MANAGER != null && (chestStealerModule = (ChestStealerModule)Night.MODULE_MANAGER.getModule(ChestStealerModule.class)) != null && chestStealerModule.isToggled() && chestStealerModule.buttonMode.getValue()) {
-                boolean bl = (Object)this instanceof InventoryScreen;
-                boolean bl2 = (Object)this instanceof CraftingScreen;
-                if (bl) {
-                    int n = this.leftPos + this.imageWidth - 60;
-                    int n2 = this.topPos - 22;
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Drop"), button -> chestStealerModule.triggerDrop()).bounds(n, n2, 60, 18).build());
-                } else if (bl2) {
-                    int n = 46;
-                    int n3 = 18;
-                    int n4 = 3;
-                    int n5 = this.leftPos + this.imageWidth - n;
-                    int n6 = this.topPos - 22;
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Drop"), button -> chestStealerModule.triggerDrop()).bounds(n5, n6, n, n3).build());
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Dump"), button -> chestStealerModule.triggerDump()).bounds(n5 -= n + n4, n6, n, n3).build());
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Steal"), button -> chestStealerModule.triggerSteal()).bounds(n5 -= n + n4, n6, n, n3).build());
+                boolean isInventoryScreen = (Object)this instanceof InventoryScreen;
+                boolean isCraftingScreen = (Object)this instanceof CraftingScreen;
+                if (isInventoryScreen) {
+                    int buttonX = this.leftPos + this.imageWidth - 60;
+                    int buttonY = this.topPos - 22;
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Drop"), button -> chestStealerModule.triggerDrop()).bounds(buttonX, buttonY, 60, 18).build());
+                } else if (isCraftingScreen) {
+                    int buttonWidth = 46;
+                    int buttonHeight = 18;
+                    int spacing = 3;
+                    int buttonX = this.leftPos + this.imageWidth - buttonWidth;
+                    int buttonY = this.topPos - 22;
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Drop"), button -> chestStealerModule.triggerDrop()).bounds(buttonX, buttonY, buttonWidth, buttonHeight).build());
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Dump"), button -> chestStealerModule.triggerDump()).bounds(buttonX -= buttonWidth + spacing, buttonY, buttonWidth, buttonHeight).build());
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Steal"), button -> chestStealerModule.triggerSteal()).bounds(buttonX -= buttonWidth + spacing, buttonY, buttonWidth, buttonHeight).build());
                 } else {
-                    int n = this.leftPos + this.imageWidth + 4;
-                    int n7 = this.topPos;
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Steal"), button -> chestStealerModule.triggerSteal()).bounds(n, n7, 60, 20).build());
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Dump"), button -> chestStealerModule.triggerDump()).bounds(n, n7 + 22, 60, 20).build());
-                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Drop"), button -> chestStealerModule.triggerDrop()).bounds(n, n7 + 44, 60, 20).build());
+                    int buttonX = this.leftPos + this.imageWidth + 4;
+                    int buttonY = this.topPos;
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Steal"), button -> chestStealerModule.triggerSteal()).bounds(buttonX, buttonY, 60, 20).build());
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Dump"), button -> chestStealerModule.triggerDump()).bounds(buttonX, buttonY + 22, 60, 20).build());
+                    this.addRenderableWidget(Button.builder((Component)Component.literal((String)"Drop"), button -> chestStealerModule.triggerDrop()).bounds(buttonX, buttonY + 44, 60, 20).build());
                 }
             }
             return;
@@ -202,27 +202,27 @@ implements IMinecraft {
 
     @Redirect(method={"extractSlot"}, at={@At(value="INVOKE", target="Lnet/minecraft/world/inventory/Slot;getItem()Lnet/minecraft/world/item/ItemStack;")})
     private ItemStack night$grimSwapVisual(Slot slot) {
-        ItemStack itemStack;
-        ItemStack itemStack2 = slot.getItem();
+        ItemStack hiddenElytra;
+        ItemStack slotItem = slot.getItem();
         if (Night.MODULE_MANAGER == null) {
-            return itemStack2;
+            return slotItem;
         }
         ElytraFlyModule elytraFlyModule = (ElytraFlyModule)Night.MODULE_MANAGER.getModule(ElytraFlyModule.class);
-        int n = elytraFlyModule.getGrimParkedSlot();
-        if (n == -1) {
-            return itemStack2;
+        int parkedSlot = elytraFlyModule.getGrimParkedSlot();
+        if (parkedSlot == -1) {
+            return slotItem;
         }
-        if (slot.index == 6 && (itemStack = elytraFlyModule.getGrimHiddenElytra()) != null) {
-            return itemStack;
+        if (slot.index == 6 && (hiddenElytra = elytraFlyModule.getGrimHiddenElytra()) != null) {
+            return hiddenElytra;
         }
-        if (slot.index == InventoryUtils.indexToSlot((int)n)) {
+        if (slot.index == InventoryUtils.indexToSlot((int)parkedSlot)) {
             return elytraFlyModule.getGrimParkedDisplaced();
         }
-        return itemStack2;
+        return slotItem;
     }
 
     @Inject(method={"slotClicked"}, at={@At(value="HEAD")}, cancellable=true)
-    private void night$onSlotClicked(Slot slot, int n, int n2, ContainerInput containerInput, CallbackInfo callbackInfo) {
+    private void night$onSlotClicked(Slot slot, int slotId, int button, ContainerInput containerInput, CallbackInfo callbackInfo) {
         try {
             NoMiddleClickModule noMiddleClickModule;
             if (containerInput == ContainerInput.CLONE && Night.MODULE_MANAGER != null && (noMiddleClickModule = (NoMiddleClickModule)Night.MODULE_MANAGER.getModule(NoMiddleClickModule.class)) != null && noMiddleClickModule.isToggled()) {

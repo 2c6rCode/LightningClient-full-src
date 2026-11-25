@@ -65,21 +65,19 @@ implements IMinecraft {
     private static final ThreadLocal<Boolean> PROGRAMMATIC_SWITCH = ThreadLocal.withInitial(() -> false);
     private static final long STALE_FRAME_MS = 30000L;
 
-    public static void markLongHold(int n) {
-        LONG_HOLD.add(n);
+    public static void markLongHold(int key) {
+        LONG_HOLD.add(key);
     }
 
-    public static void clearLongHold(int n) {
-        LONG_HOLD.remove(n);
+    public static void clearLongHold(int key) {
+        LONG_HOLD.remove(key);
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public static boolean hasActiveSilentSwitch() {
-        ArrayDeque<Frame> arrayDeque;
-        ArrayDeque<Frame> arrayDeque2 = arrayDeque = STACK;
-        synchronized (arrayDeque2) {
+        synchronized (STACK) {
             for (Frame frame : STACK) {
                 if (LONG_HOLD.contains(frame.key())) continue;
                 return true;
@@ -100,30 +98,25 @@ implements IMinecraft {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public static void tickPendingRestore() {
-        ArrayDeque<Frame> arrayDeque;
         if (InventoryUtils.mc.player == null) {
-            ArrayDeque<Frame> arrayDeque2;
-            ArrayDeque<Frame> arrayDeque3 = arrayDeque2 = STACK;
-            synchronized (arrayDeque3) {
+            synchronized (STACK) {
                 STACK.clear();
             }
             LONG_HOLD.clear();
             return;
         }
-        boolean bl = InventoryUtils.mc.options.keyUse.isDown() || InventoryUtils.mc.player.isUsingItem();
-        boolean bl2 = bl;
-        if (bl || InventoryUtils.mc.options.keyAttack.isDown()) {
+        boolean usingItem = InventoryUtils.mc.options.keyUse.isDown() || InventoryUtils.mc.player.isUsingItem();
+        if (usingItem || InventoryUtils.mc.options.keyAttack.isDown()) {
             InventoryUtils.flushPendingRestores();
         }
-        if (bl) {
+        if (usingItem) {
             InventoryUtils.send(InventoryUtils.mc.player.getInventory().getSelectedSlot());
         }
-        ArrayDeque<Frame> arrayDeque4 = arrayDeque = STACK;
-        synchronized (arrayDeque4) {
+        synchronized (STACK) {
             if (STACK.removeIf(frame -> !LONG_HOLD.contains(frame.key()) && System.currentTimeMillis() - frame.time() >= 30000L)) {
                 InventoryUtils.settle();
             }
-            if (!bl) {
+            if (!usingItem) {
                 InventoryUtils.settle();
             }
         }
@@ -133,9 +126,7 @@ implements IMinecraft {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public static void flushPendingRestores() {
-        ArrayDeque<Frame> arrayDeque;
-        ArrayDeque<Frame> arrayDeque2 = arrayDeque = STACK;
-        synchronized (arrayDeque2) {
+        synchronized (STACK) {
             InventoryUtils.settle();
         }
     }
@@ -144,9 +135,7 @@ implements IMinecraft {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     public static void releaseAllBorrows() {
-        ArrayDeque<Frame> arrayDeque;
-        ArrayDeque<Frame> arrayDeque2 = arrayDeque = STACK;
-        synchronized (arrayDeque2) {
+        synchronized (STACK) {
             STACK.removeIf(frame -> !LONG_HOLD.contains(frame.key()));
             InventoryUtils.settle();
         }
@@ -157,51 +146,47 @@ implements IMinecraft {
         InventoryUtils.send(frame != null ? frame.held() : InventoryUtils.restingSlot());
     }
 
-    private static void send(int n) {
-        if (n < 0 || mc.getConnection() == null) {
+    private static void send(int slot) {
+        if (slot < 0 || mc.getConnection() == null) {
             return;
         }
-        if (n == Night.POSITION_MANAGER.getServerSlot()) {
+        if (slot == Night.POSITION_MANAGER.getServerSlot()) {
             return;
         }
-        boolean bl = PROGRAMMATIC_SWITCH.get();
+        boolean wasProgrammatic = PROGRAMMATIC_SWITCH.get();
         PROGRAMMATIC_SWITCH.set(true);
         try {
-            mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket(n));
+            mc.getConnection().send((Packet)new ServerboundSetCarriedItemPacket(slot));
         }
         finally {
-            PROGRAMMATIC_SWITCH.set(bl);
+            PROGRAMMATIC_SWITCH.set(wasProgrammatic);
         }
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    private static void push(int n, int n2) {
-        ArrayDeque<Frame> arrayDeque;
-        ArrayDeque<Frame> arrayDeque2 = arrayDeque = STACK;
-        synchronized (arrayDeque2) {
-            STACK.push(new Frame(n, n2, System.currentTimeMillis()));
-            InventoryUtils.send(n2);
+    private static void push(int key, int slot) {
+        synchronized (STACK) {
+            STACK.push(new Frame(key, slot, System.currentTimeMillis()));
+            InventoryUtils.send(slot);
         }
     }
 
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    private static void release(int n) {
-        ArrayDeque<Frame> arrayDeque;
-        ArrayDeque<Frame> arrayDeque2 = arrayDeque = STACK;
-        synchronized (arrayDeque2) {
-            boolean bl = false;
+    private static void release(int key) {
+        synchronized (STACK) {
+            boolean removed = false;
             Iterator<Frame> iterator = STACK.iterator();
             while (iterator.hasNext()) {
-                if (iterator.next().key() != n) continue;
+                if (iterator.next().key() != key) continue;
                 iterator.remove();
-                bl = true;
+                removed = true;
                 break;
             }
-            if (!bl) {
+            if (!removed) {
                 return;
             }
             Frame frame = STACK.peek();
@@ -216,155 +201,150 @@ implements IMinecraft {
     /*
      * WARNING - Removed try catching itself - possible behaviour change.
      */
-    public static boolean switchSlot(String string, int n, int n2) {
-        if (string.equalsIgnoreCase("None")) {
+    public static boolean switchSlot(String mode, int slot, int previousSlot) {
+        if (mode.equalsIgnoreCase("None")) {
             return true;
         }
-        if (n == -1 || n2 == -1) {
+        if (slot == -1 || previousSlot == -1) {
             return false;
         }
         PROGRAMMATIC_SWITCH.set(true);
         try {
-            boolean bl;
-            if (!mc.isSameThread() && !string.equalsIgnoreCase("Silent")) {
-                if (n > HOTBAR_END) {
-                    boolean bl2;
-                    boolean bl3 = bl2 = false;
-                    return bl3;
+            if (!mc.isSameThread() && !mode.equalsIgnoreCase("Silent")) {
+                if (slot > HOTBAR_END) {
+                    return false;
                 }
-                string = "Silent";
+                mode = "Silent";
             }
-            switch (string) {
+            switch (mode) {
                 case "Normal": {
-                    InventoryUtils.mc.player.getInventory().setSelectedSlot(n);
+                    InventoryUtils.mc.player.getInventory().setSelectedSlot(slot);
                     ((ClientPlayerInteractionManagerAccessor)InventoryUtils.mc.gameMode).invokeSyncSelectedSlot();
-                    InventoryUtils.syncSlotToClientIfProxy(n);
+                    InventoryUtils.syncSlotToClientIfProxy(slot);
                     break;
                 }
                 case "Silent": {
-                    InventoryUtils.push(n, n);
+                    InventoryUtils.push(slot, slot);
                     break;
                 }
                 case "AltPickup": 
                 case "AltSwap": {
-                    if (n <= HOTBAR_END) {
-                        InventoryUtils.push(n, n);
+                    if (slot <= HOTBAR_END) {
+                        InventoryUtils.push(slot, slot);
                         break;
                     }
-                    InventoryUtils.swap(string.equals("AltPickup") ? "Pickup" : "Swap", n, n2);
-                    InventoryUtils.push(n, n2);
+                    InventoryUtils.swap(mode.equals("AltPickup") ? "Pickup" : "Swap", slot, previousSlot);
+                    InventoryUtils.push(slot, previousSlot);
                 }
             }
-            boolean bl4 = bl = true;
-            return bl4;
+            return true;
         }
         finally {
             PROGRAMMATIC_SWITCH.set(false);
         }
     }
 
-    public static void switchBackNormal(int n) {
-        if (n == -1 || n == Night.POSITION_MANAGER.getServerSlot()) {
+    public static void switchBackNormal(int slot) {
+        if (slot == -1 || slot == Night.POSITION_MANAGER.getServerSlot()) {
             return;
         }
         PROGRAMMATIC_SWITCH.set(true);
         try {
-            InventoryUtils.mc.player.getInventory().setSelectedSlot(n);
+            InventoryUtils.mc.player.getInventory().setSelectedSlot(slot);
             ((ClientPlayerInteractionManagerAccessor)InventoryUtils.mc.gameMode).invokeSyncSelectedSlot();
-            InventoryUtils.syncSlotToClientIfProxy(n);
+            InventoryUtils.syncSlotToClientIfProxy(slot);
         }
         finally {
             PROGRAMMATIC_SWITCH.set(false);
         }
     }
 
-    private static void syncSlotToClientIfProxy(int n) {
+    private static void syncSlotToClientIfProxy(int slot) {
         if (Night.PINGBYPASS_CONFIG == null || !Night.PINGBYPASS_CONFIG.isServer()) {
             return;
         }
         if (!PingBypassFlags.proxyForwardingActive || Night.PROXY_SERVER == null) {
             return;
         }
-        ClientboundCustomPayloadPacket clientboundCustomPayloadPacket = new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CSlotSyncPacket(n)));
+        ClientboundCustomPayloadPacket clientboundCustomPayloadPacket = new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CSlotSyncPacket(slot)));
         for (Connection connection : Night.PROXY_SERVER.getConnections()) {
             if (!connection.isConnected()) continue;
             connection.send((Packet)clientboundCustomPayloadPacket);
         }
     }
 
-    public static void switchBack(String string, int n, int n2) {
-        if (string.equalsIgnoreCase("None")) {
+    public static void switchBack(String mode, int slot, int previousSlot) {
+        if (mode.equalsIgnoreCase("None")) {
             return;
         }
-        if (n2 == -1) {
+        if (previousSlot == -1) {
             return;
         }
         PROGRAMMATIC_SWITCH.set(true);
         try {
-            if ((string.equals("AltPickup") || string.equals("AltSwap")) && n > HOTBAR_END && mc.isSameThread()) {
-                InventoryUtils.swap(string.equals("AltPickup") ? "Pickup" : "Swap", n, n2);
+            if ((mode.equals("AltPickup") || mode.equals("AltSwap")) && slot > HOTBAR_END && mc.isSameThread()) {
+                InventoryUtils.swap(mode.equals("AltPickup") ? "Pickup" : "Swap", slot, previousSlot);
             }
-            InventoryUtils.release(n);
+            InventoryUtils.release(slot);
         }
         finally {
             PROGRAMMATIC_SWITCH.set(false);
         }
     }
 
-    public static void swapEquipment(int n, int n2) {
-        if (n >= 0 && n <= 8) {
-            InventoryUtils.click(n2, n, ContainerInput.SWAP);
+    public static void swapEquipment(int slot, int equipmentSlot) {
+        if (slot >= 0 && slot <= 8) {
+            InventoryUtils.click(equipmentSlot, slot, ContainerInput.SWAP);
             return;
         }
-        InventoryUtils.click(InventoryUtils.indexToSlot(n), 0, ContainerInput.PICKUP);
-        InventoryUtils.click(n2, 0, ContainerInput.PICKUP);
-        InventoryUtils.click(InventoryUtils.indexToSlot(n), 0, ContainerInput.PICKUP);
+        InventoryUtils.click(InventoryUtils.indexToSlot(slot), 0, ContainerInput.PICKUP);
+        InventoryUtils.click(equipmentSlot, 0, ContainerInput.PICKUP);
+        InventoryUtils.click(InventoryUtils.indexToSlot(slot), 0, ContainerInput.PICKUP);
     }
 
-    public static void swap(String string, int n, int n2) {
-        switch (string) {
+    public static void swap(String mode, int slot, int targetSlot) {
+        switch (mode) {
             case "Pickup": {
-                InventoryUtils.click(InventoryUtils.indexToSlot(n), 0, ContainerInput.PICKUP);
-                InventoryUtils.click(InventoryUtils.indexToSlot(n2), 0, ContainerInput.PICKUP);
-                InventoryUtils.click(InventoryUtils.indexToSlot(n), 0, ContainerInput.PICKUP);
+                InventoryUtils.click(InventoryUtils.indexToSlot(slot), 0, ContainerInput.PICKUP);
+                InventoryUtils.click(InventoryUtils.indexToSlot(targetSlot), 0, ContainerInput.PICKUP);
+                InventoryUtils.click(InventoryUtils.indexToSlot(slot), 0, ContainerInput.PICKUP);
                 break;
             }
             case "Swap": {
-                InventoryUtils.click(InventoryUtils.indexToSlot(n), n2, ContainerInput.SWAP);
+                InventoryUtils.click(InventoryUtils.indexToSlot(slot), targetSlot, ContainerInput.SWAP);
             }
         }
     }
 
-    public static void click(int n, int n2, ContainerInput containerInput) {
-        InventoryUtils.mc.gameMode.handleContainerInput(InventoryUtils.mc.player.containerMenu.containerId, n, n2, containerInput, (Player)InventoryUtils.mc.player);
-        InventoryUtils.broadcastClickToClientIfProxy(n, n2, containerInput);
+    public static void click(int slot, int button, ContainerInput containerInput) {
+        InventoryUtils.mc.gameMode.handleContainerInput(InventoryUtils.mc.player.containerMenu.containerId, slot, button, containerInput, (Player)InventoryUtils.mc.player);
+        InventoryUtils.broadcastClickToClientIfProxy(slot, button, containerInput);
     }
 
-    private static void broadcastClickToClientIfProxy(int n, int n2, ContainerInput containerInput) {
+    private static void broadcastClickToClientIfProxy(int slot, int button, ContainerInput containerInput) {
         if (Night.PINGBYPASS_CONFIG == null || !Night.PINGBYPASS_CONFIG.isServer()) {
             return;
         }
         if (!PingBypassFlags.proxyForwardingActive || Night.PROXY_SERVER == null) {
             return;
         }
-        ClientboundCustomPayloadPacket clientboundCustomPayloadPacket = new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CWindowClickPacket(InventoryUtils.mc.player.containerMenu.containerId, n, n2, containerInput)));
+        ClientboundCustomPayloadPacket clientboundCustomPayloadPacket = new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CWindowClickPacket(InventoryUtils.mc.player.containerMenu.containerId, slot, button, containerInput)));
         for (Connection connection : Night.PROXY_SERVER.getConnections()) {
             if (!connection.isConnected()) continue;
             connection.send((Packet)clientboundCustomPayloadPacket);
         }
     }
 
-    public static int indexToSlot(int n) {
-        int n2;
+    public static int indexToSlot(int index) {
+        int offset;
         AbstractContainerMenu abstractContainerMenu = InventoryUtils.mc.player != null ? InventoryUtils.mc.player.containerMenu : null;
-        AbstractContainerMenu abstractContainerMenu2 = abstractContainerMenu;
-        if (abstractContainerMenu != null && InventoryUtils.mc.player.inventoryMenu != abstractContainerMenu && n >= 0 && n <= 35 && (n2 = abstractContainerMenu.slots.size() - 36) >= 0) {
-            return n <= 8 ? n2 + 27 + n : n2 + (n - 9);
+        if (abstractContainerMenu != null && InventoryUtils.mc.player.inventoryMenu != abstractContainerMenu && index >= 0 && index <= 35 && (offset = abstractContainerMenu.slots.size() - 36) >= 0) {
+            return index <= 8 ? offset + 27 + index : offset + (index - 9);
         }
-        if (n >= 0 && n <= 8) {
-            return 36 + n;
+        if (index >= 0 && index <= 8) {
+            return 36 + index;
         }
-        return n;
+        return index;
     }
 
     public static int find(Item item) {
@@ -379,8 +359,8 @@ implements IMinecraft {
         return InventoryUtils.find(item, INVENTORY_START, INVENTORY_END);
     }
 
-    public static int find(Item item, int n, int n2) {
-        for (int i = n2; i >= n; --i) {
+    public static int find(Item item, int start, int end) {
+        for (int i = end; i >= start; --i) {
             ItemStack itemStack = InventoryUtils.mc.player.getInventory().getItem(i);
             if (itemStack.getItem() != item) continue;
             return i;
@@ -400,8 +380,8 @@ implements IMinecraft {
         return InventoryUtils.find(clazz, INVENTORY_START, INVENTORY_END);
     }
 
-    public static int find(Class<? extends Item> clazz, int n, int n2) {
-        for (int i = n2; i >= n; --i) {
+    public static int find(Class<? extends Item> clazz, int start, int end) {
+        for (int i = end; i >= start; --i) {
             ItemStack itemStack = InventoryUtils.mc.player.getInventory().getItem(i);
             if (!itemStack.getItem().getClass().isAssignableFrom(clazz)) continue;
             return i;
@@ -409,92 +389,92 @@ implements IMinecraft {
         return -1;
     }
 
-    public static int findInventory(Item item, int n) {
+    public static int findInventory(Item item, int minCount) {
         for (int i = INVENTORY_END; i >= INVENTORY_START; --i) {
             ItemStack itemStack = InventoryUtils.mc.player.getInventory().getItem(i);
-            if (itemStack.getItem() != item || InventoryUtils.mc.player.getInventory().getItem(i).getCount() < n) continue;
+            if (itemStack.getItem() != item || InventoryUtils.mc.player.getInventory().getItem(i).getCount() < minCount) continue;
             return i;
         }
         return -1;
     }
 
-    public static int findHardestBlock(int n, int n2) {
-        float f = -1.0f;
-        int n3 = -1;
-        for (int i = n; i <= n2; ++i) {
+    public static int findHardestBlock(int start, int end) {
+        float bestHardness = -1.0f;
+        int bestSlot = -1;
+        for (int i = start; i <= end; ++i) {
             Item item = InventoryUtils.mc.player.getInventory().getItem(i).getItem();
             if (!(item instanceof BlockItem)) continue;
             BlockItem blockItem = (BlockItem)item;
-            float f2 = blockItem.getBlock().defaultDestroyTime();
-            if (f2 == -1.0f) {
+            float hardness = blockItem.getBlock().defaultDestroyTime();
+            if (hardness == -1.0f) {
                 return i;
             }
-            if (!(f2 > f)) continue;
-            f = f2;
-            n3 = i;
+            if (!(hardness > bestHardness)) continue;
+            bestHardness = hardness;
+            bestSlot = i;
         }
-        return n3;
+        return bestSlot;
     }
 
-    public static int findFastestItem(BlockState blockState, int n, int n2) {
-        double d = -1.0;
-        int n3 = -1;
-        for (int i = n; i <= n2; ++i) {
-            double d2 = InventoryUtils.mc.player.getInventory().getItem(i).getItem().getDestroySpeed(InventoryUtils.mc.player.getInventory().getItem(i), blockState);
-            if (!(d2 > d)) continue;
-            d = d2;
-            n3 = i;
+    public static int findFastestItem(BlockState blockState, int start, int end) {
+        double bestSpeed = -1.0;
+        int bestSlot = -1;
+        for (int i = start; i <= end; ++i) {
+            double speed = InventoryUtils.mc.player.getInventory().getItem(i).getItem().getDestroySpeed(InventoryUtils.mc.player.getInventory().getItem(i), blockState);
+            if (!(speed > bestSpeed)) continue;
+            bestSpeed = speed;
+            bestSlot = i;
         }
-        return n3;
+        return bestSlot;
     }
 
-    public static int findBestSword(int n, int n2) {
-        int n3 = -1;
-        int n4 = -1;
-        int n5 = -1;
-        int n6 = -1;
-        int n7 = -1;
-        int n8 = -1;
-        for (int i = n2; i >= n; --i) {
+    public static int findBestSword(int start, int end) {
+        int netheriteSlot = -1;
+        int diamondSlot = -1;
+        int ironSlot = -1;
+        int goldenSlot = -1;
+        int stoneSlot = -1;
+        int woodenSlot = -1;
+        for (int i = end; i >= start; --i) {
             ItemStack itemStack = InventoryUtils.mc.player.getInventory().getItem(i);
             if (itemStack.getItem() == Items.NETHERITE_SWORD) {
-                n3 = i;
+                netheriteSlot = i;
             }
             if (itemStack.getItem() == Items.DIAMOND_SWORD) {
-                n4 = i;
+                diamondSlot = i;
             }
             if (itemStack.getItem() == Items.IRON_SWORD) {
-                n5 = i;
+                ironSlot = i;
             }
             if (itemStack.getItem() == Items.GOLDEN_SWORD) {
-                n6 = i;
+                goldenSlot = i;
             }
             if (itemStack.getItem() == Items.STONE_SWORD) {
-                n7 = i;
+                stoneSlot = i;
             }
             if (itemStack.getItem() != Items.WOODEN_SWORD) continue;
-            n8 = i;
+            woodenSlot = i;
         }
-        if (n3 != -1) {
-            return n3;
+        if (netheriteSlot != -1) {
+            return netheriteSlot;
         }
-        if (n4 != -1) {
-            return n4;
+        if (diamondSlot != -1) {
+            return diamondSlot;
         }
-        if (n5 != -1) {
-            return n5;
+        if (ironSlot != -1) {
+            return ironSlot;
         }
-        if (n6 != -1) {
-            return n6;
+        if (goldenSlot != -1) {
+            return goldenSlot;
         }
-        if (n7 != -1) {
-            return n7;
+        if (stoneSlot != -1) {
+            return stoneSlot;
         }
-        return n8;
+        return woodenSlot;
     }
 
-    public static int findEmptySlot(int n, int n2) {
-        for (int i = n2; i >= n; --i) {
+    public static int findEmptySlot(int start, int end) {
+        for (int i = end; i >= start; --i) {
             ItemStack itemStack = InventoryUtils.mc.player.getInventory().getItem(i);
             if (!itemStack.isEmpty()) continue;
             return i;

@@ -109,71 +109,69 @@ extends Module {
     }
 
     private boolean isTierDiamondOrNetherite(ItemStack itemStack) {
-        String string = itemStack.getItem().toString().toLowerCase();
-        return string.contains("diamond") || string.contains("netherite");
+        String itemName = itemStack.getItem().toString().toLowerCase();
+        return itemName.contains("diamond") || itemName.contains("netherite");
     }
 
-    private boolean isValidCombatArmor(ItemStack itemStack, String string) {
+    private boolean isValidCombatArmor(ItemStack itemStack, String enchantName) {
         if (!this.isArmor(itemStack)) {
             return false;
         }
-        return this.isTierDiamondOrNetherite(itemStack) || this.getEnchantLevel(itemStack, string) > 0;
+        return this.isTierDiamondOrNetherite(itemStack) || this.getEnchantLevel(itemStack, enchantName) > 0;
     }
 
-    private void update(EquipmentSlot equipmentSlot, int n) {
-        int n2 = this.findElytra();
-        boolean bl = this.elytra.getValue() && equipmentSlot == EquipmentSlot.CHEST;
-        boolean bl2 = bl;
-        int n3 = equipmentSlot == EquipmentSlot.HEAD ? 39 : (equipmentSlot == EquipmentSlot.CHEST ? 38 : (equipmentSlot == EquipmentSlot.LEGS ? 37 : 36));
-        int n4 = bl ? n2 : this.findArmor(equipmentSlot);
-        int n5 = bl ? this.compareElytra(38, n4) : this.compare(n3, n4, true, equipmentSlot);
-        int n6 = n5;
-        if (n4 != -1 && n5 != n3) {
-            AutoArmorModule.mc.gameMode.handleContainerInput(AutoArmorModule.mc.player.inventoryMenu.containerId, n, 0, ContainerInput.PICKUP, (Player)AutoArmorModule.mc.player);
-            AutoArmorModule.mc.gameMode.handleContainerInput(AutoArmorModule.mc.player.inventoryMenu.containerId, InventoryUtils.indexToSlot(n4), 0, ContainerInput.PICKUP, (Player)AutoArmorModule.mc.player);
-            AutoArmorModule.mc.gameMode.handleContainerInput(AutoArmorModule.mc.player.inventoryMenu.containerId, n, 0, ContainerInput.PICKUP, (Player)AutoArmorModule.mc.player);
+    private void update(EquipmentSlot equipmentSlot, int containerSlot) {
+        int elytraSlot = this.findElytra();
+        boolean equipElytra = this.elytra.getValue() && equipmentSlot == EquipmentSlot.CHEST;
+        int currentSlot = equipmentSlot == EquipmentSlot.HEAD ? 39 : (equipmentSlot == EquipmentSlot.CHEST ? 38 : (equipmentSlot == EquipmentSlot.LEGS ? 37 : 36));
+        int bestSlot = equipElytra ? elytraSlot : this.findArmor(equipmentSlot);
+        int chosenSlot = equipElytra ? this.compareElytra(38, bestSlot) : this.compare(currentSlot, bestSlot, true, equipmentSlot);
+        if (bestSlot != -1 && chosenSlot != currentSlot) {
+            AutoArmorModule.mc.gameMode.handleContainerInput(AutoArmorModule.mc.player.inventoryMenu.containerId, containerSlot, 0, ContainerInput.PICKUP, (Player)AutoArmorModule.mc.player);
+            AutoArmorModule.mc.gameMode.handleContainerInput(AutoArmorModule.mc.player.inventoryMenu.containerId, InventoryUtils.indexToSlot(bestSlot), 0, ContainerInput.PICKUP, (Player)AutoArmorModule.mc.player);
+            AutoArmorModule.mc.gameMode.handleContainerInput(AutoArmorModule.mc.player.inventoryMenu.containerId, containerSlot, 0, ContainerInput.PICKUP, (Player)AutoArmorModule.mc.player);
             this.ticks = 2 + Night.SERVER_MANAGER.getPingDelay();
         }
     }
 
-    private int compare(int n, int n2, boolean bl, EquipmentSlot equipmentSlot) {
-        if (n2 == -1) {
-            return n;
+    private int compare(int currentSlot, int candidateSlot, boolean equippedCheck, EquipmentSlot equipmentSlot) {
+        if (candidateSlot == -1) {
+            return currentSlot;
         }
-        if (!this.isArmor(AutoArmorModule.mc.player.getInventory().getItem(n))) {
-            return n2;
+        if (!this.isArmor(AutoArmorModule.mc.player.getInventory().getItem(currentSlot))) {
+            return candidateSlot;
         }
-        String string = switch (equipmentSlot) {
+        String enchantName = switch (equipmentSlot) {
             case EquipmentSlot.HEAD -> this.headMode.getValue();
             case EquipmentSlot.CHEST -> this.chestMode.getValue();
             case EquipmentSlot.LEGS -> this.legsMode.getValue();
             default -> this.feetMode.getValue();
         };
-        string = string.equalsIgnoreCase("Blast") ? "blast_protection" : "protection";
-        ItemStack itemStack = AutoArmorModule.mc.player.getInventory().getItem(n);
-        ItemStack itemStack2 = AutoArmorModule.mc.player.getInventory().getItem(n2);
-        if (this.getEnchantLevel(itemStack, string) < this.getEnchantLevel(itemStack2, string)) {
-            return n2;
+        enchantName = enchantName.equalsIgnoreCase("Blast") ? "blast_protection" : "protection";
+        ItemStack currentStack = AutoArmorModule.mc.player.getInventory().getItem(currentSlot);
+        ItemStack candidateStack = AutoArmorModule.mc.player.getInventory().getItem(candidateSlot);
+        if (this.getEnchantLevel(currentStack, enchantName) < this.getEnchantLevel(candidateStack, enchantName)) {
+            return candidateSlot;
         }
         if (this.preserve.getValue()) {
-            boolean bl2 = this.isSafe();
-            if (bl2) {
-                if (this.getDurability(n2) < this.preserveHealth.getValue().floatValue() && this.getDurability(n) >= this.preserveHealth.getValue().floatValue() && this.isValidCombatArmor(itemStack2, string)) {
-                    return n2;
+            boolean safe = this.isSafe();
+            if (safe) {
+                if (this.getDurability(candidateSlot) < this.preserveHealth.getValue().floatValue() && this.getDurability(currentSlot) >= this.preserveHealth.getValue().floatValue() && this.isValidCombatArmor(candidateStack, enchantName)) {
+                    return candidateSlot;
                 }
-            } else if (this.getDurability(n) < this.preserveHealth.getValue().floatValue() && this.isValidCombatArmor(itemStack2, string)) {
-                return this.getDurability(n) < this.getDurability(n2) ? n2 : n;
+            } else if (this.getDurability(currentSlot) < this.preserveHealth.getValue().floatValue() && this.isValidCombatArmor(candidateStack, enchantName)) {
+                return this.getDurability(currentSlot) < this.getDurability(candidateSlot) ? candidateSlot : currentSlot;
             }
         }
-        if (!bl) {
-            if (this.health.getValue().equals("Highest") && this.getDurability(n) < this.getDurability(n2)) {
-                return n2;
+        if (!equippedCheck) {
+            if (this.health.getValue().equals("Highest") && this.getDurability(currentSlot) < this.getDurability(candidateSlot)) {
+                return candidateSlot;
             }
-            if (this.health.getValue().equals("Lowest") && this.getDurability(n) > this.getDurability(n2)) {
-                return n2;
+            if (this.health.getValue().equals("Lowest") && this.getDurability(currentSlot) > this.getDurability(candidateSlot)) {
+                return candidateSlot;
             }
         }
-        return n;
+        return currentSlot;
     }
 
     private boolean isSafe() {
@@ -183,60 +181,60 @@ extends Module {
         if (AutoArmorModule.mc.level == null || AutoArmorModule.mc.player == null) {
             return false;
         }
-        double d = this.safeRange.getValue().doubleValue() * this.safeRange.getValue().doubleValue();
+        double safeRangeSq = this.safeRange.getValue().doubleValue() * this.safeRange.getValue().doubleValue();
         for (Player player : AutoArmorModule.mc.level.players()) {
-            if (player == AutoArmorModule.mc.player || player.isSpectator() || !player.isAlive() || Night.FRIEND_MANAGER != null && Night.FRIEND_MANAGER.contains(player.getName().getString()) || !(AutoArmorModule.mc.player.distanceToSqr((Entity)player) <= d)) continue;
+            if (player == AutoArmorModule.mc.player || player.isSpectator() || !player.isAlive() || Night.FRIEND_MANAGER != null && Night.FRIEND_MANAGER.contains(player.getName().getString()) || !(AutoArmorModule.mc.player.distanceToSqr((Entity)player) <= safeRangeSq)) continue;
             return false;
         }
         return true;
     }
 
-    private int compareElytra(int n, int n2) {
-        if (n2 == -1) {
-            return n;
+    private int compareElytra(int currentSlot, int candidateSlot) {
+        if (candidateSlot == -1) {
+            return currentSlot;
         }
-        if (AutoArmorModule.mc.player.getInventory().getItem(n).getItem() != Items.ELYTRA) {
-            return n2;
+        if (AutoArmorModule.mc.player.getInventory().getItem(currentSlot).getItem() != Items.ELYTRA) {
+            return candidateSlot;
         }
-        if (this.health.getValue().equals("Highest") && this.getDurability(n) < this.getDurability(n2)) {
-            return n2;
+        if (this.health.getValue().equals("Highest") && this.getDurability(currentSlot) < this.getDurability(candidateSlot)) {
+            return candidateSlot;
         }
-        if (this.health.getValue().equals("Lowest") && this.getDurability(n) > this.getDurability(n2)) {
-            return n2;
+        if (this.health.getValue().equals("Lowest") && this.getDurability(currentSlot) > this.getDurability(candidateSlot)) {
+            return candidateSlot;
         }
-        return n;
+        return currentSlot;
     }
 
     private int findArmor(EquipmentSlot equipmentSlot) {
-        int n = -1;
+        int bestSlot = -1;
         for (int i = InventoryUtils.HOTBAR_START; i <= InventoryUtils.INVENTORY_END; ++i) {
             ItemStack itemStack = AutoArmorModule.mc.player.getInventory().getItem(i);
             if (!this.isArmor(itemStack) || !this.getSlotType(itemStack).equals((Object)equipmentSlot)) continue;
-            n = this.compare(i, n, false, equipmentSlot);
+            bestSlot = this.compare(i, bestSlot, false, equipmentSlot);
         }
-        return n;
+        return bestSlot;
     }
 
     private int findElytra() {
-        int n = -1;
+        int bestSlot = -1;
         for (int i = InventoryUtils.HOTBAR_START; i <= InventoryUtils.INVENTORY_END; ++i) {
             ItemStack itemStack = AutoArmorModule.mc.player.getInventory().getItem(i);
             if (itemStack.getItem() != Items.ELYTRA) continue;
-            n = this.compareElytra(i, n);
+            bestSlot = this.compareElytra(i, bestSlot);
         }
-        return n;
+        return bestSlot;
     }
 
-    private int getEnchantLevel(ItemStack itemStack, String string) {
+    private int getEnchantLevel(ItemStack itemStack, String enchantName) {
         for (Holder holder : itemStack.getEnchantments().keySet()) {
-            if (!holder.getRegisteredName().replace("minecraft:", "").equals(string)) continue;
+            if (!holder.getRegisteredName().replace("minecraft:", "").equals(enchantName)) continue;
             return itemStack.getEnchantments().getLevel(holder);
         }
         return 0;
     }
 
-    private float getDurability(int n) {
-        ItemStack itemStack = AutoArmorModule.mc.player.getInventory().getItem(n);
+    private float getDurability(int slot) {
+        ItemStack itemStack = AutoArmorModule.mc.player.getInventory().getItem(slot);
         return (float)(itemStack.getMaxDamage() - itemStack.getDamageValue()) * 100.0f / (float)itemStack.getMaxDamage();
     }
 
@@ -251,8 +249,8 @@ extends Module {
         if (itemStack.getItem() == Items.ELYTRA) {
             return false;
         }
-        boolean bl = ((ItemAttributeModifiers)itemStack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, (Object)ItemAttributeModifiers.EMPTY)).modifiers().stream().anyMatch(entry -> entry.attribute().is(Attributes.ARMOR));
-        if (!bl) {
+        boolean hasArmorAttr = ((ItemAttributeModifiers)itemStack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, (Object)ItemAttributeModifiers.EMPTY)).modifiers().stream().anyMatch(entry -> entry.attribute().is(Attributes.ARMOR));
+        if (!hasArmorAttr) {
             return false;
         }
         Equippable equippable = (Equippable)itemStack.get(DataComponents.EQUIPPABLE);

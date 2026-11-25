@@ -57,16 +57,16 @@ extends Module {
         if (this.getNull()) {
             return;
         }
-        ArrayList<PhaseBlock> arrayList = new ArrayList<PhaseBlock>();
-        BlockPos blockPos = PositionUtils.getFlooredPosition((Entity)PhaseESPModule.mc.player);
+        ArrayList<PhaseBlock> blocks = new ArrayList<PhaseBlock>();
+        BlockPos playerPos = PositionUtils.getFlooredPosition((Entity)PhaseESPModule.mc.player);
         for (Direction direction : Direction.values()) {
             PhaseType phaseType;
-            BlockPos blockPos2;
-            if (!direction.getAxis().isHorizontal() || PhaseESPModule.mc.level.getBlockState(blockPos2 = blockPos.relative(direction)).getBlock() != Blocks.BEDROCK && PhaseESPModule.mc.level.getBlockState(blockPos2).getBlock() != Blocks.OBSIDIAN || (phaseType = this.getPhaseType(blockPos2)) == null) continue;
-            arrayList.add(new PhaseBlock(new AABB(blockPos2), phaseType));
+            BlockPos neighborPos;
+            if (!direction.getAxis().isHorizontal() || PhaseESPModule.mc.level.getBlockState(neighborPos = playerPos.relative(direction)).getBlock() != Blocks.BEDROCK && PhaseESPModule.mc.level.getBlockState(neighborPos).getBlock() != Blocks.OBSIDIAN || (phaseType = this.getPhaseType(neighborPos)) == null) continue;
+            blocks.add(new PhaseBlock(new AABB(neighborPos), phaseType));
         }
         this.phaseBlocks.clear();
-        this.phaseBlocks.addAll(arrayList);
+        this.phaseBlocks.addAll(blocks);
     }
 
     @SubscribeEvent

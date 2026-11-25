@@ -16,10 +16,10 @@ extends PbPacket {
     private final String settingName;
     private final String value;
 
-    public S2CSettingStatePacket(String string, String string2, String string3) {
-        this.moduleName = string;
-        this.settingName = string2;
-        this.value = string3;
+    public S2CSettingStatePacket(String moduleName, String settingName, String value) {
+        this.moduleName = moduleName;
+        this.settingName = settingName;
+        this.value = value;
     }
 
     public S2CSettingStatePacket(FriendlyByteBuf friendlyByteBuf) {

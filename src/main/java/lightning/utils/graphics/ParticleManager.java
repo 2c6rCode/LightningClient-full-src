@@ -74,25 +74,25 @@ implements IMinecraft {
     private final Quaternionf rotYaw = new Quaternionf();
     private final Quaternionf rotPitch = new Quaternionf();
 
-    public void addBouncy(Vec3 vec3, Vec3 vec32, double d, int n, int n2, boolean bl) {
+    public void addBouncy(Vec3 pos, Vec3 motion, double lifetime, int color, int shadowColor, boolean glow) {
         if (this.particles.size() >= 600) {
             return;
         }
-        this.particles.add(new BouncyParticle(vec3, vec32, d, n, n2, bl));
+        this.particles.add(new BouncyParticle(pos, motion, lifetime, color, shadowColor, glow));
     }
 
-    public void addFriction(Vec3 vec3, Vec3 vec32, double d, double d2, int n, int n2, boolean bl) {
+    public void addFriction(Vec3 pos, Vec3 motion, double friction, double lifetime, int color, int shadowColor, boolean glow) {
         if (this.particles.size() >= 600) {
             return;
         }
-        this.particles.add(new FrictionParticle(vec3, vec32, d, d2, n, n2, bl));
+        this.particles.add(new FrictionParticle(pos, motion, friction, lifetime, color, shadowColor, glow));
     }
 
     public void tick() {
         this.particles.removeIf(Particle::tick);
     }
 
-    public void render(PoseStack poseStack, float f) {
+    public void render(PoseStack poseStack, float tickDelta) {
         if (this.particles.isEmpty() || ParticleManager.mc.gameRenderer == null) {
             return;
         }
@@ -100,25 +100,25 @@ implements IMinecraft {
         if (camera == null) {
             return;
         }
-        Vec3 vec3 = camera.position();
-        long l = System.currentTimeMillis();
-        int n = 0;
+        Vec3 camPos = camera.position();
+        long now = System.currentTimeMillis();
+        int totalCircles = 0;
         for (Particle particle : this.particles) {
-            if (!particle.canRender(vec3, f, l)) continue;
-            n += particle.getCircleCount();
+            if (!particle.canRender(camPos, tickDelta, now)) continue;
+            totalCircles += particle.getCircleCount();
         }
-        if (n == 0) {
+        if (totalCircles == 0) {
             return;
         }
         this.rotYaw.identity().rotationY((float)Math.toRadians(-camera.yRot()));
         this.rotPitch.identity().rotationX((float)Math.toRadians(camera.xRot()));
-        int n2 = n * 16 * 3;
-        ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized(n2 * DefaultVertexFormat.POSITION_COLOR.getVertexSize());
+        int totalVertices = totalCircles * 16 * 3;
+        ByteBufferBuilder byteBufferBuilder = ByteBufferBuilder.exactlySized(totalVertices * DefaultVertexFormat.POSITION_COLOR.getVertexSize());
         try {
             BufferBuilder bufferBuilder = new BufferBuilder(byteBufferBuilder, PrimitiveTopology.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
-            for (Particle particle3 : this.particles) {
-                if (!particle3.canRender(vec3, f, l)) continue;
-                particle3.render(poseStack, bufferBuilder, vec3, f, l, this.rotYaw, this.rotPitch);
+            for (Particle particle : this.particles) {
+                if (!particle.canRender(camPos, tickDelta, now)) continue;
+                particle.render(poseStack, bufferBuilder, camPos, tickDelta, now, this.rotYaw, this.rotPitch);
             }
             MeshData meshData = bufferBuilder.build();
             Renderer3D.draw(NO_DEPTH_PARTICLES, meshData);
@@ -142,50 +142,50 @@ implements IMinecraft {
         return this.particles.size();
     }
 
-    private static int alphaMulti(int n, float f) {
-        int n2 = n >> 24 & 0xFF;
-        int n3 = (int)((float)n2 * f);
-        return (n3 & 0xFF) << 24 | n & 0xFFFFFF;
+    private static int alphaMulti(int color, float alpha) {
+        int baseAlpha = color >> 24 & 0xFF;
+        int scaledAlpha = (int)((float)baseAlpha * alpha);
+        return (scaledAlpha & 0xFF) << 24 | color & 0xFFFFFF;
     }
 
-    private static void renderCircle(Matrix4f matrix4f, BufferBuilder bufferBuilder, float f, float f2, int n) {
+    private static void renderCircle(Matrix4f matrix4f, BufferBuilder bufferBuilder, float radius, float zOffset, int color) {
         for (int i = 0; i < 16; ++i) {
-            float f3 = CIRCLE_X[i] * f;
-            float f4 = CIRCLE_Y[i] * f;
-            float f5 = CIRCLE_X[i + 1] * f;
-            float f6 = CIRCLE_Y[i + 1] * f;
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, 0.0f, 0.0f, f2).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f3, f4, f2).setColor(n);
-            bufferBuilder.addVertex((Matrix4fc)matrix4f, f5, f6, f2).setColor(n);
+            float x0 = CIRCLE_X[i] * radius;
+            float y0 = CIRCLE_Y[i] * radius;
+            float x1 = CIRCLE_X[i + 1] * radius;
+            float y1 = CIRCLE_Y[i + 1] * radius;
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, 0.0f, 0.0f, zOffset).setColor(color);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x0, y0, zOffset).setColor(color);
+            bufferBuilder.addVertex((Matrix4fc)matrix4f, x1, y1, zOffset).setColor(color);
         }
     }
 
-    private static AABB expandTowards(AABB aABB, double d, double d2, double d3) {
-        return new AABB(aABB.minX + (d < 0.0 ? d : 0.0), aABB.minY + (d2 < 0.0 ? d2 : 0.0), aABB.minZ + (d3 < 0.0 ? d3 : 0.0), aABB.maxX + (d > 0.0 ? d : 0.0), aABB.maxY + (d2 > 0.0 ? d2 : 0.0), aABB.maxZ + (d3 > 0.0 ? d3 : 0.0));
+    private static AABB expandTowards(AABB box, double dx, double dy, double dz) {
+        return new AABB(box.minX + (dx < 0.0 ? dx : 0.0), box.minY + (dy < 0.0 ? dy : 0.0), box.minZ + (dz < 0.0 ? dz : 0.0), box.maxX + (dx > 0.0 ? dx : 0.0), box.maxY + (dy > 0.0 ? dy : 0.0), box.maxZ + (dz > 0.0 ? dz : 0.0));
     }
 
-    private static float calcAlpha(double d) {
-        if (d < 0.1) {
-            return (float)(d * 10.0);
+    private static float calcAlpha(double progress) {
+        if (progress < 0.1) {
+            return (float)(progress * 10.0);
         }
-        if (d > 0.5) {
-            return (float)(1.0 - (d - 0.5) * 2.0);
+        if (progress > 0.5) {
+            return (float)(1.0 - (progress - 0.5) * 2.0);
         }
         return 1.0f;
     }
 
-    public static Vec3 randomMotion(double d) {
-        double d2 = RANDOM.nextDouble() * 2.0 * Math.PI;
-        double d3 = RANDOM.nextDouble() * 2.0 * Math.PI;
-        double d4 = Math.abs(Math.cos(d3));
-        return new Vec3(d * Math.cos(d2) * d4, d * -Math.sin(d3), d * Math.sin(d2) * d4);
+    public static Vec3 randomMotion(double speed) {
+        double yaw = RANDOM.nextDouble() * 2.0 * Math.PI;
+        double pitch = RANDOM.nextDouble() * 2.0 * Math.PI;
+        double horizontal = Math.abs(Math.cos(pitch));
+        return new Vec3(speed * Math.cos(yaw) * horizontal, speed * -Math.sin(pitch), speed * Math.sin(yaw) * horizontal);
     }
 
     static {
         for (int i = 0; i <= 16; ++i) {
-            double d = Math.PI * 2 * (double)i / 16.0;
-            ParticleManager.CIRCLE_X[i] = (float)Math.cos(d);
-            ParticleManager.CIRCLE_Y[i] = (float)Math.sin(d);
+            double angle = Math.PI * 2 * (double)i / 16.0;
+            ParticleManager.CIRCLE_X[i] = (float)Math.cos(angle);
+            ParticleManager.CIRCLE_Y[i] = (float)Math.sin(angle);
         }
         NO_DEPTH_PARTICLES = RenderType.create((String)"night_no_depth_particles", (RenderSetup)RenderSetup.builder((RenderPipeline)RenderPipeline.builder((RenderPipeline.Snippet[])new RenderPipeline.Snippet[]{RenderPipelinesAccessor.getDebugFilledSnippet()}).withLocation("lightning/no_depth_particles").withCull(false).withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false)).withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.SRC_ALPHA, BlendFactor.ONE_MINUS_SRC_ALPHA))).build()).createRenderSetup());
         RANDOM = RandomSource.create();
@@ -197,11 +197,11 @@ implements IMinecraft {
         private double motionY;
         private double motionZ;
 
-        private BouncyParticle(Vec3 vec3, Vec3 vec32, double d, int n, int n2, boolean bl) {
-            super(vec3, d, n, n2, bl);
-            this.motionX = vec32.x;
-            this.motionY = vec32.y;
-            this.motionZ = vec32.z;
+        private BouncyParticle(Vec3 pos, Vec3 motion, double lifetime, int color, int shadowColor, boolean glow) {
+            super(pos, lifetime, color, shadowColor, glow);
+            this.motionX = motion.x;
+            this.motionY = motion.y;
+            this.motionZ = motion.z;
             this.tick();
         }
 
@@ -236,10 +236,10 @@ implements IMinecraft {
         private final double friction;
         private Vec3 motion;
 
-        private FrictionParticle(Vec3 vec3, Vec3 vec32, double d, double d2, int n, int n2, boolean bl) {
-            super(vec3, d2, n, n2, bl);
-            this.motion = vec32;
-            this.friction = d;
+        private FrictionParticle(Vec3 pos, Vec3 motion, double friction, double lifetime, int color, int shadowColor, boolean glow) {
+            super(pos, lifetime, color, shadowColor, glow);
+            this.motion = motion;
+            this.friction = friction;
             this.tick();
         }
 
@@ -258,11 +258,11 @@ implements IMinecraft {
     private static interface Particle {
         public boolean tick();
 
-        public boolean canRender(Vec3 var1, float var2, long var3);
+        public boolean canRender(Vec3 camPos, float tickDelta, long nowMs);
 
         public int getCircleCount();
 
-        public void render(PoseStack var1, BufferBuilder var2, Vec3 var3, float var4, long var5, Quaternionf var7, Quaternionf var8);
+        public void render(PoseStack poseStack, BufferBuilder bufferBuilder, Vec3 camPos, float tickDelta, long nowMs, Quaternionf rotYaw, Quaternionf rotPitch);
     }
 
     private static abstract class BaseParticle
@@ -276,15 +276,15 @@ implements IMinecraft {
         protected Vec3 pos;
         protected Vec3 prevPos;
 
-        protected BaseParticle(Vec3 vec3, double d, int n, int n2, boolean bl) {
-            this.pos = vec3;
-            this.prevPos = vec3;
-            this.color = n;
-            this.shadowColor = n2;
-            this.glow = bl;
+        protected BaseParticle(Vec3 pos, double lifetime, int color, int shadowColor, boolean glow) {
+            this.pos = pos;
+            this.prevPos = pos;
+            this.color = color;
+            this.shadowColor = shadowColor;
+            this.glow = glow;
             this.startTime = System.currentTimeMillis();
-            this.lifetime = d;
-            this.lifetimeMillis = (long)(d * 1000.0);
+            this.lifetime = lifetime;
+            this.lifetimeMillis = (long)(lifetime * 1000.0);
         }
 
         @Override
@@ -293,49 +293,45 @@ implements IMinecraft {
         }
 
         @Override
-        public boolean canRender(Vec3 vec3, float f, long l) {
-            double d;
-            double d2;
-            double d3;
-            double d4;
-            long l2 = l - this.startTime;
-            if (l2 > this.lifetimeMillis) {
+        public boolean canRender(Vec3 camPos, float tickDelta, long nowMs) {
+            long elapsedMs = nowMs - this.startTime;
+            if (elapsedMs > this.lifetimeMillis) {
                 return false;
             }
-            double d5 = (double)l2 / 1000.0 / this.lifetime;
-            float f2 = ParticleManager.calcAlpha(Mth.clamp((double)d5, (double)0.0, (double)1.0));
-            if (f2 <= 0.0f) {
+            double progress = (double)elapsedMs / 1000.0 / this.lifetime;
+            float alpha = ParticleManager.calcAlpha(Mth.clamp((double)progress, (double)0.0, (double)1.0));
+            if (alpha <= 0.0f) {
                 return false;
             }
-            double dx = Mth.lerp((double)f, (double)this.prevPos.x, (double)this.pos.x) - vec3.x;
-            double dy = Mth.lerp((double)f, (double)this.prevPos.y, (double)this.pos.y) - vec3.y;
-            double dz = Mth.lerp((double)f, (double)this.prevPos.z, (double)this.pos.z) - vec3.z;
+            double dx = Mth.lerp((double)tickDelta, (double)this.prevPos.x, (double)this.pos.x) - camPos.x;
+            double dy = Mth.lerp((double)tickDelta, (double)this.prevPos.y, (double)this.pos.y) - camPos.y;
+            double dz = Mth.lerp((double)tickDelta, (double)this.prevPos.z, (double)this.pos.z) - camPos.z;
             return dx * dx + dy * dy + dz * dz <= 4096.0;
         }
 
         @Override
-        public void render(PoseStack poseStack, BufferBuilder bufferBuilder, Vec3 vec3, float f, long l, Quaternionf quaternionf, Quaternionf quaternionf2) {
-            long l2 = l - this.startTime;
-            double d = (double)l2 / 1000.0 / this.lifetime;
-            float f2 = ParticleManager.calcAlpha(Mth.clamp((double)d, (double)0.0, (double)1.0));
-            double d2 = Mth.lerp((double)f, (double)this.prevPos.x, (double)this.pos.x) - vec3.x;
-            double d3 = Mth.lerp((double)f, (double)this.prevPos.y, (double)this.pos.y) - vec3.y;
-            double d4 = Mth.lerp((double)f, (double)this.prevPos.z, (double)this.pos.z) - vec3.z;
+        public void render(PoseStack poseStack, BufferBuilder bufferBuilder, Vec3 camPos, float tickDelta, long nowMs, Quaternionf rotYaw, Quaternionf rotPitch) {
+            long elapsedMs = nowMs - this.startTime;
+            double progress = (double)elapsedMs / 1000.0 / this.lifetime;
+            float alpha = ParticleManager.calcAlpha(Mth.clamp((double)progress, (double)0.0, (double)1.0));
+            double dx = Mth.lerp((double)tickDelta, (double)this.prevPos.x, (double)this.pos.x) - camPos.x;
+            double dy = Mth.lerp((double)tickDelta, (double)this.prevPos.y, (double)this.pos.y) - camPos.y;
+            double dz = Mth.lerp((double)tickDelta, (double)this.prevPos.z, (double)this.pos.z) - camPos.z;
             poseStack.pushPose();
-            poseStack.translate(d2, d3, d4);
+            poseStack.translate(dx, dy, dz);
             poseStack.scale(0.02f, 0.02f, 0.02f);
-            poseStack.mulPose((Quaternionfc)quaternionf);
-            poseStack.mulPose((Quaternionfc)quaternionf2);
+            poseStack.mulPose((Quaternionfc)rotYaw);
+            poseStack.mulPose((Quaternionfc)rotPitch);
             Matrix4f matrix4f = poseStack.last().pose();
-            int n = ParticleManager.alphaMulti(this.shadowColor, f2);
-            int n2 = ParticleManager.alphaMulti(this.color, f2);
+            int finalShadowColor = ParticleManager.alphaMulti(this.shadowColor, alpha);
+            int finalColor = ParticleManager.alphaMulti(this.color, alpha);
             if (this.glow) {
-                int n3 = ParticleManager.alphaMulti(this.color, f2 * 0.4f);
-                ParticleManager.renderCircle(matrix4f, bufferBuilder, 4.0f, -0.02f, n3);
-                ParticleManager.renderCircle(matrix4f, bufferBuilder, 2.5f, -0.015f, n3);
+                int glowColor = ParticleManager.alphaMulti(this.color, alpha * 0.4f);
+                ParticleManager.renderCircle(matrix4f, bufferBuilder, 4.0f, -0.02f, glowColor);
+                ParticleManager.renderCircle(matrix4f, bufferBuilder, 2.5f, -0.015f, glowColor);
             }
-            ParticleManager.renderCircle(matrix4f, bufferBuilder, 2.0f, -0.01f, n);
-            ParticleManager.renderCircle(matrix4f, bufferBuilder, 1.0f, 0.0f, n2);
+            ParticleManager.renderCircle(matrix4f, bufferBuilder, 2.0f, -0.01f, finalShadowColor);
+            ParticleManager.renderCircle(matrix4f, bufferBuilder, 1.0f, 0.0f, finalColor);
             poseStack.popPose();
         }
     }

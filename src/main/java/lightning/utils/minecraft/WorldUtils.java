@@ -189,35 +189,35 @@ implements IMinecraft {
         return block instanceof BaseEntityBlock || block instanceof ShulkerBoxBlock || block instanceof ChestBlock || block instanceof EnderChestBlock || block instanceof AnvilBlock || block instanceof CraftingTableBlock || block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof FenceGateBlock || block instanceof ButtonBlock || block instanceof LeverBlock || block instanceof AbstractFurnaceBlock || block instanceof BedBlock || block instanceof SignBlock || block instanceof WallSignBlock || block instanceof CrafterBlock || block instanceof RespawnAnchorBlock || block instanceof BarrelBlock;
     }
 
-    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, boolean bl, boolean bl2) {
-        return WorldUtils.placeBlock(blockPos, direction, interactionHand, bl ? "Normal" : "None", bl2, false);
+    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, boolean rotate, boolean render) {
+        return WorldUtils.placeBlock(blockPos, direction, interactionHand, rotate ? "Normal" : "None", render, false);
     }
 
-    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, boolean bl, boolean bl2, boolean bl3) {
-        return WorldUtils.placeBlock(blockPos, direction, interactionHand, null, bl ? "Normal" : "None", bl2, bl3);
+    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, boolean rotate, boolean destroyCrystals, boolean render) {
+        return WorldUtils.placeBlock(blockPos, direction, interactionHand, null, rotate ? "Normal" : "None", destroyCrystals, render);
     }
 
-    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, Runnable runnable, boolean bl, boolean bl2, boolean bl3) {
-        return WorldUtils.placeBlock(blockPos, direction, interactionHand, runnable, bl ? "Normal" : "None", bl2, bl3);
+    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, Runnable runnable, boolean rotate, boolean destroyCrystals, boolean render) {
+        return WorldUtils.placeBlock(blockPos, direction, interactionHand, runnable, rotate ? "Normal" : "None", destroyCrystals, render);
     }
 
-    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, String string, boolean bl) {
-        return WorldUtils.placeBlock(blockPos, direction, interactionHand, string, bl, false);
+    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, String rotateMode, boolean render) {
+        return WorldUtils.placeBlock(blockPos, direction, interactionHand, rotateMode, render, false);
     }
 
-    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, String string, boolean bl, boolean bl2) {
-        return WorldUtils.placeBlock(blockPos, direction, interactionHand, null, string, bl, bl2);
+    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, String rotateMode, boolean destroyCrystals, boolean render) {
+        return WorldUtils.placeBlock(blockPos, direction, interactionHand, null, rotateMode, destroyCrystals, render);
     }
 
     public static void predictPlacement(BlockPos blockPos, Block block) {
         if (blockPos == null || block == null) {
             return;
         }
-        long l = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         if (predictedPlacements.size() > 256) {
-            predictedPlacements.entrySet().removeIf(entry -> l - ((PredictedPlacement)entry.getValue()).time() >= 1000L);
+            predictedPlacements.entrySet().removeIf(entry -> now - ((PredictedPlacement)entry.getValue()).time() >= 1000L);
         }
-        predictedPlacements.put(blockPos.immutable(), new PredictedPlacement(block, l));
+        predictedPlacements.put(blockPos.immutable(), new PredictedPlacement(block, now));
     }
 
     public static void clearPredictedPlacement(BlockPos blockPos) {
@@ -245,85 +245,81 @@ implements IMinecraft {
         return predictedPlacement.block().defaultBlockState();
     }
 
-    public static void airPlaceBlock(BlockPos blockPos, InteractionHand interactionHand, String string, boolean bl) {
+    public static void airPlaceBlock(BlockPos blockPos, InteractionHand interactionHand, String rotateMode, boolean render) {
         RenderPosition renderPosition;
         if (blockPos == null || WorldUtils.mc.player == null || WorldUtils.mc.level == null || mc.getConnection() == null) {
             return;
         }
-        long l = System.currentTimeMillis();
-        long l2 = Math.max(50L, (long)Night.SERVER_MANAGER.getPing() * 2L);
-        Long l3 = pendingAirPlaces.get(blockPos);
-        if (l3 != null) {
-            if (l - l3 < l2) {
+        long now = System.currentTimeMillis();
+        long cooldownMs = Math.max(50L, (long)Night.SERVER_MANAGER.getPing() * 2L);
+        Long lastPlaceTime = pendingAirPlaces.get(blockPos);
+        if (lastPlaceTime != null) {
+            if (now - lastPlaceTime < cooldownMs) {
                 return;
             }
             pendingAirPlaces.remove(blockPos);
         }
         if (pendingAirPlaces.size() > 256) {
-            pendingAirPlaces.entrySet().removeIf(entry -> l - (Long)entry.getValue() >= l2);
+            pendingAirPlaces.entrySet().removeIf(entry -> now - (Long)entry.getValue() >= cooldownMs);
         }
-        pendingAirPlaces.put(blockPos, l);
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 0.5, 0.0);
-        boolean bl2 = string != null && !string.equalsIgnoreCase("None") && !string.equalsIgnoreCase("false");
-        boolean bl3 = bl2;
-        if (bl2) {
-            float[] rotations = RotationUtils.getRotations(vec3);
+        pendingAirPlaces.put(blockPos, now);
+        Vec3 hitVec = Vec3.atCenterOf((Vec3i)blockPos).add(0.0, 0.5, 0.0);
+        boolean shouldRotate = rotateMode != null && !rotateMode.equalsIgnoreCase("None") && !rotateMode.equalsIgnoreCase("false");
+        if (shouldRotate) {
+            float[] rotations = RotationUtils.getRotations(hitVec);
             if (Night.ROTATION_MANAGER.isBatchingRotations()) {
                 Night.ROTATION_MANAGER.batchRotate(rotations[0], rotations[1]);
             } else {
                 Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
             }
         }
-        if (bl && !Night.RENDER_MANAGER.renderPositions.contains(renderPosition = new RenderPosition(blockPos))) {
+        if (render && !Night.RENDER_MANAGER.renderPositions.contains(renderPosition = new RenderPosition(blockPos))) {
             Night.RENDER_MANAGER.renderPositions.add(renderPosition);
         }
-        BlockHitResult blockHitResult = new BlockHitResult(vec3, Direction.UP, blockPos, false);
-        NetworkUtils.sendSequencedPacket(arg_0 -> WorldUtils.createAirPlacePacket(interactionHand, blockHitResult, arg_0));
+        BlockHitResult blockHitResult = new BlockHitResult(hitVec, Direction.UP, blockPos, false);
+        NetworkUtils.sendSequencedPacket(sequence -> WorldUtils.createAirPlacePacket(interactionHand, blockHitResult, sequence));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(interactionHand));
     }
 
-    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, Runnable runnable, String string, boolean bl, boolean bl2) {
+    public static boolean placeBlock(BlockPos blockPos, Direction direction, InteractionHand interactionHand, Runnable runnable, String rotateMode, boolean destroyCrystals, boolean render) {
         RenderPosition renderPosition;
         if (blockPos == null || direction == null) {
             return false;
         }
-        BlockPos blockPos2 = blockPos.relative(direction);
+        BlockPos neighborPos = blockPos.relative(direction);
         if (WorldUtils.mc.level == null || WorldUtils.mc.player == null) {
             return false;
         }
-        boolean bl3 = WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(blockPos2)) || WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(blockPos));
-        boolean bl4 = bl3;
-        if (bl3) {
+        boolean interactable = WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(neighborPos)) || WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(blockPos));
+        if (interactable) {
             lastInteractablePlaceTime = System.currentTimeMillis();
         }
-        Vec3 vec3 = Vec3.atCenterOf((Vec3i)blockPos2).add((double)(-direction.getStepX()) * 0.45, (double)(-direction.getStepY()) * 0.45, (double)(-direction.getStepZ()) * 0.45);
+        Vec3 hitVec = Vec3.atCenterOf((Vec3i)neighborPos).add((double)(-direction.getStepX()) * 0.45, (double)(-direction.getStepY()) * 0.45, (double)(-direction.getStepZ()) * 0.45);
         Night.WORLD_MANAGER.reservePlacement(blockPos);
-        float f = Night.ROTATION_MANAGER.getServerYaw();
-        float f2 = Night.ROTATION_MANAGER.getServerPitch();
-        float f3 = (float)RotationUtils.getYRotToVec((Entity)WorldUtils.mc.player, vec3);
-        float f4 = (float)RotationUtils.getXRotToVec((Entity)WorldUtils.mc.player, vec3);
-        boolean bl5 = string != null && !string.equalsIgnoreCase("None") && !string.equalsIgnoreCase("false");
-        boolean bl6 = bl5;
-        if (bl5) {
+        float prevYaw = Night.ROTATION_MANAGER.getServerYaw();
+        float prevPitch = Night.ROTATION_MANAGER.getServerPitch();
+        float targetYaw = (float)RotationUtils.getYRotToVec((Entity)WorldUtils.mc.player, hitVec);
+        float targetPitch = (float)RotationUtils.getXRotToVec((Entity)WorldUtils.mc.player, hitVec);
+        boolean shouldRotate = rotateMode != null && !rotateMode.equalsIgnoreCase("None") && !rotateMode.equalsIgnoreCase("false");
+        if (shouldRotate) {
             if (Night.ROTATION_MANAGER.isBatchingRotations()) {
-                Night.ROTATION_MANAGER.batchRotate(f3, f4);
+                Night.ROTATION_MANAGER.batchRotate(targetYaw, targetPitch);
             } else {
-                Night.ROTATION_MANAGER.silentRotate(f3, f4);
+                Night.ROTATION_MANAGER.silentRotate(targetYaw, targetPitch);
             }
         }
-        if (bl) {
-            Direction direction2 = direction;
-            Runnable retryRunnable = () -> WorldUtils.placeBlock(blockPos, direction2, interactionHand, runnable, string, bl, bl2);
-            if (WorldUtils.destroyCrystals(blockPos, WorldUtils.mc.player.getEyePosition(), vec3, retryRunnable, string)) {
+        if (destroyCrystals) {
+            Direction retryDirection = direction;
+            Runnable retryRunnable = () -> WorldUtils.placeBlock(blockPos, retryDirection, interactionHand, runnable, rotateMode, destroyCrystals, render);
+            if (WorldUtils.destroyCrystals(blockPos, WorldUtils.mc.player.getEyePosition(), hitVec, retryRunnable, rotateMode)) {
                 return false;
             }
         }
         if (runnable != null) {
             runnable.run();
         }
-        boolean bl7 = (WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(blockPos2)) || WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(blockPos))) && !WorldUtils.mc.player.isShiftKeyDown();
-        boolean bl8 = bl7;
-        if (bl7) {
+        boolean needsSneak = (WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(neighborPos)) || WorldUtils.isInteractable(WorldUtils.mc.level.getBlockState(blockPos))) && !WorldUtils.mc.player.isShiftKeyDown();
+        if (needsSneak) {
             Input currentInput = WorldUtils.mc.player.input != null ? WorldUtils.mc.player.input.keyPresses : new Input(false, false, false, false, false, false, false);
             Input sneakingInput = new Input(currentInput.forward(), currentInput.backward(), currentInput.left(), currentInput.right(), currentInput.jump(), true, currentInput.sprint());
             mc.getConnection().send((Packet)new ServerboundPlayerInputPacket(sneakingInput));
@@ -332,14 +328,14 @@ implements IMinecraft {
                 accessor.setLastSentInput(sneakingInput);
             }
         }
-        BlockHitResult blockHitResult = new BlockHitResult(vec3, direction.getOpposite(), blockPos2, false);
-        NetworkUtils.sendSequencedPacket(arg_0 -> WorldUtils.createPlacePacket(interactionHand, blockHitResult, arg_0));
+        BlockHitResult blockHitResult = new BlockHitResult(hitVec, direction.getOpposite(), neighborPos, false);
+        NetworkUtils.sendSequencedPacket(sequence -> WorldUtils.createPlacePacket(interactionHand, blockHitResult, sequence));
         mc.getConnection().send((Packet)new ServerboundSwingPacket(interactionHand));
-        if (bl5 && !Night.ROTATION_MANAGER.isBatchingRotations() && Night.MODULE_MANAGER.getModule(RotationsModule.class).snapBack.getValue()) {
-            Night.ROTATION_MANAGER.packetRotate(f, f2);
+        if (shouldRotate && !Night.ROTATION_MANAGER.isBatchingRotations() && Night.MODULE_MANAGER.getModule(RotationsModule.class).snapBack.getValue()) {
+            Night.ROTATION_MANAGER.packetRotate(prevYaw, prevPitch);
         }
         Night.WORLD_MANAGER.getPlaceTimer().reset();
-        if (bl7) {
+        if (needsSneak) {
             Input restoredInput = WorldUtils.mc.player.input != null ? WorldUtils.mc.player.input.keyPresses : new Input(false, false, false, false, false, false, false);
             mc.getConnection().send((Packet)new ServerboundPlayerInputPacket(restoredInput));
             LocalPlayer localPlayer = WorldUtils.mc.player;
@@ -347,7 +343,7 @@ implements IMinecraft {
                 accessor.setLastSentInput(restoredInput);
             }
         }
-        if (bl2 && !Night.RENDER_MANAGER.renderPositions.contains(renderPosition = new RenderPosition(blockPos))) {
+        if (render && !Night.RENDER_MANAGER.renderPositions.contains(renderPosition = new RenderPosition(blockPos))) {
             Night.RENDER_MANAGER.renderPositions.add(renderPosition);
             if (PingBypassFlags.proxyForwardingActive && Night.PINGBYPASS_CONFIG != null && Night.PINGBYPASS_CONFIG.isServer() && Night.PROXY_SERVER != null) {
                 ClientboundCustomPayloadPacket payloadPacket = new ClientboundCustomPayloadPacket((CustomPacketPayload)PbCustomPayload.fromPacket(new S2CBlockRenderPacket(blockPos)));
@@ -364,7 +360,7 @@ implements IMinecraft {
         return WorldUtils.isPlaceable(blockPos, false);
     }
 
-    public static boolean isPlaceable(BlockPos blockPos, boolean bl) {
+    public static boolean isPlaceable(BlockPos blockPos, boolean ignoreSelf) {
         if (WorldUtils.mc.level == null || WorldUtils.mc.player == null) {
             return false;
         }
@@ -374,16 +370,15 @@ implements IMinecraft {
         if (!WorldUtils.mc.level.getBlockState(blockPos).canBeReplaced()) {
             return false;
         }
-        boolean bl2 = (double)blockPos.getY() < Math.floor(WorldUtils.mc.player.getBoundingBox().minY + 0.01);
-        boolean bl3 = new AABB(blockPos).contains(WorldUtils.mc.player.position().x, WorldUtils.mc.player.getBoundingBox().minY + 0.1, WorldUtils.mc.player.position().z);
-        boolean bl4 = !bl2 && blockPos.getY() == (int)Math.floor(WorldUtils.mc.player.getBoundingBox().minY);
-        double d = bl4 ? 0.05 : 0.25;
-        boolean bl5 = !bl && !bl2 && (bl3 || !EntityUtils.isPhased((Entity)WorldUtils.mc.player) && WorldUtils.mc.player.getBoundingBox().deflate(d).intersects(new AABB(blockPos)));
-        boolean bl6 = bl5;
-        if (bl5) {
+        boolean belowFeet = (double)blockPos.getY() < Math.floor(WorldUtils.mc.player.getBoundingBox().minY + 0.01);
+        boolean centerInside = new AABB(blockPos).contains(WorldUtils.mc.player.position().x, WorldUtils.mc.player.getBoundingBox().minY + 0.1, WorldUtils.mc.player.position().z);
+        boolean atFeetLevel = !belowFeet && blockPos.getY() == (int)Math.floor(WorldUtils.mc.player.getBoundingBox().minY);
+        double deflateAmount = atFeetLevel ? 0.05 : 0.25;
+        boolean collidesWithSelf = !ignoreSelf && !belowFeet && (centerInside || !EntityUtils.isPhased((Entity)WorldUtils.mc.player) && WorldUtils.mc.player.getBoundingBox().deflate(deflateAmount).intersects(new AABB(blockPos)));
+        if (collidesWithSelf) {
             return false;
         }
-        return WorldUtils.mc.level.getEntities((Entity)null, new AABB(blockPos), entity -> true).stream().noneMatch(entity -> !(entity instanceof EndCrystal) && !(entity instanceof ExperienceOrb) && !(entity instanceof ItemEntity) && !(entity instanceof AbstractArrow) && (!entity.equals((Object)WorldUtils.mc.player) || !bl && !bl2 && bl5) && !EntityUtils.isGhost(entity));
+        return WorldUtils.mc.level.getEntities((Entity)null, new AABB(blockPos), entity -> true).stream().noneMatch(entity -> !(entity instanceof EndCrystal) && !(entity instanceof ExperienceOrb) && !(entity instanceof ItemEntity) && !(entity instanceof AbstractArrow) && (!entity.equals((Object)WorldUtils.mc.player) || !ignoreSelf && !belowFeet && collidesWithSelf) && !EntityUtils.isGhost(entity));
     }
 
     public static boolean isCrystalPlaceable(BlockPos blockPos) {
@@ -420,97 +415,95 @@ implements IMinecraft {
         return WorldUtils.getDirection(blockPos, null, false);
     }
 
-    public static Direction getDirection(BlockPos blockPos, boolean bl) {
-        return WorldUtils.getDirection(blockPos, null, bl);
+    public static Direction getDirection(BlockPos blockPos, boolean strictDirection) {
+        return WorldUtils.getDirection(blockPos, null, strictDirection);
     }
 
-    public static BlockPos findSupportBlock(BlockPos blockPos, List<BlockPos> list, boolean bl, int n) {
+    public static BlockPos findSupportBlock(BlockPos blockPos, List<BlockPos> placedPositions, boolean strictDirection, int maxDistance) {
         if (WorldUtils.mc.level == null || WorldUtils.mc.player == null || blockPos == null) {
             return null;
         }
-        for (int i = 1; i <= n; ++i) {
+        for (int i = 1; i <= maxDistance; ++i) {
             for (Direction direction : Direction.values()) {
-                Direction direction2;
-                BlockPos blockPos2 = blockPos.relative(direction, i);
-                if (!WorldUtils.mc.player.isWithinBlockInteractionRange(blockPos2, 0.0) || !WorldUtils.isPlaceable(blockPos2, false) || (direction2 = WorldUtils.getDirection(blockPos2, list, bl)) == null) continue;
-                return blockPos2;
+                Direction supportDirection;
+                BlockPos candidatePos = blockPos.relative(direction, i);
+                if (!WorldUtils.mc.player.isWithinBlockInteractionRange(candidatePos, 0.0) || !WorldUtils.isPlaceable(candidatePos, false) || (supportDirection = WorldUtils.getDirection(candidatePos, placedPositions, strictDirection)) == null) continue;
+                return candidatePos;
             }
         }
         return null;
     }
 
-    private static boolean isVisibleBlock(BlockPos blockPos, BlockPos blockPos2, BlockPos blockPos3) {
-        if (blockPos == null) {
+    private static boolean isVisibleBlock(BlockPos targetPos, BlockPos firstPos, BlockPos secondPos) {
+        if (targetPos == null) {
             return false;
         }
-        return blockPos.equals((Object)blockPos2) || blockPos.equals((Object)blockPos3);
+        return targetPos.equals((Object)firstPos) || targetPos.equals((Object)secondPos);
     }
 
-    public static List<Direction> getDirections(BlockPos blockPos, List<BlockPos> list, boolean bl) {
+    public static List<Direction> getDirections(BlockPos blockPos, List<BlockPos> placedPositions, boolean strictDirection) {
         if (WorldUtils.mc.level == null || WorldUtils.mc.player == null) {
             return Collections.emptyList();
         }
-        Vec3 vec3 = WorldUtils.mc.player.getEyePosition();
+        Vec3 eyePos = WorldUtils.mc.player.getEyePosition();
         ArrayList<DirectionCandidate> arrayList = new ArrayList<DirectionCandidate>();
-        ArrayList arrayList2 = new ArrayList();
         for (Direction direction : Direction.values()) {
-            BlockPos blockPos2 = blockPos.relative(direction);
-            BlockState blockState = WorldUtils.mc.level.getBlockState(blockPos2);
-            if (blockState.canBeReplaced() && (list == null || !list.contains(blockPos2)) || !blockState.getFluidState().isEmpty() || !WorldUtils.mc.player.isWithinBlockInteractionRange(blockPos2, 0.0)) continue;
-            Vec3 vec32 = Vec3.atCenterOf((Vec3i)blockPos).relative(direction, 0.5);
-            if (bl) {
-                List<Direction> list2;
-                if (direction == Direction.DOWN ? vec3.y < (double)blockPos2.getY() + 1.0 : (direction == Direction.UP ? vec3.y > (double)blockPos2.getY() : !(list2 = WorldUtils.getStrictDirections(vec3, Vec3.atCenterOf((Vec3i)blockPos2))).contains(direction.getOpposite()))) continue;
-                Direction direction2 = direction.getOpposite();
-                int[] nArray = new int[]{direction2.getStepX(), direction2.getStepY(), direction2.getStepZ()};
-                double[][] dArrayArray = new double[][]{{0.5, 0.5}, {0.25, 0.5}, {0.75, 0.5}, {0.5, 0.25}, {0.5, 0.75}};
-                boolean bl2 = false;
-                for (double[] dArray : dArrayArray) {
+            BlockPos neighborPos = blockPos.relative(direction);
+            BlockState blockState = WorldUtils.mc.level.getBlockState(neighborPos);
+            if (blockState.canBeReplaced() && (placedPositions == null || !placedPositions.contains(neighborPos)) || !blockState.getFluidState().isEmpty() || !WorldUtils.mc.player.isWithinBlockInteractionRange(neighborPos, 0.0)) continue;
+            Vec3 faceCenter = Vec3.atCenterOf((Vec3i)blockPos).relative(direction, 0.5);
+            if (strictDirection) {
+                List<Direction> strictDirs;
+                if (direction == Direction.DOWN ? eyePos.y < (double)neighborPos.getY() + 1.0 : (direction == Direction.UP ? eyePos.y > (double)neighborPos.getY() : !(strictDirs = WorldUtils.getStrictDirections(eyePos, Vec3.atCenterOf((Vec3i)neighborPos))).contains(direction.getOpposite()))) continue;
+                Direction oppositeDir = direction.getOpposite();
+                int[] stepOffsets = new int[]{oppositeDir.getStepX(), oppositeDir.getStepY(), oppositeDir.getStepZ()};
+                double[][] uvOffsets = new double[][]{{0.5, 0.5}, {0.25, 0.5}, {0.75, 0.5}, {0.5, 0.25}, {0.5, 0.75}};
+                boolean visible = false;
+                for (double[] uv : uvOffsets) {
                     BlockHitResult blockHitResult;
-                    double[] dArray2 = new double[]{blockPos2.getX(), blockPos2.getY(), blockPos2.getZ()};
-                    int n = 0;
-                    for (int i = 0; i < 3; ++i) {
-                        int n2 = i;
-                        dArray2[n2] = dArray2[n2] + (nArray[i] != 0 ? 0.5 + (double)nArray[i] * 0.48 : dArray[n++]);
+                    double[] coords = new double[]{neighborPos.getX(), neighborPos.getY(), neighborPos.getZ()};
+                    int uvIndex = 0;
+                    for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
+                        coords[axisIndex] = coords[axisIndex] + (stepOffsets[axisIndex] != 0 ? 0.5 + (double)stepOffsets[axisIndex] * 0.48 : uv[uvIndex++]);
                     }
-                    BlockHitResult blockHitResult2 = WorldUtils.mc.level.clip(new ClipContext(vec3, new Vec3(dArray2[0], dArray2[1], dArray2[2]), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
-                    if (blockHitResult2.getType() != HitResult.Type.BLOCK || !(blockHitResult2 instanceof BlockHitResult) || !(blockHitResult = blockHitResult2).getBlockPos().equals((Object)blockPos2) || blockHitResult.getDirection() != direction2) continue;
-                    bl2 = true;
+                    BlockHitResult clipResult = WorldUtils.mc.level.clip(new ClipContext(eyePos, new Vec3(coords[0], coords[1], coords[2]), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
+                    if (clipResult.getType() != HitResult.Type.BLOCK || !(clipResult instanceof BlockHitResult) || !(blockHitResult = clipResult).getBlockPos().equals((Object)neighborPos) || blockHitResult.getDirection() != oppositeDir) continue;
+                    visible = true;
                     break;
                 }
-                if (!bl2) continue;
+                if (!visible) continue;
             }
-            double d = vec3.distanceToSqr(vec32);
+            double distSq = eyePos.distanceToSqr(faceCenter);
             if (RIGHT_CLICKABLE_BLOCKS.contains(blockState.getBlock())) {
-                d += 20.0;
+                distSq += 20.0;
             }
             if (direction == Direction.DOWN) {
-                d -= 50.0;
+                distSq -= 50.0;
             }
-            arrayList.add(new DirectionCandidate(direction, d));
+            arrayList.add(new DirectionCandidate(direction, distSq));
         }
         arrayList.sort(Comparator.comparingDouble(directionCandidate -> directionCandidate.distSq));
-        ArrayList arrayList3 = new ArrayList();
-        for (DirectionCandidate directionCandidate2 : arrayList) {
-            arrayList3.add(directionCandidate2.direction);
+        ArrayList<Direction> result = new ArrayList<Direction>();
+        for (DirectionCandidate candidate : arrayList) {
+            result.add(candidate.direction);
         }
-        return arrayList3;
+        return result;
     }
 
-    public static Direction getDirection(BlockPos blockPos, List<BlockPos> list, boolean bl) {
-        List<Direction> list2 = WorldUtils.getDirections(blockPos, list, bl);
-        return list2.isEmpty() ? null : list2.get(0);
+    public static Direction getDirection(BlockPos blockPos, List<BlockPos> placedPositions, boolean strictDirection) {
+        List<Direction> directions = WorldUtils.getDirections(blockPos, placedPositions, strictDirection);
+        return directions.isEmpty() ? null : directions.get(0);
     }
 
     public static boolean destroyCrystals(BlockPos blockPos) {
         return WorldUtils.destroyCrystals(blockPos, null, null, null, "None");
     }
 
-    public static boolean destroyCrystals(BlockPos blockPos, Vec3 vec3, Vec3 vec32, Runnable runnable, String string) {
+    public static boolean destroyCrystals(BlockPos blockPos, Vec3 start, Vec3 end, Runnable runnable, String rotateMode) {
         List<Entity> list;
-        AABB aABB = vec3 != null && vec32 != null ? new AABB(vec3, vec32).inflate(0.5) : new AABB(blockPos);
+        AABB aABB = start != null && end != null ? new AABB(start, end).inflate(0.5) : new AABB(blockPos);
         try {
-            list = WorldUtils.mc.level.getEntities((Entity)null, aABB, entity -> entity instanceof EndCrystal && (vec3 == null || vec32 == null || new AABB(blockPos).intersects(entity.getBoundingBox()) || entity.getBoundingBox().clip(vec3, vec32).isPresent()));
+            list = WorldUtils.mc.level.getEntities((Entity)null, aABB, entity -> entity instanceof EndCrystal && (start == null || end == null || new AABB(blockPos).intersects(entity.getBoundingBox()) || entity.getBoundingBox().clip(start, end).isPresent()));
         }
         catch (ConcurrentModificationException concurrentModificationException) {
             return false;
@@ -518,17 +511,17 @@ implements IMinecraft {
         if (list.isEmpty()) {
             return false;
         }
-        boolean bl = string != null && !string.equalsIgnoreCase("None") && !string.equalsIgnoreCase("false");
-        for (Entity entity2 : list) {
-            if (!entity2.isAlive() || entity2.isRemoved() || WorldUtils.mc.player.getEyePosition().distanceToSqr(entity2.position()) > 36.0) continue;
-            if (bl) {
-                float[] fArray = RotationUtils.getRotations(entity2.getBoundingBox().getCenter());
-                Night.ROTATION_MANAGER.silentRotate(fArray[0], fArray[1]);
+        boolean shouldRotate = rotateMode != null && !rotateMode.equalsIgnoreCase("None") && !rotateMode.equalsIgnoreCase("false");
+        for (Entity entity : list) {
+            if (!entity.isAlive() || entity.isRemoved() || WorldUtils.mc.player.getEyePosition().distanceToSqr(entity.position()) > 36.0) continue;
+            if (shouldRotate) {
+                float[] rotations = RotationUtils.getRotations(entity.getBoundingBox().getCenter());
+                Night.ROTATION_MANAGER.silentRotate(rotations[0], rotations[1]);
             }
-            WorldUtils.mc.player.connection.send((Packet)new ServerboundAttackPacket(entity2.getId()));
+            WorldUtils.mc.player.connection.send((Packet)new ServerboundAttackPacket(entity.getId()));
             WorldUtils.mc.player.connection.send((Packet)new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             if (runnable == null) continue;
-            Night.WORLD_MANAGER.onCrystalAttacked(entity2.getId(), runnable);
+            Night.WORLD_MANAGER.onCrystalAttacked(entity.getId(), runnable);
         }
         return true;
     }
@@ -537,8 +530,8 @@ implements IMinecraft {
         return Vec3.atCenterOf((Vec3i)blockPos).add((double)direction.getStepX() / 2.0, (double)direction.getStepY() / 2.0, (double)direction.getStepZ() / 2.0);
     }
 
-    public static Direction getClosestDirection(BlockPos blockPos, boolean bl) {
-        if (bl) {
+    public static Direction getClosestDirection(BlockPos blockPos, boolean raytrace) {
+        if (raytrace) {
             if (WorldUtils.mc.player.getY() >= (double)blockPos.getY()) {
                 return Direction.UP;
             }
@@ -553,56 +546,56 @@ implements IMinecraft {
 
     private static Direction getClosestDirection(BlockPos blockPos) {
         Direction direction = null;
-        Vec3 vec3 = null;
-        for (Direction direction2 : Direction.values()) {
-            Vec3 vec32 = WorldUtils.getHitVector(blockPos, direction2);
+        Vec3 bestHitVec = null;
+        for (Direction candidateDir : Direction.values()) {
+            Vec3 hitVec = WorldUtils.getHitVector(blockPos, candidateDir);
             if (direction == null) {
-                direction = direction2;
-                vec3 = vec32;
+                direction = candidateDir;
+                bestHitVec = hitVec;
                 continue;
             }
-            if (!(WorldUtils.mc.player.distanceToSqr(vec32) < WorldUtils.mc.player.distanceToSqr(vec3))) continue;
-            direction = direction2;
-            vec3 = vec32;
+            if (!(WorldUtils.mc.player.distanceToSqr(hitVec) < WorldUtils.mc.player.distanceToSqr(bestHitVec))) continue;
+            direction = candidateDir;
+            bestHitVec = hitVec;
         }
         return direction;
     }
 
-    public static List<Direction> getStrictDirections(Vec3 vec3, Vec3 vec32) {
+    public static List<Direction> getStrictDirections(Vec3 eyePos, Vec3 targetCenter) {
         ArrayList<Direction> arrayList = new ArrayList<Direction>();
-        double d = vec3.x - vec32.x;
-        double d2 = vec3.y - vec32.y;
-        double d3 = vec3.z - vec32.z;
-        if (d2 > 0.5) {
+        double deltaX = eyePos.x - targetCenter.x;
+        double deltaY = eyePos.y - targetCenter.y;
+        double deltaZ = eyePos.z - targetCenter.z;
+        if (deltaY > 0.5) {
             arrayList.add(Direction.UP);
-        } else if (d2 < -0.5) {
+        } else if (deltaY < -0.5) {
             arrayList.add(Direction.DOWN);
         }
-        if (d > 0.5) {
+        if (deltaX > 0.5) {
             arrayList.add(Direction.EAST);
-        } else if (d < -0.5) {
+        } else if (deltaX < -0.5) {
             arrayList.add(Direction.WEST);
         }
-        if (d3 > 0.5) {
+        if (deltaZ > 0.5) {
             arrayList.add(Direction.SOUTH);
-        } else if (d3 < -0.5) {
+        } else if (deltaZ < -0.5) {
             arrayList.add(Direction.NORTH);
         }
         return arrayList;
     }
 
-    public static HitResult getRaytraceTarget(float f, float f2, double d, double d2, double d3) {
+    public static HitResult getRaytraceTarget(float yaw, float pitch, double x, double y, double z) {
         AABB aABB;
-        Vec3 vec3;
+        Vec3 endVec;
         EntityHitResult entityHitResult;
-        Vec3 vec32 = new Vec3((double)(Mth.sin((double)(-f * ((float)Math.PI / 180))) * Mth.cos((double)(f2 * ((float)Math.PI / 180)))), (double)(-Mth.sin((double)(f2 * ((float)Math.PI / 180)))), (double)(Mth.cos((double)(-f * ((float)Math.PI / 180))) * Mth.cos((double)(f2 * ((float)Math.PI / 180)))));
-        BlockHitResult blockHitResult = WorldUtils.mc.level.clip(new ClipContext(new Vec3(d, d2, d3), new Vec3(d + vec32.x * 5.0, d2 + vec32.y * 5.0, d3 + vec32.z * 5.0), ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
-        Vec3 vec33 = new Vec3(d, d2 + (double)WorldUtils.mc.player.getEyeHeight(WorldUtils.mc.player.getPose()), d3);
-        double d4 = 25.0;
+        Vec3 lookVec = new Vec3((double)(Mth.sin((double)(-yaw * ((float)Math.PI / 180))) * Mth.cos((double)(pitch * ((float)Math.PI / 180)))), (double)(-Mth.sin((double)(pitch * ((float)Math.PI / 180)))), (double)(Mth.cos((double)(-yaw * ((float)Math.PI / 180))) * Mth.cos((double)(pitch * ((float)Math.PI / 180)))));
+        BlockHitResult blockHitResult = WorldUtils.mc.level.clip(new ClipContext(new Vec3(x, y, z), new Vec3(x + lookVec.x * 5.0, y + lookVec.y * 5.0, z + lookVec.z * 5.0), ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
+        Vec3 eyePos = new Vec3(x, y + (double)WorldUtils.mc.player.getEyeHeight(WorldUtils.mc.player.getPose()), z);
+        double closestDistSq = 25.0;
         if (blockHitResult != null) {
-            d4 = blockHitResult.getLocation().distanceToSqr(vec33);
+            closestDistSq = blockHitResult.getLocation().distanceToSqr(eyePos);
         }
-        if ((entityHitResult = ProjectileUtil.getEntityHitResult((Entity)WorldUtils.mc.player, (Vec3)vec33, (Vec3)(vec3 = vec33.add(vec32.x * 5.0, vec32.y * 5.0, vec32.z * 5.0)), (AABB)(aABB = new AABB(d - 0.3, d2, d3 - 0.3, d + 0.3, d2 + 1.8, d3 + 0.3).expandTowards(vec32.scale(5.0)).inflate(1.0, 1.0, 1.0)), entity -> !entity.isSpectator() && entity.isPickable(), (double)d4)) != null && (vec33.distanceToSqr(entityHitResult.getLocation()) < d4 || blockHitResult == null) && entityHitResult.getEntity() instanceof LivingEntity) {
+        if ((entityHitResult = ProjectileUtil.getEntityHitResult((Entity)WorldUtils.mc.player, (Vec3)eyePos, (Vec3)(endVec = eyePos.add(lookVec.x * 5.0, lookVec.y * 5.0, lookVec.z * 5.0)), (AABB)(aABB = new AABB(x - 0.3, y, z - 0.3, x + 0.3, y + 1.8, z + 0.3).expandTowards(lookVec.scale(5.0)).inflate(1.0, 1.0, 1.0)), entity -> !entity.isSpectator() && entity.isPickable(), (double)closestDistSq)) != null && (eyePos.distanceToSqr(entityHitResult.getLocation()) < closestDistSq || blockHitResult == null) && entityHitResult.getEntity() instanceof LivingEntity) {
             return entityHitResult;
         }
         return blockHitResult;
@@ -613,63 +606,63 @@ implements IMinecraft {
             return false;
         }
         AABB aABB = entity.getBoundingBox();
-        Vec3 vec3 = new Vec3(WorldUtils.mc.player.getX(), WorldUtils.mc.player.getEyeY(), WorldUtils.mc.player.getZ());
-        if (WorldUtils.canSee(vec3, aABB.getCenter())) {
+        Vec3 eyePos = new Vec3(WorldUtils.mc.player.getX(), WorldUtils.mc.player.getEyeY(), WorldUtils.mc.player.getZ());
+        if (WorldUtils.canSee(eyePos, aABB.getCenter())) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(aABB.getCenter().x, aABB.maxY - 0.1, aABB.getCenter().z))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(aABB.getCenter().x, aABB.maxY - 0.1, aABB.getCenter().z))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(aABB.getCenter().x, aABB.minY + 0.1, aABB.getCenter().z))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(aABB.getCenter().x, aABB.minY + 0.1, aABB.getCenter().z))) {
             return true;
         }
-        double d = aABB.minX + 0.1;
-        double d2 = aABB.maxX - 0.1;
-        double d3 = aABB.minY + 0.1;
-        double d4 = aABB.maxY - 0.1;
-        double d5 = aABB.minZ + 0.1;
-        double d6 = aABB.maxZ - 0.1;
-        if (WorldUtils.canSee(vec3, new Vec3(d, d4, d5))) {
+        double minX = aABB.minX + 0.1;
+        double maxX = aABB.maxX - 0.1;
+        double minY = aABB.minY + 0.1;
+        double maxY = aABB.maxY - 0.1;
+        double minZ = aABB.minZ + 0.1;
+        double maxZ = aABB.maxZ - 0.1;
+        if (WorldUtils.canSee(eyePos, new Vec3(minX, maxY, minZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d2, d4, d5))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(maxX, maxY, minZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d, d4, d6))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(minX, maxY, maxZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d2, d4, d6))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(maxX, maxY, maxZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d, d3, d5))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(minX, minY, minZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d2, d3, d5))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(maxX, minY, minZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d, d3, d6))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(minX, minY, maxZ))) {
             return true;
         }
-        if (WorldUtils.canSee(vec3, new Vec3(d2, d3, d6))) {
+        if (WorldUtils.canSee(eyePos, new Vec3(maxX, minY, maxZ))) {
             return true;
         }
         return WorldUtils.canSeeBlock(BlockPos.containing((double)aABB.getCenter().x, (double)(aABB.minY - 0.5), (double)aABB.getCenter().z));
     }
 
-    public static boolean canSee(Vec3 vec3, Vec3 vec32) {
-        return WorldUtils.mc.level.clip(new ClipContext(vec3, vec32, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player)).getType() == HitResult.Type.MISS;
+    public static boolean canSee(Vec3 start, Vec3 end) {
+        return WorldUtils.mc.level.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player)).getType() == HitResult.Type.MISS;
     }
 
     public static boolean canSee(BlockPos blockPos) {
         return WorldUtils.canSee((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 0.5, (double)blockPos.getZ() + 0.5);
     }
 
-    public static boolean canSee(Vec3 vec3) {
-        return WorldUtils.canSee(vec3.x, vec3.y, vec3.z);
+    public static boolean canSee(Vec3 pos) {
+        return WorldUtils.canSee(pos.x, pos.y, pos.z);
     }
 
-    public static boolean canSee(double d, double d2, double d3) {
-        return WorldUtils.mc.level.clip(new ClipContext(new Vec3(WorldUtils.mc.player.getX(), WorldUtils.mc.player.getEyeY(), WorldUtils.mc.player.getZ()), new Vec3(d, d2, d3), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player)).getType() == HitResult.Type.MISS;
+    public static boolean canSee(double x, double y, double z) {
+        return WorldUtils.mc.level.clip(new ClipContext(new Vec3(WorldUtils.mc.player.getX(), WorldUtils.mc.player.getEyeY(), WorldUtils.mc.player.getZ()), new Vec3(x, y, z), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player)).getType() == HitResult.Type.MISS;
     }
 
     public static boolean canSeeBlock(BlockPos blockPos) {
@@ -678,13 +671,13 @@ implements IMinecraft {
         if (WorldUtils.mc.player == null || WorldUtils.mc.level == null) {
             return false;
         }
-        Vec3 vec3 = new Vec3(WorldUtils.mc.player.getX(), WorldUtils.mc.player.getEyeY(), WorldUtils.mc.player.getZ());
-        BlockHitResult blockHitResult3 = WorldUtils.mc.level.clip(new ClipContext(vec3, Vec3.atCenterOf((Vec3i)blockPos), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
+        Vec3 eyePos = new Vec3(WorldUtils.mc.player.getX(), WorldUtils.mc.player.getEyeY(), WorldUtils.mc.player.getZ());
+        BlockHitResult blockHitResult3 = WorldUtils.mc.level.clip(new ClipContext(eyePos, Vec3.atCenterOf((Vec3i)blockPos), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
         if (blockHitResult3.getType() == HitResult.Type.MISS || blockHitResult3 instanceof BlockHitResult && (blockHitResult2 = blockHitResult3).getBlockPos().equals((Object)blockPos)) {
             return true;
         }
-        Vec3 vec32 = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 1.0, (double)blockPos.getZ() + 0.5);
-        BlockHitResult blockHitResult4 = WorldUtils.mc.level.clip(new ClipContext(vec3, vec32, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
+        Vec3 topCenter = new Vec3((double)blockPos.getX() + 0.5, (double)blockPos.getY() + 1.0, (double)blockPos.getZ() + 0.5);
+        BlockHitResult blockHitResult4 = WorldUtils.mc.level.clip(new ClipContext(eyePos, topCenter, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (Entity)WorldUtils.mc.player));
         if (blockHitResult4.getType() == HitResult.Type.MISS || blockHitResult4 instanceof BlockHitResult && (blockHitResult = blockHitResult4).getBlockPos().equals((Object)blockPos)) {
             return true;
         }
@@ -703,8 +696,8 @@ implements IMinecraft {
         return WorldUtils.mc.level.getBlockState(blockPos).getBlock();
     }
 
-    public static int getNetherPosition(int n) {
-        return WorldUtils.mc.player.level().dimension() == Level.NETHER ? n * 8 : n / 8;
+    public static int getNetherPosition(int coord) {
+        return WorldUtils.mc.player.level().dimension() == Level.NETHER ? coord * 8 : coord / 8;
     }
 
     public static String getMovementDirection(Direction direction) {
@@ -723,49 +716,49 @@ implements IMinecraft {
         return "N/A";
     }
 
-    public static String getFacingName(float f) {
-        return FACING_NAMES[WorldUtils.getFacingOctant(f)];
+    public static String getFacingName(float yaw) {
+        return FACING_NAMES[WorldUtils.getFacingOctant(yaw)];
     }
 
-    public static String getFacingAxes(float f) {
-        return FACING_AXES[WorldUtils.getFacingOctant(f)];
+    public static String getFacingAxes(float yaw) {
+        return FACING_AXES[WorldUtils.getFacingOctant(yaw)];
     }
 
-    private static int getFacingOctant(float f) {
-        float f2 = f % 360.0f;
-        if (f2 < 0.0f) {
-            f2 += 360.0f;
+    private static int getFacingOctant(float yaw) {
+        float wrappedYaw = yaw % 360.0f;
+        if (wrappedYaw < 0.0f) {
+            wrappedYaw += 360.0f;
         }
-        return Math.round(f2 / 45.0f) % 8;
+        return Math.round(wrappedYaw / 45.0f) % 8;
     }
 
     public static float getBreakTime(Player player, BlockState blockState) {
         if (player == null) {
             return 0.0f;
         }
-        float f = NETHERITE_PICKAXE.getItem().getDestroySpeed(NETHERITE_PICKAXE, blockState) + 26.0f;
-        return 1.0f / (f / blockState.getBlock().defaultDestroyTime() / 30.0f) * 50.0f;
+        float speed = NETHERITE_PICKAXE.getItem().getDestroySpeed(NETHERITE_PICKAXE, blockState) + 26.0f;
+        return 1.0f / (speed / blockState.getBlock().defaultDestroyTime() / 30.0f) * 50.0f;
     }
 
-    public static double getBreakDelta(BlockState blockState, int n) {
-        int n2;
+    public static double getBreakDelta(BlockState blockState, int slot) {
+        int efficiencyLevel;
         ItemStack itemStack;
-        if (n == -1) {
+        if (slot == -1) {
             return 0.0;
         }
-        float f = WorldUtils.mc.player.getInventory().getItem(n).getItem().getDestroySpeed(WorldUtils.mc.player.getInventory().getItem(n), blockState);
-        if (f > 1.0f) {
-            itemStack = WorldUtils.mc.player.getInventory().getItem(n);
-            n2 = EnchantmentHelper.getItemEnchantmentLevel((Holder)WorldUtils.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.EFFICIENCY), (ItemInstance)itemStack);
-            if (n2 > 0 && !itemStack.isEmpty()) {
-                f += (float)(n2 * n2 + 1);
+        float speed = WorldUtils.mc.player.getInventory().getItem(slot).getItem().getDestroySpeed(WorldUtils.mc.player.getInventory().getItem(slot), blockState);
+        if (speed > 1.0f) {
+            itemStack = WorldUtils.mc.player.getInventory().getItem(slot);
+            efficiencyLevel = EnchantmentHelper.getItemEnchantmentLevel((Holder)WorldUtils.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.EFFICIENCY), (ItemInstance)itemStack);
+            if (efficiencyLevel > 0 && !itemStack.isEmpty()) {
+                speed += (float)(efficiencyLevel * efficiencyLevel + 1);
             }
         }
         if (MobEffectUtil.hasDigSpeed((LivingEntity)WorldUtils.mc.player)) {
-            f *= 1.0f + (float)(MobEffectUtil.getDigSpeedAmplification((LivingEntity)WorldUtils.mc.player) + 1) * 0.2f;
+            speed *= 1.0f + (float)(MobEffectUtil.getDigSpeedAmplification((LivingEntity)WorldUtils.mc.player) + 1) * 0.2f;
         }
         if (WorldUtils.mc.player.hasEffect(MobEffects.MINING_FATIGUE)) {
-            f *= (switch (WorldUtils.mc.player.getEffect(MobEffects.MINING_FATIGUE).getAmplifier()) {
+            speed *= (switch (WorldUtils.mc.player.getEffect(MobEffects.MINING_FATIGUE).getAmplifier()) {
                 case 0 -> 0.3f;
                 case 1 -> 0.09f;
                 case 2 -> 0.0027f;
@@ -776,59 +769,59 @@ implements IMinecraft {
         boolean liquidCheck = speedMineModule != null && speedMineModule.isToggled() && speedMineModule.liquidCheck.getValue();
         boolean airCheck = speedMineModule != null && speedMineModule.isToggled() && speedMineModule.airCheck.getValue();
         if (!liquidCheck && WorldUtils.mc.player.isEyeInFluid(FluidTags.WATER) && EnchantmentHelper.getEnchantmentLevel((Holder)WorldUtils.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.AQUA_AFFINITY), (LivingEntity)WorldUtils.mc.player) <= 0) {
-            f /= 5.0f;
+            speed /= 5.0f;
         }
         if (!airCheck && !WorldUtils.mc.player.onGround()) {
-            f /= 5.0f;
+            speed /= 5.0f;
         }
-        return f / blockState.getBlock().defaultDestroyTime() / (float)(!blockState.requiresCorrectToolForDrops() || WorldUtils.mc.player.getInventory().getItem(n).isCorrectToolForDrops(blockState) ? 30 : 100);
+        return speed / blockState.getBlock().defaultDestroyTime() / (float)(!blockState.requiresCorrectToolForDrops() || WorldUtils.mc.player.getInventory().getItem(slot).isCorrectToolForDrops(blockState) ? 30 : 100);
     }
 
-    public static float getMineSpeed(BlockState blockState, int n) {
-        int n2;
+    public static float getMineSpeed(BlockState blockState, int slot) {
+        int efficiencyLevel;
         ItemStack itemStack;
         if (WorldUtils.mc.player == null) {
             return 0.0f;
         }
-        float f = WorldUtils.mc.player.getInventory().getItem(n).getItem().getDestroySpeed(WorldUtils.mc.player.getInventory().getItem(n), blockState);
-        if (f > 1.0f) {
-            itemStack = WorldUtils.mc.player.getInventory().getItem(n);
-            n2 = EnchantmentHelper.getItemEnchantmentLevel((Holder)WorldUtils.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.EFFICIENCY), (ItemInstance)itemStack);
-            if (n2 > 0 && !itemStack.isEmpty()) {
-                f += (float)(StrictMath.pow(n2, 2.0) + 1.0);
+        float speed = WorldUtils.mc.player.getInventory().getItem(slot).getItem().getDestroySpeed(WorldUtils.mc.player.getInventory().getItem(slot), blockState);
+        if (speed > 1.0f) {
+            itemStack = WorldUtils.mc.player.getInventory().getItem(slot);
+            efficiencyLevel = EnchantmentHelper.getItemEnchantmentLevel((Holder)WorldUtils.mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.EFFICIENCY), (ItemInstance)itemStack);
+            if (efficiencyLevel > 0 && !itemStack.isEmpty()) {
+                speed += (float)(StrictMath.pow(efficiencyLevel, 2.0) + 1.0);
             }
         }
         if (WorldUtils.mc.player.hasEffect(MobEffects.HASTE)) {
-            f *= 1.0f + (float)(WorldUtils.mc.player.getEffect(MobEffects.HASTE).getAmplifier() + 1) * 0.2f;
+            speed *= 1.0f + (float)(WorldUtils.mc.player.getEffect(MobEffects.HASTE).getAmplifier() + 1) * 0.2f;
         }
         if (WorldUtils.mc.player.hasEffect(MobEffects.MINING_FATIGUE)) {
-            f *= (float)Math.pow(0.3f, WorldUtils.mc.player.getEffect(MobEffects.MINING_FATIGUE).getAmplifier() + 1);
+            speed *= (float)Math.pow(0.3f, WorldUtils.mc.player.getEffect(MobEffects.MINING_FATIGUE).getAmplifier() + 1);
         }
         SpeedMineModule speedMineModule2 = Night.MODULE_MANAGER != null ? Night.MODULE_MANAGER.getModule(SpeedMineModule.class) : null;
         boolean liquidCheck2 = speedMineModule2 != null && speedMineModule2.isToggled() && speedMineModule2.liquidCheck.getValue();
         boolean airCheck2 = speedMineModule2 != null && speedMineModule2.isToggled() && speedMineModule2.airCheck.getValue();
         if (!liquidCheck2 && WorldUtils.mc.player.isEyeInFluid(FluidTags.WATER)) {
-            f *= (float)WorldUtils.mc.player.getAttribute(Attributes.SUBMERGED_MINING_SPEED).getValue();
+            speed *= (float)WorldUtils.mc.player.getAttribute(Attributes.SUBMERGED_MINING_SPEED).getValue();
         }
         if (!airCheck2 && !WorldUtils.mc.player.onGround()) {
-            f /= 5.0f;
+            speed /= 5.0f;
         }
-        f = f < 0.0f ? 0.0f : f;
-        return f / blockState.getBlock().defaultDestroyTime() / (float)(!blockState.requiresCorrectToolForDrops() || WorldUtils.mc.player.getInventory().getItem(n).isCorrectToolForDrops(blockState) ? 30 : 100);
+        speed = speed < 0.0f ? 0.0f : speed;
+        return speed / blockState.getBlock().defaultDestroyTime() / (float)(!blockState.requiresCorrectToolForDrops() || WorldUtils.mc.player.getInventory().getItem(slot).isCorrectToolForDrops(blockState) ? 30 : 100);
     }
 
     public static boolean blocksMovement(BlockState blockState) {
         return blockState.getBlock() != Blocks.COBWEB && blockState.getBlock() != Blocks.BAMBOO_SAPLING && !blockState.canBeReplaced();
     }
 
-    public static boolean equals(BlockPos blockPos, BlockPos blockPos2) {
-        if (blockPos == null && blockPos2 == null) {
+    public static boolean equals(BlockPos first, BlockPos second) {
+        if (first == null && second == null) {
             return true;
         }
-        if (blockPos == null || blockPos2 == null) {
+        if (first == null || second == null) {
             return false;
         }
-        return blockPos.equals((Object)blockPos2);
+        return first.equals((Object)second);
     }
 
     public static String getDimension() {
@@ -844,12 +837,12 @@ implements IMinecraft {
         return arrayList;
     }
 
-    private static Packet createPlacePacket(InteractionHand interactionHand, BlockHitResult blockHitResult, int n) {
-        return new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n);
+    private static Packet createPlacePacket(InteractionHand interactionHand, BlockHitResult blockHitResult, int sequence) {
+        return new ServerboundUseItemOnPacket(interactionHand, blockHitResult, sequence);
     }
 
-    private static Packet createAirPlacePacket(InteractionHand interactionHand, BlockHitResult blockHitResult, int n) {
-        return new ServerboundUseItemOnPacket(interactionHand, blockHitResult, n);
+    private static Packet createAirPlacePacket(InteractionHand interactionHand, BlockHitResult blockHitResult, int sequence) {
+        return new ServerboundUseItemOnPacket(interactionHand, blockHitResult, sequence);
     }
 
     private record PredictedPlacement(Block block, long time) {

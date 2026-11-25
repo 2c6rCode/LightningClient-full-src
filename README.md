@@ -18,6 +18,7 @@ Buddy thought his client was slick
 
 ## What Was Done
 
+- **2026-11-25:** 100% decompiled with readable source code — renamed all remaining CFR-decompiled local variables and parameters across the entire client (`modules`, `gui`, `mixins`, `utils`, `pingbypass`, `events`, `commands`, `managers`, `settings`, `accounts`, `core`).
 - Ripped out all remote authentication checks, license gates, and remote heartbeats. Client runs fully offline without checking with anyone's server.
 - Renamed decompiled variables across crystal placement, combat aura, mining modules, and rotation managers so the code is actually readable instead of pure single-letter garbage.
 - Fixed decompiled synthetic lambda method names that triggered JVM ClassFormatErrors on launch.

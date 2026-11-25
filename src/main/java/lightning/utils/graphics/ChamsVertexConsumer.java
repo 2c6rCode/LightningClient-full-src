@@ -34,43 +34,43 @@ implements VertexConsumer {
     private final float[] zs = new float[4];
     private int i = 0;
 
-    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean bl, int n, boolean bl2, int n2, boolean bl3) {
-        this(vertexConsumer, bl, n, bl2, n2, bl3, false, -1, null, false, 1.0f);
+    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine) {
+        this(vertexConsumer, fill, fillColor, outline, outlineColor, shine, false, -1, null, false, 1.0f);
     }
 
-    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean bl, int n, boolean bl2, int n2, boolean bl3, boolean bl4) {
-        this(vertexConsumer, bl, n, bl2, n2, bl3, false, -1, null, bl4, 1.0f);
+    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine, boolean suppressReal) {
+        this(vertexConsumer, fill, fillColor, outline, outlineColor, shine, false, -1, null, suppressReal, 1.0f);
     }
 
-    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean bl, int n, boolean bl2, int n2, boolean bl3, boolean bl4, float f) {
-        this(vertexConsumer, bl, n, bl2, n2, bl3, false, -1, null, bl4, f);
+    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine, boolean suppressReal, float realAlphaMultiplier) {
+        this(vertexConsumer, fill, fillColor, outline, outlineColor, shine, false, -1, null, suppressReal, realAlphaMultiplier);
     }
 
-    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean bl, int n, boolean bl2, int n2, boolean bl3, boolean bl4, int n3, boolean bl5, float f) {
-        this(vertexConsumer, bl, n, bl2, n2, bl3, bl4, n3, null, bl5, f);
+    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine, boolean glint, int glintColor, boolean suppressReal, float realAlphaMultiplier) {
+        this(vertexConsumer, fill, fillColor, outline, outlineColor, shine, glint, glintColor, null, suppressReal, realAlphaMultiplier);
     }
 
-    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean bl, int n, boolean bl2, int n2, boolean bl3, boolean bl4, int n3, Glint.GlintParams glintParams, boolean bl5, float f) {
+    public ChamsVertexConsumer(VertexConsumer vertexConsumer, boolean fill, int fillColor, boolean outline, int outlineColor, boolean shine, boolean glint, int glintColor, Glint.GlintParams glintParams, boolean suppressReal, float realAlphaMultiplier) {
         this.real = vertexConsumer;
-        this.fill = bl;
-        this.fillColor = n;
-        this.outline = bl2;
-        this.outlineColor = n2;
-        this.shine = bl3;
-        this.glint = bl4;
-        this.glintColor = n3;
+        this.fill = fill;
+        this.fillColor = fillColor;
+        this.outline = outline;
+        this.outlineColor = outlineColor;
+        this.shine = shine;
+        this.glint = glint;
+        this.glintColor = glintColor;
         this.glintParams = glintParams;
-        this.suppressReal = bl5;
-        this.realAlphaMultiplier = f;
+        this.suppressReal = suppressReal;
+        this.realAlphaMultiplier = realAlphaMultiplier;
     }
 
-    public VertexConsumer addVertex(float f, float f2, float f3) {
+    public VertexConsumer addVertex(float x, float y, float z) {
         if (!this.suppressReal && this.real != null) {
-            this.real.addVertex(f, f2, f3);
+            this.real.addVertex(x, y, z);
         }
-        this.xs[this.i] = f;
-        this.ys[this.i] = f2;
-        this.zs[this.i] = f3;
+        this.xs[this.i] = x;
+        this.ys[this.i] = y;
+        this.zs[this.i] = z;
         ++this.i;
         if (this.i == 4) {
             this.flushQuad();
@@ -80,88 +80,87 @@ implements VertexConsumer {
     }
 
     private void flushQuad() {
-        List<Renderer3D.VertexCollection> list;
-        List<Renderer3D.VertexCollection> list2 = this.shine ? Renderer3D.SHINE_QUADS : Renderer3D.QUADS;
-        List<Renderer3D.VertexCollection> list3 = list = this.shine ? Renderer3D.SHINE_DEBUG_LINES : Renderer3D.DEBUG_LINES;
+        List<Renderer3D.VertexCollection> quadTarget = this.shine ? Renderer3D.SHINE_QUADS : Renderer3D.QUADS;
+        List<Renderer3D.VertexCollection> lineTarget = this.shine ? Renderer3D.SHINE_DEBUG_LINES : Renderer3D.DEBUG_LINES;
         if (this.fill) {
-            list2.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], this.fillColor), new Renderer3D.Vertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], this.fillColor), new Renderer3D.Vertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], this.fillColor), new Renderer3D.Vertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], this.fillColor)));
+            quadTarget.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], this.fillColor), new Renderer3D.Vertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], this.fillColor), new Renderer3D.Vertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], this.fillColor), new Renderer3D.Vertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], this.fillColor)));
         }
         if (this.outline) {
-            list.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], this.outlineColor)));
-            list.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], this.outlineColor)));
-            list.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], this.outlineColor)));
-            list.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], this.outlineColor)));
+            lineTarget.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], this.outlineColor)));
+            lineTarget.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], this.outlineColor)));
+            lineTarget.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], this.outlineColor)));
+            lineTarget.add(new Renderer3D.VertexCollection(new Renderer3D.Vertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], this.outlineColor), new Renderer3D.Vertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], this.outlineColor)));
         }
         if (this.glint) {
             Glint.GlintParams glintParams = this.glintParams != null ? this.glintParams : Glint.ENTITY;
-            float[] fArray = new float[4];
-            float[] fArray2 = new float[4];
-            for (int i = 0; i < 4; ++i) {
-                float[] fArray3 = glintParams.getGlintUV(this.xs[i], this.ys[i], this.zs[i]);
-                fArray[i] = fArray3[0];
-                fArray2[i] = fArray3[1];
+            float[] us = new float[4];
+            float[] vs = new float[4];
+            for (int idx = 0; idx < 4; ++idx) {
+                float[] uv = glintParams.getGlintUV(this.xs[idx], this.ys[idx], this.zs[idx]);
+                us[idx] = uv[0];
+                vs[idx] = uv[1];
             }
             Glint.QUADS.add(new Glint.TexturedVertexCollection(new Glint.TexturedVertex[]{
-                new Glint.TexturedVertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], fArray[0], fArray2[0], this.glintColor),
-                new Glint.TexturedVertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], fArray[1], fArray2[1], this.glintColor),
-                new Glint.TexturedVertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], fArray[2], fArray2[2], this.glintColor),
-                new Glint.TexturedVertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], fArray[3], fArray2[3], this.glintColor)
+                new Glint.TexturedVertex(IDENTITY, this.xs[0], this.ys[0], this.zs[0], us[0], vs[0], this.glintColor),
+                new Glint.TexturedVertex(IDENTITY, this.xs[1], this.ys[1], this.zs[1], us[1], vs[1], this.glintColor),
+                new Glint.TexturedVertex(IDENTITY, this.xs[2], this.ys[2], this.zs[2], us[2], vs[2], this.glintColor),
+                new Glint.TexturedVertex(IDENTITY, this.xs[3], this.ys[3], this.zs[3], us[3], vs[3], this.glintColor)
             }));
         }
     }
 
-    public VertexConsumer setColor(int n, int n2, int n3, int n4) {
+    public VertexConsumer setColor(int red, int green, int blue, int alpha) {
         if (!this.suppressReal && this.real != null) {
-            int n5 = this.realAlphaMultiplier >= 1.0f ? n4 : Math.round((float)n4 * this.realAlphaMultiplier);
-            this.real.setColor(n, n2, n3, n5);
+            int scaledAlpha = this.realAlphaMultiplier >= 1.0f ? alpha : Math.round((float)alpha * this.realAlphaMultiplier);
+            this.real.setColor(red, green, blue, scaledAlpha);
         }
         return this;
     }
 
-    public VertexConsumer setColor(int n) {
+    public VertexConsumer setColor(int color) {
         if (!this.suppressReal && this.real != null) {
             if (this.realAlphaMultiplier >= 1.0f) {
-                this.real.setColor(n);
+                this.real.setColor(color);
             } else {
-                int n2 = n >>> 24 & 0xFF;
-                int n3 = Math.round((float)n2 * this.realAlphaMultiplier);
-                this.real.setColor(n & 0xFFFFFF | n3 << 24);
+                int alpha = color >>> 24 & 0xFF;
+                int scaledAlpha = Math.round((float)alpha * this.realAlphaMultiplier);
+                this.real.setColor(color & 0xFFFFFF | scaledAlpha << 24);
             }
         }
         return this;
     }
 
-    public VertexConsumer setUv(float f, float f2) {
+    public VertexConsumer setUv(float u, float v) {
         if (!this.suppressReal && this.real != null) {
-            this.real.setUv(f, f2);
+            this.real.setUv(u, v);
         }
         return this;
     }
 
-    public VertexConsumer setUv1(int n, int n2) {
+    public VertexConsumer setUv1(int u, int v) {
         if (!this.suppressReal && this.real != null) {
-            this.real.setUv1(n, n2);
+            this.real.setUv1(u, v);
         }
         return this;
     }
 
-    public VertexConsumer setUv2(int n, int n2) {
+    public VertexConsumer setUv2(int u, int v) {
         if (!this.suppressReal && this.real != null) {
-            this.real.setUv2(n, n2);
+            this.real.setUv2(u, v);
         }
         return this;
     }
 
-    public VertexConsumer setNormal(float f, float f2, float f3) {
+    public VertexConsumer setNormal(float normalX, float normalY, float normalZ) {
         if (!this.suppressReal && this.real != null) {
-            this.real.setNormal(f, f2, f3);
+            this.real.setNormal(normalX, normalY, normalZ);
         }
         return this;
     }
 
-    public VertexConsumer setLineWidth(float f) {
+    public VertexConsumer setLineWidth(float lineWidth) {
         if (!this.suppressReal && this.real != null) {
-            this.real.setLineWidth(f);
+            this.real.setLineWidth(lineWidth);
         }
         return this;
     }

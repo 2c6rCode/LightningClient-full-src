@@ -16,19 +16,19 @@ public class LegacyRotation {
     private final int priority;
     private long time;
 
-    public LegacyRotation(float f, float f2, int n) {
-        this.yaw = f;
-        this.pitch = f2;
+    public LegacyRotation(float yaw, float pitch, int priority) {
+        this.yaw = yaw;
+        this.pitch = pitch;
         this.module = null;
-        this.priority = n;
+        this.priority = priority;
         this.time = System.currentTimeMillis();
     }
 
-    public LegacyRotation(float f, float f2, Module module, int n) {
-        this.yaw = f;
-        this.pitch = f2;
+    public LegacyRotation(float yaw, float pitch, Module module, int priority) {
+        this.yaw = yaw;
+        this.pitch = pitch;
         this.module = module;
-        this.priority = n;
+        this.priority = priority;
         this.time = System.currentTimeMillis();
     }
 
@@ -58,18 +58,18 @@ public class LegacyRotation {
     }
 
     @Generated
-    public void setYaw(float f) {
-        this.yaw = f;
+    public void setYaw(float yaw) {
+        this.yaw = yaw;
     }
 
     @Generated
-    public void setPitch(float f) {
-        this.pitch = f;
+    public void setPitch(float pitch) {
+        this.pitch = pitch;
     }
 
     @Generated
-    public void setTime(long l) {
-        this.time = l;
+    public void setTime(long time) {
+        this.time = time;
     }
 }
 

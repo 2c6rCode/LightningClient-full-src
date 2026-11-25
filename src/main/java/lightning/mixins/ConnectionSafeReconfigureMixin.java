@@ -98,13 +98,13 @@ public class ConnectionSafeReconfigureMixin {
     }
 
     @Inject(method={"setupInboundProtocol"}, at={@At(value="HEAD")}, cancellable=true)
-    private <T extends PacketListener> void setupInboundProtocol$safe(ProtocolInfo<T> protocolInfo, T t, CallbackInfo callbackInfo) {
+    private <T extends PacketListener> void setupInboundProtocol$safe(ProtocolInfo<T> protocolInfo, T packetListener, CallbackInfo callbackInfo) {
         Connection connection = (Connection)(Object)this;
         if (protocolInfo.flow() != connection.getReceiving()) {
             throw new IllegalStateException("Invalid inbound protocol: " + String.valueOf(protocolInfo.id()));
         }
         ConnectionAccessor connectionAccessor = (ConnectionAccessor)((Object)this);
-        connectionAccessor.setPacketListener(t);
+        connectionAccessor.setPacketListener(packetListener);
         Channel channel = connectionAccessor.getChannel();
         Runnable runnable = () -> {
             try {
